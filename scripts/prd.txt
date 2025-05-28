@@ -1,0 +1,236 @@
+# Flint Lead Magnet Tool – Product Requirements Document (PRD)
+
+## Overview
+
+The Flint Lead Magnet Tool is a modular, production-grade web application built for external customers. It enables the creation of engaging, slide-based lead magnet experiences. Users can build question-driven flows that collect lead information, power AI logic workflows via OpenAI, and dynamically generate personalized outputs. The app is designed to be extensible, intuitive, and effective at converting user engagement into stored leads.
+
+This application will be built using:
+
+* **Next.js**
+* **ShadCN component library** (used consistently across all UI)
+* **Tailwind CSS**
+* **Supabase** for database management and **authentication** (starting with local development and later migrating to production Supabase)
+* **OpenAI** for AI logic functionality
+
+---
+
+## Core Pages
+
+### 1. **Dashboard**
+
+**Purpose:** Provide high-level performance analytics for campaigns.
+
+**Key Features:**
+
+* Overview of total leads captured
+* Filterable stats (e.g., Today, This Week, This Month)
+* Campaign performance summary (top-performing campaigns)
+* Export capability (CSV/Excel)
+
+### 2. **Leads**
+
+**Purpose:** CRM-style view of all leads captured across campaigns.
+
+**Key Features:**
+
+* Tabular list of leads
+* Badge indicators showing campaign origin
+* Contact type tags (Email, Phone, etc.)
+* Export leads
+* (Optional future) Filters and search by campaign or date
+
+### 3. **Campaigns**
+
+**Purpose:** Manage and build individual lead magnet flows.
+
+**Key Features:**
+
+* Grid of campaign cards (Active, Archived)
+* Stats per campaign (lead count)
+* Button to create a new campaign
+
+#### Campaign Card Display:
+
+* Campaign name
+* Status indicator
+* Leads captured count
+
+---
+
+## Campaign Builder
+
+The Campaign Builder is the core experience.
+
+### Top Bar (Sticky Header)
+
+* **Back button** – returns to Campaigns page
+* **Campaign Name** – editable, shown prominently (e.g., "Nike")
+* **Preview** – launches a simulated iframe preview
+* **Publish** – makes campaign publicly accessible via unique URL
+
+### Layout
+
+* **Left Panel**: Drag-and-drop component menu
+* **Right Panel (Canvas)**: WYSIWYG stack of sections representing the lead magnet flow
+
+### Section Types (Drag-and-Drop Components)
+
+All sections are **full-screen slides** for the end user, navigated by a "Next" button.
+
+#### A. Question Sections (Repeatable)
+
+Each added question becomes a full-screen slide.
+
+##### 1. **Text Question**
+
+* Fields:
+
+  * Main question (inline editable — "Type your question here")
+  * Optional subheading (inline editable)
+  * Optional label (inline editable)
+* Bottom controls:
+
+  * Toggle: Required / Not required
+  * Custom "Next" button text (inline editable)
+
+##### 2. **Multiple Choice**
+
+* Fields:
+
+  * Question and subheading (inline editable)
+  * Options ("Option goes here..." with dynamic add/remove, all inline editable)
+
+##### 3. **Slider**
+
+* Fields:
+
+  * Question (inline editable)
+  * Subheading (optional, inline editable)
+  * Min/Max values (inline editable)
+* Preview mode allows interactive slider testing
+
+#### B. Info Section (Repeatable)
+
+Non-interactive slides used for:
+
+* Images
+* Headings
+* Descriptive content
+
+Fields:
+
+* Text and image (inline editable)
+
+Users can add **as many Question or Info sections as desired**, enabling flexible flow design and content delivery.
+Each section name is **editable inline**, and the **section name is used as a variable name** for referencing in later logic or output.
+
+#### C. Capture Section (Required)
+
+This is the gating mechanism for collecting lead data.
+
+* Title and subheading (inline editable)
+* Input selector (checkboxes):
+
+  * Name
+  * Email
+  * Phone
+
+**Behavior:**
+
+* These inputs must be completed to unlock final results
+* Inputs stored as lead data
+
+#### D. Logic Section (Required for AI-powered flows)
+
+The logic section defines how user responses are turned into AI prompts and how to format the AI’s response. **This section is never shown to the end-user**.
+
+**Structure:**
+
+* **Left side:** Prompt Builder
+* **Right side:** Output Variable Definition
+
+##### Prompt Builder
+
+* Text input with support for inserting variables using `@` (e.g., `@name`, `@age`, `@distance`)
+* Helper UI: Dropdown or type-ahead showing available variables from earlier sections (based on their names)
+* Instructional placeholder text: "You are an expert..."
+* Guidance: Construct a prompt using inputs from the questions above
+
+##### Output Definition
+
+* Fields to define what the AI should return
+
+  * Descriptive instruction (e.g., "Return estimated race time")
+  * Assign variable name (e.g., `@time`, `@speed`)
+
+**Preview Mode:**
+
+* Allows test input values to be filled for each input variable
+* Shows actual AI response to validate prompt setup
+
+#### E. Output Section (Required for final result)
+
+Displays the AI-generated output dynamically using variables.
+
+**Design:**
+
+* Similar to Info Block
+* Text content supports variable injection using `@`
+
+  * From user input (e.g., `@name`, `@age`)
+  * From AI output (e.g., `@time`, `@speed`)
+* Optional image upload
+* All fields are inline editable
+
+**Example Output:**
+
+> "Hey @name, based on your input of training @often times per week, we estimate your race time will be @time. You'll need to run at @speed."
+
+---
+
+## Section UI & Editing Behavior
+
+Each section block has:
+
+### Top Bar (within section)
+
+* Section name (inline editable, used as a variable key)
+* Type dropdown (e.g., switch from Text Question to Slider)
+* Preview toggle (Edit vs. Preview mode)
+* Delete button
+
+### Bottom Bar (where applicable)
+
+* Required toggle
+* Customizable button label (inline editable, default = "Next")
+
+---
+
+## Key Functional Concepts
+
+* **Modular Architecture:** All section types are plug-and-play and can be extended in the future.
+* **Inline Editing:** All content should be editable directly on the canvas without traditional input fields, encouraging rapid iteration and fluid UX.
+* **Preview Mode:** Users can preview the campaign experience as it would appear to end users.
+* **Variable System:**
+
+  * Inputs from questions are stored as variables (e.g., `@name`, `@distance`), derived from section names
+  * Logic can use these inputs to create outputs (e.g., `@time`, `@speed`)
+  * Outputs can be referenced in final Output section text
+* **Lead Storage:** All data submitted through the capture section is stored and visible in the Leads table
+* **Logic Handling:** Logic sections define AI behavior and remain hidden from end users. They convert captured inputs into structured prompts and return usable data points.
+* **Authentication:** Supabase Auth will be used to handle all user authentication and access control
+
+---
+
+## Extensibility Notes
+
+* Future components can be easily added (e.g., rating scales, conditional logic blocks)
+* New output formats (PDF, downloads, etc.) can be introduced later
+* Logic blocks could be expanded to support formulas, branching, or multi-output chaining
+
+---
+
+## Summary
+
+This tool empowers marketers and businesses to build engaging, form-like experiences that feel like mini-apps. By combining slide-based UX, simple AI prompt building, inline editable content, and live lead capture, Flint Lead Magnet Tool becomes a powerful way to generate high-converting, context-aware campaigns.
+
