@@ -84,7 +84,7 @@ export async function getCampaignById(
   const supabase = await getSupabaseClient();
 
   return withErrorHandling(async () => {
-    let query = supabase
+    const query = supabase
       .from('campaigns')
       .select(includeRelations ? `
         *,
