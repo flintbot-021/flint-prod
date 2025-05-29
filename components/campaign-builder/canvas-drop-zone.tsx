@@ -1,7 +1,7 @@
 'use client'
 
 import { useDroppable } from '@dnd-kit/core'
-import { SectionType, CampaignSection } from '@/lib/types/campaign-builder'
+import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
 import { Plus, Layout } from 'lucide-react'
 

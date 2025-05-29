@@ -5,14 +5,29 @@ import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { getCampaignById, updateCampaign, publishCampaign } from '@/lib/data-access'
 import { Campaign } from '@/lib/types/database'
-import { CampaignSection, SectionType } from '@/lib/types/campaign-builder'
+import { CampaignSection, SectionType, getSectionTypeById } from '@/lib/types/campaign-builder'
 import { CampaignBuilderTopBar } from '@/components/campaign-builder/top-bar'
 import { SectionsMenu } from '@/components/campaign-builder/sections-menu'
-import { CanvasDropZone } from '@/components/campaign-builder/canvas-drop-zone'
+import { SortableCanvas } from '@/components/campaign-builder/sortable-canvas'
+import { EnhancedSectionCard } from '@/components/campaign-builder/enhanced-section-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { toast } from '@/components/ui/use-toast'
 import { Loader2, AlertCircle } from 'lucide-react'
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
+import { 
+  DndContext, 
+  DragEndEvent, 
+  DragOverlay, 
+  DragStartEvent,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors
+} from '@dnd-kit/core'
+import { 
+  arrayMove
+} from '@dnd-kit/sortable'
 import { DraggableSectionType } from '@/components/campaign-builder/draggable-section-type'
+import { EnhancedSortableCanvas } from '@/components/campaign-builder/enhanced-sortable-canvas'
 
 export default function CampaignBuilderPage() {
   const { user, loading } = useAuth()
@@ -25,7 +40,16 @@ export default function CampaignBuilderPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [activeDragItem, setActiveDragItem] = useState<SectionType | null>(null)
+  const [activeDragItem, setActiveDragItem] = useState<SectionType | CampaignSection | null>(null)
+
+  // Configure sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  )
 
   useEffect(() => {
     if (!loading && !user) {
@@ -79,9 +103,18 @@ export default function CampaignBuilderPage() {
       }
 
       setCampaign(prev => prev ? { ...prev, name: newName } : null)
+      toast({
+        title: 'Campaign updated',
+        description: 'Campaign name updated successfully'
+      })
     } catch (err) {
       console.error('Error updating campaign name:', err)
       setError(err instanceof Error ? err.message : 'Failed to update campaign name')
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to update campaign name',
+        variant: 'destructive'
+      })
     } finally {
       setIsSaving(false)
     }
@@ -99,9 +132,19 @@ export default function CampaignBuilderPage() {
       await new Promise(resolve => setTimeout(resolve, 1000))
 
       console.log('Campaign saved:', campaign.id, { sections })
+      toast({
+        title: 'Campaign saved',
+        description: 'All changes have been saved successfully'
+      })
     } catch (err) {
       console.error('Error saving campaign:', err)
-      setError(err instanceof Error ? err.message : 'Failed to save campaign')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save campaign'
+      setError(errorMessage)
+      toast({
+        title: 'Save failed',
+        description: errorMessage,
+        variant: 'destructive'
+      })
     } finally {
       setIsSaving(false)
     }
@@ -129,6 +172,10 @@ export default function CampaignBuilderPage() {
           throw new Error(result.error || 'Failed to unpublish campaign')
         }
         setCampaign(prev => prev ? { ...prev, status: 'draft', published_at: null } : null)
+        toast({
+          title: 'Campaign unpublished',
+          description: 'Campaign has been moved to draft status'
+        })
       } else {
         // Publish
         const result = await publishCampaign(campaign.id)
@@ -140,10 +187,20 @@ export default function CampaignBuilderPage() {
           status: 'published', 
           published_at: new Date().toISOString()
         } : null)
+        toast({
+          title: 'Campaign published',
+          description: 'Campaign is now live and accepting responses'
+        })
       }
     } catch (err) {
       console.error('Error publishing/unpublishing campaign:', err)
-      setError(err instanceof Error ? err.message : 'Failed to update campaign status')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update campaign status'
+      setError(errorMessage)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
     } finally {
       setIsSaving(false)
     }
@@ -151,7 +208,7 @@ export default function CampaignBuilderPage() {
 
   const handleSectionAdd = (sectionType: SectionType) => {
     const newSection: CampaignSection = {
-      id: `section-${Date.now()}`,
+      id: `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: sectionType.id,
       title: sectionType.name,
       settings: sectionType.defaultSettings || {},
@@ -162,13 +219,131 @@ export default function CampaignBuilderPage() {
     }
 
     setSections(prev => [...prev, newSection])
+    toast({
+      title: 'Section added',
+      description: `${sectionType.name} section has been added to your campaign`
+    })
+  }
+
+  const handleSectionUpdate = async (sectionId: string, updates: Partial<CampaignSection>) => {
+    try {
+      // TODO: Update section in database
+      // For now, just update local state
+      setSections(prev => prev.map(section => 
+        section.id === sectionId 
+          ? { ...section, ...updates, updatedAt: new Date().toISOString() }
+          : section
+      ))
+      
+      // Show success feedback for title changes
+      if (updates.title) {
+        toast({
+          title: 'Section updated',
+          description: 'Section title has been updated',
+          duration: 2000
+        })
+      }
+    } catch (err) {
+      console.error('Error updating section:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update section'
+      toast({
+        title: 'Update failed',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw err // Re-throw to let the inline editor handle it
+    }
+  }
+
+  const handleSectionDelete = (sectionId: string) => {
+    setSections(prev => {
+      const filtered = prev.filter(section => section.id !== sectionId)
+      // Reorder remaining sections
+      const reordered = filtered.map((section, index) => ({
+        ...section,
+        order: index + 1,
+        updatedAt: new Date().toISOString()
+      }))
+      
+      toast({
+        title: 'Section deleted',
+        description: 'Section has been removed from your campaign'
+      })
+      
+      return reordered
+    })
+  }
+
+  const handleSectionDuplicate = (sectionId: string) => {
+    setSections(prev => {
+      const sectionToDuplicate = prev.find(section => section.id === sectionId)
+      if (!sectionToDuplicate) return prev
+
+      const duplicatedSection: CampaignSection = {
+        ...sectionToDuplicate,
+        id: `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        title: `${sectionToDuplicate.title} (Copy)`,
+        order: prev.length + 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      toast({
+        title: 'Section duplicated',
+        description: 'A copy of the section has been created'
+      })
+
+      return [...prev, duplicatedSection]
+    })
+  }
+
+  const handleSectionConfigure = (sectionId: string) => {
+    // TODO: Open section configuration modal/panel
+    console.log('Configure section:', sectionId)
+    toast({
+      title: 'Configuration',
+      description: 'Section configuration panel coming soon',
+      duration: 3000
+    })
+  }
+
+  const handleSectionTypeChange = async (sectionId: string, newType: string) => {
+    try {
+      // Find the section and update it with new type
+      const newSectionType = getSectionTypeById(newType)
+      const updates: Partial<CampaignSection> = {
+        type: newType,
+        settings: {
+          ...(sections.find(s => s.id === sectionId)?.settings || {}),
+          ...newSectionType?.defaultSettings
+        }
+      }
+      
+      await handleSectionUpdate(sectionId, updates)
+      
+      toast({
+        title: 'Section type changed',
+        description: `Section changed to ${newSectionType?.name || newType}`,
+        duration: 3000
+      })
+    } catch (err) {
+      console.error('Error changing section type:', err)
+      toast({
+        title: 'Failed to change type',
+        description: err instanceof Error ? err.message : 'Failed to change section type',
+        variant: 'destructive'
+      })
+    }
   }
 
   // Drag and drop handlers
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event
+    
     if (active.data.current?.type === 'section-type') {
       setActiveDragItem(active.data.current.sectionType)
+    } else if (active.data.current?.type === 'campaign-section') {
+      setActiveDragItem(active.data.current.section)
     }
   }
 
@@ -186,6 +361,37 @@ export default function CampaignBuilderPage() {
     ) {
       const sectionType = active.data.current.sectionType as SectionType
       handleSectionAdd(sectionType)
+      return
+    }
+
+    // Handle reordering sections within canvas
+    if (
+      active.data.current?.type === 'campaign-section' &&
+      over.data.current?.type === 'campaign-section'
+    ) {
+      const activeId = active.id as string
+      const overId = over.id as string
+
+      if (activeId !== overId) {
+        setSections(items => {
+          const oldIndex = items.findIndex(item => item.id === activeId)
+          const newIndex = items.findIndex(item => item.id === overId)
+          
+          const reorderedItems = arrayMove(items, oldIndex, newIndex)
+          // Update order property for all affected sections
+          return reorderedItems.map((section, index) => ({
+            ...section,
+            order: index + 1,
+            updatedAt: new Date().toISOString()
+          }))
+        })
+        
+        toast({
+          title: 'Sections reordered',
+          description: 'Section order has been updated',
+          duration: 2000
+        })
+      }
     }
   }
 
@@ -258,6 +464,8 @@ export default function CampaignBuilderPage() {
 
   return (
     <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
@@ -312,15 +520,30 @@ export default function CampaignBuilderPage() {
               <div className="lg:col-span-3">
                 <Card className="h-full">
                   <CardHeader>
-                    <CardTitle className="text-lg">Campaign Canvas</CardTitle>
-                    <CardDescription>
-                      Drag sections from the sidebar to build your campaign
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg">Campaign Canvas</CardTitle>
+                        <CardDescription>
+                          Drag sections from the sidebar to build your campaign. Use the enhanced controls for inline editing, preview mode, and section management.
+                        </CardDescription>
+                      </div>
+                      {sections.length > 0 && (
+                        <div className="text-sm text-gray-500">
+                          {sections.length} section{sections.length !== 1 ? 's' : ''} • {sections.filter(s => s.isVisible).length} visible
+                        </div>
+                      )}
+                    </div>
                   </CardHeader>
-                  <CardContent className="h-[calc(100%-80px)]">
-                    <CanvasDropZone
+                  <CardContent className="h-[calc(100%-100px)]">
+                    <EnhancedSortableCanvas
                       sections={sections}
+                      onSectionUpdate={handleSectionUpdate}
+                      onSectionDelete={handleSectionDelete}
+                      onSectionDuplicate={handleSectionDuplicate}
+                      onSectionConfigure={handleSectionConfigure}
+                      onSectionTypeChange={handleSectionTypeChange}
                       className="h-full"
+                      showCollapsedSections={true}
                     />
                   </CardContent>
                 </Card>
@@ -332,10 +555,26 @@ export default function CampaignBuilderPage() {
         {/* Drag Overlay */}
         <DragOverlay>
           {activeDragItem && (
-            <DraggableSectionType
-              sectionType={activeDragItem}
-              className="shadow-lg rotate-3 opacity-90"
-            />
+            <>
+              {/* Check if it's a SectionType (has 'name' property) */}
+              {('name' in activeDragItem && 'description' in activeDragItem) ? (
+                /* Section Type being dragged */
+                <DraggableSectionType
+                  sectionType={activeDragItem as SectionType}
+                  className="shadow-lg rotate-3 opacity-90"
+                />
+              ) : (
+                /* Campaign Section being dragged */
+                <EnhancedSectionCard
+                  section={activeDragItem as CampaignSection}
+                  onUpdate={async () => {}}
+                  onDelete={() => {}}
+                  onDuplicate={() => {}}
+                  onConfigure={() => {}}
+                  className="shadow-lg rotate-2 opacity-90"
+                />
+              )}
+            </>
           )}
         </DragOverlay>
       </div>
