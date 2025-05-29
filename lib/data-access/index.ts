@@ -46,6 +46,15 @@ export {
   updateCampaign,
   deleteCampaign,
   publishCampaign,
+  unpublishCampaign,
+  generateCampaignSlug,
+  validateCampaignForPublishing,
+  checkUrlAvailability,
+
+  // Campaign Activation Controls
+  activateCampaign,
+  deactivateCampaign,
+  getCampaignActivationStatus,
 
   // Section CRUD
   createSection,

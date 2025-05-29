@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { UserProfile } from '@/components/ui/user-profile'
 import { useAuth } from '@/lib/auth-context'
-import { getCampaigns, getCurrentProfile, getCampaignLeadStats, updateCampaign, publishCampaign, deleteCampaign } from '@/lib/data-access'
+import { getCampaigns, getCurrentProfile, getCampaignLeadStats, updateCampaign, publishCampaign, deleteCampaign, activateCampaign, deactivateCampaign } from '@/lib/data-access'
 import { Campaign, Profile, CampaignStatus } from '@/lib/types/database'
 import { 
   Plus, 
@@ -27,7 +27,9 @@ import {
   Archive,
   Globe,
   FileText,
-  Hammer
+  Hammer,
+  Lock,
+  Unlock
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -204,6 +206,40 @@ export default function CampaignsPage() {
     }
   }
 
+  const handleActivateCampaign = async (campaignId: string) => {
+    try {
+      setError(null)
+      
+      const result = await activateCampaign(campaignId)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to activate campaign')
+      }
+
+      // Reload campaigns to reflect changes
+      await loadCampaignsAndProfile()
+    } catch (err) {
+      console.error('Error activating campaign:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    }
+  }
+
+  const handleDeactivateCampaign = async (campaignId: string) => {
+    try {
+      setError(null)
+      
+      const result = await deactivateCampaign(campaignId)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to deactivate campaign')
+      }
+
+      // Reload campaigns to reflect changes
+      await loadCampaignsAndProfile()
+    } catch (err) {
+      console.error('Error deactivating campaign:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    }
+  }
+
   const getStatusActions = (campaign: CampaignWithStats) => {
     const actions = []
 
@@ -222,6 +258,23 @@ export default function CampaignsPage() {
         variant: 'secondary' as const
       })
     } else if (campaign.status === 'published') {
+      // Activation controls for published campaigns
+      if (campaign.is_active) {
+        actions.push({
+          label: 'Deactivate Campaign',
+          icon: Lock,
+          action: () => handleDeactivateCampaign(campaign.id),
+          variant: 'secondary' as const
+        })
+      } else {
+        actions.push({
+          label: 'Activate Campaign',
+          icon: Unlock,
+          action: () => handleActivateCampaign(campaign.id),
+          variant: 'default' as const
+        })
+      }
+      
       actions.push({
         label: 'Unpublish (Draft)',
         icon: FileText,
@@ -417,9 +470,34 @@ export default function CampaignsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Published</p>
-                        <p className="text-2xl font-bold text-gray-900">
-                          {campaigns.filter(c => c.status === 'published').length}
-                        </p>
+                        <div className="flex items-center space-x-2">
+                          <p className="text-2xl font-bold text-gray-900">
+                            {campaigns.filter(c => c.status === 'published').length}
+                          </p>
+                          <div className="text-xs">
+                            {(() => {
+                              const published = campaigns.filter(c => c.status === 'published')
+                              const active = published.filter(c => c.is_active).length
+                              const inactive = published.length - active
+                              return (
+                                <div className="space-y-0.5">
+                                  {active > 0 && (
+                                    <div className="flex items-center space-x-1 text-green-600">
+                                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full"></div>
+                                      <span>{active} active</span>
+                                    </div>
+                                  )}
+                                  {inactive > 0 && (
+                                    <div className="flex items-center space-x-1 text-orange-600">
+                                      <div className="w-1.5 h-1.5 bg-orange-500 rounded-full"></div>
+                                      <span>{inactive} inactive</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )
+                            })()}
+                          </div>
+                        </div>
                       </div>
                       <div className="h-8 w-8 bg-emerald-100 rounded-lg flex items-center justify-center">
                         <Activity className="h-4 w-4 text-emerald-600" />
@@ -489,13 +567,32 @@ export default function CampaignsPage() {
                           {campaign.description || 'No description provided'}
                         </CardDescription>
                       </div>
-                      <Badge 
-                        variant="secondary" 
-                        className={`ml-2 flex items-center space-x-1 ${getStatusColor(campaign.status)}`}
-                      >
-                        {getStatusIcon(campaign.status)}
-                        <span className="capitalize">{campaign.status}</span>
-                      </Badge>
+                      <div className="ml-2 flex flex-col items-end space-y-1">
+                        <Badge 
+                          variant="secondary" 
+                          className={`flex items-center space-x-1 ${getStatusColor(campaign.status)}`}
+                        >
+                          {getStatusIcon(campaign.status)}
+                          <span className="capitalize">{campaign.status}</span>
+                        </Badge>
+                        
+                        {/* Activation Status Indicator for Published Campaigns */}
+                        {campaign.status === 'published' && (
+                          <div className="flex items-center space-x-1">
+                            {campaign.is_active ? (
+                              <div className="flex items-center space-x-1 text-xs">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span className="text-green-600 font-medium">Live</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-1 text-xs">
+                                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                <span className="text-orange-600 font-medium">Inactive</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">

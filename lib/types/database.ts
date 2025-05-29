@@ -94,6 +94,7 @@ export interface Campaign {
   updated_at: Timestamp;
   published_at: Timestamp | null;
   published_url: string | null;
+  is_active: boolean; // Controls whether published campaigns are publicly accessible
 }
 
 /**

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { getCampaignById, updateCampaign, publishCampaign } from '@/lib/data-access'
+import { getCampaignById, updateCampaign } from '@/lib/data-access'
 import { Campaign } from '@/lib/types/database'
 import { CampaignSection, SectionType, getSectionTypeById } from '@/lib/types/campaign-builder'
 import { CampaignBuilderTopBar } from '@/components/campaign-builder/top-bar'
@@ -11,6 +11,7 @@ import { SectionsMenu } from '@/components/campaign-builder/sections-menu'
 import { SortableCanvas } from '@/components/campaign-builder/sortable-canvas'
 import { EnhancedSectionCard } from '@/components/campaign-builder/enhanced-section-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { PublishModal } from '@/components/campaign-builder/publish-modal'
 import { toast } from '@/components/ui/use-toast'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { 
@@ -28,21 +29,25 @@ import {
 } from '@dnd-kit/sortable'
 import { DraggableSectionType } from '@/components/campaign-builder/draggable-section-type'
 import { EnhancedSortableCanvas } from '@/components/campaign-builder/enhanced-sortable-canvas'
+import { CampaignPreview } from '@/components/campaign-builder/campaign-preview'
+import { cn } from '@/lib/utils'
 
 export default function CampaignBuilderPage() {
   const { user, loading } = useAuth()
-  const router = useRouter()
   const params = useParams()
-  const campaignId = params?.id as string
-
+  const router = useRouter()
+  
+  // State
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [sections, setSections] = useState<CampaignSection[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeDragItem, setActiveDragItem] = useState<SectionType | CampaignSection | null>(null)
+  const [activeTab, setActiveTab] = useState<'builder' | 'preview'>('builder')
+  const [showPublishModal, setShowPublishModal] = useState(false)
 
-  // Configure sensors for drag and drop
+  // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -51,41 +56,36 @@ export default function CampaignBuilderPage() {
     })
   )
 
+  // Load campaign data
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/auth/login')
-    }
-  }, [user, loading, router])
-
-  useEffect(() => {
-    if (user && campaignId) {
-      loadCampaign()
-    }
-  }, [user, campaignId])
+    loadCampaign()
+  }, [])
 
   const loadCampaign = async () => {
+    if (!params.id || typeof params.id !== 'string') {
+      setError('Invalid campaign ID')
+      setIsLoading(false)
+      return
+    }
+
     try {
       setIsLoading(true)
       setError(null)
-
-      const result = await getCampaignById(campaignId)
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to load campaign')
-      }
-
-      if (!result.data) {
-        throw new Error('Campaign not found')
-      }
-
-      setCampaign(result.data)
       
-      // TODO: Load actual campaign sections from database
-      // For now, initialize with empty sections
+      const result = await getCampaignById(params.id)
+      
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Campaign not found')
+      }
+      
+      setCampaign(result.data)
+      // TODO: Load sections from database
+      // For now, using mock sections
       setSections([])
     } catch (err) {
       console.error('Error loading campaign:', err)
-      setError(err instanceof Error ? err.message : 'An error occurred')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load campaign'
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -96,25 +96,29 @@ export default function CampaignBuilderPage() {
 
     try {
       setIsSaving(true)
-      const result = await updateCampaign(campaign.id, { name: newName })
+      setError(null)
 
+      const result = await updateCampaign(campaign.id, { name: newName })
       if (!result.success) {
         throw new Error(result.error || 'Failed to update campaign name')
       }
 
       setCampaign(prev => prev ? { ...prev, name: newName } : null)
       toast({
-        title: 'Campaign updated',
-        description: 'Campaign name updated successfully'
+        title: 'Campaign name updated',
+        description: 'Campaign name has been saved',
+        duration: 2000
       })
     } catch (err) {
       console.error('Error updating campaign name:', err)
-      setError(err instanceof Error ? err.message : 'Failed to update campaign name')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update campaign name'
+      setError(errorMessage)
       toast({
-        title: 'Error',
-        description: err instanceof Error ? err.message : 'Failed to update campaign name',
+        title: 'Update failed',
+        description: errorMessage,
         variant: 'destructive'
       })
+      throw err // Re-throw to let the inline editor handle it
     } finally {
       setIsSaving(false)
     }
@@ -126,15 +130,14 @@ export default function CampaignBuilderPage() {
     try {
       setIsSaving(true)
       setError(null)
-
-      // TODO: Save campaign sections to database
-      // For now, just simulate a save
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      console.log('Campaign saved:', campaign.id, { sections })
+      
+      // TODO: Save sections to database
+      // For now, just show success
+      
       toast({
         title: 'Campaign saved',
-        description: 'All changes have been saved successfully'
+        description: 'All changes have been saved successfully',
+        duration: 3000
       })
     } catch (err) {
       console.error('Error saving campaign:', err)
@@ -152,58 +155,17 @@ export default function CampaignBuilderPage() {
 
   const handlePreview = () => {
     if (!campaign) return
-    
-    // Open preview in new tab/window
     const previewUrl = `/campaigns/${campaign.id}/preview`
     window.open(previewUrl, '_blank', 'noopener,noreferrer')
   }
 
-  const handlePublish = async () => {
-    if (!campaign) return
+  const handlePublish = () => {
+    setShowPublishModal(true)
+  }
 
-    try {
-      setIsSaving(true)
-      setError(null)
-
-      if (campaign.status === 'published') {
-        // Unpublish - change status to draft
-        const result = await updateCampaign(campaign.id, { status: 'draft' })
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to unpublish campaign')
-        }
-        setCampaign(prev => prev ? { ...prev, status: 'draft', published_at: null } : null)
-        toast({
-          title: 'Campaign unpublished',
-          description: 'Campaign has been moved to draft status'
-        })
-      } else {
-        // Publish
-        const result = await publishCampaign(campaign.id)
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to publish campaign')
-        }
-        setCampaign(prev => prev ? { 
-          ...prev, 
-          status: 'published', 
-          published_at: new Date().toISOString()
-        } : null)
-        toast({
-          title: 'Campaign published',
-          description: 'Campaign is now live and accepting responses'
-        })
-      }
-    } catch (err) {
-      console.error('Error publishing/unpublishing campaign:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update campaign status'
-      setError(errorMessage)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-    } finally {
-      setIsSaving(false)
-    }
+  const handlePublishSuccess = (updatedCampaign: Campaign) => {
+    setCampaign(updatedCampaign)
+    setShowPublishModal(false)
   }
 
   const handleSectionAdd = (sectionType: SectionType) => {
@@ -516,36 +478,79 @@ export default function CampaignBuilderPage() {
                 </Card>
               </div>
 
-              {/* Main Content - Campaign Canvas */}
+              {/* Main Content - Tabbed Interface */}
               <div className="lg:col-span-3">
                 <Card className="h-full">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-lg">Campaign Canvas</CardTitle>
-                        <CardDescription>
-                          Drag sections from the sidebar to build your campaign. Use the enhanced controls for inline editing, preview mode, and section management.
-                        </CardDescription>
-                      </div>
-                      {sections.length > 0 && (
-                        <div className="text-sm text-gray-500">
-                          {sections.length} section{sections.length !== 1 ? 's' : ''} • {sections.filter(s => s.isVisible).length} visible
+                  {/* Tab Navigation */}
+                  <div className="border-b border-gray-200">
+                    <nav className="flex space-x-8 px-6 pt-4" aria-label="Tabs">
+                      <button
+                        onClick={() => setActiveTab('builder')}
+                        className={cn(
+                          "whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors",
+                          activeTab === 'builder'
+                            ? "border-blue-500 text-blue-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        )}
+                      >
+                        Builder
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('preview')}
+                        className={cn(
+                          "whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors",
+                          activeTab === 'preview'
+                            ? "border-blue-500 text-blue-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        )}
+                      >
+                        Preview
+                      </button>
+                    </nav>
+                  </div>
+
+                  {/* Tab Content */}
+                  {activeTab === 'builder' ? (
+                    <>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-lg">Campaign Canvas</CardTitle>
+                            <CardDescription>
+                              Drag sections from the sidebar to build your campaign. Use the enhanced controls for inline editing, preview mode, and section management.
+                            </CardDescription>
+                          </div>
+                          {sections.length > 0 && (
+                            <div className="text-sm text-gray-500">
+                              {sections.length} section{sections.length !== 1 ? 's' : ''} • {sections.filter(s => s.isVisible).length} visible
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </CardHeader>
+                      <CardContent className="h-[calc(100%-140px)]">
+                        <EnhancedSortableCanvas
+                          sections={sections}
+                          onSectionUpdate={handleSectionUpdate}
+                          onSectionDelete={handleSectionDelete}
+                          onSectionDuplicate={handleSectionDuplicate}
+                          onSectionConfigure={handleSectionConfigure}
+                          onSectionTypeChange={handleSectionTypeChange}
+                          className="h-full"
+                          showCollapsedSections={true}
+                        />
+                      </CardContent>
+                    </>
+                  ) : (
+                    <div className="h-[calc(100%-60px)]">
+                      <CampaignPreview
+                        campaign={campaign}
+                        sections={sections}
+                        className="h-full"
+                        enableDeviceToggle={true}
+                        enableFullscreen={true}
+                      />
                     </div>
-                  </CardHeader>
-                  <CardContent className="h-[calc(100%-100px)]">
-                    <EnhancedSortableCanvas
-                      sections={sections}
-                      onSectionUpdate={handleSectionUpdate}
-                      onSectionDelete={handleSectionDelete}
-                      onSectionDuplicate={handleSectionDuplicate}
-                      onSectionConfigure={handleSectionConfigure}
-                      onSectionTypeChange={handleSectionTypeChange}
-                      className="h-full"
-                      showCollapsedSections={true}
-                    />
-                  </CardContent>
+                  )}
                 </Card>
               </div>
             </div>
@@ -577,6 +582,15 @@ export default function CampaignBuilderPage() {
             </>
           )}
         </DragOverlay>
+
+        {showPublishModal && (
+          <PublishModal
+            campaign={campaign}
+            isOpen={showPublishModal}
+            onClose={() => setShowPublishModal(false)}
+            onPublishSuccess={handlePublishSuccess}
+          />
+        )}
       </div>
     </DndContext>
   )
