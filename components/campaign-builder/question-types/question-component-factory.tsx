@@ -4,6 +4,7 @@ import { CampaignSection } from '@/lib/types/campaign-builder'
 import { TextQuestion } from './text-question'
 import { MultipleChoiceQuestion } from './multiple-choice-question'
 import { RatingScaleQuestion } from './rating-scale-question'
+import { CaptureSection } from './capture-section'
 import { cn } from '@/lib/utils'
 import { AlertCircle, FileText } from 'lucide-react'
 import { ContentComponentFactory } from '../content-types/content-component-factory'
@@ -46,6 +47,16 @@ export function QuestionComponentFactory({
     case 'rating-scale':
       return (
         <RatingScaleQuestion
+          section={section}
+          isPreview={isPreview}
+          onUpdate={onUpdate}
+          className={className}
+        />
+      )
+
+    case 'capture':
+      return (
+        <CaptureSection
           section={section}
           isPreview={isPreview}
           onUpdate={onUpdate}
@@ -180,4 +191,4 @@ export function QuestionComponentFactory({
 }
 
 // Export individual question components for direct use
-export { TextQuestion, MultipleChoiceQuestion, RatingScaleQuestion } 
+export { TextQuestion, MultipleChoiceQuestion, RatingScaleQuestion, CaptureSection } 

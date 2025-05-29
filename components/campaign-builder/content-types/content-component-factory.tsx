@@ -2,6 +2,7 @@
 
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { InfoSection } from './info-section'
+import { OutputSection } from './output-section'
 import { cn } from '@/lib/utils'
 import { AlertCircle, FileText, Image as ImageIcon, Type } from 'lucide-react'
 
@@ -78,6 +79,19 @@ export function ContentComponentFactory({
       return (
         <SimpleSpacerEditor
           section={section}
+          onUpdate={onUpdate}
+          className={className}
+        />
+      )
+
+    // Output sections
+    case 'output-results':
+    case 'output-download':
+    case 'output-redirect':
+      return (
+        <OutputSection
+          section={section}
+          isPreview={isPreview}
           onUpdate={onUpdate}
           className={className}
         />

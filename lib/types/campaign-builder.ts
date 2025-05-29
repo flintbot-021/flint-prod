@@ -101,6 +101,41 @@ export const SECTION_TYPES: SectionType[] = [
       title: 'Get in Touch'
     }
   },
+  {
+    id: 'capture',
+    name: 'Lead Capture',
+    description: 'Flexible lead data collection form',
+    icon: 'Users',
+    category: 'input',
+    color: 'bg-green-100 text-green-800 border-green-200',
+    defaultSettings: {
+      title: 'Get Your Results',
+      subheading: 'Enter your information to unlock your personalized results',
+      enabledFields: {
+        name: true,
+        email: true,
+        phone: false
+      },
+      requiredFields: {
+        name: true,
+        email: true,
+        phone: false
+      },
+      fieldLabels: {
+        name: 'Full Name',
+        email: 'Email Address',
+        phone: 'Phone Number'
+      },
+      fieldPlaceholders: {
+        name: 'Enter your full name',
+        email: 'your@email.com',
+        phone: '+1 (555) 123-4567'
+      },
+      submitButtonText: 'Get My Results',
+      gdprConsent: false,
+      marketingConsent: false
+    }
+  },
 
   // Content Sections
   {

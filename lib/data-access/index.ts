@@ -315,4 +315,68 @@ export async function createCampaignWithUsageTracking(
   await incrementCampaignUsage();
 
   return campaignResult;
+}
+
+/**
+ * Create a lead from capture form data
+ */
+export async function createLeadFromCapture(
+  campaignId: string,
+  captureData: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    gdprConsent?: boolean;
+    marketingConsent?: boolean;
+  },
+  metadata?: {
+    ip_address?: string;
+    user_agent?: string;
+    referrer?: string;
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+    utm_term?: string;
+    utm_content?: string;
+  }
+): Promise<DatabaseResult<Lead>> {
+  // Validate required fields
+  if (!captureData.email) {
+    return {
+      success: false,
+      error: 'Email is required',
+      validation_errors: [{
+        field: 'email',
+        message: 'Email address is required',
+        code: 'REQUIRED_FIELD',
+        value: captureData.email
+      }]
+    };
+  }
+
+  // Prepare lead data
+  const leadData: CreateLead = {
+    campaign_id: campaignId,
+    name: captureData.name || null,
+    email: captureData.email,
+    phone: captureData.phone || null,
+    ip_address: metadata?.ip_address || null,
+    user_agent: metadata?.user_agent || null,
+    referrer: metadata?.referrer || null,
+    utm_source: metadata?.utm_source || null,
+    utm_medium: metadata?.utm_medium || null,
+    utm_campaign: metadata?.utm_campaign || null,
+    utm_term: metadata?.utm_term || null,
+    utm_content: metadata?.utm_content || null,
+    metadata: {
+      capture_form: true,
+      gdpr_consent: captureData.gdprConsent || false,
+      marketing_consent: captureData.marketingConsent || false,
+      capture_timestamp: new Date().toISOString()
+    },
+    completed_at: null // Will be set when the full campaign is completed
+  };
+
+  // Create lead with usage tracking
+  return createLeadWithUsageTracking(leadData);
 } 
