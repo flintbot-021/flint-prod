@@ -19,5 +19,11 @@ export * from './validation-framework'
 // Export execution context and runtime system
 export * from './execution-context'
 
+// Export interpolation parser
+export * from './interpolation-parser'
+
+// Export interpolation dependency resolver
+export * from './interpolation-dependency-resolver'
+
 // Export helper utilities (to be implemented)
 // export { ExecutionContextImpl } from './execution-context' 
