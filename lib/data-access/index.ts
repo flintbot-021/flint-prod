@@ -6,6 +6,14 @@
  * for easy importing throughout the application.
  */
 
+import type {
+  Campaign,
+  Lead,
+  CreateCampaign,
+  CreateLead,
+  DatabaseResult
+} from '@/lib/types/database';
+
 // =============================================================================
 // BASE UTILITIES
 // =============================================================================
@@ -60,6 +68,7 @@ export {
   // Lead CRUD
   createLead,
   getLeadById,
+  getLeads,
   getCampaignLeads,
   updateLead,
   completeLead,

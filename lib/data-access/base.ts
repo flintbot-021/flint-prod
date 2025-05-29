@@ -6,7 +6,6 @@
  */
 
 import { createClient } from '@/lib/supabase/client';
-import { createClient as createServerClient } from '@/lib/supabase/server';
 import type { ApiResponse, DatabaseResult, ValidationError } from '@/lib/types/database';
 
 // Re-export types for convenience
@@ -14,16 +13,10 @@ export type { ApiResponse, DatabaseResult, ValidationError };
 
 /**
  * Get the appropriate Supabase client based on environment
+ * Currently uses client-side only to avoid server import issues in client components
  */
 export async function getSupabaseClient() {
-  // In Next.js, check if we're on the server or client
-  if (typeof window === 'undefined') {
-    // Server-side: use server client (async)
-    return await createServerClient();
-  } else {
-    // Client-side: use client
-    return createClient();
-  }
+  return createClient();
 }
 
 /**

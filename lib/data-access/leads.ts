@@ -615,4 +615,75 @@ export async function searchLeads(
       error: null
     };
   });
+}
+
+/**
+ * Get all leads for the authenticated user across their campaigns
+ */
+export async function getLeads(
+  params: PaginationParams & {
+    campaign_id?: string;
+    completed?: boolean;
+    search?: string;
+  } = {}
+): Promise<DatabaseResult<PaginatedResponse<Lead>>> {
+  await requireAuth();
+  const supabase = await getSupabaseClient();
+  const { campaign_id, completed, search, ...paginationParams } = params;
+
+  return withErrorHandling(async () => {
+    let query = supabase
+      .from('leads')
+      .select(`
+        *,
+        campaigns!inner (*)
+      `, { count: 'exact' });
+
+    // Apply filters
+    if (campaign_id) {
+      query = query.eq('campaign_id', campaign_id);
+    }
+
+    if (completed !== undefined) {
+      if (completed) {
+        query = query.not('completed_at', 'is', null);
+      } else {
+        query = query.is('completed_at', null);
+      }
+    }
+
+    if (search) {
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`);
+    }
+
+    // Apply pagination and sorting
+    query = applyPagination(query, {
+      sort_by: 'created_at',
+      sort_order: 'desc',
+      ...paginationParams
+    });
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      return { data: null, error };
+    }
+
+    const { page = 1, per_page = 20 } = paginationParams;
+    const totalPages = Math.ceil((count || 0) / per_page);
+
+    return {
+      data: {
+        data: data || [],
+        meta: {
+          total: count || 0,
+          page,
+          per_page,
+          has_more: page < totalPages,
+          total_pages: totalPages
+        }
+      },
+      error: null
+    };
+  });
 } 
