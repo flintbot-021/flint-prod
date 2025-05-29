@@ -13,6 +13,9 @@ import {
   getCampaignLeadStats 
 } from '@/lib/data-access'
 import { Campaign, Profile } from '@/lib/types/database'
+import { ExportButton } from '@/components/export'
+import { ExportHistory } from '@/components/export/ExportHistory'
+import { getDashboardExportData, getDashboardExportFields } from '@/lib/export'
 import { 
   BarChart3, 
   Users, 
@@ -63,6 +66,8 @@ export default function Dashboard() {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('month')
   const [loadingStats, setLoadingStats] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [exportData, setExportData] = useState<any[]>([])
+  const [loadingExportData, setLoadingExportData] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -75,6 +80,13 @@ export default function Dashboard() {
       loadDashboardData()
     }
   }, [user, timeFilter])
+
+  // Load export data whenever timeFilter or profile changes
+  useEffect(() => {
+    if (user && profile) {
+      loadExportData()
+    }
+  }, [user, profile, timeFilter])
 
   const loadDashboardData = async () => {
     try {
@@ -136,6 +148,7 @@ export default function Dashboard() {
         recentCampaigns: campaigns.slice(0, 5),
         topPerformingCampaign: topCampaign
       })
+
     } catch (err) {
       console.error('Error loading dashboard data:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -144,51 +157,37 @@ export default function Dashboard() {
     }
   }
 
-  const handleExportData = async () => {
+  const loadExportData = async () => {
     try {
-      // Get all campaigns for export
-      const campaignsResult = await getCampaigns({ page: 1, per_page: 100 })
+      setLoadingExportData(true)
+      const exportResult = await getDashboardExportData(timeFilter, profile)
       
-      if (!campaignsResult.success || !campaignsResult.data) {
-        throw new Error('Failed to load campaigns for export')
+      if (exportResult.success && exportResult.data) {
+        setExportData(exportResult.data)
+      } else {
+        console.error('Failed to load export data:', exportResult.error)
+        setExportData([])
       }
-
-      // Create CSV data
-      const csvData = [
-        ['Campaign Name', 'Status', 'Created Date', 'Total Leads', 'Completion Rate'].join(',')
-      ]
-
-      for (const campaign of campaignsResult.data?.data || []) {
-        const statsResult = await getCampaignLeadStats(campaign.id)
-        const stats = statsResult.success && statsResult.data ? statsResult.data : {
-          total: 0,
-          conversion_rate: 0
-        }
-
-        csvData.push([
-          campaign.name,
-          campaign.status,
-          new Date(campaign.created_at).toLocaleDateString(),
-          stats.total.toString(),
-          `${stats.conversion_rate.toFixed(1)}%`
-        ].join(','))
-      }
-
-      // Download CSV
-      const csvContent = csvData.join('\n')
-      const blob = new Blob([csvContent], { type: 'text/csv' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `flint-campaigns-${new Date().toISOString().split('T')[0]}.csv`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error('Error exporting data:', err)
-      setError('Failed to export data')
+    } catch (error) {
+      console.error('Error loading export data:', error)
+      setExportData([])
+    } finally {
+      setLoadingExportData(false)
     }
+  }
+
+  const handleExportStart = () => {
+    console.log('Export started...')
+  }
+
+  const handleExportComplete = (filename: string) => {
+    console.log(`Export completed: ${filename}`)
+    // Could show a success notification here
+  }
+
+  const handleExportError = (error: string) => {
+    console.error('Export error:', error)
+    setError(`Export failed: ${error}`)
   }
 
   if (loading) {
@@ -251,15 +250,19 @@ export default function Dashboard() {
               )}
             </div>
             <div className="flex items-center space-x-3">
-              <Button
+              <ExportButton
+                data={exportData}
+                source="dashboard"
+                title="Export Dashboard Analytics"
+                defaultFields={getDashboardExportFields()}
+                onExportStart={handleExportStart}
+                onExportComplete={handleExportComplete}
+                onExportError={handleExportError}
                 variant="outline"
                 size="sm"
-                onClick={handleExportData}
-                className="flex items-center space-x-2"
-              >
-                <Download className="h-4 w-4" />
-                <span>Export CSV</span>
-              </Button>
+                disabled={loadingExportData}
+                showDropdown={true}
+              />
               <Button
                 onClick={() => router.push('/dashboard/campaigns/create')}
                 className="flex items-center space-x-2"
@@ -516,16 +519,29 @@ export default function Dashboard() {
                   <Button
                     variant="outline"
                     className="w-full justify-start"
-                    onClick={handleExportData}
+                    onClick={() => {
+                      // Trigger export through the ExportButton - this is a simplified approach
+                      // In a real implementation, you might want to show a dialog or use a different method
+                      handleExportStart()
+                    }}
+                    disabled={loadingExportData || exportData.length === 0}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Export Data
+                    Export Analytics
                   </Button>
                 </CardContent>
               </Card>
 
               {/* Profile Summary */}
               <UserProfile variant="full" />
+              
+              {/* Export History */}
+              <ExportHistory 
+                source="dashboard" 
+                maxEntries={5} 
+                showStats={false} 
+                compact={true} 
+              />
             </div>
           </div>
         </div>

@@ -15,6 +15,9 @@ import {
   type PaginationParams
 } from '@/lib/data-access'
 import { Lead, Campaign, Profile } from '@/lib/types/database'
+import { ExportButton } from '@/components/export'
+import { ExportHistory } from '@/components/export/ExportHistory'
+import { getLeadsExportData, getLeadsExportFields } from '@/lib/export'
 import { 
   Download,
   Search,
@@ -61,6 +64,10 @@ export default function LeadsPage() {
   const [totalPages, setTotalPages] = useState(0)
   const leadsPerPage = 20
 
+  // Export data
+  const [exportData, setExportData] = useState<any[]>([])
+  const [loadingExportData, setLoadingExportData] = useState(false)
+
   useEffect(() => {
     if (!loading && !user) {
       router.push('/auth/login')
@@ -72,6 +79,13 @@ export default function LeadsPage() {
       loadData()
     }
   }, [user, currentPage, searchTerm, selectedCampaign, sortField, sortDirection]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load export data whenever filters change
+  useEffect(() => {
+    if (user && profile) {
+      loadExportData()
+    }
+  }, [user, profile, searchTerm, selectedCampaign, sortField, sortDirection])
 
   const loadData = async () => {
     try {
@@ -182,71 +196,44 @@ export default function LeadsPage() {
     }
   }
 
-  const handleExportLeads = async () => {
+  const loadExportData = async () => {
     try {
-      // Get all leads for export (up to reasonable limit)
-      const allLeadsResult = await getLeads({ page: 1, per_page: 1000 })
+      setLoadingExportData(true)
+      const exportResult = await getLeadsExportData({
+        searchTerm,
+        selectedCampaign,
+        sortField,
+        sortDirection,
+        includeCompleted: true,
+        maxRecords: 1000
+      }, profile)
       
-      if (!allLeadsResult.success || !allLeadsResult.data) {
-        throw new Error('Failed to load leads for export')
+      if (exportResult.success && exportResult.data) {
+        setExportData(exportResult.data)
+      } else {
+        console.error('Failed to load export data:', exportResult.error)
+        setExportData([])
       }
-
-      // Get campaigns for enrichment
-      const campaignsResult = await getCampaigns({ page: 1, per_page: 100 })
-      const campaignsMap = new Map()
-      
-      if (campaignsResult.success && campaignsResult.data) {
-        campaignsResult.data.data?.forEach(campaign => {
-          campaignsMap.set(campaign.id, campaign)
-        })
-      }
-
-      // Create CSV data
-      const csvData = [
-        [
-          'Email',
-          'Phone', 
-          'Campaign',
-          'Lead Source',
-          'UTM Source',
-          'UTM Medium',
-          'UTM Campaign',
-          'Created Date',
-          'Status'
-        ].join(',')
-      ]
-
-      allLeadsResult.data.data?.forEach((lead: Lead) => {
-        const campaign = campaignsMap.get(lead.campaign_id)
-
-        csvData.push([
-          lead.email || '',
-          lead.phone || '',
-          campaign?.name || '',
-          lead.utm_source || 'Direct',
-          lead.utm_source || '',
-          lead.utm_medium || '',
-          lead.utm_campaign || '',
-          new Date(lead.created_at).toLocaleDateString(),
-          'Active' // Could be enhanced with actual status field
-        ].join(','))
-      })
-
-      // Download CSV
-      const csvContent = csvData.join('\n')
-      const blob = new Blob([csvContent], { type: 'text/csv' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `flint-leads-${new Date().toISOString().split('T')[0]}.csv`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error('Error exporting leads:', err)
-      setError('Failed to export leads')
+    } catch (error) {
+      console.error('Error loading export data:', error)
+      setExportData([])
+    } finally {
+      setLoadingExportData(false)
     }
+  }
+
+  const handleExportStart = () => {
+    console.log('Export started...')
+  }
+
+  const handleExportComplete = (filename: string) => {
+    console.log(`Export completed: ${filename}`)
+    // Could show a success notification here
+  }
+
+  const handleExportError = (error: string) => {
+    console.error('Export error:', error)
+    setError(`Export failed: ${error}`)
   }
 
   const getContactBadge = (lead: Lead) => {
@@ -336,15 +323,19 @@ export default function LeadsPage() {
               )}
             </div>
             <div className="flex items-center space-x-3">
-              <Button
+              <ExportButton
+                data={exportData}
+                source="leads"
+                title="Export Leads Data"
+                defaultFields={getLeadsExportFields()}
+                onExportStart={handleExportStart}
+                onExportComplete={handleExportComplete}
+                onExportError={handleExportError}
                 variant="outline"
                 size="sm"
-                onClick={handleExportLeads}
-                className="flex items-center space-x-2"
-              >
-                <Download className="h-4 w-4" />
-                <span>Export CSV</span>
-              </Button>
+                disabled={loadingExportData}
+                showDropdown={true}
+              />
             </div>
           </div>
 
@@ -578,6 +569,16 @@ export default function LeadsPage() {
               )}
             </CardContent>
           </Card>
+          
+          {/* Export History Section */}
+          <div className="mt-6">
+            <ExportHistory 
+              source="leads" 
+              maxEntries={10} 
+              showStats={true} 
+              compact={false} 
+            />
+          </div>
         </div>
       </main>
     </div>
