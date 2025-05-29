@@ -5,9 +5,14 @@ import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { getCampaignById, updateCampaign, publishCampaign } from '@/lib/data-access'
 import { Campaign } from '@/lib/types/database'
+import { CampaignSection, SectionType } from '@/lib/types/campaign-builder'
 import { CampaignBuilderTopBar } from '@/components/campaign-builder/top-bar'
+import { SectionsMenu } from '@/components/campaign-builder/sections-menu'
+import { CanvasDropZone } from '@/components/campaign-builder/canvas-drop-zone'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Loader2, AlertCircle, Palette, Type, Layout, Settings } from 'lucide-react'
+import { Loader2, AlertCircle } from 'lucide-react'
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core'
+import { DraggableSectionType } from '@/components/campaign-builder/draggable-section-type'
 
 export default function CampaignBuilderPage() {
   const { user, loading } = useAuth()
@@ -16,9 +21,11 @@ export default function CampaignBuilderPage() {
   const campaignId = params?.id as string
 
   const [campaign, setCampaign] = useState<Campaign | null>(null)
+  const [sections, setSections] = useState<CampaignSection[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [activeDragItem, setActiveDragItem] = useState<SectionType | null>(null)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -48,6 +55,10 @@ export default function CampaignBuilderPage() {
       }
 
       setCampaign(result.data)
+      
+      // TODO: Load actual campaign sections from database
+      // For now, initialize with empty sections
+      setSections([])
     } catch (err) {
       console.error('Error loading campaign:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -83,11 +94,11 @@ export default function CampaignBuilderPage() {
       setIsSaving(true)
       setError(null)
 
-      // Here you would save any changes to the campaign
-      // For now, we'll just simulate a save
+      // TODO: Save campaign sections to database
+      // For now, just simulate a save
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      console.log('Campaign saved:', campaign.id)
+      console.log('Campaign saved:', campaign.id, { sections })
     } catch (err) {
       console.error('Error saving campaign:', err)
       setError(err instanceof Error ? err.message : 'Failed to save campaign')
@@ -135,6 +146,46 @@ export default function CampaignBuilderPage() {
       setError(err instanceof Error ? err.message : 'Failed to update campaign status')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleSectionAdd = (sectionType: SectionType) => {
+    const newSection: CampaignSection = {
+      id: `section-${Date.now()}`,
+      type: sectionType.id,
+      title: sectionType.name,
+      settings: sectionType.defaultSettings || {},
+      order: sections.length + 1,
+      isVisible: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+
+    setSections(prev => [...prev, newSection])
+  }
+
+  // Drag and drop handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event
+    if (active.data.current?.type === 'section-type') {
+      setActiveDragItem(active.data.current.sectionType)
+    }
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    setActiveDragItem(null)
+
+    if (!over) return
+
+    // Handle dropping section type onto canvas
+    if (
+      active.data.current?.type === 'section-type' &&
+      over.data.current?.type === 'canvas'
+    ) {
+      const sectionType = active.data.current.sectionType as SectionType
+      handleSectionAdd(sectionType)
     }
   }
 
@@ -206,120 +257,88 @@ export default function CampaignBuilderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Campaign Builder Top Bar */}
-      <CampaignBuilderTopBar
-        campaignName={campaign.name}
-        campaignStatus={campaign.status}
-        isPublished={campaign.status === 'published'}
-        isSaving={isSaving}
-        canPublish={true}
-        onCampaignNameChange={handleCampaignNameChange}
-        onSave={handleSave}
-        onPreview={handlePreview}
-        onPublish={handlePublish}
-      />
+    <DndContext
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="min-h-screen bg-gray-50">
+        {/* Campaign Builder Top Bar */}
+        <CampaignBuilderTopBar
+          campaignName={campaign.name}
+          campaignStatus={campaign.status}
+          isPublished={campaign.status === 'published'}
+          isSaving={isSaving}
+          canPublish={true}
+          onCampaignNameChange={handleCampaignNameChange}
+          onSave={handleSave}
+          onPreview={handlePreview}
+          onPublish={handlePublish}
+        />
 
-      {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          {/* Error Display */}
-          {error && (
-            <Card className="mb-6 border-red-200 bg-red-50">
-              <CardContent className="pt-6">
-                <div className="flex items-center space-x-3 text-red-800">
-                  <AlertCircle className="h-5 w-5" />
-                  <div>
-                    <p className="font-medium">Error</p>
-                    <p className="text-sm mt-1">{error}</p>
-                    <button
-                      onClick={() => setError(null)}
-                      className="mt-2 text-sm underline hover:no-underline"
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Campaign Builder Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Sidebar - Builder Tools */}
-            <div className="lg:col-span-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Builder Tools</CardTitle>
-                  <CardDescription>
-                    Customize your campaign sections and design
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <button className="w-full flex items-center space-x-3 p-3 text-left rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
-                      <Layout className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="font-medium text-gray-900">Sections</p>
-                        <p className="text-sm text-gray-500">Add & organize content</p>
-                      </div>
-                    </button>
-
-                    <button className="w-full flex items-center space-x-3 p-3 text-left rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
-                      <Palette className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="font-medium text-gray-900">Design</p>
-                        <p className="text-sm text-gray-500">Colors & styling</p>
-                      </div>
-                    </button>
-
-                    <button className="w-full flex items-center space-x-3 p-3 text-left rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
-                      <Type className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="font-medium text-gray-900">Typography</p>
-                        <p className="text-sm text-gray-500">Fonts & text styles</p>
-                      </div>
-                    </button>
-
-                    <button className="w-full flex items-center space-x-3 p-3 text-left rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
-                      <Settings className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="font-medium text-gray-900">Settings</p>
-                        <p className="text-sm text-gray-500">Campaign options</p>
-                      </div>
-                    </button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Main Content - Campaign Preview */}
-            <div className="lg:col-span-3">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Campaign Preview</CardTitle>
-                  <CardDescription>
-                    This is how your campaign will appear to visitors
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {/* Campaign Preview Area */}
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center min-h-[400px] flex items-center justify-center">
-                    <div className="text-gray-500">
-                      <Layout className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                      <h3 className="text-lg font-medium mb-2">Start Building Your Campaign</h3>
-                      <p className="text-sm">
-                        Select a tool from the sidebar to begin customizing your campaign.
-                        Add sections, customize the design, and create an engaging experience for your visitors.
-                      </p>
+        {/* Main Content Area */}
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="px-4 py-6 sm:px-0">
+            {/* Error Display */}
+            {error && (
+              <Card className="mb-6 border-red-200 bg-red-50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center space-x-3 text-red-800">
+                    <AlertCircle className="h-5 w-5" />
+                    <div>
+                      <p className="font-medium">Error</p>
+                      <p className="text-sm mt-1">{error}</p>
+                      <button
+                        onClick={() => setError(null)}
+                        className="mt-2 text-sm underline hover:no-underline"
+                      >
+                        Dismiss
+                      </button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {/* Campaign Builder Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
+              {/* Sidebar - Sections Menu */}
+              <div className="lg:col-span-1">
+                <Card className="h-full">
+                  <SectionsMenu />
+                </Card>
+              </div>
+
+              {/* Main Content - Campaign Canvas */}
+              <div className="lg:col-span-3">
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Campaign Canvas</CardTitle>
+                    <CardDescription>
+                      Drag sections from the sidebar to build your campaign
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="h-[calc(100%-80px)]">
+                    <CanvasDropZone
+                      sections={sections}
+                      className="h-full"
+                    />
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+
+        {/* Drag Overlay */}
+        <DragOverlay>
+          {activeDragItem && (
+            <DraggableSectionType
+              sectionType={activeDragItem}
+              className="shadow-lg rotate-3 opacity-90"
+            />
+          )}
+        </DragOverlay>
+      </div>
+    </DndContext>
   )
 } 
