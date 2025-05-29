@@ -61,7 +61,7 @@ function getVariableTypeColor(type: string): string {
     case 'array':
       return 'bg-orange-50 text-orange-700 border-orange-200'
     default:
-      return 'bg-gray-50 text-gray-700 border-gray-200'
+      return 'bg-muted text-foreground border-border'
   }
 }
 
@@ -86,10 +86,10 @@ export function VariableSuggestionDropdown({
   if (suggestions.length === 0) {
     return (
       <div className={cn(
-        "absolute z-50 w-full min-w-[300px] overflow-hidden rounded-md border bg-white p-4 shadow-md",
+        "absolute z-50 w-full min-w-[300px] overflow-hidden rounded-md border bg-background p-4 shadow-md",
         className
       )}>
-        <div className="flex items-center justify-center py-6 text-sm text-gray-500">
+        <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
           No variables available
         </div>
       </div>
@@ -108,7 +108,7 @@ export function VariableSuggestionDropdown({
 
   return (
     <div className={cn(
-      "absolute z-50 w-full min-w-[400px] overflow-hidden rounded-md border bg-white shadow-lg",
+      "absolute z-50 w-full min-w-[400px] overflow-hidden rounded-md border bg-background shadow-lg",
       className
     )}>
       <div 
@@ -122,10 +122,10 @@ export function VariableSuggestionDropdown({
           return (
             <div key={sectionTitle} className="border-b border-gray-100 last:border-b-0">
               {/* Section Header */}
-              <div className="px-3 py-2 bg-gray-50 border-b border-gray-100">
+              <div className="px-3 py-2 bg-muted border-b border-gray-100">
                 <div className="flex items-center space-x-2">
-                  <SectionIcon className="h-3 w-3 text-gray-500" />
-                  <span className="text-xs font-medium text-gray-600">
+                  <SectionIcon className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">
                     {sectionTitle}
                   </span>
                 </div>
@@ -144,23 +144,23 @@ export function VariableSuggestionDropdown({
                     key={variable.id}
                     onClick={() => onSelect(suggestion)}
                     className={cn(
-                      "flex items-center space-x-3 px-3 py-2 cursor-pointer border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors",
+                      "flex items-center space-x-3 px-3 py-2 cursor-pointer border-b border-gray-50 last:border-b-0 hover:bg-muted transition-colors",
                       isSelected && "bg-blue-50 border-blue-100"
                     )}
                   >
                     {/* Variable Icon */}
                     <div className="flex-shrink-0">
                       {variable.sectionType === 'capture' ? (
-                        <FieldIcon className="h-4 w-4 text-gray-500" />
+                        <FieldIcon className="h-4 w-4 text-muted-foreground" />
                       ) : (
-                        <VariableIcon className="h-4 w-4 text-gray-500" />
+                        <VariableIcon className="h-4 w-4 text-muted-foreground" />
                       )}
                     </div>
 
                     {/* Variable Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2">
-                        <code className="text-sm font-mono font-medium text-gray-900">
+                        <code className="text-sm font-mono font-medium text-foreground">
                           {suggestion.displayText}
                         </code>
                         <Badge 
@@ -170,7 +170,7 @@ export function VariableSuggestionDropdown({
                           {variable.type}
                         </Badge>
                       </div>
-                      <div className="text-xs text-gray-500 mt-1 truncate">
+                      <div className="text-xs text-muted-foreground mt-1 truncate">
                         {variable.description}
                       </div>
                     </div>
@@ -178,7 +178,7 @@ export function VariableSuggestionDropdown({
                     {/* Preview Value */}
                     {variable.previewValue && (
                       <div className="flex-shrink-0">
-                        <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded font-mono max-w-[120px] truncate">
+                        <div className="text-xs text-muted-foreground bg-accent px-2 py-1 rounded font-mono max-w-[120px] truncate">
                           {variable.previewValue}
                         </div>
                       </div>
@@ -211,10 +211,10 @@ export function VariableSuggestionDropdownCompact({
   if (suggestions.length === 0) {
     return (
       <div className={cn(
-        "absolute z-50 w-full min-w-[250px] overflow-hidden rounded-md border bg-white p-3 shadow-md",
+        "absolute z-50 w-full min-w-[250px] overflow-hidden rounded-md border bg-background p-3 shadow-md",
         className
       )}>
-        <div className="flex items-center justify-center py-4 text-xs text-gray-500">
+        <div className="flex items-center justify-center py-4 text-xs text-muted-foreground">
           No variables available
         </div>
       </div>
@@ -223,7 +223,7 @@ export function VariableSuggestionDropdownCompact({
 
   return (
     <div className={cn(
-      "absolute z-50 w-full min-w-[250px] overflow-hidden rounded-md border bg-white shadow-lg",
+      "absolute z-50 w-full min-w-[250px] overflow-hidden rounded-md border bg-background shadow-lg",
       className
     )}>
       <div 
@@ -240,12 +240,12 @@ export function VariableSuggestionDropdownCompact({
               key={variable.id}
               onClick={() => onSelect(suggestion)}
               className={cn(
-                "flex items-center space-x-2 px-2 py-1.5 cursor-pointer border-b border-gray-50 last:border-b-0 hover:bg-gray-50 transition-colors text-sm",
+                "flex items-center space-x-2 px-2 py-1.5 cursor-pointer border-b border-gray-50 last:border-b-0 hover:bg-muted transition-colors text-sm",
                 isSelected && "bg-blue-50 border-blue-100"
               )}
             >
-              <VariableIcon className="h-3 w-3 text-gray-500 flex-shrink-0" />
-              <code className="font-mono font-medium text-gray-900 flex-1">
+              <VariableIcon className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+              <code className="font-mono font-medium text-foreground flex-1">
                 {suggestion.displayText}
               </code>
               <Badge 

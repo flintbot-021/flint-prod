@@ -278,21 +278,21 @@ export default function LeadsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-background shadow border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
                 onClick={() => router.push('/dashboard')}
-                className="text-gray-600 hover:text-gray-900"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <ChevronLeft className="h-4 w-4 mr-2" />
                 Back to Dashboard
               </Button>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-foreground">
                 Leads
               </h1>
             </div>
@@ -309,12 +309,12 @@ export default function LeadsPage() {
           {/* Stats and Actions */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-6">
-              <div className="text-sm text-gray-600">
-                <span className="font-medium text-lg text-gray-900">{totalLeads}</span>
+              <div className="text-sm text-muted-foreground">
+                <span className="font-medium text-lg text-foreground">{totalLeads}</span>
                 <span className="ml-1">total leads</span>
               </div>
               {profile && (
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   <span className="font-medium">
                     {profile.monthly_leads_captured || 0} / {profile.monthly_leads_limit || 1000}
                   </span>
@@ -361,7 +361,7 @@ export default function LeadsPage() {
                   <select
                     value={selectedCampaign}
                     onChange={(e) => setSelectedCampaign(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    className="w-full border border-input rounded-md px-3 py-2 text-sm"
                   >
                     <option value="all">All Campaigns</option>
                     {campaigns.map(campaign => (
@@ -429,7 +429,7 @@ export default function LeadsPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleSort('email')}
-                              className="hover:bg-gray-100 font-medium"
+                              className="hover:bg-accent font-medium"
                             >
                               Contact Info
                               <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -440,7 +440,7 @@ export default function LeadsPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleSort('campaign_name')}
-                              className="hover:bg-gray-100 font-medium"
+                              className="hover:bg-accent font-medium"
                             >
                               Campaign
                               <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -452,7 +452,7 @@ export default function LeadsPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleSort('created_at')}
-                              className="hover:bg-gray-100 font-medium"
+                              className="hover:bg-accent font-medium"
                             >
                               Created
                               <ArrowUpDown className="ml-2 h-4 w-4" />
@@ -463,7 +463,7 @@ export default function LeadsPage() {
                       </thead>
                       <tbody className="divide-y">
                         {leads.map((lead) => (
-                          <tr key={lead.id} className="hover:bg-gray-50">
+                          <tr key={lead.id} className="hover:bg-muted">
                             <td className="py-4 px-4">
                               <div className="space-y-1">
                                 <div className="flex items-center space-x-2">
@@ -478,7 +478,7 @@ export default function LeadsPage() {
                                   {lead.phone && (
                                     <div className="flex items-center space-x-1">
                                       <Phone className="h-4 w-4 text-gray-400" />
-                                      <span className="text-sm text-gray-600">{lead.phone}</span>
+                                      <span className="text-sm text-muted-foreground">{lead.phone}</span>
                                     </div>
                                   )}
                                   {getContactBadge(lead)}
@@ -490,16 +490,16 @@ export default function LeadsPage() {
                             </td>
                             <td className="py-4 px-4">
                               <div className="text-sm">
-                                <div className="text-gray-900">{lead.utm_source || 'Direct'}</div>
+                                <div className="text-foreground">{lead.utm_source || 'Direct'}</div>
                                 {lead.utm_source && (
-                                  <div className="text-gray-500">
+                                  <div className="text-muted-foreground">
                                     {lead.utm_source || 'Unknown'}
                                   </div>
                                 )}
                               </div>
                             </td>
                             <td className="py-4 px-4">
-                              <div className="flex items-center space-x-1 text-sm text-gray-600">
+                              <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                                 <Calendar className="h-4 w-4" />
                                 <span>{new Date(lead.created_at).toLocaleDateString()}</span>
                               </div>
@@ -523,7 +523,7 @@ export default function LeadsPage() {
                   {/* Pagination */}
                   {totalPages > 1 && (
                     <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                      <div className="text-sm text-gray-600">
+                      <div className="text-sm text-muted-foreground">
                         Showing {((currentPage - 1) * leadsPerPage) + 1} to {Math.min(currentPage * leadsPerPage, totalLeads)} of {totalLeads} leads
                       </div>
                       <div className="flex items-center space-x-2">
@@ -536,7 +536,7 @@ export default function LeadsPage() {
                           <ChevronLeft className="h-4 w-4" />
                           Previous
                         </Button>
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-muted-foreground">
                           Page {currentPage} of {totalPages}
                         </span>
                         <Button
@@ -555,8 +555,8 @@ export default function LeadsPage() {
               ) : (
                 <div className="text-center py-12">
                   <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No leads yet</h3>
-                  <p className="text-gray-500 mb-4">
+                  <h3 className="text-lg font-medium text-foreground mb-2">No leads yet</h3>
+                  <p className="text-muted-foreground mb-4">
                     Leads will appear here once people start completing your campaigns.
                   </p>
                   <Button

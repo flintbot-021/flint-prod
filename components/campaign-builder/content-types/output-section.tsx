@@ -238,7 +238,7 @@ export function OutputSection({
               </CardTitle>
             </CardHeader>
             <CardContent className="text-center space-y-4">
-              <div className="text-gray-600">
+              <div className="text-muted-foreground">
                 {enableInterpolation ? (
                   <VariableInterpolatedContent
                     content={settings.content}
@@ -283,7 +283,7 @@ export function OutputSection({
                 <ExternalLink className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <h3 className="font-medium text-gray-900">
+                <h3 className="font-medium text-foreground">
                   {enableInterpolation ? (
                     <VariableInterpolatedContent
                       content={settings.message || 'Redirecting @name...'}
@@ -295,7 +295,7 @@ export function OutputSection({
                     settings.message || 'Redirecting...'
                   )}
                 </h3>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   You will be redirected in {settings.delay || 0} seconds
                 </p>
               </div>
@@ -307,11 +307,11 @@ export function OutputSection({
         return (
           <Card className="w-full max-w-md mx-auto">
             <CardContent className="text-center space-y-4 pt-6">
-              <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                <Target className="h-6 w-6 text-gray-600" />
+              <div className="mx-auto w-12 h-12 bg-accent rounded-full flex items-center justify-center">
+                <Target className="h-6 w-6 text-muted-foreground" />
               </div>
               <div>
-                <h3 className="font-medium text-gray-900">
+                <h3 className="font-medium text-foreground">
                   {enableInterpolation ? (
                     <VariableInterpolatedContent
                       content={settings.title}
@@ -323,7 +323,7 @@ export function OutputSection({
                     settings.title
                   )}
                 </h3>
-                <div className="text-sm text-gray-500 mt-1">
+                <div className="text-sm text-muted-foreground mt-1">
                   {enableInterpolation ? (
                     <VariableInterpolatedContent
                       content={settings.content}
@@ -372,7 +372,7 @@ export function OutputSection({
         
         <div className="space-y-3">
           <div>
-            <Label className="text-sm font-medium text-gray-700">Title</Label>
+            <Label className="text-sm font-medium text-foreground">Title</Label>
             <InlineContentEditor
               content={settings.title || 'Your Results'}
               onChange={async (value) => {
@@ -388,14 +388,14 @@ export function OutputSection({
               className="mt-1"
             />
             {settings.enableVariableInterpolation && (
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 Use @variableName to insert dynamic content. Examples: @name, @score, @recommendation
               </div>
             )}
           </div>
           
           <div>
-            <Label className="text-sm font-medium text-gray-700">Content</Label>
+            <Label className="text-sm font-medium text-foreground">Content</Label>
             <InlineContentEditor
               content={settings.content || 'Based on your answers...'}
               onChange={handleContentChange}
@@ -409,7 +409,7 @@ export function OutputSection({
               className="mt-1"
             />
             {settings.enableVariableInterpolation && (
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 Supports variable interpolation, conditional content, and formatting. Use `{'{'}if @variable{'}'}content{'{/if}'}` for conditions.
               </div>
             )}
@@ -418,7 +418,7 @@ export function OutputSection({
           {/* Header Image Upload for Results Type */}
           {section.type === 'output-results' && (
             <div>
-              <Label className="text-sm font-medium text-gray-700">Header Image (optional)</Label>
+              <Label className="text-sm font-medium text-foreground">Header Image (optional)</Label>
               <ImageUpload
                 value={(settings as any).headerImage || null}
                 onChange={handleImageChange}
@@ -434,7 +434,7 @@ export function OutputSection({
 
       {/* Variable Interpolation Settings */}
       <div className="space-y-4">
-        <Label className="text-sm font-medium text-gray-700">Variable Interpolation</Label>
+        <Label className="text-sm font-medium text-foreground">Variable Interpolation</Label>
         
         <div className="flex items-center space-x-3">
           <Switch
@@ -442,7 +442,7 @@ export function OutputSection({
             onCheckedChange={handleEnableInterpolation}
             id="enable-interpolation"
           />
-          <Label htmlFor="enable-interpolation" className="text-sm text-gray-600">
+          <Label htmlFor="enable-interpolation" className="text-sm text-muted-foreground">
             Enable dynamic content with variables
           </Label>
         </div>
@@ -471,7 +471,7 @@ export function OutputSection({
 
             {availableVariables.length > 0 && (
               <div>
-                <div className="text-xs text-gray-600 mb-2">Available Variables:</div>
+                <div className="text-xs text-muted-foreground mb-2">Available Variables:</div>
                 <div className="flex flex-wrap gap-1">
                   {availableVariables.slice(0, 10).map((variable, index) => (
                     <Badge key={index} variant="outline" className="text-xs bg-blue-50 text-blue-700">
@@ -479,7 +479,7 @@ export function OutputSection({
                     </Badge>
                   ))}
                   {availableVariables.length > 10 && (
-                    <Badge variant="outline" className="text-xs text-gray-500">
+                    <Badge variant="outline" className="text-xs text-muted-foreground">
                       +{availableVariables.length - 10} more
                     </Badge>
                   )}
@@ -493,10 +493,10 @@ export function OutputSection({
       {/* Type-specific Settings */}
       {section.type === 'output-download' && (
         <div className="space-y-4">
-          <Label className="text-sm font-medium text-gray-700">Download Settings</Label>
+          <Label className="text-sm font-medium text-foreground">Download Settings</Label>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs text-gray-600">File URL</Label>
+              <Label className="text-xs text-muted-foreground">File URL</Label>
               <Input
                 value={settings.fileUrl || ''}
                 onChange={(e) => onUpdate({
@@ -506,7 +506,7 @@ export function OutputSection({
               />
             </div>
             <div>
-              <Label className="text-xs text-gray-600">File Name</Label>
+              <Label className="text-xs text-muted-foreground">File Name</Label>
               <Input
                 value={settings.fileName || ''}
                 onChange={(e) => onUpdate({
@@ -521,10 +521,10 @@ export function OutputSection({
 
       {section.type === 'output-redirect' && (
         <div className="space-y-4">
-          <Label className="text-sm font-medium text-gray-700">Redirect Settings</Label>
+          <Label className="text-sm font-medium text-foreground">Redirect Settings</Label>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs text-gray-600">Redirect URL</Label>
+              <Label className="text-xs text-muted-foreground">Redirect URL</Label>
               <Input
                 value={settings.url || ''}
                 onChange={(e) => onUpdate({
@@ -534,7 +534,7 @@ export function OutputSection({
               />
             </div>
             <div>
-              <Label className="text-xs text-gray-600">Delay (seconds)</Label>
+              <Label className="text-xs text-muted-foreground">Delay (seconds)</Label>
               <Input
                 type="number"
                 value={settings.delay || 0}
@@ -550,7 +550,7 @@ export function OutputSection({
 
       {/* Preview Section */}
       <div className="pt-4 border-t">
-        <Label className="text-sm font-medium text-gray-700 mb-3 block">Responsive Preview</Label>
+        <Label className="text-sm font-medium text-foreground mb-3 block">Responsive Preview</Label>
         <ResponsivePreview
           enableDeviceToggle={true}
           enableOrientationToggle={true}

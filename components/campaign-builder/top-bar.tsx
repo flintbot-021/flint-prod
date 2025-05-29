@@ -109,9 +109,9 @@ export function CampaignBuilderTopBar({
       case 'draft':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200'
       case 'archived':
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-muted text-muted-foreground border-border'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-muted text-muted-foreground border-border'
     }
   }
 
@@ -132,7 +132,7 @@ export function CampaignBuilderTopBar({
     <div
       ref={topBarRef}
       className={cn(
-        'bg-white border-b border-gray-200 transition-all duration-200',
+        'bg-background border-b border-border transition-all duration-200',
         isSticky && 'shadow-md',
         className
       )}
@@ -150,13 +150,13 @@ export function CampaignBuilderTopBar({
               variant="ghost"
               size="sm"
               onClick={handleBackToCampaigns}
-              className="text-gray-600 hover:text-gray-900"
+              className="text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Campaigns
             </Button>
 
-            <div className="h-6 w-px bg-gray-300" />
+            <div className="h-6 w-px bg-border" />
 
             {/* Campaign Name - Editable */}
             <div className="flex items-center space-x-2">
@@ -190,14 +190,14 @@ export function CampaignBuilderTopBar({
                 </div>
               ) : (
                 <div className="flex items-center space-x-2">
-                  <h1 className="text-lg font-semibold text-gray-900">
+                  <h1 className="text-lg font-semibold text-foreground">
                     {campaignName}
                   </h1>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleNameEdit}
-                    className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600"
+                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                   >
                     <Edit3 className="h-3 w-3" />
                   </Button>
@@ -223,7 +223,7 @@ export function CampaignBuilderTopBar({
                 size="sm"
                 onClick={onSave}
                 disabled={isSaving}
-                className="text-gray-600 border-gray-300 hover:text-gray-900 hover:border-gray-400"
+                className="text-muted-foreground border-border hover:text-foreground hover:border-input"
               >
                 {isSaving ? (
                   <>
@@ -274,7 +274,7 @@ export function CampaignBuilderTopBar({
 
       {/* Progress/Loading Bar */}
       {isSaving && (
-        <div className="h-1 bg-gray-200">
+        <div className="h-1 bg-muted">
           <div className="h-full bg-blue-600 animate-pulse" style={{ width: '100%' }} />
         </div>
       )}

@@ -249,11 +249,11 @@ function SectionRenderer({
     switch (section.type) {
       case 'capture':
         return (
-          <div className="bg-white rounded-lg shadow-sm p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <div className="bg-background rounded-lg shadow-sm p-8">
+            <h2 className="text-2xl font-bold text-foreground mb-4">
               {(settings as any).title || 'Capture Section'}
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-muted-foreground mb-6">
               {(settings as any).content || 'This is a capture section for collecting user information.'}
             </p>
             <div className="space-y-4">
@@ -262,13 +262,13 @@ function SectionRenderer({
                 { id: 'email', type: 'email', label: 'Email Address', required: true }
               ]).map((field: any, index: number) => (
                 <div key={field.id || index}>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-foreground mb-2">
                     {field.label}
                     {field.required && <span className="text-red-500 ml-1">*</span>}
                   </label>
                   <input
                     type={field.type || 'text'}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder={`Enter your ${field.label.toLowerCase()}`}
                     defaultValue={userInputs[field.id] || ''}
                     onChange={(e) => {
@@ -300,9 +300,9 @@ function SectionRenderer({
             
             {/* Debug Info */}
             {previewConfig.showDebugInfo && (
-              <div className="mt-4 p-3 bg-gray-50 rounded border-l-4 border-blue-500">
-                <p className="text-xs font-medium text-gray-700">Debug: Capture Section</p>
-                <p className="text-xs text-gray-600 mt-1">
+              <div className="mt-4 p-3 bg-muted rounded border-l-4 border-blue-500">
+                <p className="text-xs font-medium text-foreground">Debug: Capture Section</p>
+                <p className="text-xs text-muted-foreground mt-1">
                   Collected: {Object.keys(userInputs).join(', ') || 'None'}
                 </p>
               </div>
@@ -312,11 +312,11 @@ function SectionRenderer({
       
       case 'choice':
         return (
-          <div className="bg-white rounded-lg shadow-sm p-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <div className="bg-background rounded-lg shadow-sm p-8">
+            <h2 className="text-2xl font-bold text-foreground mb-4">
               {(settings as any).title || 'Make Your Choice'}
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-muted-foreground mb-6">
               {(settings as any).content || 'Please select from the following options.'}
             </p>
             <div className="space-y-3">
@@ -327,12 +327,12 @@ function SectionRenderer({
               ]).map((choice: any, index: number) => (
                 <div
                   key={choice.id || index}
-                  className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
+                  className="p-4 border border-border rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
                   onClick={() => onSectionComplete(sectionIndex, { choice: choice.value, [choice.id]: choice.value })}
                 >
                   <div className="flex items-center">
-                    <div className="w-4 h-4 border border-gray-300 rounded mr-3"></div>
-                    <span className="text-gray-900">{choice.text}</span>
+                    <div className="w-4 h-4 border border-input rounded mr-3"></div>
+                    <span className="text-foreground">{choice.text}</span>
                   </div>
                 </div>
               ))}
@@ -340,9 +340,9 @@ function SectionRenderer({
             
             {/* Debug Info */}
             {previewConfig.showDebugInfo && (
-              <div className="mt-4 p-3 bg-gray-50 rounded border-l-4 border-green-500">
-                <p className="text-xs font-medium text-gray-700">Debug: Choice Section</p>
-                <p className="text-xs text-gray-600 mt-1">
+              <div className="mt-4 p-3 bg-muted rounded border-l-4 border-green-500">
+                <p className="text-xs font-medium text-foreground">Debug: Choice Section</p>
+                <p className="text-xs text-muted-foreground mt-1">
                   Available choices: {((settings as any).choices || []).length}
                 </p>
               </div>
@@ -352,12 +352,12 @@ function SectionRenderer({
       
       case 'logic':
         return (
-          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+          <div className="bg-background rounded-lg shadow-sm p-8 text-center">
             <Brain className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            <h2 className="text-2xl font-bold text-foreground mb-4">
               {(settings as any).title || 'AI Processing'}
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-muted-foreground mb-6">
               {(settings as any).content || 'Our AI is analyzing your responses...'}
             </p>
             
@@ -365,7 +365,7 @@ function SectionRenderer({
             {isProcessing ? (
               <div className="flex items-center justify-center space-x-2 mb-6">
                 <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                <span className="text-sm text-gray-600">Processing...</span>
+                <span className="text-sm text-muted-foreground">Processing...</span>
               </div>
             ) : processingResults ? (
               <div className="space-y-4 mb-6">
@@ -390,7 +390,7 @@ function SectionRenderer({
                 </Button>
                 
                 {Object.keys(userInputs).length === 0 && (
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-muted-foreground mt-2">
                     Complete previous sections to enable AI processing
                   </p>
                 )}
@@ -399,15 +399,15 @@ function SectionRenderer({
             
             {/* Debug Info */}
             {previewConfig.showDebugInfo && (
-              <div className="p-3 bg-gray-50 rounded border-l-4 border-purple-500 text-left">
-                <p className="text-xs font-medium text-gray-700">Debug: AI Logic Section</p>
-                <div className="text-xs text-gray-600 mt-1 space-y-1">
+              <div className="p-3 bg-muted rounded border-l-4 border-purple-500 text-left">
+                <p className="text-xs font-medium text-foreground">Debug: AI Logic Section</p>
+                <div className="text-xs text-muted-foreground mt-1 space-y-1">
                   <p>Prompt: {(settings as any).prompt || 'No prompt defined'}</p>
                   <p>Available inputs: {Object.keys(userInputs).join(', ') || 'None'}</p>
                   {processingResults && (
                     <details className="mt-2">
                       <summary className="cursor-pointer font-medium">Processing Results</summary>
-                      <pre className="mt-1 text-xs bg-gray-100 p-2 rounded overflow-auto">
+                      <pre className="mt-1 text-xs bg-accent p-2 rounded overflow-auto">
                         {JSON.stringify(processingResults, null, 2)}
                       </pre>
                     </details>
@@ -429,14 +429,14 @@ function SectionRenderer({
             
             {/* Debug Info */}
             {previewConfig.showDebugInfo && (
-              <div className="mt-4 p-3 bg-gray-50 rounded border-l-4 border-orange-500">
-                <p className="text-xs font-medium text-gray-700">Debug: Output Section</p>
-                <div className="text-xs text-gray-600 mt-1 space-y-1">
+              <div className="mt-4 p-3 bg-muted rounded border-l-4 border-orange-500">
+                <p className="text-xs font-medium text-foreground">Debug: Output Section</p>
+                <div className="text-xs text-muted-foreground mt-1 space-y-1">
                   <p>Type: {section.type}</p>
                   <p>Available variables: {Object.keys({...userInputs, ...aiOutputs}).join(', ') || 'None'}</p>
                   <details className="mt-2">
                     <summary className="cursor-pointer font-medium">Variable Context</summary>
-                    <pre className="mt-1 text-xs bg-gray-100 p-2 rounded overflow-auto">
+                    <pre className="mt-1 text-xs bg-accent p-2 rounded overflow-auto">
                       {JSON.stringify({...userInputs, ...aiOutputs}, null, 2)}
                     </pre>
                   </details>
@@ -450,18 +450,18 @@ function SectionRenderer({
         return (
           <div className="text-center py-12">
             <IconComponent className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-foreground mb-2">
               {typeLabel} Section
             </h3>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               This section type is not yet implemented in preview mode.
             </p>
             
             {/* Debug Info */}
             {previewConfig.showDebugInfo && (
-              <div className="mt-4 p-3 bg-gray-50 rounded border-l-4 border-gray-500 text-left max-w-md mx-auto">
-                <p className="text-xs font-medium text-gray-700">Debug: Unknown Section Type</p>
-                <p className="text-xs text-gray-600 mt-1">Type: {section.type}</p>
+              <div className="mt-4 p-3 bg-muted rounded border-l-4 border-gray-500 text-left max-w-md mx-auto">
+                <p className="text-xs font-medium text-foreground">Debug: Unknown Section Type</p>
+                <p className="text-xs text-muted-foreground mt-1">Type: {section.type}</p>
               </div>
             )}
           </div>
@@ -477,14 +477,14 @@ function SectionRenderer({
       )}
     >
       {/* Section Header */}
-      <div className="bg-white border-b py-4 px-6">
+      <div className="bg-background border-b py-4 px-6">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <IconComponent className="h-5 w-5 text-blue-600" />
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
               {typeLabel}
             </Badge>
-            <span className="text-sm text-gray-600">Section {sectionIndex + 1}</span>
+            <span className="text-sm text-muted-foreground">Section {sectionIndex + 1}</span>
             
             {/* Testing Mode Indicators */}
             {previewConfig.enableAITesting && (
@@ -514,7 +514,7 @@ function SectionRenderer({
       </div>
 
       {/* Section Content */}
-      <div className="py-8 px-6 bg-gray-50 min-h-[calc(100vh-80px)]">
+      <div className="py-8 px-6 bg-muted min-h-[calc(100vh-80px)]">
         {renderSectionContent()}
       </div>
     </div>
@@ -545,7 +545,7 @@ function PreviewNavigation({
   onConfigChange: (config: Partial<PreviewModeConfig>) => void
 }) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-50">
+    <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-50">
       <div className="max-w-4xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <Button
@@ -567,7 +567,7 @@ function PreviewNavigation({
                   "text-xs px-2 py-1 rounded border transition-colors",
                   previewConfig.enableAITesting 
                     ? "bg-purple-100 text-purple-700 border-purple-200" 
-                    : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200"
+                    : "bg-accent text-muted-foreground border-border hover:bg-gray-200"
                 )}
               >
                 <TestTube className="h-3 w-3 mr-1 inline" />
@@ -580,7 +580,7 @@ function PreviewNavigation({
                   "text-xs px-2 py-1 rounded border transition-colors",
                   previewConfig.showDebugInfo 
                     ? "bg-gray-800 text-white border-gray-700" 
-                    : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200"
+                    : "bg-accent text-muted-foreground border-border hover:bg-gray-200"
                 )}
               >
                 <Settings className="h-3 w-3 mr-1 inline" />
@@ -593,7 +593,7 @@ function PreviewNavigation({
                   "text-xs px-2 py-1 rounded border transition-colors",
                   previewConfig.bypassDisplayRules 
                     ? "bg-blue-100 text-blue-700 border-blue-200" 
-                    : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200"
+                    : "bg-accent text-muted-foreground border-border hover:bg-gray-200"
                 )}
               >
                 <Eye className="h-3 w-3 mr-1 inline" />
@@ -602,7 +602,7 @@ function PreviewNavigation({
             </div>
             
             <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-muted-foreground">
                 {currentSection + 1} of {totalSections}
               </span>
               
@@ -886,11 +886,11 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-muted flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Loading Preview</h3>
-          <p className="text-gray-600">Preparing your campaign preview...</p>
+          <h3 className="text-lg font-medium text-foreground mb-2">Loading Preview</h3>
+          <p className="text-muted-foreground">Preparing your campaign preview...</p>
         </div>
       </div>
     )
@@ -898,11 +898,11 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-muted flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="h-8 w-8 text-red-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Preview Error</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <h3 className="text-lg font-medium text-foreground mb-2">Preview Error</h3>
+          <p className="text-muted-foreground mb-4">{error}</p>
           <Button onClick={loadCampaign} variant="outline">
             Try Again
           </Button>
@@ -913,11 +913,11 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
 
   if (!campaign || sections.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-muted flex items-center justify-center">
         <div className="text-center">
           <Target className="h-8 w-8 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Content</h3>
-          <p className="text-gray-600">This campaign doesn't have any sections to preview.</p>
+          <h3 className="text-lg font-medium text-foreground mb-2">No Content</h3>
+          <p className="text-muted-foreground">This campaign doesn't have any sections to preview.</p>
         </div>
       </div>
     )
@@ -928,7 +928,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
   // =============================================================================
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       {/* Device-specific styling */}
       <style jsx>{`
         @media (max-width: 768px) {
@@ -962,7 +962,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
             )}
             
             {previewConfig.showDebugInfo && (
-              <Badge variant="secondary" className="bg-gray-500 text-white text-xs">
+              <Badge variant="secondary" className="bg-muted0 text-white text-xs">
                 <Settings className="h-3 w-3 mr-1" />
                 Debug
               </Badge>

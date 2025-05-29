@@ -263,7 +263,7 @@ export function PromptEditor({
     if (!showVariableCount) return null
 
     return (
-      <div className="flex items-center space-x-4 text-xs text-gray-500">
+      <div className="flex items-center space-x-4 text-xs text-muted-foreground">
         <div className="flex items-center space-x-1">
           <Zap className="h-3 w-3" />
           <span>{validation.variableCount} variables</span>
@@ -335,8 +335,8 @@ export function PromptEditor({
       {/* Preview Section */}
       {value && (
         <div className="border-t pt-3">
-          <div className="text-xs font-medium text-gray-700 mb-2">Preview with sample values:</div>
-          <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded border font-mono whitespace-pre-wrap">
+          <div className="text-xs font-medium text-foreground mb-2">Preview with sample values:</div>
+          <div className="text-sm text-muted-foreground bg-muted p-3 rounded border font-mono whitespace-pre-wrap">
             {getPreviewText() || 'No preview available'}
           </div>
         </div>
@@ -344,7 +344,7 @@ export function PromptEditor({
 
       {/* Available Variables Hint */}
       {availableVariables.length > 0 && !value && (
-        <div className="text-xs text-gray-500 bg-blue-50 p-2 rounded border border-blue-200">
+        <div className="text-xs text-muted-foreground bg-blue-50 p-2 rounded border border-blue-200">
           <strong>Tip:</strong> Type @ to reference variables from previous sections. 
           Available: {availableVariables.slice(0, 3).map(v => `@${v.name}`).join(', ')}
           {availableVariables.length > 3 && ` and ${availableVariables.length - 3} more...`}

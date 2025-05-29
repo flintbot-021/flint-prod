@@ -143,13 +143,13 @@ export const ExportHistory: React.FC<ExportHistoryProps> = ({
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-medium text-gray-900">Recent Exports</h4>
+          <h4 className="text-sm font-medium text-foreground">Recent Exports</h4>
           {history.length > 0 && (
             <Button
               variant="ghost"
               size="sm"
               onClick={handleClearHistory}
-              className="text-xs text-gray-500 hover:text-gray-700"
+              className="text-xs text-muted-foreground hover:text-foreground"
             >
               Clear
             </Button>
@@ -157,17 +157,17 @@ export const ExportHistory: React.FC<ExportHistoryProps> = ({
         </div>
         
         {filteredHistory.length === 0 ? (
-          <p className="text-sm text-gray-500">No exports yet</p>
+          <p className="text-sm text-muted-foreground">No exports yet</p>
         ) : (
           <div className="space-y-1">
             {filteredHistory.slice(0, 3).map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs">
+              <div key={entry.id} className="flex items-center justify-between p-2 bg-muted rounded text-xs">
                 <div className="flex items-center space-x-2">
                   {getStatusIcon(entry.status)}
                   {getFormatIcon(entry.format)}
                   <span className="font-medium">{entry.filename}</span>
                 </div>
-                <span className="text-gray-500">{getRelativeTime(entry.timestamp)}</span>
+                <span className="text-muted-foreground">{getRelativeTime(entry.timestamp)}</span>
               </div>
             ))}
           </div>
@@ -206,22 +206,22 @@ export const ExportHistory: React.FC<ExportHistoryProps> = ({
       <CardContent>
         {/* Stats Section */}
         {showStats && stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-muted rounded-lg">
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{stats.totalExports}</div>
-              <div className="text-sm text-gray-600">Total Exports</div>
+              <div className="text-2xl font-bold text-foreground">{stats.totalExports}</div>
+              <div className="text-sm text-muted-foreground">Total Exports</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">{stats.successfulExports}</div>
-              <div className="text-sm text-gray-600">Successful</div>
+              <div className="text-sm text-muted-foreground">Successful</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-900">{stats.totalRecords.toLocaleString()}</div>
-              <div className="text-sm text-gray-600">Records Exported</div>
+              <div className="text-2xl font-bold text-foreground">{stats.totalRecords.toLocaleString()}</div>
+              <div className="text-sm text-muted-foreground">Records Exported</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">{formatDuration(stats.averageDuration)}</div>
-              <div className="text-sm text-gray-600">Avg Duration</div>
+              <div className="text-sm text-muted-foreground">Avg Duration</div>
             </div>
           </div>
         )}
@@ -230,13 +230,13 @@ export const ExportHistory: React.FC<ExportHistoryProps> = ({
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <div className="flex items-center space-x-2">
             <Filter className="h-4 w-4 text-gray-400" />
-            <span className="text-sm text-gray-600">Filter:</span>
+            <span className="text-sm text-muted-foreground">Filter:</span>
           </div>
           
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="text-sm border border-gray-300 rounded px-2 py-1"
+            className="text-sm border border-input rounded px-2 py-1"
           >
             <option value="all">All Status</option>
             <option value="completed">Completed</option>
@@ -246,7 +246,7 @@ export const ExportHistory: React.FC<ExportHistoryProps> = ({
           <select
             value={formatFilter}
             onChange={(e) => setFormatFilter(e.target.value as any)}
-            className="text-sm border border-gray-300 rounded px-2 py-1"
+            className="text-sm border border-input rounded px-2 py-1"
           >
             <option value="all">All Formats</option>
             <option value="csv">CSV</option>
@@ -258,8 +258,8 @@ export const ExportHistory: React.FC<ExportHistoryProps> = ({
         {filteredHistory.length === 0 ? (
           <div className="text-center py-8">
             <Download className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No exports found</h3>
-            <p className="text-gray-500">
+            <h3 className="text-lg font-medium text-foreground mb-2">No exports found</h3>
+            <p className="text-muted-foreground">
               {source === 'all' 
                 ? 'Start exporting data to see your export history here.'
                 : `No ${source} exports found. Try changing your filters.`
@@ -269,7 +269,7 @@ export const ExportHistory: React.FC<ExportHistoryProps> = ({
         ) : (
           <div className="space-y-3">
             {filteredHistory.map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
+              <div key={entry.id} className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-muted">
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
                     {getStatusIcon(entry.status)}
@@ -278,11 +278,11 @@ export const ExportHistory: React.FC<ExportHistoryProps> = ({
                   
                   <div className="flex-1">
                     <div className="flex items-center space-x-2 mb-1">
-                      <span className="font-medium text-gray-900">{entry.filename}</span>
+                      <span className="font-medium text-foreground">{entry.filename}</span>
                       {getSourceBadge(entry.source)}
                     </div>
                     
-                    <div className="flex items-center space-x-4 text-sm text-gray-600">
+                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                       <span>{entry.recordCount.toLocaleString()} records</span>
                       {entry.fileSize && <span>{formatFileSize(entry.fileSize)}</span>}
                       {entry.duration && <span>{formatDuration(entry.duration)}</span>}

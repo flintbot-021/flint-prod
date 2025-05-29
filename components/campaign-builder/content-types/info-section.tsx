@@ -334,7 +334,7 @@ export function InfoSection({
       <div className="space-y-6">
         {/* Layout Selection */}
         <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
+          <Label className="text-sm font-medium text-foreground mb-2 block">
             Section Layout
           </Label>
           <Select
@@ -397,7 +397,7 @@ export function InfoSection({
             {showTitle && (
               <>
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <Label className="text-sm font-medium text-foreground mb-2 block">
                     Title
                   </Label>
                   <InlineEditableText
@@ -405,7 +405,7 @@ export function InfoSection({
                     onSave={handleTitleChange}
                     variant="heading"
                     placeholder="Enter section title..."
-                    className="p-3 border border-gray-200 rounded-lg w-full font-medium"
+                    className="p-3 border border-border rounded-lg w-full font-medium"
                     showEditIcon={false}
                     showSaveStatus={true}
                     maxLength={100}
@@ -416,7 +416,7 @@ export function InfoSection({
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                    <Label className="text-sm font-medium text-foreground mb-2 block">
                       Title Size
                     </Label>
                     <Select
@@ -437,7 +437,7 @@ export function InfoSection({
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                    <Label className="text-sm font-medium text-foreground mb-2 block">
                       Text Alignment
                     </Label>
                     <Select
@@ -486,7 +486,7 @@ export function InfoSection({
         {/* Content Section */}
         {layout !== 'image-only' && (
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+            <Label className="text-sm font-medium text-foreground mb-2 block">
               Content
             </Label>
             <InlineEditableText
@@ -494,7 +494,7 @@ export function InfoSection({
               onSave={handleContentChange}
               variant="body"
               placeholder="Enter your content text..."
-              className="min-h-[120px] p-3 border border-gray-200 rounded-lg w-full"
+              className="min-h-[120px] p-3 border border-border rounded-lg w-full"
               showEditIcon={false}
               showSaveStatus={true}
               multiline={true}
@@ -508,7 +508,7 @@ export function InfoSection({
         {/* Image Section */}
         {layout !== 'text-only' && (
           <div className="space-y-4">
-            <Label className="text-sm font-medium text-gray-700 block">
+            <Label className="text-sm font-medium text-foreground block">
               Image
             </Label>
 
@@ -518,7 +518,7 @@ export function InfoSection({
                 <img
                   src={imageUrl}
                   alt={imageAlt}
-                  className="w-full h-48 object-cover rounded-lg border border-gray-200"
+                  className="w-full h-48 object-cover rounded-lg border border-border"
                 />
                 <Button
                   variant="destructive"
@@ -532,7 +532,7 @@ export function InfoSection({
               </div>
             ) : (
               <div
-                className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-gray-400 transition-colors"
+                className="border-2 border-dashed border-input rounded-lg p-8 text-center cursor-pointer hover:border-input transition-colors"
                 onClick={() => fileInputRef.current?.click()}
               >
                 {isUploading ? (
@@ -543,10 +543,10 @@ export function InfoSection({
                 ) : (
                   <>
                     <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       Click to upload an image
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       JPG, PNG up to 5MB
                     </p>
                   </>
@@ -565,7 +565,7 @@ export function InfoSection({
             {/* Image Alt Text */}
             {imageUrl && (
               <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                <Label className="text-sm font-medium text-foreground mb-2 block">
                   Image Alt Text
                 </Label>
                 <InlineEditableText
@@ -573,7 +573,7 @@ export function InfoSection({
                   onSave={handleImageAltChange}
                   variant="body"
                   placeholder="Describe this image for accessibility..."
-                  className="p-3 border border-gray-200 rounded-lg w-full text-gray-600"
+                  className="p-3 border border-border rounded-lg w-full text-muted-foreground"
                   showEditIcon={false}
                   showSaveStatus={true}
                   maxLength={200}
@@ -584,7 +584,7 @@ export function InfoSection({
             {/* Image Position for text-with-image layout */}
             {layout === 'text-with-image' && (
               <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                <Label className="text-sm font-medium text-foreground mb-2 block">
                   Image Position
                 </Label>
                 <Select
@@ -623,7 +623,7 @@ export function InfoSection({
           {showButton && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                <Label className="text-sm font-medium text-foreground mb-2 block">
                   Button Label
                 </Label>
                 <InlineEditableText
@@ -631,14 +631,14 @@ export function InfoSection({
                   onSave={handleButtonLabelChange}
                   variant="body"
                   placeholder="Continue"
-                  className="p-3 border border-gray-200 rounded-lg w-full"
+                  className="p-3 border border-border rounded-lg w-full"
                   showEditIcon={false}
                   showSaveStatus={true}
                   maxLength={50}
                 />
               </div>
               <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                <Label className="text-sm font-medium text-foreground mb-2 block">
                   Button URL (Optional)
                 </Label>
                 <Input
@@ -654,12 +654,12 @@ export function InfoSection({
 
         {/* Style Options */}
         <div className="space-y-4">
-          <Label className="text-sm font-medium text-gray-700 block">
+          <Label className="text-sm font-medium text-foreground block">
             Style Options
           </Label>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm font-medium text-gray-700 mb-2 block">
+              <Label className="text-sm font-medium text-foreground mb-2 block">
                 Background Color
               </Label>
               <Input
@@ -671,7 +671,7 @@ export function InfoSection({
               />
             </div>
             <div>
-              <Label className="text-sm font-medium text-gray-700 mb-2 block">
+              <Label className="text-sm font-medium text-foreground mb-2 block">
                 Text Color
               </Label>
               <Input
@@ -687,10 +687,10 @@ export function InfoSection({
 
         {/* Preview Section */}
         <div className="border-t pt-4">
-          <Label className="text-sm font-medium text-gray-700 mb-3 block">
+          <Label className="text-sm font-medium text-foreground mb-3 block">
             Preview
           </Label>
-          <div className="bg-gray-50 rounded-lg overflow-hidden">
+          <div className="bg-muted rounded-lg overflow-hidden">
             <InfoSection
               section={section}
               isPreview={true}

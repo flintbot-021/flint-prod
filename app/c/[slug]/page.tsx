@@ -1476,13 +1476,13 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const renderCaptureSection = (section: SectionWithOptions, index: number, config: any, title: string, description: string) => (
     <div>
       <h1 className={cn(
-        "font-bold text-gray-900 mb-4 text-center",
+        "font-bold text-foreground mb-4 text-center",
         deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
       )}>
         {title || 'Capture Section'}
       </h1>
       <p className={cn(
-        "text-gray-600 mb-8 text-center",
+        "text-muted-foreground mb-8 text-center",
         deviceInfo?.type === 'mobile' ? "text-base px-4" : "text-lg"
       )}>
         {description || 'Please provide your information.'}
@@ -1500,7 +1500,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         {(config.fields || getDefaultCaptureFields()).map((field: any, fieldIndex: number) => (
           <div key={field.id || fieldIndex}>
             <label className={cn(
-              "block font-medium text-gray-700 mb-2",
+              "block font-medium text-foreground mb-2",
               deviceInfo?.type === 'mobile' ? "text-base" : "text-sm"
             )}>
               {field.label}
@@ -1511,7 +1511,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
               name={field.id}
               required={field.required}
               className={cn(
-                "w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                "w-full border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
                 getMobileClasses("px-4 py-3"),
                 deviceInfo?.type === 'mobile' && "text-base" // Prevent zoom on iOS
               )}
@@ -1544,10 +1544,10 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
   const renderTextQuestionSection = (section: SectionWithOptions, index: number, config: any, title: string, description: string) => (
     <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-4 text-center">
+      <h1 className="text-3xl font-bold text-foreground mb-4 text-center">
         {title || 'Question'}
       </h1>
-      <p className="text-gray-600 mb-8 text-center text-lg">
+      <p className="text-muted-foreground mb-8 text-center text-lg">
         {description || 'Please provide your answer.'}
       </p>
       
@@ -1563,7 +1563,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
               name="answer"
               required={section.required}
               rows={4}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder={config.placeholder || 'Type your answer here...'}
               onChange={(e) => {
                 // Real-time response collection
@@ -1580,7 +1580,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
               type={config.input_type || 'text'}
               name="answer"
               required={section.required}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder={config.placeholder || 'Type your answer here...'}
               onChange={(e) => {
                 // Real-time response collection
@@ -1606,10 +1606,10 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
   const renderMultipleChoiceSection = (section: SectionWithOptions, index: number, config: any, title: string, description: string) => (
     <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-4 text-center">
+      <h1 className="text-3xl font-bold text-foreground mb-4 text-center">
         {title || 'Make Your Choice'}
       </h1>
-      <p className="text-gray-600 mb-8 text-center text-lg">
+      <p className="text-muted-foreground mb-8 text-center text-lg">
         {description || 'Please select from the options below.'}
       </p>
       
@@ -1617,7 +1617,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         {(section.options || getDefaultChoices()).map((option: any, optionIndex: number) => (
           <div
             key={option.id || optionIndex}
-            className="p-6 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-all"
+            className="p-6 border border-border rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-all"
             onClick={() => handleSectionComplete(index, { 
               choice: option.value, 
               [section.id]: option.value,
@@ -1625,8 +1625,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
             })}
           >
             <div className="flex items-center">
-              <div className="w-5 h-5 border-2 border-gray-300 rounded mr-4"></div>
-              <span className="text-lg text-gray-900">{option.label}</span>
+              <div className="w-5 h-5 border-2 border-input rounded mr-4"></div>
+              <span className="text-lg text-foreground">{option.label}</span>
             </div>
           </div>
         ))}
@@ -1640,10 +1640,10 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     
     return (
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-4 text-center">
+        <h1 className="text-3xl font-bold text-foreground mb-4 text-center">
           {title || 'Rate Your Experience'}
         </h1>
-        <p className="text-gray-600 mb-8 text-center text-lg">
+        <p className="text-muted-foreground mb-8 text-center text-lg">
           {description || 'Please move the slider to your preferred value.'}
         </p>
         
@@ -1652,7 +1652,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
             <div className="text-4xl font-bold text-blue-600 mb-2">
               {sliderValue}
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-muted-foreground">
               {config.min_label || 'Minimum'} ← → {config.max_label || 'Maximum'}
             </div>
           </div>
@@ -1699,11 +1699,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
   const renderInfoSection = (section: SectionWithOptions, index: number, config: any, title: string, description: string) => (
     <div className="text-center">
-      <h1 className="text-3xl font-bold text-gray-900 mb-4">
+      <h1 className="text-3xl font-bold text-foreground mb-4">
         {title || 'Information'}
       </h1>
       
-      <div className="prose prose-lg mx-auto text-gray-600 mb-8">
+      <div className="prose prose-lg mx-auto text-muted-foreground mb-8">
         <div dangerouslySetInnerHTML={{ __html: description || 'Information content here.' }} />
       </div>
       
@@ -1750,18 +1750,18 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     return (
       <div className="text-center">
         <Brain className="h-16 w-16 text-blue-600 mx-auto mb-6" />
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">
+        <h1 className="text-3xl font-bold text-foreground mb-4">
           {title || 'Processing Your Information'}
         </h1>
         
-        <div className="prose prose-lg mx-auto text-gray-600">
+        <div className="prose prose-lg mx-auto text-muted-foreground">
           <p>{description || 'Please wait while we analyze your responses...'}</p>
         </div>
         
         {isProcessing && (
           <div className="mt-8 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600 mr-3" />
-            <span className="text-gray-600">Processing...</span>
+            <span className="text-muted-foreground">Processing...</span>
           </div>
         )}
       </div>
@@ -1792,14 +1792,14 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       return (
         <div className="text-center max-w-2xl mx-auto">
           <Brain className="h-16 w-16 text-blue-600 mx-auto mb-6 animate-pulse" />
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
+          <h1 className="text-3xl font-bold text-foreground mb-4">
             Processing Your Results
           </h1>
           
           <div className="mb-8">
             <div className="flex items-center justify-center mb-4">
               <div className="flex items-center space-x-2">
-                <div className="text-sm text-gray-600">{aiProcessingState.message}</div>
+                <div className="text-sm text-muted-foreground">{aiProcessingState.message}</div>
                 <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
               </div>
             </div>
@@ -1847,7 +1847,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
             </div>
           </div>
           
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             We're analyzing your responses to create personalized results just for you...
           </p>
         </div>
@@ -1858,11 +1858,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     return (
       <div className="text-center">
         <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-6" />
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">
+        <h1 className="text-3xl font-bold text-foreground mb-4">
           {title || 'Your Results Are Ready!'}
         </h1>
         
-        <div className="prose prose-lg mx-auto text-gray-600 mb-8">
+        <div className="prose prose-lg mx-auto text-muted-foreground mb-8">
           {(() => {
             // Use dynamic content if generated, otherwise fall back to variable interpolation
             let content = dynamicContent || description || 'Thank you for completing this campaign.'
@@ -1924,8 +1924,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         
         {/* Milestones Achieved */}
         {progressMetrics.milestones.length > 0 && (
-          <div className="bg-gray-50 rounded-lg p-6 max-w-2xl mx-auto">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Milestones Achieved</h3>
+          <div className="bg-muted rounded-lg p-6 max-w-2xl mx-auto">
+            <h3 className="text-lg font-semibold text-foreground mb-4">Milestones Achieved</h3>
             <div className="flex flex-wrap justify-center gap-2">
               {progressMetrics.milestones.map((milestone, index) => (
                 <Badge key={index} variant="secondary" className="bg-green-100 text-green-800">
@@ -1942,8 +1942,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const renderUnsupportedSection = (section: SectionWithOptions, index: number) => (
     <div className="text-center">
       <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
-      <h3 className="text-lg font-medium text-gray-900 mb-2">Unsupported Section Type</h3>
-      <p className="text-gray-600 mb-6">
+      <h3 className="text-lg font-medium text-foreground mb-2">Unsupported Section Type</h3>
+      <p className="text-muted-foreground mb-6">
         Section type "{section.type}" is not yet supported in the public view.
       </p>
       <Button 
@@ -2139,11 +2139,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-muted flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Loading Campaign</h3>
-          <p className="text-gray-600">Please wait while we prepare your experience...</p>
+          <h3 className="text-lg font-medium text-foreground mb-2">Loading Campaign</h3>
+          <p className="text-muted-foreground">Please wait while we prepare your experience...</p>
         </div>
       </div>
     )
@@ -2151,7 +2151,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
   if (errorState) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-muted flex items-center justify-center p-4">
         <div className="text-center max-w-md mx-auto">
           {/* Error Icon based on type */}
           {errorState.type === 'network' ? (
@@ -2174,7 +2174,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
           )}
           
           {/* Error Title */}
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+          <h1 className="text-2xl font-bold text-foreground mb-2">
             {errorState.type === 'network' ? 'Connection Issue' :
              errorState.type === 'validation' ? 'Access Required' :
              errorState.type === 'api' ? 'Campaign Unavailable' :
@@ -2182,7 +2182,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
           </h1>
           
           {/* Error Message */}
-          <p className="text-gray-600 mb-6">
+          <p className="text-muted-foreground mb-6">
             {errorState.message}
           </p>
           
@@ -2286,8 +2286,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
           {/* Error Details for Development */}
           {process.env.NODE_ENV === 'development' && errorState.details && (
             <details className="mt-6 text-left">
-              <summary className="text-sm text-gray-500 cursor-pointer">Technical Details</summary>
-              <pre className="text-xs text-gray-400 mt-2 p-2 bg-gray-100 rounded overflow-auto">
+              <summary className="text-sm text-muted-foreground cursor-pointer">Technical Details</summary>
+              <pre className="text-xs text-gray-400 mt-2 p-2 bg-accent rounded overflow-auto">
                 {JSON.stringify(errorState.details, null, 2)}
               </pre>
             </details>
@@ -2311,11 +2311,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
   if (!campaign || sections.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-muted flex items-center justify-center">
         <div className="text-center">
           <Globe className="h-8 w-8 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Content</h3>
-          <p className="text-gray-600">This campaign doesn't have any content to display.</p>
+          <h3 className="text-lg font-medium text-foreground mb-2">No Content</h3>
+          <p className="text-muted-foreground">This campaign doesn't have any content to display.</p>
         </div>
       </div>
     )
@@ -2326,14 +2326,14 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // =============================================================================
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       {/* Completion Celebration Modal */}
       {showCompletionCelebration && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center">
+          <div className="bg-background rounded-lg p-8 max-w-md mx-4 text-center">
             <div className="text-6xl mb-4">🎉</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Campaign Complete!</h2>
-            <p className="text-gray-600 mb-6">{celebrationMessage}</p>
+            <h2 className="text-2xl font-bold text-foreground mb-4">Campaign Complete!</h2>
+            <p className="text-muted-foreground mb-6">{celebrationMessage}</p>
             <div className="flex justify-center space-x-2 mb-4">
               {progressMetrics.milestones.map((milestone, index) => (
                 <Badge key={index} variant="secondary" className="text-xs">
@@ -2352,12 +2352,12 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       )}
 
       {/* Campaign Info Header with Enhanced Progress */}
-      <div className="bg-white border-b">
+      <div className="bg-background border-b">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <Globe className="h-5 w-5 text-blue-600 mr-2" />
-              <h2 className="text-lg font-semibold text-gray-900">{campaign.name}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{campaign.name}</h2>
             </div>
             
             {/* Enhanced Progress Indicator */}
@@ -2380,7 +2380,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
               {/* Progress Details */}
               <div className="flex flex-col items-end">
                 <div className="flex items-center space-x-2 mb-1">
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-muted-foreground">
                     {campaignState.currentSection + 1} of {sections.length}
                   </span>
                   <span className="text-sm font-medium text-blue-600">
@@ -2390,7 +2390,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
                 
                 {/* Time Estimate */}
                 {progressMetrics.timeEstimate > 0 && (
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     ~{Math.ceil(progressMetrics.timeEstimate / 60)}min remaining • Est. {progressMetrics.completionForecast}
                   </div>
                 )}
@@ -2460,7 +2460,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       </div>
 
       {/* Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg">
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Button
@@ -2484,7 +2484,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
             {/* Enhanced Progress Indicator with Navigation Hints */}
             <div className="flex flex-col items-center space-y-2">
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-muted-foreground">
                   {campaignState.currentSection + 1} of {sections.length}
                 </span>
                 {isTransitioning && (

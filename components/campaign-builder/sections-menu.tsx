@@ -67,8 +67,8 @@ export function SectionsMenu({ className }: SectionsMenuProps) {
   return (
     <div className={cn('h-full flex flex-col', className)}>
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-3">
+      <div className="p-4 border-b border-border">
+        <h3 className="text-lg font-semibold text-foreground mb-3">
           Section Components
         </h3>
         
@@ -84,7 +84,7 @@ export function SectionsMenu({ className }: SectionsMenuProps) {
         </div>
         
         {searchTerm && (
-          <div className="mt-2 text-sm text-gray-500">
+          <div className="mt-2 text-sm text-muted-foreground">
             {filteredSections.length} section{filteredSections.length !== 1 ? 's' : ''} found
           </div>
         )}
@@ -103,7 +103,7 @@ export function SectionsMenu({ className }: SectionsMenuProps) {
                 />
               ))
             ) : (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-muted-foreground">
                 <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
                 <p>No sections found</p>
                 <p className="text-sm">Try a different search term</p>
@@ -127,7 +127,7 @@ export function SectionsMenu({ className }: SectionsMenuProps) {
                   {/* Category Header */}
                   <button
                     onClick={() => toggleCategory(category.id)}
-                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                    className="w-full px-4 py-3 text-left hover:bg-muted transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
@@ -138,10 +138,10 @@ export function SectionsMenu({ className }: SectionsMenuProps) {
                             <ChevronRight className="h-4 w-4 text-gray-400" />
                           )}
                           {CategoryIcon && (
-                            <CategoryIcon className="h-4 w-4 text-gray-600" />
+                            <CategoryIcon className="h-4 w-4 text-muted-foreground" />
                           )}
                         </div>
-                        <span className="font-medium text-gray-900">
+                        <span className="font-medium text-foreground">
                           {category.name}
                         </span>
                       </div>
@@ -170,8 +170,8 @@ export function SectionsMenu({ className }: SectionsMenuProps) {
       </div>
 
       {/* Footer Help */}
-      <div className="p-4 border-t border-gray-200 bg-gray-50">
-        <div className="text-xs text-gray-500 space-y-1">
+      <div className="p-4 border-t border-border bg-muted">
+        <div className="text-xs text-muted-foreground space-y-1">
           <p>💡 <strong>Tip:</strong> Drag sections to the canvas to add them</p>
           <p>🔍 Use search to quickly find specific section types</p>
         </div>

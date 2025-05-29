@@ -106,11 +106,11 @@ function VariablePreview({ variables, isVisible, onToggle }: VariablePreviewProp
       </div>
 
       {isVisible && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-gray-50 rounded-lg border">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-muted rounded-lg border">
           {Object.entries(variables).map(([name, value]) => (
             <div key={name} className="space-y-1">
-              <Label className="text-xs font-mono text-gray-600">@{name}</Label>
-              <div className="text-xs bg-white p-2 rounded border font-mono">
+              <Label className="text-xs font-mono text-muted-foreground">@{name}</Label>
+              <div className="text-xs bg-background p-2 rounded border font-mono">
                 {value !== null && value !== undefined 
                   ? (typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value))
                   : <span className="text-gray-400 italic">No value</span>
@@ -151,7 +151,7 @@ function TestResultDisplay({ result }: { result: TestResult }) {
           </span>
         </div>
         
-        <div className="flex items-center space-x-4 text-sm text-gray-600">
+        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
           <div className="flex items-center space-x-1">
             <Clock className="h-4 w-4" />
             <span>{response.processingTime}ms</span>
@@ -196,7 +196,7 @@ function TestResultDisplay({ result }: { result: TestResult }) {
                     <Copy className="h-3 w-3" />
                   </Button>
                 </div>
-                <div className="text-sm font-mono bg-white p-2 rounded border">
+                <div className="text-sm font-mono bg-background p-2 rounded border">
                   {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
                 </div>
               </div>
@@ -231,9 +231,9 @@ function TestResultDisplay({ result }: { result: TestResult }) {
           </div>
 
           {showRawResponse && (
-            <div className="p-3 bg-gray-50 border rounded-lg">
+            <div className="p-3 bg-muted border rounded-lg">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-gray-600">Raw Response</span>
+                <span className="text-xs text-muted-foreground">Raw Response</span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -243,7 +243,7 @@ function TestResultDisplay({ result }: { result: TestResult }) {
                   <Copy className="h-3 w-3" />
                 </Button>
               </div>
-              <pre className="text-xs bg-white p-3 rounded border overflow-auto max-h-40">
+              <pre className="text-xs bg-background p-3 rounded border overflow-auto max-h-40">
                 {response.response.rawResponse}
               </pre>
             </div>
@@ -353,7 +353,7 @@ export function PromptTester({
     <Card className={cn('', className)}>
       <CardHeader>
         <CardTitle className="text-lg">Prompt Tester</CardTitle>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Test your AI prompt with real variable values and validate outputs
         </p>
       </CardHeader>
@@ -372,7 +372,7 @@ export function PromptTester({
             className="min-h-[120px] font-mono text-sm"
             disabled={disabled}
           />
-          <div className="text-xs text-gray-500">
+          <div className="text-xs text-muted-foreground">
             Use @variableName to reference variables from previous sections
           </div>
         </div>
@@ -404,7 +404,7 @@ export function PromptTester({
             <Label className="text-sm font-medium">Expected Outputs</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {outputDefinitions.map((def) => (
-                <div key={def.id} className="flex items-center space-x-2 p-2 bg-gray-50 rounded border">
+                <div key={def.id} className="flex items-center space-x-2 p-2 bg-muted rounded border">
                   <Badge variant="outline" className="text-xs">
                     {def.dataType}
                   </Badge>
@@ -420,7 +420,7 @@ export function PromptTester({
           </div>
         )}
 
-        <div className="border-t border-gray-200 my-6"></div>
+        <div className="border-t border-border my-6"></div>
 
         {/* Test Controls */}
         <div className="flex items-center justify-between">
@@ -468,7 +468,7 @@ export function PromptTester({
         {/* Test Results */}
         {testResult && (
           <>
-            <div className="border-t border-gray-200 my-6"></div>
+            <div className="border-t border-border my-6"></div>
             <TestResultDisplay result={testResult} />
           </>
         )}

@@ -137,7 +137,7 @@ export function SectionCard({
           <button
             {...attributes}
             {...listeners}
-            className="mt-1 p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+            className="mt-1 p-1 text-gray-400 hover:text-muted-foreground cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <GripVertical className="h-4 w-4" />
           </button>
@@ -145,7 +145,7 @@ export function SectionCard({
           {/* Section Icon */}
           <div className={cn(
             'flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center mt-1',
-            sectionType?.color || 'bg-gray-100 text-gray-600'
+            sectionType?.color || 'bg-accent text-muted-foreground'
           )}>
             {IconComponent && (
               <IconComponent className="h-4 w-4" />
@@ -188,7 +188,7 @@ export function SectionCard({
                 <div className="flex items-center space-x-2 flex-1">
                   <h4 className={cn(
                     'text-sm font-medium truncate',
-                    section.isVisible ? 'text-gray-900' : 'text-gray-500'
+                    section.isVisible ? 'text-foreground' : 'text-muted-foreground'
                   )}>
                     {section.title}
                   </h4>
@@ -196,7 +196,7 @@ export function SectionCard({
                     variant="ghost"
                     size="sm"
                     onClick={handleTitleEdit}
-                    className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-6 w-6 p-0 text-gray-400 hover:text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <Edit3 className="h-3 w-3" />
                   </Button>
@@ -206,7 +206,7 @@ export function SectionCard({
 
             {/* Section Type & Order */}
             <div className="flex items-center justify-between mt-1">
-              <div className="flex items-center space-x-2 text-xs text-gray-500">
+              <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                 <span>{sectionType?.name || section.type}</span>
                 <span>•</span>
                 <span>Order {section.order}</span>
@@ -223,7 +223,7 @@ export function SectionCard({
 
             {/* Settings Preview */}
             {section.settings && Object.keys(section.settings).length > 0 && (
-              <div className="mt-2 text-xs text-gray-500">
+              <div className="mt-2 text-xs text-muted-foreground">
                 {Object.entries(section.settings).slice(0, 2).map(([key, value]) => (
                   <div key={key} className="truncate">
                     <span className="font-medium">{key}:</span> {String(value)}
@@ -244,7 +244,7 @@ export function SectionCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-6 w-6 p-0 text-gray-400 hover:text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>

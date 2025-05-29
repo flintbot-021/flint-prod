@@ -53,7 +53,7 @@ export function ContentComponentFactory({
       if (isPreview) {
         return (
           <div className={cn('py-6', className)}>
-            <hr className="border-gray-300" />
+            <hr className="border-input" />
           </div>
         )
       }
@@ -132,15 +132,15 @@ function PlaceholderSection({
             {icon}
           </div>
           <div>
-            <h3 className="text-lg font-medium text-gray-900">
+            <h3 className="text-lg font-medium text-foreground">
               {section.title}
             </h3>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {section.type} section
             </p>
           </div>
           {section.settings?.content && typeof section.settings.content === 'string' && (
-            <div className="text-gray-700 max-w-md mx-auto">
+            <div className="text-foreground max-w-md mx-auto">
               {section.settings.content}
             </div>
           )}
@@ -166,7 +166,7 @@ function PlaceholderSection({
 
         {/* Basic content editor */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
             Content
           </label>
           <textarea
@@ -178,7 +178,7 @@ function PlaceholderSection({
               }
             })}
             placeholder="Enter content for this section..."
-            className="w-full p-3 border border-gray-200 rounded-lg"
+            className="w-full p-3 border border-border rounded-lg"
             rows={4}
           />
         </div>
@@ -201,7 +201,7 @@ function SimpleDividerEditor({
     <div className={cn('p-6', className)}>
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
             Style
           </label>
           <select
@@ -212,7 +212,7 @@ function SimpleDividerEditor({
                 style: e.target.value
               }
             })}
-            className="w-full p-2 border border-gray-200 rounded"
+            className="w-full p-2 border border-border rounded"
           >
             <option value="solid">Solid</option>
             <option value="dashed">Dashed</option>
@@ -222,7 +222,7 @@ function SimpleDividerEditor({
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Color
             </label>
             <input
@@ -234,11 +234,11 @@ function SimpleDividerEditor({
                   color: e.target.value
                 }
               })}
-              className="w-full h-10 border border-gray-200 rounded"
+              className="w-full h-10 border border-border rounded"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               Thickness (px)
             </label>
             <input
@@ -252,14 +252,14 @@ function SimpleDividerEditor({
               })}
               min={1}
               max={10}
-              className="w-full p-2 border border-gray-200 rounded"
+              className="w-full p-2 border border-border rounded"
             />
           </div>
         </div>
 
         {/* Preview */}
         <div className="border-t pt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
             Preview
           </label>
           <hr 
@@ -287,7 +287,7 @@ function SimpleSpacerEditor({
     <div className={cn('p-6', className)}>
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
             Height (px)
           </label>
           <input
@@ -301,17 +301,17 @@ function SimpleSpacerEditor({
             })}
             min={10}
             max={200}
-            className="w-full p-2 border border-gray-200 rounded"
+            className="w-full p-2 border border-border rounded"
           />
         </div>
 
         {/* Preview */}
         <div className="border-t pt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-foreground mb-2">
             Preview
           </label>
           <div 
-            className="w-full bg-gray-100 border border-gray-200 rounded flex items-center justify-center text-xs text-gray-500"
+            className="w-full bg-accent border border-border rounded flex items-center justify-center text-xs text-muted-foreground"
             style={{ height: `${height}px` }}
           >
             {height}px spacer

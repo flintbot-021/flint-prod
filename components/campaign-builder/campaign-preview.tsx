@@ -138,10 +138,10 @@ function PreviewFrame({
           sandbox="allow-scripts allow-same-origin allow-forms"
         />
         {isLoading && (
-          <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+          <div className="absolute inset-0 bg-background bg-opacity-75 flex items-center justify-center">
             <div className="flex items-center space-x-2">
               <RefreshCcw className="h-4 w-4 animate-spin" />
-              <span className="text-sm text-gray-600">Loading preview...</span>
+              <span className="text-sm text-muted-foreground">Loading preview...</span>
             </div>
           </div>
         )}
@@ -162,13 +162,13 @@ function PreviewFrame({
       >
         {/* Device Screen */}
         <div className={cn(
-          "bg-white rounded-[1.5rem] w-full h-full overflow-hidden relative",
+          "bg-background rounded-[1.5rem] w-full h-full overflow-hidden relative",
           device === 'mobile' && "rounded-[2rem]",
           device === 'tablet' && "rounded-[1rem]"
         )}>
           {/* Status Bar (Mobile only) */}
           {device === 'mobile' && (
-            <div className="h-6 bg-gray-50 flex items-center justify-between px-4 text-xs">
+            <div className="h-6 bg-muted flex items-center justify-between px-4 text-xs">
               <span className="font-medium">9:41</span>
               <div className="flex space-x-1">
                 <div className="w-4 h-2 bg-gray-300 rounded-sm"></div>
@@ -193,10 +193,10 @@ function PreviewFrame({
             />
             
             {isLoading && (
-              <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+              <div className="absolute inset-0 bg-background bg-opacity-75 flex items-center justify-center">
                 <div className="flex flex-col items-center space-y-2">
                   <RefreshCcw className="h-4 w-4 animate-spin" />
-                  <span className="text-xs text-gray-600">Loading...</span>
+                  <span className="text-xs text-muted-foreground">Loading...</span>
                 </div>
               </div>
             )}
@@ -238,7 +238,7 @@ function PreviewNavigation({
   onSectionSelect: (index: number) => void
 }) {
   return (
-    <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
+    <div className="flex items-center justify-between p-3 bg-muted border-b">
       <div className="flex items-center space-x-2">
         <Button
           variant="outline"
@@ -426,10 +426,10 @@ export function CampaignPreview({
   // =============================================================================
 
   const renderControls = () => (
-    <div className="flex items-center justify-between p-3 bg-gray-50 border-b">
+    <div className="flex items-center justify-between p-3 bg-muted border-b">
       <div className="flex items-center space-x-2">
-        <Eye className="h-4 w-4 text-gray-500" />
-        <span className="text-sm font-medium text-gray-700">Campaign Preview</span>
+        <Eye className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium text-foreground">Campaign Preview</span>
         <Badge variant="outline" className="text-xs">
           {DEVICE_CONFIGS[config.device].name}
         </Badge>
@@ -505,7 +505,7 @@ export function CampaignPreview({
 
   if (isFullscreen) {
     return (
-      <div className="fixed inset-0 z-50 bg-white">
+      <div className="fixed inset-0 z-50 bg-background">
         <div className="h-full flex flex-col">
           {renderControls()}
           
@@ -523,7 +523,7 @@ export function CampaignPreview({
             />
           )}
           
-          <div className="flex-1 overflow-auto bg-gray-100">
+          <div className="flex-1 overflow-auto bg-accent">
             <PreviewFrame
               src={previewUrl}
               device={config.device}
@@ -570,7 +570,7 @@ export function CampaignPreview({
         />
       )}
       
-      <CardContent className="p-0 bg-gray-100">
+      <CardContent className="p-0 bg-accent">
         <PreviewFrame
           src={previewUrl}
           device={config.device}

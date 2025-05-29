@@ -97,8 +97,8 @@ export function SectionTopBar({
 
   return (
     <div className={cn(
-      'flex items-center justify-between p-3 bg-white border-b border-gray-200',
-      'hover:bg-gray-50 transition-colors group',
+      'flex items-center justify-between p-3 bg-background border-b border-border',
+      'hover:bg-muted transition-colors group',
       className
     )}>
       {/* Left Side - Drag Handle, Icon, Name, Type */}
@@ -106,7 +106,7 @@ export function SectionTopBar({
         {/* Drag Handle */}
         <button
           {...dragHandleProps}
-          className="text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+          className="text-gray-400 hover:text-muted-foreground cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -114,7 +114,7 @@ export function SectionTopBar({
         {/* Section Icon */}
         <div className={cn(
           'flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center',
-          sectionType?.color || 'bg-gray-100 text-gray-600'
+          sectionType?.color || 'bg-accent text-muted-foreground'
         )}>
           {IconComponent && (
             <IconComponent className="h-4 w-4" />
@@ -128,7 +128,7 @@ export function SectionTopBar({
             onSave={onNameChange}
             variant="body"
             placeholder="Enter section name..."
-            className="font-medium text-gray-900"
+            className="font-medium text-foreground"
             showEditIcon={false}
             showSaveStatus={true}
             validation={validateName}
@@ -250,7 +250,7 @@ export function SectionTopBar({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 text-gray-400 hover:text-gray-600"
+              className="h-7 w-7 p-0 text-gray-400 hover:text-muted-foreground"
             >
               <MoreVertical className="h-4 w-4" />
             </Button>

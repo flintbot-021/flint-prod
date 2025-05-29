@@ -174,25 +174,25 @@ function VariablePreviewItem({
   }
 
   return (
-    <div className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-lg group transition-colors">
+    <div className="flex items-center space-x-3 p-2 hover:bg-muted rounded-lg group transition-colors">
       {/* Variable Icon */}
       <div className="flex-shrink-0">
-        <div className="p-1 rounded bg-gray-100">
-          <Icon className="h-3 w-3 text-gray-600" />
+        <div className="p-1 rounded bg-accent">
+          <Icon className="h-3 w-3 text-muted-foreground" />
         </div>
       </div>
 
       {/* Variable Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center space-x-2 mb-1">
-          <code className="text-sm font-mono font-medium text-gray-900">
+          <code className="text-sm font-mono font-medium text-foreground">
             @{variableName}
           </code>
           <Badge variant="outline" className="text-xs">
             {variableType}
           </Badge>
           {'source' in variable && (
-            <div className="flex items-center space-x-1 text-xs text-gray-500">
+            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
               <SourceIcon className="h-3 w-3" />
               <span>{(variable.source as string).replace('_', ' ')}</span>
             </div>
@@ -206,7 +206,7 @@ function VariablePreviewItem({
 
         {/* Description */}
         {'description' in variable && variable.description && (
-          <p className="text-xs text-gray-500 mb-1 line-clamp-1">
+          <p className="text-xs text-muted-foreground mb-1 line-clamp-1">
             {String(variable.description)}
           </p>
         )}
@@ -243,7 +243,7 @@ function VariablePreviewItem({
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
               {displayValue !== undefined ? (
-                <div className="text-xs font-mono bg-gray-100 px-2 py-1 rounded border truncate">
+                <div className="text-xs font-mono bg-accent px-2 py-1 rounded border truncate">
                   {formatPreviewValue(displayValue, variableType)}
                 </div>
               ) : (
@@ -291,12 +291,12 @@ function VariableGroup({
     <div className="space-y-2">
       {/* Group Header */}
       <div 
-        className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors"
+        className="flex items-center justify-between cursor-pointer hover:bg-muted p-2 rounded-lg transition-colors"
         onClick={onToggleCollapse}
       >
         <div className="flex items-center space-x-2">
-          <Icon className="h-4 w-4 text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">{title}</span>
+          <Icon className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-foreground">{title}</span>
           <Badge variant="outline" className="text-xs">
             {variables.length}
           </Badge>
@@ -417,7 +417,7 @@ export function VariablePreview({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-lg">Variable Preview</CardTitle>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Preview how variables will be populated during campaign execution
             </p>
           </div>
@@ -476,8 +476,8 @@ export function VariablePreview({
           {totalVariables === 0 && (
             <div className="text-center py-8">
               <Type className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No variables yet</h3>
-              <p className="text-gray-600">
+              <h3 className="text-lg font-medium text-foreground mb-2">No variables yet</h3>
+              <p className="text-muted-foreground">
                 Variables will appear here as you add questions and logic sections to your campaign
               </p>
             </div>

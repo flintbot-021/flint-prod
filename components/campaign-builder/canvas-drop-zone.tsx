@@ -30,7 +30,7 @@ export function CanvasDropZone({
         'h-full rounded-lg transition-all duration-200',
         isOver 
           ? 'bg-blue-50 border-2 border-blue-300 border-dashed' 
-          : 'bg-gray-50 border-2 border-gray-200 border-dashed',
+          : 'bg-muted border-2 border-border border-dashed',
         isEmpty && 'flex items-center justify-center',
         className
       )}
@@ -40,7 +40,7 @@ export function CanvasDropZone({
         <div className="text-center p-8">
           <div className={cn(
             'mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors',
-            isOver ? 'bg-blue-100' : 'bg-gray-100'
+            isOver ? 'bg-blue-100' : 'bg-accent'
           )}>
             {isOver ? (
               <Plus className="h-8 w-8 text-blue-600" />
@@ -51,14 +51,14 @@ export function CanvasDropZone({
           
           <h3 className={cn(
             'text-lg font-medium mb-2 transition-colors',
-            isOver ? 'text-blue-900' : 'text-gray-900'
+            isOver ? 'text-blue-900' : 'text-foreground'
           )}>
             {isOver ? 'Drop section here' : 'Start building your campaign'}
           </h3>
           
           <p className={cn(
             'text-sm max-w-md mx-auto transition-colors',
-            isOver ? 'text-blue-700' : 'text-gray-500'
+            isOver ? 'text-blue-700' : 'text-muted-foreground'
           )}>
             {isOver 
               ? 'Release to add this section to your campaign'
@@ -87,12 +87,12 @@ export function CanvasDropZone({
           {sections.map((section) => (
             <div
               key={section.id}
-              className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm"
+              className="bg-background p-4 rounded-lg border border-border shadow-sm"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-medium text-gray-900">{section.title}</h4>
-                  <p className="text-sm text-gray-500">Type: {section.type}</p>
+                  <h4 className="font-medium text-foreground">{section.title}</h4>
+                  <p className="text-sm text-muted-foreground">Type: {section.type}</p>
                 </div>
                 <div className="text-xs text-gray-400">
                   Order: {section.order}

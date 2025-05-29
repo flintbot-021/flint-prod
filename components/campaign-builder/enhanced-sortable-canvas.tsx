@@ -45,7 +45,7 @@ export function EnhancedSortableCanvas({
         'h-full rounded-lg transition-all duration-200',
         isOver 
           ? 'bg-blue-50 border-2 border-blue-300 border-dashed' 
-          : 'bg-gray-50 border-2 border-gray-200 border-dashed',
+          : 'bg-muted border-2 border-border border-dashed',
         isEmpty && 'flex items-center justify-center',
         className
       )}
@@ -55,7 +55,7 @@ export function EnhancedSortableCanvas({
         <div className="text-center p-8">
           <div className={cn(
             'mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors',
-            isOver ? 'bg-blue-100' : 'bg-gray-100'
+            isOver ? 'bg-blue-100' : 'bg-accent'
           )}>
             {isOver ? (
               <Plus className="h-8 w-8 text-blue-600" />
@@ -66,14 +66,14 @@ export function EnhancedSortableCanvas({
           
           <h3 className={cn(
             'text-lg font-medium mb-2 transition-colors',
-            isOver ? 'text-blue-900' : 'text-gray-900'
+            isOver ? 'text-blue-900' : 'text-foreground'
           )}>
             {isOver ? 'Drop section here' : 'Start building your campaign'}
           </h3>
           
           <p className={cn(
             'text-sm max-w-md mx-auto transition-colors',
-            isOver ? 'text-blue-700' : 'text-gray-500'
+            isOver ? 'text-blue-700' : 'text-muted-foreground'
           )}>
             {isOver 
               ? 'Release to add this section to your campaign'

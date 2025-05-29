@@ -203,13 +203,13 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-background shadow border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-foreground">
                 Dashboard
               </h1>
             </div>
@@ -227,11 +227,11 @@ export default function Dashboard() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <Filter className="h-4 w-4 text-gray-500" />
+                <Filter className="h-4 w-4 text-muted-foreground" />
                 <select
                   value={timeFilter}
                   onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
-                  className="border border-gray-300 rounded-md px-3 py-1 text-sm"
+                  className="border border-input rounded-md px-3 py-1 text-sm"
                 >
                   {timeFilterOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -241,7 +241,7 @@ export default function Dashboard() {
                 </select>
               </div>
               {profile && (
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   <span className="font-medium">
                     {profile.monthly_campaigns_used} / {profile.monthly_campaign_limit}
                   </span>
@@ -408,7 +408,7 @@ export default function Dashboard() {
                       {stats.recentCampaigns.map((campaign) => (
                         <div 
                           key={campaign.id}
-                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted cursor-pointer"
                           onClick={() => router.push(`/dashboard/campaigns/${campaign.id}`)}
                         >
                           <div className="flex items-center space-x-3">
@@ -418,12 +418,12 @@ export default function Dashboard() {
                               ) : campaign.status === 'draft' ? (
                                 <Clock className="h-5 w-5 text-yellow-600" />
                               ) : (
-                                <Activity className="h-5 w-5 text-gray-600" />
+                                <Activity className="h-5 w-5 text-muted-foreground" />
                               )}
                             </div>
                             <div>
                               <p className="font-medium text-sm">{campaign.name}</p>
-                              <p className="text-xs text-gray-500 capitalize">
+                              <p className="text-xs text-muted-foreground capitalize">
                                 {campaign.status} • {new Date(campaign.created_at).toLocaleDateString()}
                               </p>
                             </div>
@@ -435,7 +435,7 @@ export default function Dashboard() {
                   ) : (
                     <div className="text-center py-8">
                       <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 mb-4">No campaigns yet</p>
+                      <p className="text-muted-foreground mb-4">No campaigns yet</p>
                       <Button
                         onClick={() => router.push('/dashboard/campaigns/create')}
                         size="sm"
@@ -463,7 +463,7 @@ export default function Dashboard() {
                     <div className="space-y-3">
                       <div>
                         <p className="font-medium">{stats.topPerformingCampaign.name}</p>
-                        <p className="text-sm text-gray-500 capitalize">
+                        <p className="text-sm text-muted-foreground capitalize">
                           {stats.topPerformingCampaign.status}
                         </p>
                       </div>
@@ -472,13 +472,13 @@ export default function Dashboard() {
                           <p className="text-lg font-bold text-green-600">
                             {stats.topPerformingCampaign.leadCount}
                           </p>
-                          <p className="text-xs text-gray-500">Leads</p>
+                          <p className="text-xs text-muted-foreground">Leads</p>
                         </div>
                         <div>
                           <p className="text-lg font-bold text-purple-600">
                             {stats.topPerformingCampaign.completionRate.toFixed(1)}%
                           </p>
-                          <p className="text-xs text-gray-500">Rate</p>
+                          <p className="text-xs text-muted-foreground">Rate</p>
                         </div>
                       </div>
                       <Button

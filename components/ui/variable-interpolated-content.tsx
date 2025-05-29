@@ -48,7 +48,7 @@ interface InterpolationDebugProps {
 function InterpolationDebug({ result, isVisible, onToggle }: InterpolationDebugProps) {
   if (!isVisible) {
     return (
-      <div className="flex items-center justify-between mt-2 p-2 bg-gray-50 rounded border">
+      <div className="flex items-center justify-between mt-2 p-2 bg-muted rounded border">
         <div className="flex items-center space-x-2">
           <Badge variant={result.success ? "default" : "destructive"} className="text-xs">
             {result.success ? (
@@ -64,7 +64,7 @@ function InterpolationDebug({ result, isVisible, onToggle }: InterpolationDebugP
             )}
           </Badge>
           
-          <div className="text-xs text-gray-600">
+          <div className="text-xs text-muted-foreground">
             {result.processedVariables.length} variables processed
             {result.missingVariables.length > 0 && (
               <span className="text-amber-600 ml-1">
@@ -87,9 +87,9 @@ function InterpolationDebug({ result, isVisible, onToggle }: InterpolationDebugP
   }
 
   return (
-    <div className="mt-2 p-3 bg-gray-50 rounded border space-y-3">
+    <div className="mt-2 p-3 bg-muted rounded border space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-gray-700">Interpolation Debug Info</h4>
+        <h4 className="text-sm font-medium text-foreground">Interpolation Debug Info</h4>
         <Button
           variant="ghost"
           size="sm"
@@ -116,7 +116,7 @@ function InterpolationDebug({ result, isVisible, onToggle }: InterpolationDebugP
           )}
         </Badge>
         
-        <div className="text-xs text-gray-600">
+        <div className="text-xs text-muted-foreground">
           {result.processedVariables.length} processed • {result.missingVariables.length} missing
         </div>
       </div>
@@ -124,7 +124,7 @@ function InterpolationDebug({ result, isVisible, onToggle }: InterpolationDebugP
       {/* Processed Variables */}
       {result.processedVariables.length > 0 && (
         <div>
-          <div className="text-xs font-medium text-gray-700 mb-1">Processed Variables:</div>
+          <div className="text-xs font-medium text-foreground mb-1">Processed Variables:</div>
           <div className="flex flex-wrap gap-1">
             {result.processedVariables.map((variable, index) => (
               <Badge key={index} variant="outline" className="text-xs bg-green-50 text-green-700">
@@ -285,7 +285,7 @@ export function VariableInterpolatedContent({
     <div className={cn('space-y-2', className)}>
       {/* Processing Indicator */}
       {isProcessing && (
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
+        <div className="flex items-center space-x-2 text-sm text-muted-foreground">
           <RefreshCw className="h-4 w-4 animate-spin" />
           <span>Processing variables...</span>
         </div>

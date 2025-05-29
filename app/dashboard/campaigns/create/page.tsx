@@ -199,7 +199,7 @@ export default function CreateCampaignPage() {
                 placeholder="Enter your campaign name"
                 className="text-lg"
               />
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Give your lead magnet campaign a clear, descriptive name
               </p>
             </div>
@@ -213,7 +213,7 @@ export default function CreateCampaignPage() {
                 placeholder="Describe what your campaign is about (optional)"
                 rows={4}
               />
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Help your team understand the purpose of this campaign
               </p>
             </div>
@@ -237,7 +237,7 @@ export default function CreateCampaignPage() {
                         primary_color: e.target.value
                       }
                     })}
-                    className="w-12 h-12 rounded border border-gray-300"
+                    className="w-12 h-12 rounded border border-input"
                   />
                   <Input
                     value={formData.settings.theme?.primary_color || '#3B82F6'}
@@ -266,7 +266,7 @@ export default function CreateCampaignPage() {
                         secondary_color: e.target.value
                       }
                     })}
-                    className="w-12 h-12 rounded border border-gray-300"
+                    className="w-12 h-12 rounded border border-input"
                   />
                   <Input
                     value={formData.settings.theme?.secondary_color || '#10B981'}
@@ -295,7 +295,7 @@ export default function CreateCampaignPage() {
                         background_color: e.target.value
                       }
                     })}
-                    className="w-12 h-12 rounded border border-gray-300"
+                    className="w-12 h-12 rounded border border-input"
                   />
                   <Input
                     value={formData.settings.theme?.background_color || '#FFFFFF'}
@@ -322,7 +322,7 @@ export default function CreateCampaignPage() {
                       font_family: e.target.value
                     }
                   })}
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  className="w-full p-2 border border-input rounded-md"
                 >
                   <option value="Inter, sans-serif">Inter</option>
                   <option value="system-ui, sans-serif">System UI</option>
@@ -463,21 +463,21 @@ export default function CreateCampaignPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-background shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
                 onClick={() => router.push('/dashboard/campaigns')}
-                className="text-gray-600 hover:text-gray-900"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Campaigns
               </Button>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-foreground">
                 Create New Campaign
               </h1>
             </div>
@@ -504,7 +504,7 @@ export default function CreateCampaignPage() {
                           ? 'bg-blue-600 border-blue-600 text-white'
                           : getCurrentStepIndex() === stepIdx
                           ? 'border-blue-600 text-blue-600'
-                          : 'border-gray-300 text-gray-400'
+                          : 'border-input text-gray-400'
                         }
                       `}>
                         {getCurrentStepIndex() > stepIdx ? (
@@ -515,7 +515,7 @@ export default function CreateCampaignPage() {
                       </div>
                       <div className="ml-3">
                         <span className={`text-sm font-medium ${
-                          getCurrentStepIndex() >= stepIdx ? 'text-gray-900' : 'text-gray-400'
+                          getCurrentStepIndex() >= stepIdx ? 'text-foreground' : 'text-gray-400'
                         }`}>
                           {step.title}
                         </span>
