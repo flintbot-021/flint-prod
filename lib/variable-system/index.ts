@@ -25,5 +25,23 @@ export * from './interpolation-parser'
 // Export interpolation dependency resolver
 export * from './interpolation-dependency-resolver'
 
+// Export enhanced runtime execution engine
+export * from './runtime-execution-engine'
+
+// Export performance cache system
+export * from './performance-cache'
+
+// Export cached runtime execution engine
+export * from './cached-runtime-engine'
+
+// Export error handling system
+export * from './error-handling'
+
+// Export real-time update system
+export * from './realtime-update-system'
+
+// Export logging system
+export * from './logging-system'
+
 // Export helper utilities (to be implemented)
 // export { ExecutionContextImpl } from './execution-context' 
