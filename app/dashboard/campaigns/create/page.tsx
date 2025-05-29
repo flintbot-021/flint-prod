@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { UserProfile } from '@/components/ui/user-profile'
 import { useAuth } from '@/lib/auth-context'
 import { createCampaignWithUsageTracking, getCurrentProfile } from '@/lib/data-access'
-import { Profile, CampaignSettings } from '@/lib/types/database'
+import { Profile, CampaignSettings, CreateCampaign } from '@/lib/types/database'
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -167,15 +167,16 @@ export default function CreateCampaignPage() {
         status: 'draft',
         settings: formData.settings,
         published_at: null,
-        published_url: null
-      })
+        published_url: null,
+        is_active: true
+      } as CreateCampaign)
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to create campaign')
       }
 
-      // Redirect to the new campaign
-      router.push(`/dashboard/campaigns/${result.data?.id}`)
+      // Redirect to the campaign builder
+      router.push(`/dashboard/campaigns/${result.data?.id}/builder`)
     } catch (err) {
       console.error('Error creating campaign:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
