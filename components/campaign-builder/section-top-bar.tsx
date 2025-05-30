@@ -88,7 +88,7 @@ export function SectionTopBar({
   return (
     <div className={cn(
       'flex items-center justify-between p-3 bg-background border-b border-border',
-      'hover:bg-muted transition-colors group',
+      'hover:bg-gray-900 transition-colors group',
       className
     )}>
       {/* Left Side - Drag Handle, Icon, Name, Order Badge, Type */}
@@ -96,7 +96,7 @@ export function SectionTopBar({
         {/* Drag Handle */}
         <button
           {...dragHandleProps}
-          className="text-white hover:text-gray-200 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+          className="text-white hover:text-gray-200 cursor-grab active:cursor-grabbing transition-colors"
         >
           <GripVertical className="h-4 w-4" />
         </button>
