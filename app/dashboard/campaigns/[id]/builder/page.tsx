@@ -402,7 +402,7 @@ export default function CampaignBuilderPage() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-muted">
+      <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
             <Card>
@@ -431,7 +431,7 @@ export default function CampaignBuilderPage() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen bg-muted">
+      <div className="min-h-screen bg-background">
         {/* Campaign Builder Top Bar */}
         <CampaignBuilderTopBar
           campaignName={campaign.name}

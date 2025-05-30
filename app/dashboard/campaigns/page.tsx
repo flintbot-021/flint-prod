@@ -318,7 +318,7 @@ export default function CampaignsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-muted">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-background shadow border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -515,25 +515,25 @@ export default function CampaignsPage() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Draft Campaigns */}
-                    <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                       <div className="flex items-center justify-center mb-2">
-                        <Clock className="h-5 w-5 text-yellow-600" />
+                        <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
                       </div>
-                      <p className="text-2xl font-bold text-yellow-800">
+                      <p className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">
                         {campaigns.filter(c => c.status === 'draft').length}
                       </p>
-                      <p className="text-sm text-yellow-600">Draft Campaigns</p>
+                      <p className="text-sm text-yellow-600 dark:text-yellow-400">Draft Campaigns</p>
                     </div>
 
                     {/* Published Campaigns */}
-                    <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
                       <div className="flex items-center justify-center mb-2">
-                        <Activity className="h-5 w-5 text-green-600" />
+                        <Activity className="h-5 w-5 text-green-600 dark:text-green-500" />
                       </div>
-                      <p className="text-2xl font-bold text-green-800">
+                      <p className="text-2xl font-bold text-green-800 dark:text-green-200">
                         {campaigns.filter(c => c.status === 'published').length}
                       </p>
-                      <p className="text-sm text-green-600">Published Campaigns</p>
+                      <p className="text-sm text-green-600 dark:text-green-400">Published Campaigns</p>
                     </div>
 
                     {/* Archived Campaigns */}
@@ -541,7 +541,7 @@ export default function CampaignsPage() {
                       <div className="flex items-center justify-center mb-2">
                         <Archive className="h-5 w-5 text-muted-foreground" />
                       </div>
-                      <p className="text-2xl font-bold text-gray-800">
+                      <p className="text-2xl font-bold text-foreground">
                         {campaigns.filter(c => c.status === 'archived').length}
                       </p>
                       <p className="text-sm text-muted-foreground">Archived Campaigns</p>
