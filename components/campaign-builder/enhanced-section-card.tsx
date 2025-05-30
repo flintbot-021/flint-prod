@@ -146,7 +146,7 @@ export function EnhancedSectionCard({
           <button
             {...attributes}
             {...listeners}
-            className="mt-2 p-1 text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+            className="mt-2 p-1 text-gray-400 hover:text-muted-foreground cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
             disabled={isSaving}
           >
             <GripVertical className="h-4 w-4" />
@@ -155,7 +155,7 @@ export function EnhancedSectionCard({
           {/* Section Icon */}
           <div className={cn(
             'flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center mt-1',
-            sectionType?.color || 'bg-gray-100 text-gray-600',
+            sectionType?.color || 'bg-accent text-muted-foreground',
             !section.isVisible && 'opacity-60'
           )}>
             {IconComponent && (
@@ -174,7 +174,7 @@ export function EnhancedSectionCard({
                 placeholder="Enter section title..."
                 className={cn(
                   'font-medium',
-                  section.isVisible ? 'text-gray-900' : 'text-gray-500'
+                  section.isVisible ? 'text-foreground' : 'text-muted-foreground'
                 )}
                 showEditIcon={false}
                 showSaveStatus={true}
@@ -191,7 +191,7 @@ export function EnhancedSectionCard({
 
             {/* Section Type & Order */}
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2 text-xs text-gray-500">
+              <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                 <span className="font-medium">{sectionType?.name || section.type}</span>
                 <span>•</span>
                 <span>Order {section.order}</span>
@@ -218,26 +218,26 @@ export function EnhancedSectionCard({
 
             {/* Section Description */}
             {sectionType?.description && (
-              <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+              <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
                 {sectionType.description}
               </p>
             )}
 
             {/* Settings Preview */}
             {section.settings && Object.keys(section.settings).length > 0 && (
-              <div className="bg-gray-50 rounded-md p-3 mb-3">
-                <div className="text-xs text-gray-500 mb-2 font-medium">Configuration:</div>
+              <div className="bg-muted rounded-md p-3 mb-3">
+                <div className="text-xs text-muted-foreground mb-2 font-medium">Configuration:</div>
                 <div className="space-y-1">
                   {Object.entries(section.settings).slice(0, 3).map(([key, value]) => (
                     <div key={key} className="flex justify-between text-xs">
-                      <span className="text-gray-600 capitalize">{key.replace(/([A-Z])/g, ' $1')}:</span>
-                      <span className="text-gray-900 font-medium truncate ml-2 max-w-32">
+                      <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}:</span>
+                      <span className="text-foreground font-medium truncate ml-2 max-w-32">
                         {String(value)}
                       </span>
                     </div>
                   ))}
                   {Object.keys(section.settings).length > 3 && (
-                    <div className="text-xs text-gray-400 pt-1 border-t border-gray-200">
+                    <div className="text-xs text-gray-400 pt-1 border-t border-border">
                       +{Object.keys(section.settings).length - 3} more settings
                     </div>
                   )}
@@ -288,7 +288,7 @@ export function EnhancedSectionCard({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-6 w-6 p-0 text-gray-400 hover:text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                 disabled={isSaving}
               >
                 <MoreVertical className="h-4 w-4" />

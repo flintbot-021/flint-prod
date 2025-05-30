@@ -111,7 +111,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
@@ -221,7 +221,7 @@ export default function LoginPage() {
                     <span className="w-full border-t" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-2 text-muted-foreground">Or continue with</span>
+                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
                   </div>
                 </div>
 
@@ -250,7 +250,7 @@ export default function LoginPage() {
           <div className="mt-6 text-center text-sm">
             {mode === 'login' ? (
               <>
-                <p className="text-gray-600">
+                <p className="text-muted-foreground">
                   Don't have an account?{' '}
                   <button
                     type="button"
@@ -271,7 +271,7 @@ export default function LoginPage() {
                 </p>
               </>
             ) : mode === 'signup' ? (
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Already have an account?{' '}
                 <button
                   type="button"
@@ -282,7 +282,7 @@ export default function LoginPage() {
                 </button>
               </p>
             ) : (
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Remember your password?{' '}
                 <button
                   type="button"
@@ -298,7 +298,7 @@ export default function LoginPage() {
           <div className="mt-4 text-center">
             <Link
               href="/"
-              className="text-sm text-gray-500 hover:text-gray-700"
+              className="text-sm text-muted-foreground hover:text-foreground"
             >
               ← Back to homepage
             </Link>

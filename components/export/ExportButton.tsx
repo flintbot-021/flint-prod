@@ -324,7 +324,7 @@ export const ExportButtonWithCounter: React.FC<ExportButtonWithCounterProps> = (
   return (
     <div className="flex items-center gap-3">
       {showCount && recordCount > 0 && (
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-muted-foreground">
           {recordCount} {displayLabel}
         </span>
       )}

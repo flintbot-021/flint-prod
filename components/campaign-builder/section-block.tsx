@@ -179,7 +179,7 @@ export function SectionBlock({
   const renderSectionContent = () => {
     if (isCollapsed) {
       return (
-        <div className="p-4 text-center text-gray-500 text-sm">
+        <div className="p-4 text-center text-muted-foreground text-sm">
           <ChevronRight className="h-4 w-4 mx-auto mb-2" />
           Section collapsed - click to expand
         </div>
@@ -230,7 +230,7 @@ export function SectionBlock({
             </h3>
             <div className="space-y-2">
               {['Option 1', 'Option 2', 'Option 3'].map((option, index) => (
-                <label key={index} className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+                <label key={index} className="flex items-center space-x-3 p-3 border border-border rounded-lg hover:bg-muted cursor-pointer">
                   <input type="radio" name={`preview-${section.id}`} className="h-4 w-4" />
                   <span>{option}</span>
                 </label>
@@ -249,7 +249,7 @@ export function SectionBlock({
             <input 
               type="text" 
               placeholder="Type your answer here..."
-              className="w-full p-3 border border-gray-200 rounded-lg"
+              className="w-full p-3 border border-border rounded-lg"
               disabled
             />
           </div>
@@ -274,7 +274,7 @@ export function SectionBlock({
             <input 
               type="email" 
               placeholder="your@email.com"
-              className="w-full p-3 border border-gray-200 rounded-lg"
+              className="w-full p-3 border border-border rounded-lg"
               disabled
             />
           </div>
@@ -283,7 +283,7 @@ export function SectionBlock({
       default:
         return (
           <div className="p-6">
-            <div className="text-center text-gray-500">
+            <div className="text-center text-muted-foreground">
               <FileText className="h-8 w-8 mx-auto mb-2" />
               <p className="text-sm">Preview for {sectionType?.name || section.type}</p>
               <p className="text-xs mt-1">{content || 'No content configured'}</p>
@@ -300,7 +300,7 @@ export function SectionBlock({
         <div className="space-y-4">
           {/* Content Editor */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-foreground mb-2">
               {isQuestionType ? 'Question Text' : 'Content'}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </label>
@@ -313,7 +313,7 @@ export function SectionBlock({
                   ? "Enter your question text..." 
                   : "Enter your content..."
               }
-              className="min-h-[60px] p-3 border border-gray-200 rounded-lg w-full"
+              className="min-h-[60px] p-3 border border-border rounded-lg w-full"
               showEditIcon={false}
               showSaveStatus={true}
               multiline={true}
@@ -324,19 +324,19 @@ export function SectionBlock({
           {/* Section-specific settings */}
           {section.type === 'multiple-choice' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Answer Options
               </label>
               <div className="space-y-2">
                 {['Option 1', 'Option 2', 'Option 3'].map((option, index) => (
                   <div key={index} className="flex items-center space-x-2">
-                    <span className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center text-xs font-medium">
+                    <span className="w-6 h-6 rounded-full border border-input flex items-center justify-center text-xs font-medium">
                       {index + 1}
                     </span>
                     <input 
                       type="text" 
                       defaultValue={option}
-                      className="flex-1 p-2 border border-gray-200 rounded text-sm"
+                      className="flex-1 p-2 border border-border rounded text-sm"
                       placeholder={`Option ${index + 1}`}
                     />
                   </div>
@@ -347,9 +347,9 @@ export function SectionBlock({
 
           {/* Configuration Preview */}
           {section.settings && Object.keys(section.settings).length > 0 && (
-            <div className="bg-gray-50 rounded-lg p-3">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Current Settings:</h4>
-              <div className="space-y-1 text-xs text-gray-600">
+            <div className="bg-muted rounded-lg p-3">
+              <h4 className="text-sm font-medium text-foreground mb-2">Current Settings:</h4>
+              <div className="space-y-1 text-xs text-muted-foreground">
                 {Object.entries(section.settings).slice(0, 5).map(([key, value]) => (
                   <div key={key} className="flex justify-between">
                     <span className="capitalize">{key.replace(/([A-Z])/g, ' $1')}:</span>
@@ -414,7 +414,7 @@ export function SectionBlock({
 
       {/* Loading Overlay */}
       {isSaving && (
-        <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center z-10">
+        <div className="absolute inset-0 bg-background bg-opacity-50 flex items-center justify-center z-10">
           <div className="flex items-center space-x-2 text-blue-600">
             <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
             <span className="text-sm font-medium">Saving...</span>

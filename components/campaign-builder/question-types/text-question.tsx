@@ -126,7 +126,7 @@ export function TextQuestion({
               {required && <span className="text-red-500 ml-1">*</span>}
             </h3>
             {helpText && (
-              <p className="text-sm text-gray-600 mb-4">{helpText}</p>
+              <p className="text-sm text-muted-foreground mb-4">{helpText}</p>
             )}
           </div>
 
@@ -150,7 +150,7 @@ export function TextQuestion({
             
             {/* Character limit indicator */}
             {maxLength > 0 && (
-              <div className="text-xs text-gray-500 text-right">
+              <div className="text-xs text-muted-foreground text-right">
                 0 / {maxLength} characters
               </div>
             )}
@@ -158,7 +158,7 @@ export function TextQuestion({
 
           {/* Validation preview */}
           {validation.pattern && (
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-muted-foreground">
               <strong>Format:</strong> {validation.message || 'Must match required pattern'}
             </div>
           )}
@@ -173,7 +173,7 @@ export function TextQuestion({
       <div className="space-y-6">
         {/* Question Content */}
         <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
+          <Label className="text-sm font-medium text-foreground mb-2 block">
             Question Text {required && <span className="text-red-500">*</span>}
           </Label>
           <InlineEditableText
@@ -181,7 +181,7 @@ export function TextQuestion({
             onSave={handleContentChange}
             variant="body"
             placeholder="Enter your question text..."
-            className="min-h-[60px] p-3 border border-gray-200 rounded-lg w-full"
+            className="min-h-[60px] p-3 border border-border rounded-lg w-full"
             showEditIcon={false}
             showSaveStatus={true}
             multiline={true}
@@ -194,7 +194,7 @@ export function TextQuestion({
         {/* Input Type Selection */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+            <Label className="text-sm font-medium text-foreground mb-2 block">
               Input Type
             </Label>
             <Select
@@ -255,7 +255,7 @@ export function TextQuestion({
           </div>
 
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+            <Label className="text-sm font-medium text-foreground mb-2 block">
               Character Limit
             </Label>
             <Input
@@ -272,7 +272,7 @@ export function TextQuestion({
 
         {/* Placeholder Text */}
         <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
+          <Label className="text-sm font-medium text-foreground mb-2 block">
             Placeholder Text
           </Label>
           <InlineEditableText
@@ -280,7 +280,7 @@ export function TextQuestion({
             onSave={handlePlaceholderChange}
             variant="body"
             placeholder="Enter placeholder text..."
-            className="p-3 border border-gray-200 rounded-lg w-full text-gray-500"
+            className="p-3 border border-border rounded-lg w-full text-muted-foreground"
             showEditIcon={false}
             showSaveStatus={true}
             maxLength={100}
@@ -289,7 +289,7 @@ export function TextQuestion({
 
         {/* Help Text */}
         <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
+          <Label className="text-sm font-medium text-foreground mb-2 block">
             Help Text (Optional)
           </Label>
           <InlineEditableText
@@ -297,7 +297,7 @@ export function TextQuestion({
             onSave={handleHelpTextChange}
             variant="body"
             placeholder="Add helpful instructions for users..."
-            className="p-3 border border-gray-200 rounded-lg w-full text-gray-600"
+            className="p-3 border border-border rounded-lg w-full text-muted-foreground"
             showEditIcon={false}
             showSaveStatus={true}
             maxLength={200}
@@ -321,7 +321,7 @@ export function TextQuestion({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm font-medium text-gray-700 mb-2 block">
+              <Label className="text-sm font-medium text-foreground mb-2 block">
                 Min Length
               </Label>
               <Input
@@ -334,7 +334,7 @@ export function TextQuestion({
               />
             </div>
             <div>
-              <Label className="text-sm font-medium text-gray-700 mb-2 block">
+              <Label className="text-sm font-medium text-foreground mb-2 block">
                 Validation Pattern (Regex)
               </Label>
               <Input
@@ -355,30 +355,30 @@ export function TextQuestion({
 
         {/* Preview Section */}
         <div className="border-t pt-4">
-          <Label className="text-sm font-medium text-gray-700 mb-3 block">
+          <Label className="text-sm font-medium text-foreground mb-3 block">
             Preview
           </Label>
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-muted rounded-lg p-4">
             <div className="space-y-3">
               <div className="font-medium">
                 {content || 'Your question text here...'}
                 {required && <span className="text-red-500 ml-1">*</span>}
               </div>
               {helpText && (
-                <div className="text-sm text-gray-600">{helpText}</div>
+                <div className="text-sm text-muted-foreground">{helpText}</div>
               )}
               {inputType === 'textarea' ? (
                 <Textarea
                   placeholder={placeholder}
                   disabled
-                  className="bg-white"
+                  className="bg-background"
                 />
               ) : (
                 <Input
                   type={inputType}
                   placeholder={placeholder}
                   disabled
-                  className="bg-white"
+                  className="bg-background"
                 />
               )}
             </div>

@@ -161,7 +161,7 @@ function EditableImageBlock({
         variant="ghost"
         size="sm"
         onClick={onRemove}
-        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-white shadow-sm"
+        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-background shadow-sm"
       >
         <X className="h-4 w-4" />
       </Button>
@@ -271,8 +271,8 @@ export function InlineContentEditor({
   const renderViewMode = () => (
     <div 
       className={cn(
-        "group relative min-h-[120px] p-4 border border-transparent rounded-lg cursor-pointer transition-all hover:border-gray-200 hover:bg-gray-50",
-        !content && "text-gray-500 italic"
+        "group relative min-h-[120px] p-4 border border-transparent rounded-lg cursor-pointer transition-all hover:border-border hover:bg-muted",
+        !content && "text-muted-foreground italic"
       )}
       onClick={() => handleModeChange('edit')}
     >
@@ -377,7 +377,7 @@ export function InlineContentEditor({
       </div>
       
       {/* Status Bar */}
-      <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t">
+      <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
         <div className="flex space-x-4">
           {showWordCount && (
             <span>
@@ -419,7 +419,7 @@ export function InlineContentEditor({
 
   const renderPreviewMode = () => (
     <div className="space-y-4">
-      <div className="prose prose-sm max-w-none border rounded-lg p-4 bg-gray-50">
+      <div className="prose prose-sm max-w-none border rounded-lg p-4 bg-muted">
         {enableVariables && variableContext ? (
           <VariableInterpolatedContent
             content={localContent}
@@ -473,9 +473,9 @@ export function InlineContentEditor({
 
   if (mode.fullscreen) {
     return (
-      <div className="fixed inset-0 z-50 bg-white">
+      <div className="fixed inset-0 z-50 bg-background">
         <div className="h-full flex flex-col">
-          <div className="flex-shrink-0 p-4 border-b bg-gray-50">
+          <div className="flex-shrink-0 p-4 border-b bg-muted">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium">Content Editor</h3>
               <Button

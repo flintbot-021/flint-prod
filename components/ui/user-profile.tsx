@@ -64,10 +64,10 @@ export function UserProfile({
           </div>
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-gray-900 truncate">
+          <p className="text-sm font-medium text-foreground truncate">
             {user.email}
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             {user.email_confirmed_at ? 'Verified' : 'Unverified'}
           </p>
         </div>
@@ -118,7 +118,7 @@ export function UserProfile({
               <Mail className="h-4 w-4 text-gray-400" />
               <div>
                 <p className="font-medium">Email</p>
-                <p className="text-gray-600">{user.email}</p>
+                <p className="text-muted-foreground">{user.email}</p>
               </div>
             </div>
             
@@ -126,7 +126,7 @@ export function UserProfile({
               <User className="h-4 w-4 text-gray-400" />
               <div>
                 <p className="font-medium">User ID</p>
-                <p className="text-gray-600 font-mono text-xs">{user.id}</p>
+                <p className="text-muted-foreground font-mono text-xs">{user.id}</p>
               </div>
             </div>
             
@@ -134,7 +134,7 @@ export function UserProfile({
               <Calendar className="h-4 w-4 text-gray-400" />
               <div>
                 <p className="font-medium">Member Since</p>
-                <p className="text-gray-600">
+                <p className="text-muted-foreground">
                   {user.created_at ? formatDate(user.created_at) : 'Unknown'}
                 </p>
               </div>
@@ -145,7 +145,7 @@ export function UserProfile({
                 <Shield className="h-4 w-4 text-gray-400" />
                 <div>
                   <p className="font-medium">Last Sign In</p>
-                  <p className="text-gray-600">
+                  <p className="text-muted-foreground">
                     {formatDate(user.last_sign_in_at)}
                   </p>
                 </div>
@@ -160,13 +160,13 @@ export function UserProfile({
               <div className="space-y-2 text-xs">
                 {user.app_metadata.provider && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Provider:</span>
+                    <span className="text-muted-foreground">Provider:</span>
                     <span className="font-medium">{user.app_metadata.provider}</span>
                   </div>
                 )}
                 {user.role && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Role:</span>
+                    <span className="text-muted-foreground">Role:</span>
                     <span className="font-medium">{user.role}</span>
                   </div>
                 )}

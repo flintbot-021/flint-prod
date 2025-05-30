@@ -129,9 +129,9 @@ export default function CampaignsPage() {
       case 'draft':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200'
       case 'archived':
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-accent text-gray-800 border-border'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-accent text-gray-800 border-border'
     }
   }
 
@@ -318,20 +318,20 @@ export default function CampaignsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-background shadow border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
                 onClick={() => router.push('/dashboard')}
-                className="text-gray-600 hover:text-gray-900"
+                className="text-muted-foreground hover:text-foreground"
               >
                 ← Dashboard
               </Button>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-foreground">
                 Campaigns
               </h1>
             </div>
@@ -349,7 +349,7 @@ export default function CampaignsPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-4">
               {profile && (
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   <span className="font-medium">
                     {profile.monthly_campaigns_used} / {profile.monthly_campaign_limit}
                   </span>
@@ -410,15 +410,15 @@ export default function CampaignsPage() {
           {/* Analytics Dashboard */}
           {!loadingCampaigns && campaigns.length > 0 && (
             <div className="mb-8">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Campaign Analytics</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-4">Campaign Analytics</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {/* Total Campaigns */}
                 <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Total Campaigns</p>
-                        <p className="text-2xl font-bold text-gray-900">{campaigns.length}</p>
+                        <p className="text-sm font-medium text-muted-foreground">Total Campaigns</p>
+                        <p className="text-2xl font-bold text-foreground">{campaigns.length}</p>
                       </div>
                       <div className="h-8 w-8 bg-blue-100 rounded-lg flex items-center justify-center">
                         <Target className="h-4 w-4 text-blue-600" />
@@ -432,8 +432,8 @@ export default function CampaignsPage() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Total Leads</p>
-                        <p className="text-2xl font-bold text-gray-900">
+                        <p className="text-sm font-medium text-muted-foreground">Total Leads</p>
+                        <p className="text-2xl font-bold text-foreground">
                           {campaigns.reduce((sum, campaign) => sum + campaign.leadCount, 0)}
                         </p>
                       </div>
@@ -449,8 +449,8 @@ export default function CampaignsPage() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Avg. Completion Rate</p>
-                        <p className="text-2xl font-bold text-gray-900">
+                        <p className="text-sm font-medium text-muted-foreground">Avg. Completion Rate</p>
+                        <p className="text-2xl font-bold text-foreground">
                           {campaigns.length > 0 
                             ? Math.round(campaigns.reduce((sum, campaign) => sum + campaign.completionRate, 0) / campaigns.length)
                             : 0
@@ -469,9 +469,9 @@ export default function CampaignsPage() {
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Published</p>
+                        <p className="text-sm font-medium text-muted-foreground">Published</p>
                         <div className="flex items-center space-x-2">
-                          <p className="text-2xl font-bold text-gray-900">
+                          <p className="text-2xl font-bold text-foreground">
                             {campaigns.filter(c => c.status === 'published').length}
                           </p>
                           <div className="text-xs">
@@ -515,36 +515,36 @@ export default function CampaignsPage() {
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Draft Campaigns */}
-                    <div className="text-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                       <div className="flex items-center justify-center mb-2">
-                        <Clock className="h-5 w-5 text-yellow-600" />
+                        <Clock className="h-5 w-5 text-yellow-600 dark:text-yellow-500" />
                       </div>
-                      <p className="text-2xl font-bold text-yellow-800">
+                      <p className="text-2xl font-bold text-yellow-800 dark:text-yellow-200">
                         {campaigns.filter(c => c.status === 'draft').length}
                       </p>
-                      <p className="text-sm text-yellow-600">Draft Campaigns</p>
+                      <p className="text-sm text-yellow-600 dark:text-yellow-400">Draft Campaigns</p>
                     </div>
 
                     {/* Published Campaigns */}
-                    <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="text-center p-4 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800">
                       <div className="flex items-center justify-center mb-2">
-                        <Activity className="h-5 w-5 text-green-600" />
+                        <Activity className="h-5 w-5 text-green-600 dark:text-green-500" />
                       </div>
-                      <p className="text-2xl font-bold text-green-800">
+                      <p className="text-2xl font-bold text-green-800 dark:text-green-200">
                         {campaigns.filter(c => c.status === 'published').length}
                       </p>
-                      <p className="text-sm text-green-600">Published Campaigns</p>
+                      <p className="text-sm text-green-600 dark:text-green-400">Published Campaigns</p>
                     </div>
 
                     {/* Archived Campaigns */}
-                    <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-center p-4 bg-muted rounded-lg border border-border">
                       <div className="flex items-center justify-center mb-2">
-                        <Archive className="h-5 w-5 text-gray-600" />
+                        <Archive className="h-5 w-5 text-muted-foreground" />
                       </div>
-                      <p className="text-2xl font-bold text-gray-800">
+                      <p className="text-2xl font-bold text-foreground">
                         {campaigns.filter(c => c.status === 'archived').length}
                       </p>
-                      <p className="text-sm text-gray-600">Archived Campaigns</p>
+                      <p className="text-sm text-muted-foreground">Archived Campaigns</p>
                     </div>
                   </div>
                 </CardContent>
@@ -602,29 +602,29 @@ export default function CampaignsPage() {
                         <div className="flex items-center justify-center">
                           <Eye className="h-4 w-4 text-blue-600" />
                         </div>
-                        <p className="text-2xl font-bold text-gray-900">{campaign.viewCount}</p>
-                        <p className="text-xs text-gray-500">Views</p>
+                        <p className="text-2xl font-bold text-foreground">{campaign.viewCount}</p>
+                        <p className="text-xs text-muted-foreground">Views</p>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center justify-center">
                           <Users className="h-4 w-4 text-green-600" />
                         </div>
-                        <p className="text-2xl font-bold text-gray-900">{campaign.leadCount}</p>
-                        <p className="text-xs text-gray-500">Leads</p>
+                        <p className="text-2xl font-bold text-foreground">{campaign.leadCount}</p>
+                        <p className="text-xs text-muted-foreground">Leads</p>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center justify-center">
                           <TrendingUp className="h-4 w-4 text-purple-600" />
                         </div>
-                        <p className="text-2xl font-bold text-gray-900">
+                        <p className="text-2xl font-bold text-foreground">
                           {campaign.completionRate.toFixed(0)}%
                         </p>
-                        <p className="text-xs text-gray-500">Rate</p>
+                        <p className="text-xs text-muted-foreground">Rate</p>
                       </div>
                     </div>
 
                     {/* Last Activity */}
-                    <div className="flex items-center justify-between text-sm text-gray-500">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
                       <div className="flex items-center space-x-1">
                         <Calendar className="h-3 w-3" />
                         <span>Updated {formatDate(campaign.updated_at)}</span>
@@ -749,7 +749,7 @@ export default function CampaignsPage() {
                   <span>Create Your First Campaign</span>
                 </Button>
                 {!canCreateCampaign && profile && (
-                  <p className="text-sm text-gray-500 mt-3">
+                  <p className="text-sm text-muted-foreground mt-3">
                     You've reached your monthly campaign limit ({profile.monthly_campaign_limit}).
                   </p>
                 )}

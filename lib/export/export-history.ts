@@ -2,7 +2,7 @@
 // EXPORT HISTORY - CLIENT-SIDE EXPORT HISTORY TRACKING AND MANAGEMENT
 // =============================================================================
 
-/**
+/*
  * Represents an export history entry
  */
 export interface ExportHistoryEntry {

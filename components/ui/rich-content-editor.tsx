@@ -172,7 +172,7 @@ function FormattingToolbar({
   })
 
   return (
-    <div className="flex flex-wrap gap-1 p-2 bg-gray-50 border-b">
+    <div className="flex flex-wrap gap-1 p-2 bg-muted border-b">
       {filteredOptions.map((option) => {
         const IconComponent = option.icon
         return (
@@ -346,7 +346,7 @@ function SyntaxHelper() {
             {FORMATTING_OPTIONS.map((option) => (
               <div key={option.id} className="flex justify-between items-center py-1">
                 <span className="text-blue-800">{option.label}:</span>
-                <code className="bg-white px-2 py-1 rounded border text-blue-900">
+                <code className="bg-background px-2 py-1 rounded border text-blue-900">
                   {option.syntax}
                 </code>
               </div>
@@ -357,9 +357,9 @@ function SyntaxHelper() {
             <div className="text-xs text-blue-700">
               <strong>Variable Examples:</strong>
               <div className="mt-1 space-y-1">
-                <div><code className="bg-white px-1 rounded">@name</code> - User's name</div>
-                <div><code className="bg-white px-1 rounded">@score</code> - Calculated score</div>
-                <div><code className="bg-white px-1 rounded">@recommendation</code> - AI recommendation</div>
+                <div><code className="bg-background px-1 rounded">@name</code> - User's name</div>
+                <div><code className="bg-background px-1 rounded">@score</code> - Calculated score</div>
+                <div><code className="bg-background px-1 rounded">@recommendation</code> - AI recommendation</div>
               </div>
             </div>
           </div>
@@ -546,7 +546,7 @@ export function RichContentEditor({
       {/* Variable Suggestions */}
       {enableVariables && availableVariableNames.length > 0 && !isPreviewMode && (
         <div className="space-y-2">
-          <Label className="text-xs text-gray-600">Available Variables:</Label>
+          <Label className="text-xs text-muted-foreground">Available Variables:</Label>
           <div className="flex flex-wrap gap-1">
             {availableVariableNames.slice(0, 8).map((variable) => (
               <Button

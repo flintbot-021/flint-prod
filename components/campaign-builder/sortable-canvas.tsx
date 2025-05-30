@@ -41,7 +41,7 @@ export function SortableCanvas({
         'h-full rounded-lg transition-all duration-200',
         isOver 
           ? 'bg-blue-50 border-2 border-blue-300 border-dashed' 
-          : 'bg-gray-50 border-2 border-gray-200 border-dashed',
+          : 'bg-muted border-2 border-border border-dashed',
         isEmpty && 'flex items-center justify-center',
         className
       )}
@@ -51,7 +51,7 @@ export function SortableCanvas({
         <div className="text-center p-8">
           <div className={cn(
             'mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors',
-            isOver ? 'bg-blue-100' : 'bg-gray-100'
+            isOver ? 'bg-blue-100' : 'bg-accent'
           )}>
             {isOver ? (
               <Plus className="h-8 w-8 text-blue-600" />
@@ -62,14 +62,14 @@ export function SortableCanvas({
           
           <h3 className={cn(
             'text-lg font-medium mb-2 transition-colors',
-            isOver ? 'text-blue-900' : 'text-gray-900'
+            isOver ? 'text-blue-900' : 'text-foreground'
           )}>
             {isOver ? 'Drop section here' : 'Start building your campaign'}
           </h3>
           
           <p className={cn(
             'text-sm max-w-md mx-auto transition-colors',
-            isOver ? 'text-blue-700' : 'text-gray-500'
+            isOver ? 'text-blue-700' : 'text-muted-foreground'
           )}>
             {isOver 
               ? 'Release to add this section to your campaign'
@@ -124,10 +124,10 @@ export function SortableCanvas({
           
           {/* Helpful Instructions */}
           {sections.length > 0 && !isOver && (
-            <div className="mt-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
+            <div className="mt-6 p-4 bg-accent rounded-lg border border-border">
               <div className="flex items-start space-x-3">
-                <MousePointer className="h-5 w-5 text-gray-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-gray-600">
+                <MousePointer className="h-5 w-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-muted-foreground">
                   <p className="font-medium mb-1">Canvas Tips:</p>
                   <ul className="space-y-1 text-xs">
                     <li>• <strong>Click any text</strong> to edit inline with auto-save</li>

@@ -45,10 +45,10 @@ export function DraggableSectionType({
       {...attributes}
       className={cn(
         'group relative cursor-grab active:cursor-grabbing',
-        'p-3 rounded-lg border-2 border-dashed border-gray-200',
-        'hover:border-gray-300 hover:bg-gray-50',
+        'p-3 rounded-lg border-2 border-dashed border-border',
+        'hover:border-input hover:bg-muted',
         'transition-all duration-200',
-        'bg-white',
+        'bg-background',
         isDragging && 'opacity-50 scale-95 shadow-lg border-blue-300',
         className
       )}
@@ -66,10 +66,10 @@ export function DraggableSectionType({
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-medium text-gray-900 truncate">
+          <h4 className="text-sm font-medium text-foreground truncate">
             {sectionType.name}
           </h4>
-          <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
             {sectionType.description}
           </p>
         </div>

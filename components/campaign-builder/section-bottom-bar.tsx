@@ -54,7 +54,7 @@ export function SectionBottomBar({
 
   return (
     <div className={cn(
-      'flex items-center justify-between p-3 bg-gray-50 border-t border-gray-200',
+      'flex items-center justify-between p-3 bg-muted border-t border-border',
       'rounded-b-lg',
       className
     )}>
@@ -85,7 +85,7 @@ export function SectionBottomBar({
         )}
 
         {/* Section Type Info */}
-        <div className="flex items-center space-x-2 text-xs text-gray-500">
+        <div className="flex items-center space-x-2 text-xs text-muted-foreground">
           <span className="font-medium">{sectionType?.name || section.type}</span>
           {sectionType?.category && (
             <>
@@ -112,14 +112,14 @@ export function SectionBottomBar({
         <div className="flex items-center space-x-3">
           {/* Button Label Editor */}
           <div className="flex items-center space-x-2">
-            <span className="text-xs text-gray-500 font-medium">Button:</span>
+            <span className="text-xs text-muted-foreground font-medium">Button:</span>
             {onButtonLabelChange ? (
               <InlineEditableText
                 value={buttonLabel}
                 onSave={onButtonLabelChange}
                 variant="caption"
                 placeholder="Enter button text..."
-                className="font-medium text-gray-700 px-2 py-1 bg-white border border-gray-200 rounded"
+                className="font-medium text-foreground px-2 py-1 bg-background border border-border rounded"
                 showEditIcon={false}
                 showSaveStatus={true}
                 validation={validateButtonLabel}
@@ -127,7 +127,7 @@ export function SectionBottomBar({
                 required={true}
               />
             ) : (
-              <span className="text-xs font-medium text-gray-700 px-2 py-1 bg-white border border-gray-200 rounded">
+              <span className="text-xs font-medium text-foreground px-2 py-1 bg-background border border-border rounded">
                 {buttonLabel}
               </span>
             )}

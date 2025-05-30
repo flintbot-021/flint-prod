@@ -61,7 +61,7 @@ function Modal({ isOpen, onClose, children }: { isOpen: boolean; onClose: () => 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-background rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {children}
       </div>
     </div>
@@ -417,7 +417,7 @@ export function PublishModal({
               </>
             )}
           </h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             {isPublished 
               ? 'Your campaign is currently live. You can update the URL or unpublish it.'
               : 'Make your campaign public and generate a unique URL for sharing.'
@@ -444,13 +444,13 @@ export function PublishModal({
           )}
 
           {/* Campaign Status */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 {isPublished ? (
                   <Unlock className="h-4 w-4 text-green-600" />
                 ) : (
-                  <Lock className="h-4 w-4 text-gray-500" />
+                  <Lock className="h-4 w-4 text-muted-foreground" />
                 )}
                 <span className="font-medium">
                   {campaign.name}
@@ -495,7 +495,7 @@ export function PublishModal({
                 <div className="space-y-2">
                   <Label htmlFor="custom-url">Campaign URL</Label>
                   <div className="flex">
-                    <div className="flex items-center px-3 border border-r-0 border-gray-300 bg-gray-50 rounded-l-md text-sm text-gray-500">
+                    <div className="flex items-center px-3 border border-r-0 border-input bg-muted rounded-l-md text-sm text-muted-foreground">
                       {typeof window !== 'undefined' ? window.location.origin : ''}/c/
                     </div>
                     <Input
@@ -507,7 +507,7 @@ export function PublishModal({
                     />
                   </div>
                   {urlCheck.checking && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="h-3 w-3 animate-spin" />
                       Checking availability...
                     </div>
@@ -529,7 +529,7 @@ export function PublishModal({
                 {/* URL Suggestions */}
                 {!urlCheck.available && urlCheck.suggestions && urlCheck.suggestions.length > 0 && (
                   <div className="space-y-2">
-                    <Label className="text-sm text-gray-600">Suggestions:</Label>
+                    <Label className="text-sm text-muted-foreground">Suggestions:</Label>
                     <div className="flex flex-wrap gap-2">
                       {urlCheck.suggestions.slice(0, 3).map((suggestion) => (
                         <Button
@@ -549,8 +549,8 @@ export function PublishModal({
             ) : (
               <div className="space-y-2">
                 <Label>Suggested URL</Label>
-                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
-                  <Globe className="h-4 w-4 text-gray-500" />
+                <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-mono">
                     {typeof window !== 'undefined' ? window.location.origin : ''}/c/{suggestedUrl || 'campaign'}
                   </span>
@@ -601,7 +601,7 @@ export function PublishModal({
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <Label htmlFor="keep-url" className="text-sm">Keep URL reserved</Label>
-                    <p className="text-xs text-gray-600">
+                    <p className="text-xs text-muted-foreground">
                       Preserve your URL when unpublishing so you can republish later
                     </p>
                   </div>
@@ -623,7 +623,7 @@ export function PublishModal({
                 <Label className="text-base font-medium">Campaign Activation</Label>
                 
                 {/* Activation Status Display */}
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                       {activationStatus.isActive ? (
@@ -638,7 +638,7 @@ export function PublishModal({
                         </div>
                       )}
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-muted-foreground">
                       {activationStatus.isActive 
                         ? 'Your campaign is publicly accessible'
                         : 'Your campaign is not accessible to visitors'

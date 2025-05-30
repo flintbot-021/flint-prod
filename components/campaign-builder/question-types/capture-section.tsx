@@ -258,7 +258,7 @@ export function CaptureSection({
   const renderFieldCheckbox = (field: 'name' | 'email' | 'phone', icon: React.ComponentType<{ className?: string }>, label: string) => (
     <div className="flex items-center space-x-3 p-3 border rounded-lg">
       <div className="flex items-center space-x-2">
-        {React.createElement(icon, { className: "h-4 w-4 text-gray-500" })}
+        {React.createElement(icon, { className: "h-4 w-4 text-muted-foreground" })}
         <span className="text-sm font-medium">{label}</span>
       </div>
       
@@ -273,7 +273,7 @@ export function CaptureSection({
               })
             }}
           />
-          <Label htmlFor={`enable-${field}`} className="text-xs text-gray-600">
+          <Label htmlFor={`enable-${field}`} className="text-xs text-muted-foreground">
             Enabled
           </Label>
         </div>
@@ -289,7 +289,7 @@ export function CaptureSection({
                 })
               }}
             />
-            <Label htmlFor={`require-${field}`} className="text-xs text-gray-600">
+            <Label htmlFor={`require-${field}`} className="text-xs text-muted-foreground">
               Required
             </Label>
           </div>
@@ -348,7 +348,7 @@ export function CaptureSection({
       <Card className={cn("w-full max-w-md mx-auto", className)}>
         <CardHeader className="text-center space-y-2">
           <CardTitle className="text-xl font-bold">{settings.title}</CardTitle>
-          <p className="text-gray-600 text-sm">{settings.subheading}</p>
+          <p className="text-muted-foreground text-sm">{settings.subheading}</p>
         </CardHeader>
         
         <CardContent>
@@ -377,7 +377,7 @@ export function CaptureSection({
                         checked={formData.gdprConsent || false}
                         onCheckedChange={(checked) => handleFieldChange('gdprConsent', checked)}
                       />
-                      <Label htmlFor="gdpr-consent" className="text-xs text-gray-600 leading-relaxed">
+                      <Label htmlFor="gdpr-consent" className="text-xs text-muted-foreground leading-relaxed">
                         I agree to the privacy policy and terms of service *
                       </Label>
                     </div>
@@ -390,7 +390,7 @@ export function CaptureSection({
                         checked={formData.marketingConsent || false}
                         onCheckedChange={(checked) => handleFieldChange('marketingConsent', checked)}
                       />
-                      <Label htmlFor="marketing-consent" className="text-xs text-gray-600 leading-relaxed">
+                      <Label htmlFor="marketing-consent" className="text-xs text-muted-foreground leading-relaxed">
                         I would like to receive marketing emails and updates
                       </Label>
                     </div>
@@ -441,7 +441,7 @@ export function CaptureSection({
         
         <div className="space-y-3">
           <div>
-            <Label className="text-sm font-medium text-gray-700">Title</Label>
+            <Label className="text-sm font-medium text-foreground">Title</Label>
             <InlineEditableText
               value={titleEdit.value}
               onSave={titleEdit.save}
@@ -451,12 +451,12 @@ export function CaptureSection({
           </div>
           
           <div>
-            <Label className="text-sm font-medium text-gray-700">Subheading</Label>
+            <Label className="text-sm font-medium text-foreground">Subheading</Label>
             <InlineEditableText
               value={subheadingEdit.value}
               onSave={subheadingEdit.save}
               placeholder="Enter section subheading..."
-              className="text-gray-600"
+              className="text-muted-foreground"
               multiline={true}
             />
           </div>
@@ -465,7 +465,7 @@ export function CaptureSection({
 
       {/* Field Configuration */}
       <div className="space-y-4">
-        <Label className="text-sm font-medium text-gray-700">Form Fields</Label>
+        <Label className="text-sm font-medium text-foreground">Form Fields</Label>
         <div className="space-y-3">
           {renderFieldCheckbox('name', User, 'Name')}
           {renderFieldCheckbox('email', Mail, 'Email')}
@@ -475,7 +475,7 @@ export function CaptureSection({
 
       {/* Submit Button Configuration */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-gray-700">Submit Button Text</Label>
+        <Label className="text-sm font-medium text-foreground">Submit Button Text</Label>
         <InlineEditableText
           value={submitButtonEdit.value}
           onSave={submitButtonEdit.save}
@@ -486,7 +486,7 @@ export function CaptureSection({
 
       {/* Consent Options */}
       <div className="space-y-4">
-        <Label className="text-sm font-medium text-gray-700">Consent Options</Label>
+        <Label className="text-sm font-medium text-foreground">Consent Options</Label>
         <div className="space-y-3">
           <div className="flex items-center space-x-2">
             <Checkbox
@@ -518,7 +518,7 @@ export function CaptureSection({
 
       {/* Preview Section */}
       <div className="pt-4 border-t">
-        <Label className="text-sm font-medium text-gray-700 mb-3 block">Preview</Label>
+        <Label className="text-sm font-medium text-foreground mb-3 block">Preview</Label>
         <div className="scale-90 origin-top-left">
           <CaptureSection
             section={section}

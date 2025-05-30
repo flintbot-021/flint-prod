@@ -75,7 +75,7 @@ function SortableOption({
   if (isPreview) {
     return (
       <label className={cn(
-        "flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors",
+        "flex items-center space-x-3 p-3 border border-border rounded-lg hover:bg-muted cursor-pointer transition-colors",
         isDragging && "opacity-50"
       )}>
         {selectionType === 'single' ? (
@@ -93,7 +93,7 @@ function SortableOption({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center space-x-3 p-3 border border-gray-200 rounded-lg bg-white",
+        "flex items-center space-x-3 p-3 border border-border rounded-lg bg-background",
         isDragging && "opacity-50 shadow-lg"
       )}
     >
@@ -292,10 +292,10 @@ export function MultipleChoiceQuestion({
               {required && <span className="text-red-500 ml-1">*</span>}
             </h3>
             {helpText && (
-              <p className="text-sm text-gray-600 mb-4">{helpText}</p>
+              <p className="text-sm text-muted-foreground mb-4">{helpText}</p>
             )}
             {selectionType === 'multiple' && (
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 Select {minSelections === maxSelections 
                   ? `exactly ${minSelections}` 
                   : `${minSelections}-${maxSelections}`
@@ -319,7 +319,7 @@ export function MultipleChoiceQuestion({
 
             {/* Other Option */}
             {allowOther && (
-              <label className="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer">
+              <label className="flex items-center space-x-3 p-3 border border-border rounded-lg hover:bg-muted cursor-pointer">
                 {selectionType === 'single' ? (
                   <input type="radio" name="preview-options" className="h-4 w-4" />
                 ) : (
@@ -341,7 +341,7 @@ export function MultipleChoiceQuestion({
       <div className="space-y-6">
         {/* Question Content */}
         <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
+          <Label className="text-sm font-medium text-foreground mb-2 block">
             Question Text {required && <span className="text-red-500">*</span>}
           </Label>
           <InlineEditableText
@@ -349,7 +349,7 @@ export function MultipleChoiceQuestion({
             onSave={handleContentChange}
             variant="body"
             placeholder="Enter your question text..."
-            className="min-h-[60px] p-3 border border-gray-200 rounded-lg w-full"
+            className="min-h-[60px] p-3 border border-border rounded-lg w-full"
             showEditIcon={false}
             showSaveStatus={true}
             multiline={true}
@@ -362,7 +362,7 @@ export function MultipleChoiceQuestion({
         {/* Selection Type and Settings */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+            <Label className="text-sm font-medium text-foreground mb-2 block">
               Selection Type
             </Label>
             <Select
@@ -401,7 +401,7 @@ export function MultipleChoiceQuestion({
 
           {selectionType === 'multiple' && (
             <div>
-              <Label className="text-sm font-medium text-gray-700 mb-2 block">
+              <Label className="text-sm font-medium text-foreground mb-2 block">
                 Selection Limits
               </Label>
               <div className="flex space-x-2">
@@ -415,7 +415,7 @@ export function MultipleChoiceQuestion({
                   className="w-20"
                   disabled={isSaving}
                 />
-                <span className="self-center text-gray-500">to</span>
+                <span className="self-center text-muted-foreground">to</span>
                 <Input
                   type="number"
                   value={maxSelections}
@@ -434,7 +434,7 @@ export function MultipleChoiceQuestion({
         {/* Options Management */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <Label className="text-sm font-medium text-gray-700">
+            <Label className="text-sm font-medium text-foreground">
               Answer Options ({options.length})
             </Label>
             <Button
@@ -510,7 +510,7 @@ export function MultipleChoiceQuestion({
 
         {/* Help Text */}
         <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
+          <Label className="text-sm font-medium text-foreground mb-2 block">
             Help Text (Optional)
           </Label>
           <InlineEditableText
@@ -518,7 +518,7 @@ export function MultipleChoiceQuestion({
             onSave={handleHelpTextChange}
             variant="body"
             placeholder="Add helpful instructions for users..."
-            className="p-3 border border-gray-200 rounded-lg w-full text-gray-600"
+            className="p-3 border border-border rounded-lg w-full text-muted-foreground"
             showEditIcon={false}
             showSaveStatus={true}
             maxLength={200}
@@ -528,10 +528,10 @@ export function MultipleChoiceQuestion({
 
         {/* Preview Section */}
         <div className="border-t pt-4">
-          <Label className="text-sm font-medium text-gray-700 mb-3 block">
+          <Label className="text-sm font-medium text-foreground mb-3 block">
             Preview
           </Label>
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-muted rounded-lg p-4">
             <MultipleChoiceQuestion
               section={section}
               isPreview={true}

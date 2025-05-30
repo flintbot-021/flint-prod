@@ -362,7 +362,7 @@ export default function CampaignBuilderPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading campaign builder...</p>
+          <p className="text-muted-foreground">Loading campaign builder...</p>
         </div>
       </div>
     )
@@ -374,7 +374,7 @@ export default function CampaignBuilderPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-muted">
         <div className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
             <Card className="border-red-200 bg-red-50">
@@ -402,13 +402,13 @@ export default function CampaignBuilderPage() {
 
   if (!campaign) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <p className="text-gray-600">Campaign not found</p>
+                  <p className="text-muted-foreground">Campaign not found</p>
                   <button
                     onClick={() => router.push('/dashboard/campaigns')}
                     className="mt-2 text-blue-600 underline hover:no-underline"
@@ -431,7 +431,7 @@ export default function CampaignBuilderPage() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         {/* Campaign Builder Top Bar */}
         <CampaignBuilderTopBar
           campaignName={campaign.name}
@@ -482,7 +482,7 @@ export default function CampaignBuilderPage() {
               <div className="lg:col-span-3">
                 <Card className="h-full">
                   {/* Tab Navigation */}
-                  <div className="border-b border-gray-200">
+                  <div className="border-b border-border">
                     <nav className="flex space-x-8 px-6 pt-4" aria-label="Tabs">
                       <button
                         onClick={() => setActiveTab('builder')}
@@ -490,7 +490,7 @@ export default function CampaignBuilderPage() {
                           "whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors",
                           activeTab === 'builder'
                             ? "border-blue-500 text-blue-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            : "border-transparent text-muted-foreground hover:text-foreground hover:border-input"
                         )}
                       >
                         Builder
@@ -501,7 +501,7 @@ export default function CampaignBuilderPage() {
                           "whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors",
                           activeTab === 'preview'
                             ? "border-blue-500 text-blue-600"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            : "border-transparent text-muted-foreground hover:text-foreground hover:border-input"
                         )}
                       >
                         Preview
@@ -521,7 +521,7 @@ export default function CampaignBuilderPage() {
                             </CardDescription>
                           </div>
                           {sections.length > 0 && (
-                            <div className="text-sm text-gray-500">
+                            <div className="text-sm text-muted-foreground">
                               {sections.length} section{sections.length !== 1 ? 's' : ''} • {sections.filter(s => s.isVisible).length} visible
                             </div>
                           )}

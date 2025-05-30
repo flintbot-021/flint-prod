@@ -205,7 +205,7 @@ function OutputItem({
           {/* Basic Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
+              <label className="text-sm font-medium text-foreground mb-1 block">
                 Output Name *
               </label>
               <Input
@@ -216,7 +216,7 @@ function OutputItem({
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
+              <label className="text-sm font-medium text-foreground mb-1 block">
                 Data Type *
               </label>
               <Select
@@ -247,7 +247,7 @@ function OutputItem({
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">
+            <label className="text-sm font-medium text-foreground mb-1 block">
               Description *
             </label>
             <Textarea
@@ -268,7 +268,7 @@ function OutputItem({
               }
               disabled={disabled}
             />
-            <label htmlFor={`required-${output.id}`} className="text-sm text-gray-700">
+            <label htmlFor={`required-${output.id}`} className="text-sm text-foreground">
               Required output (extraction will fail if not found)
             </label>
           </div>
@@ -279,7 +279,7 @@ function OutputItem({
             variant="ghost"
             size="sm"
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-sm text-gray-600"
+            className="text-sm text-muted-foreground"
           >
             <Settings className="h-4 w-4 mr-1" />
             {showAdvanced ? 'Hide' : 'Show'} Advanced Settings
@@ -288,9 +288,9 @@ function OutputItem({
           {/* Advanced Settings */}
           {showAdvanced && (
             <div className="space-y-3 border-t pt-3">
-              <div className="text-sm font-medium text-gray-700">Format & Validation</div>
+              <div className="text-sm font-medium text-foreground">Format & Validation</div>
               {/* Add format and validation configuration here */}
-              <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+              <div className="text-xs text-muted-foreground bg-muted p-2 rounded">
                 Advanced validation and formatting options will be implemented in the next iteration.
               </div>
             </div>
@@ -332,8 +332,8 @@ function OutputItem({
             {/* Output Icon & Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2 mb-1">
-                <Icon className="h-4 w-4 text-gray-600" />
-                <code className="font-mono text-sm font-medium text-gray-900">
+                <Icon className="h-4 w-4 text-muted-foreground" />
+                <code className="font-mono text-sm font-medium text-foreground">
                   {output.name}
                 </code>
                 <Badge variant="outline" className="text-xs">
@@ -345,7 +345,7 @@ function OutputItem({
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-gray-600 line-clamp-2">
+              <p className="text-sm text-muted-foreground line-clamp-2">
                 {output.description}
               </p>
               
@@ -447,8 +447,8 @@ export function OutputDefinitionEditor({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-medium text-gray-900">Output Definitions</h3>
-          <p className="text-sm text-gray-600">
+          <h3 className="text-lg font-medium text-foreground">Output Definitions</h3>
+          <p className="text-sm text-muted-foreground">
             Define what structured data the AI should extract from its response
           </p>
         </div>
@@ -513,11 +513,11 @@ export function OutputDefinitionEditor({
 
       {/* Empty State */}
       {outputs.length === 0 && (
-        <Card className="border-dashed border-2 border-gray-300">
+        <Card className="border-dashed border-2 border-input">
           <CardContent className="p-8 text-center">
             <Code2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No outputs defined</h3>
-            <p className="text-gray-600 mb-4">
+            <h3 className="text-lg font-medium text-foreground mb-2">No outputs defined</h3>
+            <p className="text-muted-foreground mb-4">
               Add output definitions to structure the AI response data
             </p>
             {canAddMore && (
@@ -532,7 +532,7 @@ export function OutputDefinitionEditor({
 
       {/* Limits Warning */}
       {!canAddMore && (
-        <div className="text-sm text-gray-500 text-center">
+        <div className="text-sm text-muted-foreground text-center">
           Maximum of {maxOutputs} outputs allowed
         </div>
       )}

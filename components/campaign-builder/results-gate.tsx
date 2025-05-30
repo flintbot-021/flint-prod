@@ -36,28 +36,28 @@ export function ResultsGate({
       
       {/* Lock Overlay */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <Card className="w-full max-w-md mx-auto bg-white/95 backdrop-blur-sm border-2 border-gray-200 shadow-lg">
+        <Card className="w-full max-w-md mx-auto bg-background/95 backdrop-blur-sm border-2 border-border shadow-lg">
           <CardHeader className="text-center space-y-3">
-            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+            <div className="mx-auto w-16 h-16 bg-accent rounded-full flex items-center justify-center">
               {captureCompleted ? (
                 <CheckCircle className="h-8 w-8 text-green-600" />
               ) : (
-                <Lock className="h-8 w-8 text-gray-600" />
+                <Lock className="h-8 w-8 text-muted-foreground" />
               )}
             </div>
-            <CardTitle className="text-xl font-bold text-gray-900">
+            <CardTitle className="text-xl font-bold text-foreground">
               {lockedTitle}
             </CardTitle>
           </CardHeader>
           
           <CardContent className="text-center space-y-4">
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               {lockedMessage}
             </p>
             
             {showProgress && (
               <div className="space-y-2">
-                <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
+                <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
                   <div className={cn(
                     "w-3 h-3 rounded-full",
                     captureCompleted ? "bg-green-500" : "bg-gray-300"

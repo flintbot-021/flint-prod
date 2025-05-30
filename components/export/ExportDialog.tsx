@@ -84,7 +84,7 @@ const Modal: React.FC<{
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-background rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-hidden">
         {children}
       </div>
     </div>
@@ -93,7 +93,7 @@ const Modal: React.FC<{
 
 // Simple Separator Component
 const Separator: React.FC<{ className?: string }> = ({ className }) => (
-  <div className={cn("border-b border-gray-200", className)} />
+  <div className={cn("border-b border-border", className)} />
 )
 
 // =============================================================================
@@ -289,7 +289,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
 
             {/* Progress Details */}
             {progress.totalRecords && (
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-muted-foreground">
                 {progress.processedRecords 
                   ? `${progress.processedRecords} of ${progress.totalRecords} records processed`
                   : `${progress.totalRecords} records to process`
@@ -425,7 +425,7 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                       {field.label}
                     </Label>
                     {field.type && (
-                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                      <span className="text-xs text-muted-foreground bg-accent px-2 py-1 rounded">
                         {field.type}
                       </span>
                     )}
@@ -517,13 +517,13 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
             >
               <Settings className="h-4 w-4" />
               Advanced Options
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 {showAdvanced ? '(Hide)' : '(Show)'}
               </span>
             </Button>
 
             {showAdvanced && (
-              <div className="space-y-3 pl-6 border-l-2 border-gray-200">
+              <div className="space-y-3 pl-6 border-l-2 border-border">
                 <div className="space-y-1">
                   <Label htmlFor="customFilename" className="text-xs">Custom Filename</Label>
                   <Input
@@ -538,12 +538,12 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
           </div>
 
           {/* Export Summary */}
-          <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+          <div className="bg-muted rounded-lg p-4 space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium">
               <Info className="h-4 w-4" />
               Export Summary
             </div>
-            <div className="text-xs text-gray-600 space-y-1">
+            <div className="text-xs text-muted-foreground space-y-1">
               <div>Format: {format.toUpperCase()}</div>
               <div>Records: {filteredDataCount}</div>
               <div>Fields: {selectedFields.filter((f: ExportFieldConfig) => f.include !== false).length}</div>

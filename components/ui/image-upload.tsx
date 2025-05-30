@@ -124,7 +124,7 @@ function ImagePreview({
       <CardContent className="p-4 space-y-4">
         {/* Image Display */}
         <div className={cn(
-          "relative overflow-hidden rounded-lg bg-gray-100",
+          "relative overflow-hidden rounded-lg bg-accent",
           image.position === 'left' && "ml-0 mr-auto",
           image.position === 'center' && "mx-auto",
           image.position === 'right' && "ml-auto mr-0",
@@ -182,7 +182,7 @@ function ImagePreview({
           
           {/* Alt Text */}
           <div>
-            <Label className="text-xs text-gray-600">Alt Text</Label>
+            <Label className="text-xs text-muted-foreground">Alt Text</Label>
             <Input
               value={image.alt || ''}
               onChange={(e) => onUpdate({ alt: e.target.value })}
@@ -193,7 +193,7 @@ function ImagePreview({
 
           {/* Caption */}
           <div>
-            <Label className="text-xs text-gray-600">Caption (optional)</Label>
+            <Label className="text-xs text-muted-foreground">Caption (optional)</Label>
             <Input
               value={image.caption || ''}
               onChange={(e) => onUpdate({ caption: e.target.value })}
@@ -209,7 +209,7 @@ function ImagePreview({
             {/* Positioning */}
             {enablePositioning && (
               <div>
-                <Label className="text-xs text-gray-600 mb-2 block">Position</Label>
+                <Label className="text-xs text-muted-foreground mb-2 block">Position</Label>
                 <div className="flex space-x-1">
                   {[
                     { value: 'left', label: 'Left', icon: AlignLeft },
@@ -235,7 +235,7 @@ function ImagePreview({
             {/* Sizing */}
             {enableSizing && (
               <div>
-                <Label className="text-xs text-gray-600 mb-2 block">Size</Label>
+                <Label className="text-xs text-muted-foreground mb-2 block">Size</Label>
                 <div className="space-y-2">
                   <div className="flex space-x-1">
                     {[
@@ -259,7 +259,7 @@ function ImagePreview({
                   {image.sizing === 'custom' && (
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Label className="text-xs text-gray-500">Width (px)</Label>
+                        <Label className="text-xs text-muted-foreground">Width (px)</Label>
                         <Input
                           type="number"
                           value={image.customWidth || ''}
@@ -269,7 +269,7 @@ function ImagePreview({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs text-gray-500">Height (px)</Label>
+                        <Label className="text-xs text-muted-foreground">Height (px)</Label>
                         <Input
                           type="number"
                           value={image.customHeight || ''}
@@ -438,7 +438,7 @@ export function ImageUpload({
       <Card
         className={cn(
           "border-2 border-dashed transition-colors cursor-pointer",
-          isDragOver ? "border-blue-500 bg-blue-50" : "border-gray-300",
+          isDragOver ? "border-blue-500 bg-blue-50" : "border-input",
           isUploading && "opacity-50 cursor-not-allowed"
         )}
         onDragOver={handleDragOver}
@@ -447,19 +447,19 @@ export function ImageUpload({
         onClick={() => !isUploading && fileInputRef.current?.click()}
       >
         <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-          <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+          <div className="mx-auto w-12 h-12 bg-accent rounded-full flex items-center justify-center mb-4">
             {isUploading ? (
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600" />
             ) : (
-              <Upload className="h-6 w-6 text-gray-600" />
+              <Upload className="h-6 w-6 text-muted-foreground" />
             )}
           </div>
           
           <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-900">
+            <p className="text-sm font-medium text-foreground">
               {isUploading ? 'Uploading...' : placeholder}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               {acceptedFormats.map(f => f.split('/')[1]).join(', ')} up to {formatFileSize(maxSizeKB * 1024)}
             </p>
           </div>
@@ -505,8 +505,8 @@ export function ImageUpload({
       <Card className="border-dashed">
         <CardContent className="p-4">
           <div className="flex items-center space-x-2">
-            <Link className="h-4 w-4 text-gray-500" />
-            <Label className="text-sm text-gray-600">Or add image URL:</Label>
+            <Link className="h-4 w-4 text-muted-foreground" />
+            <Label className="text-sm text-muted-foreground">Or add image URL:</Label>
           </div>
           <div className="flex space-x-2 mt-2">
             <Input

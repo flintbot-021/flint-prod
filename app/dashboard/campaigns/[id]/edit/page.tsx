@@ -233,7 +233,7 @@ export default function EditCampaignPage() {
                 placeholder="Enter your campaign name"
                 className="text-lg"
               />
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Give your lead magnet campaign a clear, descriptive name
               </p>
             </div>
@@ -247,7 +247,7 @@ export default function EditCampaignPage() {
                 placeholder="Describe what your campaign is about (optional)"
                 rows={4}
               />
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Help your team understand the purpose of this campaign
               </p>
             </div>
@@ -271,7 +271,7 @@ export default function EditCampaignPage() {
                         primary_color: e.target.value
                       }
                     })}
-                    className="w-12 h-12 rounded border border-gray-300"
+                    className="w-12 h-12 rounded border border-input"
                   />
                   <Input
                     value={formData.settings.theme?.primary_color || '#3B82F6'}
@@ -300,7 +300,7 @@ export default function EditCampaignPage() {
                         secondary_color: e.target.value
                       }
                     })}
-                    className="w-12 h-12 rounded border border-gray-300"
+                    className="w-12 h-12 rounded border border-input"
                   />
                   <Input
                     value={formData.settings.theme?.secondary_color || '#10B981'}
@@ -329,7 +329,7 @@ export default function EditCampaignPage() {
                         background_color: e.target.value
                       }
                     })}
-                    className="w-12 h-12 rounded border border-gray-300"
+                    className="w-12 h-12 rounded border border-input"
                   />
                   <Input
                     value={formData.settings.theme?.background_color || '#FFFFFF'}
@@ -356,7 +356,7 @@ export default function EditCampaignPage() {
                       font_family: e.target.value
                     }
                   })}
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  className="w-full p-2 border border-input rounded-md"
                 >
                   <option value="Inter, sans-serif">Inter</option>
                   <option value="system-ui, sans-serif">System UI</option>
@@ -404,7 +404,7 @@ export default function EditCampaignPage() {
                 >
                   Sample Campaign Title
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-muted-foreground mb-4">
                   This is how your campaign will look with the selected theme settings.
                 </p>
                 <button
@@ -443,7 +443,7 @@ export default function EditCampaignPage() {
                 <Label htmlFor="email-notifications">Send email notifications when leads complete the campaign</Label>
               </div>
               
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 When enabled, you'll receive an email notification each time someone completes your campaign.
               </p>
             </div>
@@ -453,25 +453,25 @@ export default function EditCampaignPage() {
       case 'review':
         return (
           <div className="space-y-6">
-            <div className="bg-gray-50 p-6 rounded-lg">
+            <div className="bg-muted p-6 rounded-lg">
               <h3 className="text-lg font-medium mb-4">Campaign Summary</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Campaign Name</Label>
+                    <Label className="text-sm font-medium text-muted-foreground">Campaign Name</Label>
                     <p className="text-lg font-medium">{formData.name}</p>
                   </div>
                   
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Description</Label>
-                    <p className="text-sm text-gray-700">
+                    <Label className="text-sm font-medium text-muted-foreground">Description</Label>
+                    <p className="text-sm text-foreground">
                       {formData.description || 'No description provided'}
                     </p>
                   </div>
                   
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Email Notifications</Label>
+                    <Label className="text-sm font-medium text-muted-foreground">Email Notifications</Label>
                     <p className="text-sm">
                       {formData.settings.completion?.email_notifications ? 'Enabled' : 'Disabled'}
                     </p>
@@ -480,30 +480,30 @@ export default function EditCampaignPage() {
                 
                 <div className="space-y-3">
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Theme Colors</Label>
+                    <Label className="text-sm font-medium text-muted-foreground">Theme Colors</Label>
                     <div className="flex items-center space-x-2 mt-1">
                       <div 
-                        className="w-6 h-6 rounded border border-gray-300"
+                        className="w-6 h-6 rounded border border-input"
                         style={{ backgroundColor: formData.settings.theme?.primary_color }}
                       ></div>
                       <div 
-                        className="w-6 h-6 rounded border border-gray-300"
+                        className="w-6 h-6 rounded border border-input"
                         style={{ backgroundColor: formData.settings.theme?.secondary_color }}
                       ></div>
                       <div 
-                        className="w-6 h-6 rounded border border-gray-300"
+                        className="w-6 h-6 rounded border border-input"
                         style={{ backgroundColor: formData.settings.theme?.background_color }}
                       ></div>
                     </div>
                   </div>
                   
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Font Family</Label>
+                    <Label className="text-sm font-medium text-muted-foreground">Font Family</Label>
                     <p className="text-sm">{formData.settings.theme?.font_family}</p>
                   </div>
                   
                   <div>
-                    <Label className="text-sm font-medium text-gray-500">Powered By Branding</Label>
+                    <Label className="text-sm font-medium text-muted-foreground">Powered By Branding</Label>
                     <p className="text-sm">
                       {formData.settings.branding?.show_powered_by ? 'Shown' : 'Hidden'}
                     </p>
@@ -535,7 +535,7 @@ export default function EditCampaignPage() {
                   {formData.name === campaign.name && 
                    formData.description === (campaign.description || '') && 
                    JSON.stringify(formData.settings) === JSON.stringify(campaign.settings) && (
-                    <p className="text-gray-600">No changes detected</p>
+                    <p className="text-muted-foreground">No changes detected</p>
                   )}
                 </div>
               </div>
@@ -553,7 +553,7 @@ export default function EditCampaignPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading campaign...</p>
+          <p className="text-muted-foreground">Loading campaign...</p>
         </div>
       </div>
     )
@@ -565,20 +565,20 @@ export default function EditCampaignPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow">
+      <div className="min-h-screen bg-muted">
+        <header className="bg-background shadow">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-6">
               <div className="flex items-center space-x-4">
                 <Button
                   variant="ghost"
                   onClick={() => router.push('/dashboard/campaigns')}
-                  className="text-gray-600 hover:text-gray-900"
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Campaigns
                 </Button>
-                <h1 className="text-2xl font-bold text-gray-900">Edit Campaign</h1>
+                <h1 className="text-2xl font-bold text-foreground">Edit Campaign</h1>
               </div>
               <UserProfile variant="compact" />
             </div>
@@ -613,21 +613,21 @@ export default function EditCampaignPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white shadow">
+      <header className="bg-background shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
                 onClick={() => router.push('/dashboard/campaigns')}
-                className="text-gray-600 hover:text-gray-900"
+                className="text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Campaigns
               </Button>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-foreground">
                 Edit Campaign: {campaign?.name}
               </h1>
             </div>
@@ -654,7 +654,7 @@ export default function EditCampaignPage() {
                         flex items-center justify-center w-10 h-10 rounded-full border-2 
                         ${isActive 
                           ? 'border-blue-600 bg-blue-600 text-white' 
-                          : 'border-gray-300 bg-white text-gray-400'
+                          : 'border-input bg-background text-gray-400'
                         }
                       `}>
                         {isCompleted ? (
@@ -664,10 +664,10 @@ export default function EditCampaignPage() {
                         )}
                       </div>
                       <div className="ml-3">
-                        <p className={`text-sm font-medium ${isActive ? 'text-gray-900' : 'text-gray-500'}`}>
+                        <p className={`text-sm font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
                           {step.title}
                         </p>
-                        <p className={`text-xs ${isActive ? 'text-gray-600' : 'text-gray-400'}`}>
+                        <p className={`text-xs ${isActive ? 'text-muted-foreground' : 'text-gray-400'}`}>
                           {step.description}
                         </p>
                       </div>

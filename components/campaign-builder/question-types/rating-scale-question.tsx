@@ -141,7 +141,7 @@ export function RatingScaleQuestion({
           key={i}
           className={cn(
             'flex flex-col items-center space-y-2 p-2 rounded-lg transition-all cursor-pointer',
-            interactive && 'hover:bg-gray-100',
+            interactive && 'hover:bg-accent',
             isSelected && 'bg-blue-50 border-2 border-blue-300',
             !isSelected && 'border-2 border-transparent'
           )}
@@ -170,14 +170,14 @@ export function RatingScaleQuestion({
             {scaleType === 'custom' && (
               <div className={cn(
                 'w-6 h-6 rounded-full border-2',
-                (isSelected || isHovered) ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+                (isSelected || isHovered) ? 'bg-blue-600 border-blue-600' : 'border-input'
               )} />
             )}
           </div>
           
           {/* Number Label */}
           {showNumbers && scaleType !== 'numbers' && (
-            <span className="text-xs text-gray-500">{i}</span>
+            <span className="text-xs text-muted-foreground">{i}</span>
           )}
         </div>
       )
@@ -240,13 +240,13 @@ export function RatingScaleQuestion({
               {required && <span className="text-red-500 ml-1">*</span>}
             </h3>
             {helpText && (
-              <p className="text-sm text-gray-600 mb-4">{helpText}</p>
+              <p className="text-sm text-muted-foreground mb-4">{helpText}</p>
             )}
           </div>
 
           {/* Scale Labels */}
           {showLabels && (
-            <div className="flex justify-between text-sm text-gray-600">
+            <div className="flex justify-between text-sm text-muted-foreground">
               <span>{minLabel}</span>
               {centerLabel && maxValue - minValue >= 4 && (
                 <span>{centerLabel}</span>
@@ -283,7 +283,7 @@ export function RatingScaleQuestion({
       <div className="space-y-6">
         {/* Question Content */}
         <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
+          <Label className="text-sm font-medium text-foreground mb-2 block">
             Question Text {required && <span className="text-red-500">*</span>}
           </Label>
           <InlineEditableText
@@ -291,7 +291,7 @@ export function RatingScaleQuestion({
             onSave={handleContentChange}
             variant="body"
             placeholder="Enter your question text..."
-            className="min-h-[60px] p-3 border border-gray-200 rounded-lg w-full"
+            className="min-h-[60px] p-3 border border-border rounded-lg w-full"
             showEditIcon={false}
             showSaveStatus={true}
             multiline={true}
@@ -304,7 +304,7 @@ export function RatingScaleQuestion({
         {/* Scale Type and Range */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+            <Label className="text-sm font-medium text-foreground mb-2 block">
               Scale Type
             </Label>
             <Select
@@ -365,7 +365,7 @@ export function RatingScaleQuestion({
           </div>
 
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+            <Label className="text-sm font-medium text-foreground mb-2 block">
               Scale Preset
             </Label>
             <Select
@@ -399,7 +399,7 @@ export function RatingScaleQuestion({
         {/* Custom Range */}
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+            <Label className="text-sm font-medium text-foreground mb-2 block">
               Min Value
             </Label>
             <Input
@@ -417,7 +417,7 @@ export function RatingScaleQuestion({
             />
           </div>
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+            <Label className="text-sm font-medium text-foreground mb-2 block">
               Max Value
             </Label>
             <Input
@@ -435,7 +435,7 @@ export function RatingScaleQuestion({
             />
           </div>
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+            <Label className="text-sm font-medium text-foreground mb-2 block">
               Step
             </Label>
             <Input
@@ -469,7 +469,7 @@ export function RatingScaleQuestion({
           {showLabels && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                <Label className="text-sm font-medium text-foreground mb-2 block">
                   Min Label
                 </Label>
                 <InlineEditableText
@@ -477,14 +477,14 @@ export function RatingScaleQuestion({
                   onSave={handleMinLabelChange}
                   variant="body"
                   placeholder="e.g., Poor, Disagree"
-                  className="p-3 border border-gray-200 rounded-lg w-full"
+                  className="p-3 border border-border rounded-lg w-full"
                   showEditIcon={false}
                   showSaveStatus={true}
                   maxLength={50}
                 />
               </div>
               <div>
-                <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                <Label className="text-sm font-medium text-foreground mb-2 block">
                   Max Label
                 </Label>
                 <InlineEditableText
@@ -492,7 +492,7 @@ export function RatingScaleQuestion({
                   onSave={handleMaxLabelChange}
                   variant="body"
                   placeholder="e.g., Excellent, Agree"
-                  className="p-3 border border-gray-200 rounded-lg w-full"
+                  className="p-3 border border-border rounded-lg w-full"
                   showEditIcon={false}
                   showSaveStatus={true}
                   maxLength={50}
@@ -503,7 +503,7 @@ export function RatingScaleQuestion({
 
           {showLabels && maxValue - minValue >= 4 && (
             <div>
-              <Label className="text-sm font-medium text-gray-700 mb-2 block">
+              <Label className="text-sm font-medium text-foreground mb-2 block">
                 Center Label (Optional)
               </Label>
               <InlineEditableText
@@ -511,7 +511,7 @@ export function RatingScaleQuestion({
                 onSave={handleCenterLabelChange}
                 variant="body"
                 placeholder="e.g., Neutral, Okay"
-                className="p-3 border border-gray-200 rounded-lg w-full"
+                className="p-3 border border-border rounded-lg w-full"
                 showEditIcon={false}
                 showSaveStatus={true}
                 maxLength={50}
@@ -549,7 +549,7 @@ export function RatingScaleQuestion({
           )}
 
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+            <Label className="text-sm font-medium text-foreground mb-2 block">
               Default Value (Optional)
             </Label>
             <Input
@@ -569,7 +569,7 @@ export function RatingScaleQuestion({
 
         {/* Help Text */}
         <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
+          <Label className="text-sm font-medium text-foreground mb-2 block">
             Help Text (Optional)
           </Label>
           <InlineEditableText
@@ -577,7 +577,7 @@ export function RatingScaleQuestion({
             onSave={handleHelpTextChange}
             variant="body"
             placeholder="Add helpful instructions for users..."
-            className="p-3 border border-gray-200 rounded-lg w-full text-gray-600"
+            className="p-3 border border-border rounded-lg w-full text-muted-foreground"
             showEditIcon={false}
             showSaveStatus={true}
             maxLength={200}
@@ -587,10 +587,10 @@ export function RatingScaleQuestion({
 
         {/* Preview Section */}
         <div className="border-t pt-4">
-          <Label className="text-sm font-medium text-gray-700 mb-3 block">
+          <Label className="text-sm font-medium text-foreground mb-3 block">
             Preview
           </Label>
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-muted rounded-lg p-4">
             <RatingScaleQuestion
               section={section}
               isPreview={true}

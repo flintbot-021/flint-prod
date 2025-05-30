@@ -28,11 +28,11 @@ export interface InlineEditableTextProps extends Omit<InlineEditOptions, 'onSave
 }
 
 const variantStyles = {
-  default: 'text-sm text-gray-900',
-  heading: 'text-xl font-semibold text-gray-900',
-  subheading: 'text-lg font-medium text-gray-900', 
-  body: 'text-sm text-gray-700',
-  caption: 'text-xs text-gray-500'
+  default: 'text-sm text-foreground',
+  heading: 'text-xl font-semibold text-foreground',
+  subheading: 'text-lg font-medium text-foreground', 
+  body: 'text-sm text-foreground',
+  caption: 'text-xs text-muted-foreground'
 }
 
 const sizeStyles = {
@@ -179,7 +179,7 @@ export const InlineEditableText = forwardRef<
         sizeStyles[size],
         truncate && 'truncate',
         isEmpty && 'text-gray-400 italic',
-        'hover:bg-gray-50 rounded px-2 py-1 -mx-2 -my-1',
+        'hover:bg-muted rounded px-2 py-1 -mx-2 -my-1',
         'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1',
         className
       )}
