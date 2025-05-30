@@ -3,6 +3,9 @@
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { InfoSection } from './info-section'
 import { OutputSection } from './output-section'
+import { HeroSection } from './hero-section'
+import { BasicSection } from './basic-section'
+import { AILogicSection } from '../logic-types/ai-logic-section'
 import { cn } from '@/lib/utils'
 import { AlertCircle, FileText, Image as ImageIcon, Type } from 'lucide-react'
 
@@ -21,6 +24,41 @@ export function ContentComponentFactory({
 }: ContentComponentFactoryProps) {
   // Route to appropriate content component based on section type
   switch (section.type) {
+    case 'content-hero':
+      return (
+        <HeroSection
+          settings={section.settings as any}
+          isPreview={isPreview}
+          isEditing={!isPreview}
+          onChange={(newSettings) => onUpdate({ settings: newSettings })}
+          className={className}
+        />
+      )
+
+    case 'content-basic':
+      return (
+        <BasicSection
+          settings={section.settings as any}
+          isPreview={isPreview}
+          isEditing={!isPreview}
+          onChange={(newSettings) => onUpdate({ settings: newSettings })}
+          className={className}
+        />
+      )
+
+    // Logic section
+    case 'logic-ai':
+      return (
+        <AILogicSection
+          settings={section.settings as any}
+          isPreview={isPreview}
+          isEditing={!isPreview}
+          onChange={(newSettings) => onUpdate({ settings: newSettings })}
+          className={className}
+        />
+      )
+
+    // Legacy content types
     case 'info':
     case 'text-block':
     case 'image-block':

@@ -5,7 +5,7 @@ export interface SectionType {
   name: string
   description: string
   icon: string
-  category: 'input' | 'content' | 'logic' | 'output'
+  category: 'input' | 'content' | 'capture' | 'logic' | 'output'
   color: string
   defaultSettings?: Record<string, unknown>
 }
@@ -30,7 +30,25 @@ export interface DragItem {
 
 // Available section types for the drag-and-drop menu
 export const SECTION_TYPES: SectionType[] = [
-  // Input Sections
+  // Input & Questions Sections
+  {
+    id: 'question-text',
+    name: 'Text Question',
+    description: 'Short text or long text responses',
+    icon: 'Type',
+    category: 'input',
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    defaultSettings: {
+      question: 'Type your question here',
+      subheading: '',
+      label: '',
+      placeholder: 'Type your answer here...',
+      maxLength: 500,
+      required: true,
+      inputType: 'text',
+      buttonText: 'Next'
+    }
+  },
   {
     id: 'question-multiple-choice',
     name: 'Multiple Choice',
@@ -39,74 +57,76 @@ export const SECTION_TYPES: SectionType[] = [
     category: 'input',
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     defaultSettings: {
-      question: 'What is your preference?',
-      options: ['Option 1', 'Option 2', 'Option 3'],
+      question: 'Type your question here',
+      subheading: '',
+      options: ['Option goes here...', 'Option goes here...', 'Option goes here...'],
       allowMultiple: false,
-      required: true
+      required: true,
+      buttonText: 'Next'
     }
   },
   {
-    id: 'question-text',
-    name: 'Text Input',
-    description: 'Short text or long text responses',
-    icon: 'Type',
+    id: 'question-slider',
+    name: 'Number Slider',
+    description: 'Numeric input with slider interface',
+    icon: 'Sliders',
     category: 'input',
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     defaultSettings: {
-      question: 'Please provide your answer',
-      placeholder: 'Type your answer here...',
-      maxLength: 500,
+      question: 'Type your question here',
+      subheading: '',
+      minValue: 0,
+      maxValue: 100,
+      defaultValue: 50,
+      step: 1,
+      showValue: true,
       required: true,
-      inputType: 'text'
+      buttonText: 'Next'
     }
   },
+
+  // Content Sections
   {
-    id: 'question-rating',
-    name: 'Rating Scale',
-    description: 'Star ratings or numeric scales',
-    icon: 'Star',
-    category: 'input',
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    id: 'content-hero',
+    name: 'Hero Section',
+    description: 'Full-width hero with title, subtitle, and image',
+    icon: 'Image',
+    category: 'content',
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
     defaultSettings: {
-      question: 'How would you rate this?',
-      scale: 5,
-      scaleType: 'stars',
-      required: true
+      title: 'Your Hero Title',
+      subtitle: 'Add your compelling subtitle here',
+      backgroundImage: '',
+      textAlignment: 'center',
+      buttonText: 'Get Started',
+      showButton: true
     }
   },
   {
-    id: 'capture-email',
-    name: 'Email Capture',
-    description: 'Collect email addresses',
-    icon: 'Mail',
-    category: 'input',
-    color: 'bg-green-100 text-green-800 border-green-200',
+    id: 'content-basic',
+    name: 'Basic Section',
+    description: 'Simple content block with text and optional image',
+    icon: 'FileText',
+    category: 'content',
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
     defaultSettings: {
-      label: 'Email Address',
-      placeholder: 'Enter your email...',
-      required: true,
-      validation: 'email'
+      title: 'Section Title',
+      content: 'Add your content here...',
+      image: '',
+      imagePosition: 'top',
+      alignment: 'left',
+      buttonText: 'Next',
+      showButton: true
     }
   },
+
+  // Capture Section
   {
-    id: 'capture-contact',
-    name: 'Contact Form',
-    description: 'Full contact information collection',
-    icon: 'UserPlus',
-    category: 'input',
-    color: 'bg-green-100 text-green-800 border-green-200',
-    defaultSettings: {
-      fields: ['name', 'email', 'phone'],
-      requiredFields: ['name', 'email'],
-      title: 'Get in Touch'
-    }
-  },
-  {
-    id: 'capture',
-    name: 'Lead Capture',
-    description: 'Flexible lead data collection form',
+    id: 'capture-details',
+    name: 'Capture Details',
+    description: 'Lead capture form with customizable fields',
     icon: 'Users',
-    category: 'input',
+    category: 'capture',
     color: 'bg-green-100 text-green-800 border-green-200',
     defaultSettings: {
       title: 'Get Your Results',
@@ -137,87 +157,39 @@ export const SECTION_TYPES: SectionType[] = [
     }
   },
 
-  // Content Sections
+  // Logic Section
   {
-    id: 'info-text',
-    name: 'Text Block',
-    description: 'Rich text content and paragraphs',
-    icon: 'FileText',
-    category: 'content',
-    color: 'bg-purple-100 text-purple-800 border-purple-200',
-    defaultSettings: {
-      title: 'Information',
-      content: 'Add your content here...',
-      alignment: 'left'
-    }
-  },
-  {
-    id: 'info-image',
-    name: 'Image',
-    description: 'Images with optional captions',
-    icon: 'Image',
-    category: 'content',
-    color: 'bg-purple-100 text-purple-800 border-purple-200',
-    defaultSettings: {
-      src: '',
-      alt: '',
-      caption: '',
-      alignment: 'center'
-    }
-  },
-  {
-    id: 'info-video',
-    name: 'Video',
-    description: 'Embedded videos and media',
-    icon: 'Play',
-    category: 'content',
-    color: 'bg-purple-100 text-purple-800 border-purple-200',
-    defaultSettings: {
-      src: '',
-      title: '',
-      autoplay: false,
-      controls: true
-    }
-  },
-
-  // Logic Sections
-  {
-    id: 'logic-conditional',
-    name: 'Conditional Logic',
-    description: 'Show/hide content based on answers',
-    icon: 'GitBranch',
+    id: 'logic-ai',
+    name: 'AI Logic',
+    description: 'AI-powered logic using OpenAI integration',
+    icon: 'Brain',
     category: 'logic',
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     defaultSettings: {
-      conditions: [],
-      actions: []
-    }
-  },
-  {
-    id: 'logic-calculator',
-    name: 'Score Calculator',
-    description: 'Calculate scores based on responses',
-    icon: 'Calculator',
-    category: 'logic',
-    color: 'bg-orange-100 text-orange-800 border-orange-200',
-    defaultSettings: {
-      scoring: {},
-      showScore: true
+      prompt: 'You are an expert...',
+      systemInstructions: '',
+      outputVariables: [],
+      model: 'gpt-4',
+      temperature: 0.7,
+      maxTokens: 500,
+      testInputs: {}
     }
   },
 
   // Output Sections
   {
     id: 'output-results',
-    name: 'Results Page',
-    description: 'Display personalized results',
+    name: 'Results',
+    description: 'Display personalized AI-generated results',
     icon: 'Target',
     category: 'output',
     color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     defaultSettings: {
       title: 'Your Results',
-      content: 'Based on your answers...',
-      showScore: false
+      content: 'Hey @name, based on your input...',
+      image: '',
+      showVariables: true,
+      alignment: 'center'
     }
   },
   {
@@ -231,20 +203,22 @@ export const SECTION_TYPES: SectionType[] = [
       title: 'Download Your Resource',
       description: 'Click below to download',
       fileUrl: '',
-      fileName: 'resource.pdf'
+      fileName: 'resource.pdf',
+      buttonText: 'Download Now'
     }
   },
   {
     id: 'output-redirect',
     name: 'Redirect',
-    description: 'Redirect to external URL',
+    description: 'Redirect to external URL after completion',
     icon: 'ExternalLink',
     category: 'output',
     color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     defaultSettings: {
       url: '',
-      delay: 0,
-      message: 'Redirecting...'
+      delay: 3,
+      message: 'Redirecting you now...',
+      showCountdown: true
     }
   }
 ]
@@ -261,6 +235,7 @@ export const getSectionTypesByCategory = (category: SectionType['category']): Se
 export const SECTION_CATEGORIES = [
   { id: 'input', name: 'Input & Questions', icon: 'HelpCircle' },
   { id: 'content', name: 'Content', icon: 'FileText' },
-  { id: 'logic', name: 'Logic & Flow', icon: 'GitBranch' },
-  { id: 'output', name: 'Output & Results', icon: 'Target' }
+  { id: 'capture', name: 'Capture', icon: 'Users' },
+  { id: 'logic', name: 'Logic', icon: 'Brain' },
+  { id: 'output', name: 'Output', icon: 'Target' }
 ] as const 
