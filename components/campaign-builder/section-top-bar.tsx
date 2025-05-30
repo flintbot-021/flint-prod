@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { InlineEditableText } from '@/components/ui/inline-editable-text'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
 import { 
   Select,
   SelectContent,
@@ -11,21 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { CampaignSection, SECTION_TYPES, getSectionTypeById } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
 import * as Icons from 'lucide-react'
 import {
   Eye,
   EyeOff,
-  MoreVertical,
   Trash2,
-  Settings,
   GripVertical,
   ChevronDown,
   ChevronUp
@@ -88,10 +82,6 @@ export function SectionTopBar({
     if (name.length > 50) {
       return 'Name must be 50 characters or less'
     }
-    // Check for valid variable name (alphanumeric + underscores)
-    if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(name.trim())) {
-      return 'Name must be a valid variable name (letters, numbers, underscores)'
-    }
     return null
   }
 
@@ -101,12 +91,12 @@ export function SectionTopBar({
       'hover:bg-muted transition-colors group',
       className
     )}>
-      {/* Left Side - Drag Handle, Icon, Name, Type */}
+      {/* Left Side - Drag Handle, Icon, Name, Order Badge, Type */}
       <div className="flex items-center space-x-3 flex-1 min-w-0">
         {/* Drag Handle */}
         <button
           {...dragHandleProps}
-          className="text-gray-400 hover:text-muted-foreground cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+          className="text-white hover:text-gray-200 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -127,7 +117,7 @@ export function SectionTopBar({
             value={section.title}
             onSave={onNameChange}
             variant="body"
-            placeholder="Enter section name..."
+            placeholder="Section name (edit me)"
             className="font-medium text-foreground"
             showEditIcon={false}
             showSaveStatus={true}
@@ -136,6 +126,11 @@ export function SectionTopBar({
             required={true}
           />
         </div>
+
+        {/* Section Order Badge */}
+        <Badge variant="outline" className="text-xs font-mono">
+          #{section.order}
+        </Badge>
 
         {/* Section Type Dropdown */}
         <Select
@@ -187,31 +182,19 @@ export function SectionTopBar({
       </div>
 
       {/* Right Side - Controls */}
-      <div className="flex items-center space-x-1">
-        {/* Section Order Badge */}
-        <Badge variant="outline" className="text-xs font-mono">
-          #{section.order}
-        </Badge>
-
+      <div className="flex items-center space-x-3 ml-4">
         {/* Preview Toggle */}
-        <Button
-          variant={isPreview ? "default" : "ghost"}
-          size="sm"
-          onClick={onPreviewToggle}
-          className="h-7 px-2 text-xs"
-        >
-          {isPreview ? (
-            <>
-              <Eye className="h-3 w-3 mr-1" />
-              Preview
-            </>
-          ) : (
-            <>
-              <Settings className="h-3 w-3 mr-1" />
-              Edit
-            </>
-          )}
-        </Button>
+        <div className="flex items-center space-x-2">
+          <Label htmlFor={`preview-${section.id}`} className="text-xs text-muted-foreground">
+            Preview
+          </Label>
+          <Switch
+            id={`preview-${section.id}`}
+            checked={isPreview}
+            onCheckedChange={onPreviewToggle}
+            className="scale-75"
+          />
+        </div>
 
         {/* Visibility Toggle */}
         <Button
@@ -244,46 +227,15 @@ export function SectionTopBar({
           )}
         </Button>
 
-        {/* More Actions Menu */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 text-gray-400 hover:text-muted-foreground"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={onConfigure}>
-              <Settings className="h-4 w-4 mr-2" />
-              Configure Section
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem onClick={onVisibilityToggle}>
-              {section.isVisible ? (
-                <>
-                  <EyeOff className="h-4 w-4 mr-2" />
-                  Hide Section
-                </>
-              ) : (
-                <>
-                  <Eye className="h-4 w-4 mr-2" />
-                  Show Section
-                </>
-              )}
-            </DropdownMenuItem>
-            
-            <DropdownMenuItem 
-              onClick={onDelete}
-              className="text-red-600 focus:text-red-600"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete Section
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Delete Button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onDelete}
+          className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   )
