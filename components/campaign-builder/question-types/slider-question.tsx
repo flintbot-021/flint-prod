@@ -157,9 +157,43 @@ export function SliderQuestion({
             step={settings.step}
             className="w-full"
           />
-          <div className="flex justify-between text-sm text-gray-400">
-            <span>{settings.minValue}</span>
-            <span>{settings.maxValue}</span>
+          <div className="flex justify-between items-center text-sm text-gray-400">
+            <InlineEditableText
+              value={settings.minValue.toString()}
+              onSave={(value) => onChange?.({ ...settings, minValue: parseInt(value) || 0 })}
+              variant="caption"
+              placeholder="0"
+              className="text-sm text-gray-400 hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
+              inputClassName="!text-sm !text-gray-400 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+              showEditIcon={false}
+              showSaveStatus={false}
+              autoSave={false}
+            />
+            <div className="text-center">
+              <div className="text-xs text-gray-500 mb-1">increments</div>
+              <InlineEditableText
+                value={settings.step.toString()}
+                onSave={(value) => onChange?.({ ...settings, step: parseInt(value) || 1 })}
+                variant="caption"
+                placeholder="1"
+                className="text-sm text-gray-400 text-center hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
+                inputClassName="!text-sm !text-gray-400 !text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+                showEditIcon={false}
+                showSaveStatus={false}
+                autoSave={false}
+              />
+            </div>
+            <InlineEditableText
+              value={settings.maxValue.toString()}
+              onSave={(value) => onChange?.({ ...settings, maxValue: parseInt(value) || 100 })}
+              variant="caption"
+              placeholder="100"
+              className="text-sm text-gray-400 text-right hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
+              inputClassName="!text-sm !text-gray-400 !text-right !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+              showEditIcon={false}
+              showSaveStatus={false}
+              autoSave={false}
+            />
           </div>
         </div>
         
@@ -170,37 +204,6 @@ export function SliderQuestion({
             </span>
           </div>
         )}
-      </div>
-
-      {/* Slider Configuration Settings - Lower priority, smaller text */}
-      <div className="pt-8 space-y-4 border-t border-gray-700">
-        <h3 className="text-sm font-medium text-gray-500">Slider Settings</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label className="text-xs text-gray-600">Min Value</Label>
-            <InlineEditableText
-              value={settings.minValue.toString()}
-              onSave={(value) => onChange?.({ ...settings, minValue: parseInt(value) || 0 })}
-              variant="caption"
-              className="text-sm text-gray-300 hover:bg-transparent"
-              inputClassName="!text-sm !text-gray-300 !border-0 !bg-transparent !shadow-none !outline-none !ring-0"
-              showEditIcon={false}
-              autoSave={false}
-            />
-          </div>
-          <div>
-            <Label className="text-xs text-gray-600">Max Value</Label>
-            <InlineEditableText
-              value={settings.maxValue.toString()}
-              onSave={(value) => onChange?.({ ...settings, maxValue: parseInt(value) || 100 })}
-              variant="caption"
-              className="text-sm text-gray-300 hover:bg-transparent"
-              inputClassName="!text-sm !text-gray-300 !border-0 !bg-transparent !shadow-none !outline-none !ring-0"
-              showEditIcon={false}
-              autoSave={false}
-            />
-          </div>
-        </div>
       </div>
     </div>
   )
