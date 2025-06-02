@@ -163,6 +163,7 @@ export function TextQuestion({
           showEditIcon={false}
           showSaveStatus={false}
           multiline={false}
+          autoSave={false}
         />
       </div>
 
@@ -177,6 +178,7 @@ export function TextQuestion({
           showEditIcon={false}
           showSaveStatus={false}
           multiline={false}
+          autoSave={false}
         />
       </div>
 
@@ -191,6 +193,7 @@ export function TextQuestion({
           showEditIcon={false}
           showSaveStatus={false}
           multiline={false}
+          autoSave={false}
         />
       </div>
 
@@ -205,6 +208,7 @@ export function TextQuestion({
           showEditIcon={false}
           showSaveStatus={false}
           multiline={false}
+          autoSave={false}
         />
       </div>
 
