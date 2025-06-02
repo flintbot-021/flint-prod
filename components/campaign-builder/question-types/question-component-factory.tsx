@@ -4,6 +4,9 @@ import { CampaignSection } from '@/lib/types/campaign-builder'
 import { TextQuestion } from './text-question'
 import { MultipleChoiceQuestion } from './multiple-choice-question'
 import { RatingScaleQuestion } from './rating-scale-question'
+import { SliderQuestion } from './slider-question'
+import { DateTimeQuestion } from './date-time-question'
+import { UploadQuestion } from './upload-question'
 import { CaptureSection } from './capture-section'
 import { cn } from '@/lib/utils'
 import { AlertCircle, FileText } from 'lucide-react'
@@ -24,7 +27,7 @@ export function QuestionComponentFactory({
 }: QuestionComponentFactoryProps) {
   // Route to appropriate question component based on section type
   switch (section.type) {
-    case 'text-input':
+    case 'question-text':
       return (
         <TextQuestion
           section={section}
@@ -34,9 +37,40 @@ export function QuestionComponentFactory({
         />
       )
     
-    case 'multiple-choice':
+    case 'question-multiple-choice':
       return (
         <MultipleChoiceQuestion
+          section={section}
+          isPreview={isPreview}
+          onUpdate={onUpdate}
+          className={className}
+        />
+      )
+
+    case 'question-slider':
+      return (
+        <SliderQuestion
+          settings={section.settings as any}
+          isPreview={isPreview}
+          isEditing={!isPreview}
+          onChange={(newSettings) => onUpdate({ settings: newSettings })}
+          className={className}
+        />
+      )
+
+    case 'question-date-time':
+      return (
+        <DateTimeQuestion
+          section={section}
+          isPreview={isPreview}
+          onUpdate={onUpdate}
+          className={className}
+        />
+      )
+
+    case 'question-upload':
+      return (
+        <UploadQuestion
           section={section}
           isPreview={isPreview}
           onUpdate={onUpdate}
@@ -54,9 +88,31 @@ export function QuestionComponentFactory({
         />
       )
 
+    case 'capture-details':
     case 'capture':
       return (
         <CaptureSection
+          section={section}
+          isPreview={isPreview}
+          onUpdate={onUpdate}
+          className={className}
+        />
+      )
+
+    // Legacy mappings for backward compatibility
+    case 'text-input':
+      return (
+        <TextQuestion
+          section={section}
+          isPreview={isPreview}
+          onUpdate={onUpdate}
+          className={className}
+        />
+      )
+    
+    case 'multiple-choice':
+      return (
+        <MultipleChoiceQuestion
           section={section}
           isPreview={isPreview}
           onUpdate={onUpdate}
@@ -191,4 +247,4 @@ export function QuestionComponentFactory({
 }
 
 // Export individual question components for direct use
-export { TextQuestion, MultipleChoiceQuestion, RatingScaleQuestion, CaptureSection } 
+export { TextQuestion, MultipleChoiceQuestion, RatingScaleQuestion, SliderQuestion, DateTimeQuestion, UploadQuestion, CaptureSection } 

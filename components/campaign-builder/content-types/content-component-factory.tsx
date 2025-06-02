@@ -3,6 +3,9 @@
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { InfoSection } from './info-section'
 import { OutputSection } from './output-section'
+import { HeroSection } from './hero-section'
+import { BasicSection } from './basic-section'
+import { AILogicSection } from '../logic-types/ai-logic-section'
 import { cn } from '@/lib/utils'
 import { AlertCircle, FileText, Image as ImageIcon, Type } from 'lucide-react'
 
@@ -21,10 +24,44 @@ export function ContentComponentFactory({
 }: ContentComponentFactoryProps) {
   // Route to appropriate content component based on section type
   switch (section.type) {
+    case 'content-hero':
+    case 'hero':
+      return (
+        <HeroSection
+          section={section}
+          isPreview={isPreview}
+          onUpdate={onUpdate}
+          className={className}
+        />
+      )
+
+    case 'content-basic':
+    case 'basic':
+      return (
+        <BasicSection
+          section={section}
+          isPreview={isPreview}
+          onUpdate={onUpdate}
+          className={className}
+        />
+      )
+
+    // Logic section
+    case 'logic-ai':
+      return (
+        <AILogicSection
+          settings={section.settings as any}
+          isPreview={isPreview}
+          isEditing={!isPreview}
+          onChange={(newSettings) => onUpdate({ settings: newSettings })}
+          className={className}
+        />
+      )
+
+    // Legacy content types
     case 'info':
     case 'text-block':
     case 'image-block':
-    case 'hero':
     case 'content':
       return (
         <InfoSection
@@ -139,11 +176,17 @@ function PlaceholderSection({
               {section.type} section
             </p>
           </div>
-          {section.settings?.content && typeof section.settings.content === 'string' && (
-            <div className="text-foreground max-w-md mx-auto">
-              {section.settings.content}
-            </div>
-          )}
+          {(() => {
+            const content = section.settings?.content;
+            if (content && typeof content === 'string') {
+              return (
+                <div className="text-foreground max-w-md mx-auto">
+                  {content}
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
       </div>
     )
