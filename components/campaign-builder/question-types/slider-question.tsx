@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { Switch } from '@/components/ui/switch'
+import { InlineEditableText } from '@/components/ui/inline-editable-text'
 
 interface SliderQuestionProps {
   settings: {
@@ -50,302 +52,155 @@ export function SliderQuestion({
     setEditingField(null)
   }
 
-  const renderEditableText = (
-    field: string,
-    value: string,
-    placeholder: string,
-    className: string = "",
-    isTextarea: boolean = false
-  ) => {
-    const isCurrentlyEditing = editingField === field && isEditing
-
-    if (isCurrentlyEditing) {
-      return isTextarea ? (
-        <textarea
-          value={value}
-          onChange={(e) => handleInlineEdit(field, e.target.value)}
-          onBlur={() => setEditingField(null)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              setEditingField(null)
-            }
-            if (e.key === 'Escape') {
-              setEditingField(null)
-            }
-          }}
-          className={cn(
-            "w-full bg-transparent border-2 border-blue-500 rounded px-2 py-1 resize-none",
-            className
-          )}
-          placeholder={placeholder}
-          autoFocus
-          rows={3}
-        />
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => handleInlineEdit(field, e.target.value)}
-          onBlur={() => setEditingField(null)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              setEditingField(null)
-            }
-            if (e.key === 'Escape') {
-              setEditingField(null)
-            }
-          }}
-          className={cn(
-            "w-full bg-transparent border-2 border-blue-500 rounded px-2 py-1",
-            className
-          )}
-          placeholder={placeholder}
-          autoFocus
-        />
-      )
-    }
-
-    return (
-      <div
-        onClick={() => isEditing && setEditingField(field)}
-        className={cn(
-          className,
-          isEditing && "cursor-text hover:bg-blue-50 rounded px-2 py-1 -mx-2 -my-1 transition-colors",
-          !value && "text-gray-400"
-        )}
-      >
-        {value || placeholder}
-      </div>
-    )
+  const handleQuestionChange = async (newQuestion: string) => {
+    onChange?.({
+      ...settings,
+      question: newQuestion
+    })
   }
 
-  const renderNumberInput = (
-    field: string,
-    value: number,
-    placeholder: string,
-    className: string = ""
-  ) => {
-    const isCurrentlyEditing = editingField === field && isEditing
-
-    if (isCurrentlyEditing) {
-      return (
-        <input
-          type="number"
-          value={value}
-          onChange={(e) => handleInlineEdit(field, parseInt(e.target.value) || 0)}
-          onBlur={() => setEditingField(null)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              setEditingField(null)
-            }
-            if (e.key === 'Escape') {
-              setEditingField(null)
-            }
-          }}
-          className={cn(
-            "w-full bg-transparent border-2 border-blue-500 rounded px-2 py-1",
-            className
-          )}
-          placeholder={placeholder}
-          autoFocus
-        />
-      )
-    }
-
-    return (
-      <div
-        onClick={() => isEditing && setEditingField(field)}
-        className={cn(
-          className,
-          isEditing && "cursor-text hover:bg-blue-50 rounded px-2 py-1 -mx-2 -my-1 transition-colors"
-        )}
-      >
-        {value}
-      </div>
-    )
+  const handleSubheadingChange = async (newSubheading: string) => {
+    onChange?.({
+      ...settings,
+      subheading: newSubheading
+    })
   }
 
   if (isPreview) {
     return (
-      <div className={cn("w-full max-w-2xl mx-auto p-8", className)}>
-        <Card className="p-8">
-          <div className="space-y-6">
-            {/* Question */}
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-gray-900">
-                {settings.question}
-              </h2>
-              {settings.subheading && (
-                <p className="text-lg text-gray-600">
-                  {settings.subheading}
-                </p>
-              )}
-            </div>
-
-            {/* Slider */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Slider
-                  value={sliderValue}
-                  onValueChange={setSliderValue}
-                  max={settings.maxValue}
-                  min={settings.minValue}
-                  step={settings.step}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-sm text-gray-500">
-                  <span>{settings.minValue}</span>
-                  <span>{settings.maxValue}</span>
-                </div>
-              </div>
-              
-              {settings.showValue && (
-                <div className="text-center">
-                  <span className="text-2xl font-bold text-blue-600">
-                    {sliderValue[0]}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Next Button */}
-            <div className="pt-4">
-              <Button 
-                onClick={onNext}
-                className="w-full"
-                disabled={settings.required && sliderValue[0] === undefined}
-              >
-                {settings.buttonText}
-              </Button>
-            </div>
+      <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
+        <div className="space-y-6">
+          {/* Question */}
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl font-bold text-white">
+              {settings.question || 'Your question text here...'}
+            </h1>
+            {settings.subheading && (
+              <p className="text-xl text-gray-300">
+                {settings.subheading}
+              </p>
+            )}
           </div>
-        </Card>
+
+          {/* Slider */}
+          <div className="space-y-4 pt-6">
+            <div className="space-y-2">
+              <Slider
+                value={sliderValue}
+                onValueChange={setSliderValue}
+                max={settings.maxValue}
+                min={settings.minValue}
+                step={settings.step}
+                className="w-full"
+              />
+              <div className="flex justify-between text-sm text-gray-400">
+                <span>{settings.minValue}</span>
+                <span>{settings.maxValue}</span>
+              </div>
+            </div>
+            
+            {settings.showValue && (
+              <div className="text-center">
+                <span className="text-2xl font-bold text-blue-400">
+                  {sliderValue[0]}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className={cn("w-full space-y-6", className)}>
-      {/* Question Settings */}
-      <div className="space-y-4">
-        {/* Main Question */}
-        <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
-            Question
-          </Label>
-          {renderEditableText(
-            'question',
-            settings.question,
-            'Type your question here',
-            'text-xl font-semibold text-gray-900'
-          )}
-        </div>
-
-        {/* Subheading */}
-        <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
-            Subheading (Optional)
-          </Label>
-          {renderEditableText(
-            'subheading',
-            settings.subheading || '',
-            'Add a subheading...',
-            'text-base text-gray-600'
-          )}
-        </div>
+    <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
+      {/* Main Question - Large, center-aligned */}
+      <div className="text-center">
+        <InlineEditableText
+          value={settings.question}
+          onSave={handleQuestionChange}
+          variant="body"
+          placeholder="Type your question here"
+          className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
+          inputClassName="!text-4xl !font-bold !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+          showEditIcon={false}
+          showSaveStatus={false}
+          multiline={false}
+          autoSave={false}
+        />
       </div>
 
-      {/* Slider Settings */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
-            Min Value
-          </Label>
-          {renderNumberInput(
-            'minValue',
-            settings.minValue,
-            '0',
-            'text-sm text-gray-900'
-          )}
-        </div>
-
-        <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
-            Max Value
-          </Label>
-          {renderNumberInput(
-            'maxValue',
-            settings.maxValue,
-            '100',
-            'text-sm text-gray-900'
-          )}
-        </div>
-
-        <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
-            Default Value
-          </Label>
-          {renderNumberInput(
-            'defaultValue',
-            settings.defaultValue,
-            '50',
-            'text-sm text-gray-900'
-          )}
-        </div>
-
-        <div>
-          <Label className="text-sm font-medium text-gray-700 mb-2 block">
-            Step
-          </Label>
-          {renderNumberInput(
-            'step',
-            settings.step,
-            '1',
-            'text-sm text-gray-900'
-          )}
-        </div>
+      {/* Subheading */}
+      <div className="text-center">
+        <InlineEditableText
+          value={settings.subheading || ''}
+          onSave={handleSubheadingChange}
+          variant="body"
+          placeholder="Type sub heading here"
+          className="text-xl text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
+          inputClassName="!text-xl !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+          showEditIcon={false}
+          showSaveStatus={false}
+          multiline={false}
+          autoSave={false}
+        />
       </div>
 
-      {/* Preview Slider */}
-      <div className="p-4 bg-gray-50 rounded-lg">
-        <Label className="text-sm font-medium text-gray-700 mb-3 block">
-          Slider Preview
-        </Label>
-        <div className="space-y-3">
+      {/* Slider Preview */}
+      <div className="space-y-4 pt-6">
+        <div className="space-y-2">
           <Slider
-            value={[settings.defaultValue]}
+            value={sliderValue}
+            onValueChange={setSliderValue}
             max={settings.maxValue}
             min={settings.minValue}
             step={settings.step}
             className="w-full"
-            disabled
           />
-          <div className="flex justify-between text-sm text-gray-500">
+          <div className="flex justify-between text-sm text-gray-400">
             <span>{settings.minValue}</span>
             <span>{settings.maxValue}</span>
           </div>
-          {settings.showValue && (
-            <div className="text-center">
-              <span className="text-lg font-semibold text-blue-600">
-                {settings.defaultValue}
-              </span>
-            </div>
-          )}
         </div>
+        
+        {settings.showValue && (
+          <div className="text-center">
+            <span className="text-2xl font-bold text-blue-400">
+              {sliderValue[0]}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Button Text */}
-      <div>
-        <Label className="text-sm font-medium text-gray-700 mb-2 block">
-          Button Text
-        </Label>
-        {renderEditableText(
-          'buttonText',
-          settings.buttonText,
-          'Next',
-          'text-sm text-gray-900'
-        )}
+      {/* Slider Configuration Settings - Lower priority, smaller text */}
+      <div className="pt-8 space-y-4 border-t border-gray-700">
+        <h3 className="text-sm font-medium text-gray-500">Slider Settings</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-xs text-gray-600">Min Value</Label>
+            <InlineEditableText
+              value={settings.minValue.toString()}
+              onSave={(value) => onChange?.({ ...settings, minValue: parseInt(value) || 0 })}
+              variant="caption"
+              className="text-sm text-gray-300 hover:bg-transparent"
+              inputClassName="!text-sm !text-gray-300 !border-0 !bg-transparent !shadow-none !outline-none !ring-0"
+              showEditIcon={false}
+              autoSave={false}
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-600">Max Value</Label>
+            <InlineEditableText
+              value={settings.maxValue.toString()}
+              onSave={(value) => onChange?.({ ...settings, maxValue: parseInt(value) || 100 })}
+              variant="caption"
+              className="text-sm text-gray-300 hover:bg-transparent"
+              inputClassName="!text-sm !text-gray-300 !border-0 !bg-transparent !shadow-none !outline-none !ring-0"
+              showEditIcon={false}
+              autoSave={false}
+            />
+          </div>
+        </div>
       </div>
     </div>
   )

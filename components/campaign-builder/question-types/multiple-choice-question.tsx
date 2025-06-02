@@ -91,7 +91,8 @@ function SortableEditOption({
           onSave={(newText) => onUpdate(option.id, newText)}
           variant="body"
           placeholder="Option goes here..."
-          className="w-full text-gray-700"
+          className="w-full text-base text-gray-700 hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
+          inputClassName="!text-base !text-gray-700 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
           showEditIcon={false}
           showSaveStatus={false}
           maxLength={100}
@@ -219,24 +220,24 @@ export function MultipleChoiceQuestion({
   if (isPreview) {
     // Preview Mode - Show how the question appears to users
     return (
-      <div className={cn('p-6 max-w-2xl mx-auto', className)}>
+      <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
         <div className="space-y-6">
           {/* Question Text */}
           <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-gray-900">
+            <h1 className="text-4xl font-bold text-white">
               {content || 'Your question text here...'}
               {required && <span className="text-red-500 ml-1">*</span>}
             </h1>
             
             {subheading && (
-              <p className="text-xl text-gray-600">
+              <p className="text-xl text-gray-300">
                 {subheading}
               </p>
             )}
           </div>
 
           {/* Options */}
-          <div className="space-y-3">
+          <div className="space-y-3 pt-6">
             {sortedOptions.map((option) => (
               <label 
                 key={option.id} 
@@ -247,7 +248,7 @@ export function MultipleChoiceQuestion({
                 ) : (
                   <input type="checkbox" className="h-4 w-4" />
                 )}
-                <span className="flex-1 text-lg">{option.text}</span>
+                <span className="flex-1 text-lg text-white">{option.text}</span>
               </label>
             ))}
           </div>
@@ -258,7 +259,7 @@ export function MultipleChoiceQuestion({
 
   // Edit Mode - Direct inline editing
   return (
-    <div className={cn('p-6 max-w-2xl mx-auto space-y-6', className)}>
+    <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
       {/* Main Question - Large, center-aligned */}
       <div className="text-center">
         <InlineEditableText
@@ -266,7 +267,8 @@ export function MultipleChoiceQuestion({
           onSave={handleContentChange}
           variant="body"
           placeholder="Type your question here"
-          className="text-4xl font-bold text-gray-400 text-center block w-full"
+          className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
+          inputClassName="!text-4xl !font-bold !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
           showEditIcon={false}
           showSaveStatus={false}
           multiline={false}
@@ -281,7 +283,8 @@ export function MultipleChoiceQuestion({
           onSave={handleSubheadingChange}
           variant="body"
           placeholder="Type sub heading here"
-          className="text-xl text-gray-400 text-center block w-full"
+          className="text-xl text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
+          inputClassName="!text-xl !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
           showEditIcon={false}
           showSaveStatus={false}
           multiline={false}
