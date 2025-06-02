@@ -81,67 +81,40 @@ export function TextQuestion({
   if (isPreview) {
     // Preview Mode - Show how the question appears to users
     return (
-      <div className={cn('p-6 max-w-2xl mx-auto', className)}>
+      <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
         <div className="space-y-6">
           {/* Main Question Text */}
           <div className="text-center">
-            <InlineEditableText
-              value={settings.content || ''}
-              onSave={handleContentChange}
-              variant="heading"
-              placeholder="Click to edit your question..."
-              className="text-2xl font-semibold text-center block w-full"
-              showEditIcon={false}
-              autoSave={false}
-            />
+            <h1 className="text-4xl font-bold text-white">
+              {content || 'Your question text here...'}
+            </h1>
           </div>
 
           {/* Optional Subheading */}
-          <div className="text-center">
-            <InlineEditableText
-              value={settings.subheading || ''}
-              onSave={handleSubheadingChange}
-              variant="body"
-              placeholder="Add a subheading (optional)..."
-              className="text-gray-600 text-center block w-full"
-              showEditIcon={false}
-              autoSave={false}
-            />
-          </div>
+          {subheading && (
+            <div className="text-center">
+              <p className="text-xl text-gray-300">
+                {subheading}
+              </p>
+            </div>
+          )}
+
+          {/* Label */}
+          {label && (
+            <div className="pt-6">
+              <label className="text-sm font-medium text-gray-300 block">
+                {label}
+              </label>
+            </div>
+          )}
 
           {/* Input Field */}
-          <div className="max-w-md mx-auto">
+          <div>
             <input
               type="text"
-              placeholder={settings.placeholder || 'Type your answer here...'}
-              className="w-full p-4 border border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={true}
-            />
-          </div>
-
-          {/* Input Label (editable) */}
-          <div className="text-center">
-            <InlineEditableText
-              value={settings.label || ''}
-              onSave={handleLabelChange}
-              variant="caption"
-              placeholder="Add input label (optional)..."
-              className="text-sm text-gray-500 text-center block w-full"
-              showEditIcon={false}
-              autoSave={false}
-            />
-          </div>
-
-          {/* Placeholder Text (editable) */}
-          <div className="text-center">
-            <InlineEditableText
-              value={settings.placeholder || ''}
-              onSave={handlePlaceholderChange}
-              variant="caption"
-              placeholder="Edit placeholder text..."
-              className="text-xs text-gray-400 text-center block w-full"
-              showEditIcon={false}
-              autoSave={false}
+              placeholder={placeholder || 'Type your answer here...'}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={false}
             />
           </div>
         </div>
@@ -151,7 +124,7 @@ export function TextQuestion({
 
   // Edit Mode - Direct inline editing like the user's image
   return (
-    <div className={cn('p-6 max-w-2xl mx-auto space-y-6', className)}>
+    <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
       {/* Main Question - Large, center-aligned */}
       <div className="text-center">
         <InlineEditableText
@@ -185,7 +158,7 @@ export function TextQuestion({
       </div>
 
       {/* Label */}
-      <div className="pt-8">
+      <div className="pt-6">
         <InlineEditableText
           value={label}
           onSave={handleLabelChange}

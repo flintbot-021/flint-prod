@@ -15,6 +15,7 @@ interface SectionBottomBarProps {
   onButtonLabelChange?: (label: string) => Promise<void>
   className?: string
   showButtonPreview?: boolean
+  isPreview?: boolean
 }
 
 export function SectionBottomBar({
@@ -25,7 +26,8 @@ export function SectionBottomBar({
   onRequiredChange,
   onButtonLabelChange,
   className,
-  showButtonPreview = true
+  showButtonPreview = true,
+  isPreview = false
 }: SectionBottomBarProps) {
   const sectionType = getSectionTypeById(section.type)
   
@@ -49,6 +51,35 @@ export function SectionBottomBar({
     return null
   }
 
+  // Preview Mode - Show what end users see
+  if (isPreview) {
+    return (
+      <div className={cn(
+        'flex items-center justify-between p-5 bg-background border-t border-border',
+        className
+      )}>
+        {/* Left Side - Required Text */}
+        <div className="flex items-center">
+          {isQuestionType && isRequired && (
+            <span className="text-sm text-red-400 font-medium">
+              This is required
+            </span>
+          )}
+        </div>
+
+        {/* Right Side - Just the Button */}
+        {showButtonPreview && (
+          <div className="flex items-center">
+            <button className="font-medium text-white px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
+              {buttonLabel}
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Build Mode - Show editing controls
   return (
     <div className={cn(
       'flex items-center justify-between p-5 bg-background border-t border-border',

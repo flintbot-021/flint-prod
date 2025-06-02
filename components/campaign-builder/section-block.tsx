@@ -412,6 +412,7 @@ export function SectionBlock({
           onRequiredChange={isQuestionType ? handleRequiredChange : undefined}
           onButtonLabelChange={handleButtonLabelChange}
           showButtonPreview={true}
+          isPreview={isPreview}
         />
       )}
 
