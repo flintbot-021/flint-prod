@@ -38,6 +38,20 @@ export function SectionBottomBar({
   const isQuestionType = sectionType?.category === 'input' || 
     ['multiple-choice', 'text-input', 'rating-scale', 'email-capture', 'contact-form'].includes(section.type)
   
+  // Check if this is a capture section
+  const isCaptureSection = section.type === 'capture-details'
+  
+  // Debug logging to check section type detection
+  if (section.type === 'capture-details' || section.title?.includes('Capture')) {
+    console.log('Capture section debug:', {
+      sectionType: section.type,
+      sectionTitle: section.title,
+      isCaptureSection,
+      captureSettings: section.settings,
+      captureButtonText: section.settings?.submitButtonText
+    })
+  }
+  
   // Check if this is a Hero section
   const isHeroSection = section.type === 'content-hero' || section.type === 'hero'
   
@@ -54,6 +68,10 @@ export function SectionBottomBar({
   // Get Basic section settings
   const basicSettings = isBasicSection ? section.settings as any : null
   const textAlignment = basicSettings?.textAlignment || 'center'
+
+  // Get Capture section settings
+  const captureSettings = isCaptureSection ? section.settings as any : null
+  const captureButtonText = captureSettings?.submitButtonText || 'Get my results'
 
   // Handle Hero settings updates
   const updateHeroSettings = async (newSettings: Record<string, unknown>) => {
@@ -79,6 +97,18 @@ export function SectionBottomBar({
     }
   }
 
+  // Handle Capture section settings updates
+  const updateCaptureSettings = async (newSettings: Record<string, unknown>) => {
+    if (onSectionUpdate) {
+      await onSectionUpdate({
+        settings: {
+          ...section.settings,
+          ...newSettings
+        }
+      })
+    }
+  }
+
   // Validate button label
   const validateButtonLabel = (label: string): string | null => {
     if (!label.trim()) {
@@ -91,7 +121,7 @@ export function SectionBottomBar({
   }
 
   // Don't render if no controls are needed
-  if (!isQuestionType && !showButtonPreview && !isHeroSection && !isBasicSection) {
+  if (!isQuestionType && !showButtonPreview && !isHeroSection && !isBasicSection && !isCaptureSection) {
     return null
   }
 
@@ -117,13 +147,24 @@ export function SectionBottomBar({
         </div>
 
         {/* Right Side - Just the Button (not for Hero sections) */}
-        {showButtonPreview && !isHeroSection && (
+        {(showButtonPreview && !isHeroSection) || isCaptureSection ? (
           <div className="flex items-center">
-            <button className="font-medium text-white px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
-              {buttonLabel}
+            <button 
+              className="font-medium text-white px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+              onClick={() => {
+                if (isCaptureSection) {
+                  // Trigger capture form submission
+                  const formElement = document.getElementById(`capture-form-${section.id}`) as HTMLFormElement
+                  if (formElement) {
+                    formElement.requestSubmit()
+                  }
+                }
+              }}
+            >
+              {isCaptureSection ? captureButtonText : buttonLabel}
             </button>
           </div>
-        )}
+        ) : null}
       </div>
     )
   }
@@ -219,11 +260,24 @@ export function SectionBottomBar({
           </button>
         )}
 
-        {/* Button Controls for Question Types */}
-        {showButtonPreview && !isHeroSection && (
+        {/* Button Controls for Question Types and Capture Sections */}
+        {(showButtonPreview && !isHeroSection) || isCaptureSection ? (
           <div className="flex items-center space-x-2">
             <span className="text-xs text-gray-400 font-medium">Button:</span>
-            {onButtonLabelChange ? (
+            {isCaptureSection ? (
+              <InlineEditableText
+                value={captureButtonText}
+                onSave={(newText) => updateCaptureSettings({ submitButtonText: newText })}
+                variant="caption"
+                placeholder="Get my results"
+                className="font-medium text-white px-2 py-1 bg-gray-800 border border-gray-700 rounded"
+                showEditIcon={false}
+                showSaveStatus={true}
+                validation={validateButtonLabel}
+                maxLength={30}
+                required={true}
+              />
+            ) : onButtonLabelChange ? (
               <InlineEditableText
                 value={buttonLabel}
                 onSave={onButtonLabelChange}
@@ -242,7 +296,7 @@ export function SectionBottomBar({
               </span>
             )}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   )

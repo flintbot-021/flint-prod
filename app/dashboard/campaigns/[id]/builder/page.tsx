@@ -12,6 +12,7 @@ import { SortableCanvas } from '@/components/campaign-builder/sortable-canvas'
 import { EnhancedSectionCard } from '@/components/campaign-builder/enhanced-section-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PublishModal } from '@/components/campaign-builder/publish-modal'
+import { CaptureProvider } from '@/contexts/capture-context'
 import { toast } from '@/components/ui/use-toast'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { 
@@ -425,173 +426,175 @@ export default function CampaignBuilderPage() {
   }
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="min-h-screen bg-background">
-        {/* Campaign Builder Top Bar */}
-        <CampaignBuilderTopBar
-          campaignName={campaign.name}
-          campaignStatus={campaign.status}
-          isPublished={campaign.status === 'published'}
-          isSaving={isSaving}
-          canPublish={true}
-          onCampaignNameChange={handleCampaignNameChange}
-          onSave={handleSave}
-          onPreview={handlePreview}
-          onPublish={handlePublish}
-        />
+    <CaptureProvider campaignId={campaign.id}>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="min-h-screen bg-background">
+          {/* Campaign Builder Top Bar */}
+          <CampaignBuilderTopBar
+            campaignName={campaign.name}
+            campaignStatus={campaign.status}
+            isPublished={campaign.status === 'published'}
+            isSaving={isSaving}
+            canPublish={true}
+            onCampaignNameChange={handleCampaignNameChange}
+            onSave={handleSave}
+            onPreview={handlePreview}
+            onPublish={handlePublish}
+          />
 
-        {/* Main Content Area */}
-        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="px-4 py-6 sm:px-0">
-            {/* Error Display */}
-            {error && (
-              <Card className="mb-6 border-red-200 bg-red-50">
-                <CardContent className="pt-6">
-                  <div className="flex items-center space-x-3 text-red-800">
-                    <AlertCircle className="h-5 w-5" />
-                    <div>
-                      <p className="font-medium">Error</p>
-                      <p className="text-sm mt-1">{error}</p>
-                      <button
-                        onClick={() => setError(null)}
-                        className="mt-2 text-sm underline hover:no-underline"
-                      >
-                        Dismiss
-                      </button>
+          {/* Main Content Area */}
+          <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div className="px-4 py-6 sm:px-0">
+              {/* Error Display */}
+              {error && (
+                <Card className="mb-6 border-red-200 bg-red-50">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center space-x-3 text-red-800">
+                      <AlertCircle className="h-5 w-5" />
+                      <div>
+                        <p className="font-medium">Error</p>
+                        <p className="text-sm mt-1">{error}</p>
+                        <button
+                          onClick={() => setError(null)}
+                          className="mt-2 text-sm underline hover:no-underline"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Campaign Builder Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
-              {/* Sidebar - Sections Menu */}
-              <div className="lg:col-span-1">
-                <Card className="h-full">
-                  <SectionsMenu />
+                  </CardContent>
                 </Card>
-              </div>
+              )}
 
-              {/* Main Content - Tabbed Interface */}
-              <div className="lg:col-span-3">
-                <Card className="h-full">
-                  {/* Tab Navigation */}
-                  <div className="border-b border-border">
-                    <nav className="flex space-x-8 px-6 pt-4" aria-label="Tabs">
-                      <button
-                        onClick={() => setActiveTab('builder')}
-                        className={cn(
-                          "whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors",
-                          activeTab === 'builder'
-                            ? "border-blue-500 text-blue-600"
-                            : "border-transparent text-muted-foreground hover:text-foreground hover:border-input"
-                        )}
-                      >
-                        Builder
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('preview')}
-                        className={cn(
-                          "whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors",
-                          activeTab === 'preview'
-                            ? "border-blue-500 text-blue-600"
-                            : "border-transparent text-muted-foreground hover:text-foreground hover:border-input"
-                        )}
-                      >
-                        Preview
-                      </button>
-                    </nav>
-                  </div>
+              {/* Campaign Builder Content */}
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
+                {/* Sidebar - Sections Menu */}
+                <div className="lg:col-span-1">
+                  <Card className="h-full">
+                    <SectionsMenu />
+                  </Card>
+                </div>
 
-                  {/* Tab Content */}
-                  {activeTab === 'builder' ? (
-                    <>
-                      <CardHeader>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="text-lg">Campaign Canvas</CardTitle>
-                            <CardDescription>
-                              Drag sections from the sidebar to build your campaign. Use the enhanced controls for inline editing, preview mode, and section management.
-                            </CardDescription>
-                          </div>
-                          {sections.length > 0 && (
-                            <div className="text-sm text-muted-foreground">
-                              {sections.length} section{sections.length !== 1 ? 's' : ''} • {sections.filter(s => s.isVisible).length} visible
-                            </div>
+                {/* Main Content - Tabbed Interface */}
+                <div className="lg:col-span-3">
+                  <Card className="h-full">
+                    {/* Tab Navigation */}
+                    <div className="border-b border-border">
+                      <nav className="flex space-x-8 px-6 pt-4" aria-label="Tabs">
+                        <button
+                          onClick={() => setActiveTab('builder')}
+                          className={cn(
+                            "whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors",
+                            activeTab === 'builder'
+                              ? "border-blue-500 text-blue-600"
+                              : "border-transparent text-muted-foreground hover:text-foreground hover:border-input"
                           )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="h-[calc(100%-140px)]">
-                        <EnhancedSortableCanvas
-                          sections={sections}
-                          onSectionUpdate={handleSectionUpdate}
-                          onSectionDelete={handleSectionDelete}
-                          onSectionDuplicate={handleSectionDuplicate}
-                          onSectionConfigure={handleSectionConfigure}
-                          onSectionTypeChange={handleSectionTypeChange}
-                          className="h-full"
-                          showCollapsedSections={true}
-                        />
-                      </CardContent>
-                    </>
-                  ) : (
-                    <div className="h-[calc(100%-60px)]">
-                      <CampaignPreview
-                        campaign={campaign}
-                        sections={sections}
-                        className="h-full"
-                        enableDeviceToggle={true}
-                        enableFullscreen={true}
-                      />
+                        >
+                          Builder
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('preview')}
+                          className={cn(
+                            "whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors",
+                            activeTab === 'preview'
+                              ? "border-blue-500 text-blue-600"
+                              : "border-transparent text-muted-foreground hover:text-foreground hover:border-input"
+                          )}
+                        >
+                          Preview
+                        </button>
+                      </nav>
                     </div>
-                  )}
-                </Card>
+
+                    {/* Tab Content */}
+                    {activeTab === 'builder' ? (
+                      <>
+                        <CardHeader>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <CardTitle className="text-lg">Campaign Canvas</CardTitle>
+                              <CardDescription>
+                                Drag sections from the sidebar to build your campaign. Use the enhanced controls for inline editing, preview mode, and section management.
+                              </CardDescription>
+                            </div>
+                            {sections.length > 0 && (
+                              <div className="text-sm text-muted-foreground">
+                                {sections.length} section{sections.length !== 1 ? 's' : ''} • {sections.filter(s => s.isVisible).length} visible
+                              </div>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent className="h-[calc(100%-140px)]">
+                          <EnhancedSortableCanvas
+                            sections={sections}
+                            onSectionUpdate={handleSectionUpdate}
+                            onSectionDelete={handleSectionDelete}
+                            onSectionDuplicate={handleSectionDuplicate}
+                            onSectionConfigure={handleSectionConfigure}
+                            onSectionTypeChange={handleSectionTypeChange}
+                            className="h-full"
+                            showCollapsedSections={true}
+                          />
+                        </CardContent>
+                      </>
+                    ) : (
+                      <div className="h-[calc(100%-60px)]">
+                        <CampaignPreview
+                          campaign={campaign}
+                          sections={sections}
+                          className="h-full"
+                          enableDeviceToggle={true}
+                          enableFullscreen={true}
+                        />
+                      </div>
+                    )}
+                  </Card>
+                </div>
               </div>
             </div>
-          </div>
-        </main>
+          </main>
 
-        {/* Drag Overlay */}
-        <DragOverlay>
-          {activeDragItem && (
-            <>
-              {/* Check if it's a SectionType (has 'name' property) */}
-              {('name' in activeDragItem && 'description' in activeDragItem) ? (
-                /* Section Type being dragged */
-                <DraggableSectionType
-                  sectionType={activeDragItem as SectionType}
-                  className="shadow-lg rotate-3 opacity-90"
-                />
-              ) : (
-                /* Campaign Section being dragged */
-                <EnhancedSectionCard
-                  section={activeDragItem as CampaignSection}
-                  onUpdate={async () => {}}
-                  onDelete={() => {}}
-                  onDuplicate={() => {}}
-                  onConfigure={() => {}}
-                  className="shadow-lg rotate-2 opacity-90"
-                />
-              )}
-            </>
+          {/* Drag Overlay */}
+          <DragOverlay>
+            {activeDragItem && (
+              <>
+                {/* Check if it's a SectionType (has 'name' property) */}
+                {('name' in activeDragItem && 'description' in activeDragItem) ? (
+                  /* Section Type being dragged */
+                  <DraggableSectionType
+                    sectionType={activeDragItem as SectionType}
+                    className="shadow-lg rotate-3 opacity-90"
+                  />
+                ) : (
+                  /* Campaign Section being dragged */
+                  <EnhancedSectionCard
+                    section={activeDragItem as CampaignSection}
+                    onUpdate={async () => {}}
+                    onDelete={() => {}}
+                    onDuplicate={() => {}}
+                    onConfigure={() => {}}
+                    className="shadow-lg rotate-2 opacity-90"
+                  />
+                )}
+              </>
+            )}
+          </DragOverlay>
+
+          {showPublishModal && (
+            <PublishModal
+              campaign={campaign}
+              isOpen={showPublishModal}
+              onClose={() => setShowPublishModal(false)}
+              onPublishSuccess={handlePublishSuccess}
+            />
           )}
-        </DragOverlay>
-
-        {showPublishModal && (
-          <PublishModal
-            campaign={campaign}
-            isOpen={showPublishModal}
-            onClose={() => setShowPublishModal(false)}
-            onPublishSuccess={handlePublishSuccess}
-          />
-        )}
-      </div>
-    </DndContext>
+        </div>
+      </DndContext>
+    </CaptureProvider>
   )
 } 
