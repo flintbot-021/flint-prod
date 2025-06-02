@@ -1,48 +1,32 @@
 /**
  * AI Processing Engine
  * 
- * Handles AI prompt processing, response parsing, and output extraction
- * for Logic sections in the campaign builder.
+ * Handles AI prompt processing and output extraction for Logic sections.
+ * Simplified version with sensible defaults.
  */
-
-import { OutputDefinition, LogicSectionSettings, AIResponse, AIProcessingRecord } from '@/lib/types/logic-section'
 
 // =============================================================================
 // TYPE DEFINITIONS
 // =============================================================================
 
-export interface AIProcessingOptions {
-  apiKey?: string
-  model?: string
-  maxTokens?: number
-  temperature?: number
-  timeout?: number
+export interface OutputVariable {
+  id: string
+  name: string
+  description: string
 }
 
-export interface PromptTestRequest {
+export interface AITestRequest {
   prompt: string
   variables: Record<string, any>
-  outputDefinitions: OutputDefinition[]
-  settings?: LogicSectionSettings
+  outputVariables: OutputVariable[]
 }
 
-export interface PromptTestResponse {
+export interface AITestResponse {
   success: boolean
-  response?: AIResponse
   outputs?: Record<string, any>
+  rawResponse?: string
   error?: string
   processingTime: number
-  tokensUsed?: number
-  cost?: number
-}
-
-export interface OutputExtractionResult {
-  success: boolean
-  outputs: Record<string, any>
-  errors: string[]
-  warnings: string[]
-  extractedCount: number
-  totalExpected: number
 }
 
 // =============================================================================
@@ -51,66 +35,47 @@ export interface OutputExtractionResult {
 
 export class AIProcessingEngine {
   private apiKey: string
-  private defaultOptions: AIProcessingOptions
+  
+  // Sensible defaults - no user configuration needed
+  private readonly DEFAULT_MODEL = 'gpt-4'
+  private readonly DEFAULT_TEMPERATURE = 0.7
+  private readonly DEFAULT_MAX_TOKENS = 1000
+  private readonly DEFAULT_TIMEOUT = 30000
 
-  constructor(apiKey: string, options: AIProcessingOptions = {}) {
+  constructor(apiKey: string) {
     this.apiKey = apiKey
-    this.defaultOptions = {
-      model: 'gpt-4',
-      maxTokens: 2000,
-      temperature: 0.7,
-      timeout: 30000,
-      ...options
-    }
   }
 
   // =============================================================================
-  // PROMPT PROCESSING
+  // MAIN PROCESSING METHOD
   // =============================================================================
 
   /**
    * Process a prompt with variable substitution and AI execution
    */
-  async processPrompt(request: PromptTestRequest): Promise<PromptTestResponse> {
+  async processPrompt(request: AITestRequest): Promise<AITestResponse> {
     const startTime = Date.now()
 
     try {
       // 1. Replace variables in prompt
       const processedPrompt = this.replaceVariables(request.prompt, request.variables)
 
-      // 2. Prepare AI request
-      const aiRequest = this.prepareAIRequest(processedPrompt, request.outputDefinitions, request.settings)
+      // 2. Prepare AI request with defaults
+      const aiRequest = this.prepareAIRequest(processedPrompt, request.outputVariables)
 
       // 3. Call OpenAI API
       const aiResponse = await this.callOpenAI(aiRequest)
 
       // 4. Extract outputs from response
-      const extractionResult = this.extractOutputs(aiResponse.content, request.outputDefinitions)
+      const outputs = this.extractOutputs(aiResponse.content, request.outputVariables)
 
       const processingTime = Date.now() - startTime
 
       return {
         success: true,
-        response: {
-          id: `ai_${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          rawResponse: aiResponse.content,
-          extractedOutputs: extractionResult.outputs,
-          processingTimeMs: processingTime,
-          model: aiRequest.model,
-          provider: 'openai',
-          tokenUsage: aiResponse.usage ? {
-            input: aiResponse.usage.prompt_tokens || 0,
-            output: aiResponse.usage.completion_tokens || 0,
-            total: aiResponse.usage.total_tokens || 0
-          } : undefined,
-          cost: this.calculateCost(aiResponse.usage?.total_tokens, aiRequest.model),
-          success: true
-        },
-        outputs: extractionResult.outputs,
-        processingTime,
-        tokensUsed: aiResponse.usage?.total_tokens,
-        cost: this.calculateCost(aiResponse.usage?.total_tokens, aiRequest.model).amount
+        outputs,
+        rawResponse: aiResponse.content,
+        processingTime
       }
     } catch (error) {
       const processingTime = Date.now() - startTime
@@ -121,6 +86,10 @@ export class AIProcessingEngine {
       }
     }
   }
+
+  // =============================================================================
+  // PRIVATE HELPER METHODS
+  // =============================================================================
 
   /**
    * Replace variables in prompt text with actual values
@@ -153,25 +122,14 @@ export class AIProcessingEngine {
     return String(value)
   }
 
-  // =============================================================================
-  // OPENAI API INTEGRATION
-  // =============================================================================
-
   /**
-   * Prepare the OpenAI API request
+   * Prepare the OpenAI API request with sensible defaults
    */
-  private prepareAIRequest(
-    prompt: string, 
-    outputDefinitions: OutputDefinition[], 
-    settings?: LogicSectionSettings
-  ) {
-    const systemPrompt = this.buildSystemPrompt(outputDefinitions)
-    const model = settings?.model || this.defaultOptions.model || 'gpt-4'
-    const maxTokens = settings?.maxTokens || this.defaultOptions.maxTokens || 2000
-    const temperature = settings?.temperature || this.defaultOptions.temperature || 0.7
+  private prepareAIRequest(prompt: string, outputVariables: OutputVariable[]) {
+    const systemPrompt = this.buildSystemPrompt(outputVariables)
 
     return {
-      model,
+      model: this.DEFAULT_MODEL,
       messages: [
         {
           role: 'system' as const,
@@ -182,41 +140,39 @@ export class AIProcessingEngine {
           content: prompt
         }
       ],
-      max_tokens: maxTokens,
-      temperature,
-      response_format: outputDefinitions.length > 0 ? { type: 'json_object' as const } : undefined
+      max_tokens: this.DEFAULT_MAX_TOKENS,
+      temperature: this.DEFAULT_TEMPERATURE,
+      response_format: outputVariables.length > 0 ? { type: 'json_object' as const } : undefined
     }
   }
 
   /**
    * Build system prompt for structured output
    */
-  private buildSystemPrompt(outputDefinitions: OutputDefinition[]): string {
-    if (outputDefinitions.length === 0) {
+  private buildSystemPrompt(outputVariables: OutputVariable[]): string {
+    if (outputVariables.length === 0) {
       return 'You are a helpful assistant. Provide a clear and comprehensive response to the user\'s request.'
     }
 
-    const outputDescriptions = outputDefinitions.map(def => 
-      `- ${def.name} (${def.dataType}): ${def.description}${def.required ? ' [REQUIRED]' : ''}`
+    const outputDescriptions = outputVariables.map(variable => 
+      `- ${variable.name}: ${variable.description}`
     ).join('\n')
 
     return `You are a helpful assistant that provides structured responses in JSON format.
 
-Please respond with a JSON object containing the following fields:
+Please respond with a JSON object containing these fields:
 ${outputDescriptions}
 
-Important guidelines:
+Guidelines:
 - Always return valid JSON
-- Include all required fields
-- Use appropriate data types (string, number, boolean, array, object)
-- If a field cannot be determined, use null for optional fields or provide a reasonable default for required fields
-- Be concise but informative in your responses`
+- Be clear and helpful in your responses
+- If you cannot determine a field value, use a reasonable default or explanation`
   }
 
   /**
    * Call the OpenAI API
    */
-  private async callOpenAI(request: any): Promise<any> {
+  private async callOpenAI(request: any): Promise<{ content: string }> {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -224,7 +180,7 @@ Important guidelines:
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(request),
-      signal: AbortSignal.timeout(this.defaultOptions.timeout || 30000)
+      signal: AbortSignal.timeout(this.DEFAULT_TIMEOUT)
     })
 
     if (!response.ok) {
@@ -239,185 +195,53 @@ Important guidelines:
     }
 
     return {
-      content: data.choices[0].message.content,
-      usage: data.usage
+      content: data.choices[0].message.content
     }
   }
-
-  // =============================================================================
-  // OUTPUT EXTRACTION
-  // =============================================================================
 
   /**
    * Extract structured outputs from AI response
    */
-  private extractOutputs(content: string, outputDefinitions: OutputDefinition[]): OutputExtractionResult {
-    const result: OutputExtractionResult = {
-      success: false,
-      outputs: {},
-      errors: [],
-      warnings: [],
-      extractedCount: 0,
-      totalExpected: outputDefinitions.length
-    }
-
-    if (outputDefinitions.length === 0) {
-      // No structured output expected
-      result.success = true
-      return result
+  private extractOutputs(content: string, outputVariables: OutputVariable[]): Record<string, any> {
+    if (outputVariables.length === 0) {
+      return {}
     }
 
     try {
-      // Try to parse as JSON
+      // Try to parse as JSON first
       const parsedContent = JSON.parse(content)
+      const outputs: Record<string, any> = {}
       
       // Extract each defined output
-      outputDefinitions.forEach(definition => {
-        const value = parsedContent[definition.name]
-        
-        if (value !== undefined && value !== null) {
-          // Validate and convert the value
-          const validatedValue = this.validateAndConvertValue(value, definition)
-          result.outputs[definition.name] = validatedValue
-          result.extractedCount++
-        } else if (definition.required) {
-          result.errors.push(`Required output '${definition.name}' not found in response`)
-        } else {
-          result.warnings.push(`Optional output '${definition.name}' not found in response`)
+      outputVariables.forEach(variable => {
+        const value = parsedContent[variable.name]
+        if (value !== undefined) {
+          outputs[variable.name] = value
         }
       })
 
-      result.success = result.errors.length === 0
+      return outputs
     } catch (error) {
-      // If JSON parsing fails, try to extract values using regex or other methods
-      result.errors.push(`Failed to parse AI response as JSON: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      // If JSON parsing fails, try simple text extraction
+      const outputs: Record<string, any> = {}
       
-      // Attempt fallback extraction for simple cases
-      this.attemptFallbackExtraction(content, outputDefinitions, result)
-    }
-
-    return result
-  }
-
-  /**
-   * Validate and convert value according to output definition
-   */
-  private validateAndConvertValue(value: any, definition: OutputDefinition): any {
-    switch (definition.dataType) {
-      case 'text':
-        return String(value)
-      
-      case 'number':
-        const num = Number(value)
-        if (isNaN(num)) {
-          throw new Error(`Invalid number value for ${definition.name}: ${value}`)
-        }
-        return num
-      
-      case 'boolean':
-        if (typeof value === 'boolean') return value
-        if (typeof value === 'string') {
-          const lower = value.toLowerCase()
-          if (lower === 'true' || lower === 'yes' || lower === '1') return true
-          if (lower === 'false' || lower === 'no' || lower === '0') return false
-        }
-        throw new Error(`Invalid boolean value for ${definition.name}: ${value}`)
-      
-      case 'array':
-        if (!Array.isArray(value)) {
-          throw new Error(`Expected array for ${definition.name}, got ${typeof value}`)
-        }
-        return value
-      
-      case 'json':
-        if (typeof value === 'object') return value
-        if (typeof value === 'string') {
-          try {
-            return JSON.parse(value)
-          } catch {
-            throw new Error(`Invalid JSON value for ${definition.name}`)
-          }
-        }
-        throw new Error(`Invalid JSON value for ${definition.name}: ${typeof value}`)
-      
-      default:
-        return value
-    }
-  }
-
-  /**
-   * Attempt fallback extraction when JSON parsing fails
-   */
-  private attemptFallbackExtraction(
-    content: string, 
-    outputDefinitions: OutputDefinition[], 
-    result: OutputExtractionResult
-  ): void {
-    // Simple regex-based extraction for common patterns
-    outputDefinitions.forEach(definition => {
-      if (definition.dataType === 'text') {
-        // Look for patterns like "fieldname: value" or "fieldname = value"
+      outputVariables.forEach(variable => {
+        // Look for patterns like "variableName: value"
         const patterns = [
-          new RegExp(`${definition.name}\\s*[:=]\\s*(.+?)(?:\\n|$)`, 'i'),
-          new RegExp(`"${definition.name}"\\s*[:=]\\s*"([^"]+)"`, 'i'),
-          new RegExp(`'${definition.name}'\\s*[:=]\\s*'([^']+)'`, 'i')
+          new RegExp(`${variable.name}\\s*[:=]\\s*(.+?)(?:\\n|$)`, 'i'),
+          new RegExp(`"${variable.name}"\\s*[:=]\\s*"([^"]+)"`, 'i')
         ]
 
         for (const pattern of patterns) {
           const match = content.match(pattern)
           if (match && match[1]) {
-            result.outputs[definition.name] = match[1].trim()
-            result.extractedCount++
+            outputs[variable.name] = match[1].trim()
             break
           }
         }
-      }
-    })
+      })
 
-    if (result.extractedCount > 0) {
-      result.warnings.push('Used fallback extraction method - results may be incomplete')
-    }
-  }
-
-  // =============================================================================
-  // UTILITY METHODS
-  // =============================================================================
-
-  /**
-   * Calculate estimated cost for API usage
-   */
-  private calculateCost(tokens?: number, model?: string): { amount: number; currency: string } {
-    if (!tokens) return { amount: 0, currency: 'USD' }
-
-    // Rough cost estimates (as of 2024) - should be updated with current pricing
-    const costPerToken = {
-      'gpt-4': 0.00003,
-      'gpt-4-turbo': 0.00001,
-      'gpt-3.5-turbo': 0.000002
-    }
-
-    const rate = costPerToken[model as keyof typeof costPerToken] || costPerToken['gpt-4']
-    return {
-      amount: tokens * rate,
-      currency: 'USD'
-    }
-  }
-
-  /**
-   * Create a processing record for audit trail
-   */
-  createProcessingRecord(
-    request: PromptTestRequest,
-    response: PromptTestResponse
-  ): AIProcessingRecord {
-    return {
-      id: `proc_${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      inputs: request.variables,
-      prompt: request.prompt,
-      response: response.response,
-      status: response.success ? 'completed' : 'failed',
-      error: response.error
+      return outputs
     }
   }
 
@@ -457,8 +281,8 @@ Important guidelines:
 /**
  * Create an AI processing engine instance
  */
-export function createAIProcessingEngine(apiKey: string, options?: AIProcessingOptions): AIProcessingEngine {
-  return new AIProcessingEngine(apiKey, options)
+export function createAIProcessingEngine(apiKey: string): AIProcessingEngine {
+  return new AIProcessingEngine(apiKey)
 }
 
 export default AIProcessingEngine 
