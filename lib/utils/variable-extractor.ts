@@ -101,6 +101,21 @@ export function extractVariablesFromSection(
       })
       break
 
+    case 'question-upload':
+      variables.push({
+        id: `${section.id}_files`,
+        name: createVariableName(`${section.title}_files`),
+        displayName: section.title || 'Uploaded Files',
+        type: 'array',
+        description: `File upload data from: ${section.title}`,
+        sectionId: section.id,
+        sectionTitle: section.title,
+        sectionType: section.type,
+        previewValue: options.includePreviewValues ? '[{"name": "document.pdf", "size": 1024000, "type": "application/pdf"}]' : undefined,
+        source: 'user_input'
+      })
+      break
+
     case 'capture':
       const captureSettings = section.settings as any
       const enabledFields = captureSettings?.enabledFields || {}
@@ -215,11 +230,7 @@ export function variableInfoToCampaignVariable(
     default_value: variable.previewValue || null,
     description: variable.description,
     source: variable.source,
-    configuration: {
-      section_id: variable.sectionId,
-      section_type: variable.sectionType,
-      display_name: variable.displayName
-    }
+    configuration: {}
   }
 }
 

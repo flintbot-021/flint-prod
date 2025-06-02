@@ -97,7 +97,27 @@ export const SECTION_TYPES: SectionType[] = [
       includeDate: true,
       includeTime: false,
       required: true,
-      buttonLabel: 'Next'
+      buttonText: 'Next'
+    }
+  },
+  {
+    id: 'question-upload',
+    name: 'File Upload',
+    description: 'File upload with drag & drop',
+    icon: 'Upload',
+    category: 'input',
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    defaultSettings: {
+      content: 'Upload your files',
+      subheading: '',
+      allowImages: true,
+      allowDocuments: true,
+      allowAudio: false,
+      allowVideo: false,
+      maxFileSize: 10,
+      maxFiles: 5,
+      required: true,
+      buttonText: 'Next'
     }
   },
 

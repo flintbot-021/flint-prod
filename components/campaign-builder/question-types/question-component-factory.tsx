@@ -6,6 +6,7 @@ import { MultipleChoiceQuestion } from './multiple-choice-question'
 import { RatingScaleQuestion } from './rating-scale-question'
 import { SliderQuestion } from './slider-question'
 import { DateTimeQuestion } from './date-time-question'
+import { UploadQuestion } from './upload-question'
 import { CaptureSection } from './capture-section'
 import { cn } from '@/lib/utils'
 import { AlertCircle, FileText } from 'lucide-react'
@@ -60,6 +61,16 @@ export function QuestionComponentFactory({
     case 'question-date-time':
       return (
         <DateTimeQuestion
+          section={section}
+          isPreview={isPreview}
+          onUpdate={onUpdate}
+          className={className}
+        />
+      )
+
+    case 'question-upload':
+      return (
+        <UploadQuestion
           section={section}
           isPreview={isPreview}
           onUpdate={onUpdate}
@@ -236,4 +247,4 @@ export function QuestionComponentFactory({
 }
 
 // Export individual question components for direct use
-export { TextQuestion, MultipleChoiceQuestion, RatingScaleQuestion, SliderQuestion, DateTimeQuestion, CaptureSection } 
+export { TextQuestion, MultipleChoiceQuestion, RatingScaleQuestion, SliderQuestion, DateTimeQuestion, UploadQuestion, CaptureSection } 

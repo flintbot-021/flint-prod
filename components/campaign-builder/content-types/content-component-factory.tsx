@@ -177,11 +177,17 @@ function PlaceholderSection({
               {section.type} section
             </p>
           </div>
-          {section.settings?.content && typeof section.settings.content === 'string' && (
-            <div className="text-foreground max-w-md mx-auto">
-              {section.settings.content}
-            </div>
-          )}
+          {(() => {
+            const content = section.settings?.content;
+            if (content && typeof content === 'string') {
+              return (
+                <div className="text-foreground max-w-md mx-auto">
+                  {content}
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
       </div>
     )
