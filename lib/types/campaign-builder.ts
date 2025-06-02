@@ -84,6 +84,22 @@ export const SECTION_TYPES: SectionType[] = [
       buttonText: 'Next'
     }
   },
+  {
+    id: 'question-date-time',
+    name: 'Date & Time',
+    description: 'Date and time picker inputs',
+    icon: 'Calendar',
+    category: 'input',
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    defaultSettings: {
+      content: 'When would you like to schedule this?',
+      subheading: '',
+      includeDate: true,
+      includeTime: false,
+      required: true,
+      buttonLabel: 'Next'
+    }
+  },
 
   // Content Sections
   {

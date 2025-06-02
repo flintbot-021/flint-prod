@@ -3,7 +3,7 @@
 import React from 'react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { Hash, Type, ToggleLeft, CheckSquare, User, Mail, Phone } from 'lucide-react'
+import { Hash, Type, ToggleLeft, CheckSquare, User, Mail, Phone, Calendar } from 'lucide-react'
 import type { VariableSuggestion, VariableInfo } from '@/hooks/use-variable-access'
 
 // =============================================================================
@@ -43,6 +43,8 @@ function getSectionIcon(sectionType: string) {
       return CheckSquare
     case 'question-slider':
       return Hash
+    case 'question-date-time':
+      return Calendar
     case 'capture':
       return User
     default:
