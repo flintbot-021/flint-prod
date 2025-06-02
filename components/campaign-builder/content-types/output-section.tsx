@@ -1,28 +1,15 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
-import { Target, Download, ExternalLink, FileText, Settings, Eye, Code } from 'lucide-react'
-import { useInlineEdit } from '@/hooks/use-inline-edit'
+import { Upload, X, Hash } from 'lucide-react'
 import { InlineEditableText } from '@/components/ui/inline-editable-text'
-import { ResultsGate } from '../results-gate'
 import { VariableInterpolatedContent } from '@/components/ui/variable-interpolated-content'
-import { useVariableAccess } from '@/hooks/use-variable-access'
-import type { 
-  OutputSectionSettings, 
-  VariableInterpolationContext 
-} from '@/lib/types/output-section'
-import { InlineContentEditor } from '@/components/ui/inline-content-editor'
-import { ImageUpload, ImageInfo } from '@/components/ui/image-upload'
-import { ResponsivePreview } from '@/components/ui/responsive-preview'
+import { uploadFiles } from '@/lib/supabase/storage'
+import { ResultsGate } from '../results-gate'
+import type { VariableInterpolationContext } from '@/lib/types/output-section'
+import { Badge } from '@/components/ui/badge'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -33,6 +20,106 @@ interface OutputSectionProps {
   isPreview?: boolean
   onUpdate: (updates: Partial<CampaignSection>) => Promise<void>
   className?: string
+  allSections?: CampaignSection[]
+}
+
+interface OutputSettings {
+  title?: string
+  subtitle?: string
+  content?: string
+  image?: string
+  textAlignment?: 'left' | 'center' | 'right'
+}
+
+interface SimpleVariable {
+  name: string
+  type: 'input' | 'output'
+  description: string
+  sampleValue: string
+}
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+// Simple variable extraction
+function getSimpleVariables(sections: CampaignSection[], currentOrder: number): SimpleVariable[] {
+  const variables: SimpleVariable[] = []
+  const precedingSections = sections.filter(s => s.order < currentOrder)
+  
+  precedingSections.forEach(section => {
+    // Extract from question sections
+    if (section.type.includes('question-') || section.type.includes('capture')) {
+      const settings = section.settings as any
+      const variableName = settings?.variableName || 
+                          (typeof section.title === 'string' ? section.title.toLowerCase().replace(/\s+/g, '_') : '') || 
+                          `question_${section.order}`
+      
+      variables.push({
+        name: variableName,
+        type: 'input',
+        description: (typeof section.title === 'string' ? section.title : '') || 'User input',
+        sampleValue: settings?.placeholder || 'Sample answer'
+      })
+    }
+    
+    // Extract from AI logic sections
+    if (section.type === 'logic-ai') {
+      const aiSettings = section.settings as any
+      if (aiSettings?.outputVariables && Array.isArray(aiSettings.outputVariables)) {
+        aiSettings.outputVariables.forEach((variable: any) => {
+          if (variable.name) {
+            variables.push({
+              name: variable.name,
+              type: 'output',
+              description: variable.description || 'AI generated output',
+              sampleValue: getSampleValue(variable.name)
+            })
+          }
+        })
+      }
+    }
+  })
+  
+  return variables
+}
+
+// Generate sample values
+function getSampleValue(variableName: string): string {
+  switch (variableName.toLowerCase()) {
+    case 'recommendation':
+    case 'advice':
+      return 'Based on your answers, we recommend...'
+    case 'score':
+    case 'rating':
+      return '85'
+    case 'category':
+    case 'type':
+      return 'Intermediate'
+    case 'plan':
+    case 'strategy':
+      return 'Your personalized plan...'
+    default:
+      return `Generated ${variableName}`
+  }
+}
+
+// Generate sample data context
+function generateSampleContext(variables: SimpleVariable[]): Record<string, string> {
+  const context: Record<string, string> = {}
+  
+  variables.forEach(variable => {
+    context[variable.name] = variable.sampleValue
+  })
+  
+  // Add defaults if no variables
+  if (variables.length === 0) {
+    context.name = 'Alex Johnson'
+    context.score = '85'
+    context.recommendation = 'Based on your answers, we recommend focusing on strength training.'
+  }
+  
+  return context
 }
 
 // =============================================================================
@@ -43,530 +130,300 @@ export function OutputSection({
   section,
   isPreview = false,
   onUpdate,
-  className
+  className,
+  allSections = []
 }: OutputSectionProps) {
-  const settings = (section.settings as unknown) as OutputSectionSettings
-  const [showDebugInfo, setShowDebugInfo] = useState(false)
-  const [previewMode, setPreviewMode] = useState(false)
-
-  // Get available variables from the campaign
-  const variableAccess = useVariableAccess([], 0) // Empty sections array and 0 order for now
-  const availableVariables = variableAccess.availableVariables || []
+  const [isUploading, setIsUploading] = useState(false)
   
-  // Create sample values for preview (this would come from actual campaign data in production)
-  const sampleValues = useMemo(() => {
-    const values: Record<string, any> = {}
-    availableVariables.forEach(variable => {
-      // Create sample values based on variable type
-      if (variable.type === 'text') {
-        values[variable.name] = `Sample ${variable.name}`
-      } else if (variable.type === 'number') {
-        values[variable.name] = 42
-      } else if (variable.type === 'boolean') {
-        values[variable.name] = true
-      } else if (variable.type === 'array') {
-        values[variable.name] = ['Option 1', 'Option 2']
-      } else if (variable.type === 'object') {
-        values[variable.name] = { sample: 'data' }
-      } else {
-        values[variable.name] = `Sample ${variable.name}`
-      }
-    })
-    
-    // Add some common sample variables for demo
-    values.name = 'John Doe'
-    values.email = 'john@example.com'
-    values.score = 85
-    values.recommendation = 'You are doing great! Keep up the excellent work.'
-    
-    return values
-  }, [availableVariables])
+  // Get current settings with defaults
+  const settings = section.settings as OutputSettings || {}
+  const {
+    title = 'Your Results',
+    subtitle = 'Based on your answers, here\'s what we found',
+    content = 'Hello @name! Your score is @score out of 100.\n\n@recommendation\n\nThanks for taking our quiz!',
+    image = '',
+    textAlignment = 'center'
+  } = settings
+
+  // Extract variables from campaign sections
+  const availableVariables = useMemo(() => 
+    getSimpleVariables(allSections, section.order || 0), 
+    [allSections, section.order]
+  )
+
+  // Generate sample data
+  const sampleValues = useMemo(() => 
+    generateSampleContext(availableVariables), 
+    [availableVariables]
+  )
 
   // Create variable interpolation context
-  const variableContext = useMemo((): VariableInterpolationContext => ({
+  const variableContext: VariableInterpolationContext = {
     variables: sampleValues,
-    availableVariables,
+    availableVariables: [], // Will be empty for now to avoid type issues
     formatters: {},
-    conditionalRules: settings.conditionalContent || []
-  }), [sampleValues, availableVariables, settings.conditionalContent])
+    conditionalRules: []
+  }
 
-  // =============================================================================
-  // INLINE EDITING HOOKS
-  // =============================================================================
-
-  const titleEdit = useInlineEdit(settings.title || 'Your Results', {
-    onSave: async (value: string) => {
+  // Handle settings updates
+  const updateSettings = async (newSettings: Partial<OutputSettings>) => {
+    try {
       await onUpdate({
-        settings: { ...settings, title: value }
+        settings: {
+          ...settings,
+          ...newSettings
+        }
       })
+    } catch (error) {
+      console.error('Failed to update output settings:', error)
+      throw error
     }
-  })
-
-  // Replace the basic contentEdit with enhanced inline editing
-  const handleContentChange = async (value: string) => {
-    await onUpdate({
-      settings: { ...settings, content: value }
-    })
   }
 
-  // Add image upload handler
-  const handleImageChange = async (image: ImageInfo | null) => {
-    await onUpdate({
-      settings: { 
-        ...settings, 
-        headerImage: image,
-        enableVariableInterpolation: settings.enableVariableInterpolation !== false
+  // Handle image upload (identical to BasicSection)
+  const handleImageUpload = useCallback(async (files: FileList) => {
+    if (!files.length) return
+
+    const file = files[0]
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      alert('Image size must be less than 10MB')
+      return
+    }
+
+    setIsUploading(true)
+    
+    try {
+      // TODO: Get actual campaign ID from context
+      const campaignId = 'demo-campaign'
+      
+      const uploadedFiles = await uploadFiles(
+        [file],
+        campaignId,
+        undefined
+      )
+      
+      if (uploadedFiles.length > 0) {
+        await updateSettings({ image: uploadedFiles[0].url })
       }
-    })
+    } catch (error) {
+      console.error('Upload failed:', error)
+      alert('Upload failed. Please try again.')
+    } finally {
+      setIsUploading(false)
+    }
+  }, [])
+
+  // Handle image removal
+  const handleImageRemove = useCallback(async () => {
+    await updateSettings({ image: '' })
+  }, [])
+
+  // Get text alignment class
+  const getAlignmentClass = (alignment: string) => {
+    switch (alignment) {
+      case 'left': return 'text-left'
+      case 'right': return 'text-right'
+      case 'center':
+      default: return 'text-center'
+    }
   }
 
-  // =============================================================================
-  // EVENT HANDLERS
-  // =============================================================================
-
-  const handleEnableInterpolation = async (enabled: boolean) => {
-    await onUpdate({
-      settings: { 
-        ...settings, 
-        enableVariableInterpolation: enabled 
-      }
-    })
-  }
-
-  const handleSettingsUpdate = async (newSettings: Partial<OutputSectionSettings>) => {
-    await onUpdate({
-      settings: { ...settings, ...newSettings }
-    })
-  }
-
-  // =============================================================================
-  // RENDER FUNCTIONS
-  // =============================================================================
-
-  const renderOutputContent = () => {
-    const enableInterpolation = settings.enableVariableInterpolation !== false
-
-    switch (section.type) {
-      case 'output-results':
-        return (
-          <Card className="w-full max-w-2xl mx-auto">
-            {/* Header Image */}
-            {(settings as any).headerImage && (
-              <div className="relative">
-                <img
-                  src={(settings as any).headerImage.url}
-                  alt={(settings as any).headerImage.alt || 'Header image'}
-                  className={cn(
-                    "w-full object-cover rounded-t-lg",
-                    (settings as any).headerImage.sizing === 'small' && "h-32",
-                    (settings as any).headerImage.sizing === 'medium' && "h-48",
-                    (settings as any).headerImage.sizing === 'large' && "h-64",
-                    !(settings as any).headerImage.sizing && "h-48"
-                  )}
+  if (isPreview) {
+    // Preview Mode - What end users see
+    return (
+      <ResultsGate>
+        <div className={cn('py-16 px-6', className)}>
+          <div className="max-w-4xl mx-auto space-y-12">
+            {/* Image */}
+            {image && (
+              <div className="w-full">
+                <img 
+                  src={image}
+                  alt={title || 'Section image'}
+                  className="w-full h-64 md:h-80 object-cover rounded-lg"
                 />
-                {(settings as any).headerImage.caption && (
-                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-2">
-                    {(settings as any).headerImage.caption}
-                  </div>
-                )}
               </div>
             )}
 
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-bold">
-                {enableInterpolation ? (
+            {/* Text Content with Variable Interpolation */}
+            <div className={cn('space-y-6', getAlignmentClass(textAlignment))}>
+              <div className="space-y-4">
+                <h1 className="text-4xl md:text-5xl font-bold text-white">
                   <VariableInterpolatedContent
-                    content={settings.title}
+                    content={title}
                     context={variableContext}
                     showPreview={true}
                     enableRealTimeProcessing={true}
                   />
-                ) : (
-                  settings.title
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="prose prose-sm max-w-none">
-                {enableInterpolation ? (
-                  <VariableInterpolatedContent
-                    content={settings.content}
-                    context={variableContext}
-                    showPreview={true}
-                    enableRealTimeProcessing={true}
-                    highlightVariables={isPreview}
-                  />
-                ) : (
-                  <div dangerouslySetInnerHTML={{ __html: settings.content }} />
+                </h1>
+                
+                {subtitle && (
+                  <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">
+                    <VariableInterpolatedContent
+                      content={subtitle}
+                      context={variableContext}
+                      showPreview={true}
+                      enableRealTimeProcessing={true}
+                    />
+                  </p>
                 )}
               </div>
-              {settings.showScore && (
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-600">
-                    {enableInterpolation ? (
-                      <VariableInterpolatedContent
-                        content="Score: @score/100"
-                        context={variableContext}
-                        showPreview={true}
-                        enableRealTimeProcessing={true}
-                      />
-                    ) : (
-                      'Score: 85/100'
-                    )}
-                  </p>
+
+              {content && (
+                <div className="text-lg text-gray-400 max-w-4xl mx-auto leading-relaxed">
+                  <VariableInterpolatedContent
+                    content={content}
+                    context={variableContext}
+                    showPreview={true}
+                    enableRealTimeProcessing={true}
+                  />
                 </div>
               )}
-            </CardContent>
-          </Card>
-        )
-
-      case 'output-download':
-        return (
-          <Card className="w-full max-w-md mx-auto">
-            <CardHeader className="text-center">
-              <CardTitle className="text-xl font-bold">
-                {enableInterpolation ? (
-                  <VariableInterpolatedContent
-                    content={settings.title}
-                    context={variableContext}
-                    showPreview={true}
-                    enableRealTimeProcessing={true}
-                  />
-                ) : (
-                  settings.title
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-center space-y-4">
-              <div className="text-muted-foreground">
-                {enableInterpolation ? (
-                  <VariableInterpolatedContent
-                    content={settings.content}
-                    context={variableContext}
-                    showPreview={true}
-                    enableRealTimeProcessing={true}
-                  />
-                ) : (
-                  settings.content
-                )}
-              </div>
-              <Button 
-                className="w-full"
-                onClick={() => {
-                  if (settings.fileUrl) {
-                    window.open(settings.fileUrl, '_blank')
-                  }
-                }}
-                disabled={!settings.fileUrl}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {enableInterpolation ? (
-                  <VariableInterpolatedContent
-                    content={settings.fileName || 'Download @name Report'}
-                    context={variableContext}
-                    showPreview={true}
-                    enableRealTimeProcessing={true}
-                  />
-                ) : (
-                  settings.fileName || 'Download Resource'
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        )
-
-      case 'output-redirect':
-        return (
-          <Card className="w-full max-w-md mx-auto">
-            <CardContent className="text-center space-y-4 pt-6">
-              <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <ExternalLink className="h-6 w-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="font-medium text-foreground">
-                  {enableInterpolation ? (
-                    <VariableInterpolatedContent
-                      content={settings.message || 'Redirecting @name...'}
-                      context={variableContext}
-                      showPreview={true}
-                      enableRealTimeProcessing={true}
-                    />
-                  ) : (
-                    settings.message || 'Redirecting...'
-                  )}
-                </h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  You will be redirected in {settings.delay || 0} seconds
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )
-
-      default:
-        return (
-          <Card className="w-full max-w-md mx-auto">
-            <CardContent className="text-center space-y-4 pt-6">
-              <div className="mx-auto w-12 h-12 bg-accent rounded-full flex items-center justify-center">
-                <Target className="h-6 w-6 text-muted-foreground" />
-              </div>
-              <div>
-                <h3 className="font-medium text-foreground">
-                  {enableInterpolation ? (
-                    <VariableInterpolatedContent
-                      content={settings.title}
-                      context={variableContext}
-                      showPreview={true}
-                      enableRealTimeProcessing={true}
-                    />
-                  ) : (
-                    settings.title
-                  )}
-                </h3>
-                <div className="text-sm text-muted-foreground mt-1">
-                  {enableInterpolation ? (
-                    <VariableInterpolatedContent
-                      content={settings.content}
-                      context={variableContext}
-                      showPreview={true}
-                      enableRealTimeProcessing={true}
-                    />
-                  ) : (
-                    settings.content
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )
-    }
-  }
-
-  // =============================================================================
-  // MAIN RENDER
-  // =============================================================================
-
-  if (isPreview) {
-    return (
-      <ResultsGate className={className}>
-        <div className="py-8">
-          {renderOutputContent()}
+            </div>
+          </div>
         </div>
       </ResultsGate>
     )
   }
 
-  // Edit Mode
+  // Build Mode - Identical to BasicSection but with @ variable support
   return (
-    <div className={cn("space-y-6", className)}>
-      {/* Header Section */}
-      <div className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <Target className="h-5 w-5 text-emerald-600" />
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-            {section.type === 'output-results' ? 'Results Page' : 
-             section.type === 'output-download' ? 'Download Link' :
-             section.type === 'output-redirect' ? 'Redirect' : 'Output'}
-          </Badge>
-        </div>
+    <div className={cn('py-16 space-y-6 max-w-2xl mx-auto', className)}>
+      
+      {/* Image Upload Area (identical to BasicSection) */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-400">Section Image</label>
         
-        <div className="space-y-3">
-          <div>
-            <Label className="text-sm font-medium text-foreground">Title</Label>
-            <InlineContentEditor
-              content={settings.title || 'Your Results'}
-              onChange={async (value) => {
-                await onUpdate({
-                  settings: { ...settings, title: value }
-                })
-              }}
-              placeholder="Enter section title..."
-              enableRichText={false}
-              enableImages={false}
-              enableVariables={settings.enableVariableInterpolation !== false}
-              variableContext={variableContext}
-              className="mt-1"
-            />
-            {settings.enableVariableInterpolation && (
-              <div className="text-xs text-muted-foreground mt-1">
-                Use @variableName to insert dynamic content. Examples: @name, @score, @recommendation
-              </div>
-            )}
-          </div>
-          
-          <div>
-            <Label className="text-sm font-medium text-foreground">Content</Label>
-            <InlineContentEditor
-              content={settings.content || 'Based on your answers...'}
-              onChange={handleContentChange}
-              placeholder="Enter section content..."
-              enableRichText={true}
-              enableImages={true}
-              enableVariables={settings.enableVariableInterpolation !== false}
-              variableContext={variableContext}
-              showWordCount={true}
-              allowFullscreen={true}
-              className="mt-1"
-            />
-            {settings.enableVariableInterpolation && (
-              <div className="text-xs text-muted-foreground mt-1">
-                Supports variable interpolation, conditional content, and formatting. Use `{'{'}if @variable{'}'}content{'{/if}'}` for conditions.
-              </div>
-            )}
-          </div>
-
-          {/* Header Image Upload for Results Type */}
-          {section.type === 'output-results' && (
-            <div>
-              <Label className="text-sm font-medium text-foreground">Header Image (optional)</Label>
-              <ImageUpload
-                value={(settings as any).headerImage || null}
-                onChange={handleImageChange}
-                placeholder="Add a header image to your results page"
-                enableSizing={true}
-                enablePositioning={false} // Header images are always full width
-                className="mt-1"
+        {image ? (
+          <div className="relative group">
+            <div className="relative h-48 rounded-lg overflow-hidden">
+              <img 
+                src={image}
+                alt="Section image"
+                className="w-full h-full object-cover"
               />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Variable Interpolation Settings */}
-      <div className="space-y-4">
-        <Label className="text-sm font-medium text-foreground">Variable Interpolation</Label>
-        
-        <div className="flex items-center space-x-3">
-          <Switch
-            checked={settings.enableVariableInterpolation !== false}
-            onCheckedChange={handleEnableInterpolation}
-            id="enable-interpolation"
-          />
-          <Label htmlFor="enable-interpolation" className="text-sm text-muted-foreground">
-            Enable dynamic content with variables
-          </Label>
-        </div>
-
-        {settings.enableVariableInterpolation !== false && (
-          <div className="space-y-3 pl-6 border-l-2 border-emerald-200">
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPreviewMode(!previewMode)}
-              >
-                <Eye className="h-4 w-4 mr-1" />
-                {previewMode ? 'Edit Mode' : 'Preview Mode'}
-              </Button>
               
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowDebugInfo(!showDebugInfo)}
-              >
-                <Code className="h-4 w-4 mr-1" />
-                Debug Info
-              </Button>
-            </div>
-
-            {availableVariables.length > 0 && (
-              <div>
-                <div className="text-xs text-muted-foreground mb-2">Available Variables:</div>
-                <div className="flex flex-wrap gap-1">
-                  {availableVariables.slice(0, 10).map((variable, index) => (
-                    <Badge key={index} variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                      @{variable.name}
-                    </Badge>
-                  ))}
-                  {availableVariables.length > 10 && (
-                    <Badge variant="outline" className="text-xs text-muted-foreground">
-                      +{availableVariables.length - 10} more
-                    </Badge>
-                  )}
-                </div>
+              {/* Remove button */}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                <button
+                  onClick={handleImageRemove}
+                  className="bg-red-600 hover:bg-red-700 text-white rounded-full p-2 transition-colors"
+                  disabled={isUploading}
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-            )}
+            </div>
+          </div>
+        ) : (
+          <div className="relative">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              disabled={isUploading}
+            />
+            <div className="h-48 border-2 border-dashed border-gray-600 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-gray-500 hover:text-gray-400 transition-colors">
+              <Upload className="h-8 w-8 mb-2" />
+              <p className="text-sm font-medium">
+                {isUploading ? 'Uploading...' : 'Click to upload image'}
+              </p>
+              <p className="text-xs">PNG, JPG up to 10MB</p>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Type-specific Settings */}
-      {section.type === 'output-download' && (
-        <div className="space-y-4">
-          <Label className="text-sm font-medium text-foreground">Download Settings</Label>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs text-muted-foreground">File URL</Label>
-              <Input
-                value={settings.fileUrl || ''}
-                onChange={(e) => onUpdate({
-                  settings: { ...settings, fileUrl: e.target.value }
-                })}
-                placeholder="https://example.com/file.pdf"
-              />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">File Name</Label>
-              <Input
-                value={settings.fileName || ''}
-                onChange={(e) => onUpdate({
-                  settings: { ...settings, fileName: e.target.value }
-                })}
-                placeholder="resource.pdf"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {section.type === 'output-redirect' && (
-        <div className="space-y-4">
-          <Label className="text-sm font-medium text-foreground">Redirect Settings</Label>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs text-muted-foreground">Redirect URL</Label>
-              <Input
-                value={settings.url || ''}
-                onChange={(e) => onUpdate({
-                  settings: { ...settings, url: e.target.value }
-                })}
-                placeholder="https://example.com"
-              />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground">Delay (seconds)</Label>
-              <Input
-                type="number"
-                value={settings.delay || 0}
-                onChange={(e) => onUpdate({
-                  settings: { ...settings, delay: parseInt(e.target.value) || 0 }
-                })}
-                placeholder="0"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Preview Section */}
-      <div className="pt-4 border-t">
-        <Label className="text-sm font-medium text-foreground mb-3 block">Responsive Preview</Label>
-        <ResponsivePreview
-          enableDeviceToggle={true}
-          enableOrientationToggle={true}
-          showDeviceFrame={true}
-          defaultDevice="desktop"
-          className="scale-90 origin-top-left"
-        >
-          <div className="p-4">
-            <OutputSection
-              section={section}
-              isPreview={true}
-              onUpdate={onUpdate}
-            />
-          </div>
-        </ResponsivePreview>
+      {/* Title - Seamless inline editing */}
+      <div>
+        <InlineEditableText
+          value={title}
+          onSave={(newTitle) => updateSettings({ title: newTitle })}
+          autoSave={false}
+          placeholder="Your Results"
+          className="!text-3xl font-bold text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0"
+          inputClassName="!text-3xl font-bold !border-0 !bg-transparent !shadow-none !outline-none !ring-0 text-center text-gray-500 placeholder:text-gray-600 focus:!bg-transparent hover:!bg-transparent"
+          showEditIcon={false}
+          variant="heading"
+        />
       </div>
+
+      {/* Subtitle - Seamless inline editing */}
+      <div className="pt-4">
+        <InlineEditableText
+          value={subtitle}
+          onSave={(newSubtitle) => updateSettings({ subtitle: newSubtitle })}
+          autoSave={false}
+          placeholder="Based on your answers, here's what we found"
+          className="!text-xl text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0"
+          inputClassName="!text-xl !border-0 !bg-transparent !shadow-none !outline-none !ring-0 text-center text-gray-500 placeholder:text-gray-600 focus:!bg-transparent hover:!bg-transparent"
+          showEditIcon={false}
+          variant="body"
+        />
+      </div>
+
+      {/* Rich Text Content - With @ variable support */}
+      <div className="pt-6">
+        <InlineEditableText
+          value={content}
+          onSave={(newContent) => updateSettings({ content: newContent })}
+          autoSave={false}
+          placeholder="Hello @name! Your score is @score out of 100. Use @ to insert variables like @recommendation"
+          className="!text-lg text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0 !min-h-32"
+          inputClassName="!text-lg !border-0 !bg-transparent !shadow-none !outline-none !ring-0 text-center text-gray-500 placeholder:text-gray-600 focus:!bg-transparent hover:!bg-transparent !min-h-32"
+          showEditIcon={false}
+          variant="body"
+          multiline={true}
+        />
+      </div>
+
+      {/* Available Variables Section - Show at bottom */}
+      {availableVariables.length > 0 && (
+        <div className="pt-8 border-t border-gray-700">
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Hash className="h-4 w-4 text-gray-400" />
+              <h3 className="text-sm font-medium text-gray-300">Available Variables</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-3">
+              {availableVariables.map((variable, index) => (
+                <div key={`${variable.name}-${index}`} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg border border-gray-700">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <Badge 
+                        variant={variable.type === 'input' ? 'secondary' : 'default'}
+                        className={cn(
+                          'text-xs',
+                          variable.type === 'input' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                        )}
+                      >
+                        {variable.type}
+                      </Badge>
+                      <code className="text-sm font-mono text-orange-400">@{variable.name}</code>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">{variable.description}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-500">Sample:</p>
+                    <p className="text-xs text-gray-300 font-mono max-w-32 truncate">{variable.sampleValue}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <p className="text-xs text-gray-500 text-center">
+              Type @ in the content above to insert these variables
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

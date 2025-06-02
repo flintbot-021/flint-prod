@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
-import { Card } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Plus, X, Brain, Play, Check, Lock, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { CampaignSection } from '@/lib/types/campaign-builder'
 
 interface OutputVariable {
   id: string
@@ -27,6 +28,30 @@ interface AILogicSectionProps {
   onChange?: (settings: any) => void
   availableVariables?: string[]
   className?: string
+  allSections?: CampaignSection[]
+  section?: CampaignSection
+}
+
+// Extract input variables from question sections that come before this AI logic section
+function extractInputVariables(sections: CampaignSection[], currentOrder: number): string[] {
+  const precedingSections = sections.filter(s => s.order < currentOrder)
+  const variables: string[] = []
+  
+  precedingSections.forEach(section => {
+    // Extract from question sections
+    if (section.type.includes('question-') || section.type.includes('capture')) {
+      const settings = section.settings as any
+      const variableName = settings?.variableName || 
+                          (typeof section.title === 'string' ? section.title.toLowerCase().replace(/\s+/g, '_') : '') || 
+                          `question_${section.order}`
+      
+      if (variableName && !variables.includes(variableName)) {
+        variables.push(variableName)
+      }
+    }
+  })
+  
+  return variables
 }
 
 export function AILogicSection({
@@ -35,10 +60,23 @@ export function AILogicSection({
   isEditing = false,
   onChange,
   availableVariables = [],
-  className
+  className,
+  allSections = [],
+  section
 }: AILogicSectionProps) {
   const [testResult, setTestResult] = useState<string>('')
   const [isTestRunning, setIsTestRunning] = useState(false)
+  
+  // Extract actual variables from campaign sections
+  const extractedVariables = useMemo(() => {
+    if (allSections.length > 0 && section?.order !== undefined) {
+      return extractInputVariables(allSections, section.order)
+    }
+    return availableVariables
+  }, [allSections, section?.order, availableVariables])
+  
+  // Use extracted variables or fallback to provided ones
+  const currentAvailableVariables = extractedVariables.length > 0 ? extractedVariables : availableVariables
   
   // Collapsible state
   const [expandedSections, setExpandedSections] = useState({
@@ -64,10 +102,10 @@ export function AILogicSection({
 
   // Step completion logic
   const step1Complete = useMemo(() => {
-    return availableVariables.length > 0 && availableVariables.every(variable => 
+    return currentAvailableVariables.length > 0 && currentAvailableVariables.every(variable => 
       settings.testInputs[variable] && settings.testInputs[variable].trim() !== ''
     )
-  }, [availableVariables, settings.testInputs])
+  }, [currentAvailableVariables, settings.testInputs])
 
   const step2Complete = useMemo(() => {
     return settings.prompt && settings.prompt.trim() !== ''
@@ -208,7 +246,7 @@ export function AILogicSection({
 
             {expandedSections.step1 && (
               <div className="mt-6">
-                {availableVariables.length === 0 ? (
+                {currentAvailableVariables.length === 0 ? (
                   <div className="text-center py-8 text-gray-400 bg-gray-900 rounded-lg">
                     <p className="font-medium">No input variables available</p>
                     <p className="text-sm">Add question sections first to create variables for AI processing</p>
@@ -218,7 +256,7 @@ export function AILogicSection({
                     <p className="text-sm text-gray-300 mb-4">
                       Enter example answers for each question. These help you design your AI prompt.
                     </p>
-                    {availableVariables.map((variable) => (
+                    {currentAvailableVariables.map((variable) => (
                       <div key={variable} className="flex items-center space-x-4">
                         <Label className="text-sm font-medium text-gray-300 w-32 flex-shrink-0">
                           @{variable}:
@@ -286,13 +324,13 @@ export function AILogicSection({
                     </div>
 
                     {/* Available Variables */}
-                    {availableVariables.length > 0 && (
+                    {currentAvailableVariables.length > 0 && (
                       <div>
                         <Label className="text-sm font-medium text-gray-300 mb-2 block">
                           Click to Insert Variables
                         </Label>
                         <div className="flex flex-wrap gap-2">
-                          {availableVariables.map((variable) => (
+                          {currentAvailableVariables.map((variable) => (
                             <Badge
                               key={variable}
                               variant="outline"
