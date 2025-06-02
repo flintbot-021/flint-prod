@@ -41,6 +41,9 @@ export function SectionBottomBar({
   // Check if this is a Hero section
   const isHeroSection = section.type === 'content-hero' || section.type === 'hero'
   
+  // Check if this is a Basic section
+  const isBasicSection = section.type === 'content-basic'
+  
   // Get Hero settings if it's a Hero section
   const heroSettings = isHeroSection ? section.settings as any : null
   const overlayColor = heroSettings?.overlayColor || '#000000'
@@ -48,8 +51,24 @@ export function SectionBottomBar({
   const showButton = heroSettings?.showButton !== false
   const hasBackgroundImage = heroSettings?.backgroundImage
 
+  // Get Basic section settings
+  const basicSettings = isBasicSection ? section.settings as any : null
+  const textAlignment = basicSettings?.textAlignment || 'center'
+
   // Handle Hero settings updates
   const updateHeroSettings = async (newSettings: Record<string, unknown>) => {
+    if (onSectionUpdate) {
+      await onSectionUpdate({
+        settings: {
+          ...section.settings,
+          ...newSettings
+        }
+      })
+    }
+  }
+
+  // Handle Basic section settings updates
+  const updateBasicSettings = async (newSettings: Record<string, unknown>) => {
     if (onSectionUpdate) {
       await onSectionUpdate({
         settings: {
@@ -72,7 +91,7 @@ export function SectionBottomBar({
   }
 
   // Don't render if no controls are needed
-  if (!isQuestionType && !showButtonPreview && !isHeroSection) {
+  if (!isQuestionType && !showButtonPreview && !isHeroSection && !isBasicSection) {
     return null
   }
 
@@ -158,6 +177,27 @@ export function SectionBottomBar({
                 className="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
               />
             </div>
+          </div>
+        )}
+
+        {/* Basic Section Text Alignment Controls */}
+        {isBasicSection && (
+          <div className="flex items-center space-x-2 text-sm">
+            <span className="text-gray-500">Align:</span>
+            {(['left', 'center', 'right'] as const).map((alignment) => (
+              <button
+                key={alignment}
+                onClick={() => updateBasicSettings({ textAlignment: alignment })}
+                className={cn(
+                  "px-2 py-1 rounded text-xs font-medium transition-colors capitalize",
+                  textAlignment === alignment 
+                    ? "bg-blue-600 text-white" 
+                    : "bg-gray-600 text-gray-300 hover:bg-gray-500"
+                )}
+              >
+                {alignment}
+              </button>
+            ))}
           </div>
         )}
       </div>
