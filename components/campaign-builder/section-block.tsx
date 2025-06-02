@@ -202,7 +202,10 @@ export function SectionBlock({
     }
 
     // Use content component factory for content types
-    const contentTypes = ['info', 'text-block', 'image-block', 'hero', 'content', 'video', 'divider', 'spacer']
+    const contentTypes = [
+      'info', 'text-block', 'image-block', 'hero', 'content', 'video', 'divider', 'spacer',
+      'content-hero', 'content-basic', 'logic-ai', 'output-results', 'output-download', 'output-redirect'
+    ]
     if (contentTypes.includes(section.type)) {
       return (
         <ContentComponentFactory
@@ -411,6 +414,7 @@ export function SectionBlock({
           buttonLabel={buttonLabel}
           onRequiredChange={isQuestionType ? handleRequiredChange : undefined}
           onButtonLabelChange={handleButtonLabelChange}
+          onSectionUpdate={(updates) => onUpdate(section.id, updates)}
           showButtonPreview={true}
           isPreview={isPreview}
         />

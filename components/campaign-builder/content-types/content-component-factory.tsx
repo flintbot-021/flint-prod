@@ -25,23 +25,23 @@ export function ContentComponentFactory({
   // Route to appropriate content component based on section type
   switch (section.type) {
     case 'content-hero':
+    case 'hero':
       return (
         <HeroSection
-          settings={section.settings as any}
+          section={section}
           isPreview={isPreview}
-          isEditing={!isPreview}
-          onChange={(newSettings) => onUpdate({ settings: newSettings })}
+          onUpdate={onUpdate}
           className={className}
         />
       )
 
     case 'content-basic':
+    case 'basic':
       return (
         <BasicSection
-          settings={section.settings as any}
+          section={section}
           isPreview={isPreview}
-          isEditing={!isPreview}
-          onChange={(newSettings) => onUpdate({ settings: newSettings })}
+          onUpdate={onUpdate}
           className={className}
         />
       )
@@ -62,7 +62,6 @@ export function ContentComponentFactory({
     case 'info':
     case 'text-block':
     case 'image-block':
-    case 'hero':
     case 'content':
       return (
         <InfoSection

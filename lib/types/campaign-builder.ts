@@ -133,7 +133,8 @@ export const SECTION_TYPES: SectionType[] = [
       title: 'Your Hero Title',
       subtitle: 'Add your compelling subtitle here',
       backgroundImage: '',
-      textAlignment: 'center',
+      overlayColor: '#000000',
+      overlayOpacity: 40,
       buttonText: 'Get Started',
       showButton: true
     }
@@ -146,13 +147,12 @@ export const SECTION_TYPES: SectionType[] = [
     category: 'content',
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     defaultSettings: {
-      title: 'Section Title',
-      content: 'Add your content here...',
+      title: 'Your Headline',
+      subtitle: 'Add your subheading here',
+      content: 'Add your content here. You can write multiple paragraphs, format text, and create rich content...',
       image: '',
-      imagePosition: 'top',
-      alignment: 'left',
-      buttonText: 'Next',
-      showButton: true
+      imagePosition: 'above',
+      textAlignment: 'center'
     }
   },
 
