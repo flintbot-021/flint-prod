@@ -234,6 +234,65 @@ export function variableInfoToCampaignVariable(
   }
 }
 
+/**
+ * Extract rich context for a specific section, including content, sub-headings, and info section content
+ */
+export function extractRichContextForSection(
+  sections: CampaignSection[],
+  targetSectionOrder: number
+): {
+  questionContext: string[]
+  contentContext: string[]
+  variables: string[]
+} {
+  const precedingSections = sections.filter(s => s.order < targetSectionOrder)
+  
+  const questionContext: string[] = []
+  const contentContext: string[] = []
+  const variables: string[] = []
+
+  precedingSections.forEach(section => {
+    const settings = section.settings as any
+
+    // Extract from question sections
+    if (section.type.includes('question-') || section.type.includes('capture')) {
+      const questionText = settings?.content || settings?.questionText || section.title || 'Untitled Question'
+      questionContext.push(questionText)
+
+      // Extract variable name
+      const variableName = settings?.variableName || 
+                          (typeof section.title === 'string' ? section.title.toLowerCase().replace(/\s+/g, '_') : '') || 
+                          `question_${section.order}`
+      variables.push(variableName)
+
+      // Add options for multiple choice questions
+      if (section.type === 'question-multiple-choice' && settings?.options) {
+        const options = settings.options.map((opt: any) => opt.text || opt.label || opt).join(', ')
+        questionContext.push(`Options: ${options}`)
+      }
+    }
+
+    // Extract from content sections
+    if (section.type.includes('content-') || section.type === 'info' || section.type === 'hero') {
+      const contentText = settings?.content || settings?.text || settings?.description || section.title
+      if (contentText && contentText.trim()) {
+        contentContext.push(contentText)
+      }
+
+      // Extract sub-headings if available
+      if (settings?.subtitle || settings?.subheading) {
+        contentContext.push(`Subheading: ${settings.subtitle || settings.subheading}`)
+      }
+    }
+  })
+
+  return {
+    questionContext,
+    contentContext,
+    variables
+  }
+}
+
 // =============================================================================
 // UTILITY FUNCTIONS
 // =============================================================================

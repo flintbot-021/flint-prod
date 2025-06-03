@@ -61,6 +61,9 @@ export function SectionTopBar({
     Icons[sectionType.icon as keyof typeof Icons] as React.ComponentType<{ className?: string }> : 
     Icons.FileText
 
+  // Check if this is an AI Logic section (configuration only, never shown to end users)
+  const isAILogicSection = section.type === 'logic-ai' || sectionType?.category === 'logic'
+
   // Get available section types for the dropdown
   const availableTypes = SECTION_TYPES.filter(type => type.id !== section.type)
 
@@ -183,18 +186,20 @@ export function SectionTopBar({
 
       {/* Right Side - Controls */}
       <div className="flex items-center space-x-3 ml-4">
-        {/* Preview Toggle */}
-        <div className="flex items-center space-x-2">
-          <Label htmlFor={`preview-${section.id}`} className="text-xs text-muted-foreground">
-            Preview
-          </Label>
-          <Switch
-            id={`preview-${section.id}`}
-            checked={isPreview}
-            onCheckedChange={onPreviewToggle}
-            className="scale-75"
-          />
-        </div>
+        {/* Preview Toggle - Hidden for AI Logic sections */}
+        {!isAILogicSection && (
+          <div className="flex items-center space-x-2">
+            <Label htmlFor={`preview-${section.id}`} className="text-xs text-muted-foreground">
+              Preview
+            </Label>
+            <Switch
+              id={`preview-${section.id}`}
+              checked={isPreview}
+              onCheckedChange={onPreviewToggle}
+              className="scale-75"
+            />
+          </div>
+        )}
 
         {/* Visibility Toggle */}
         <Button

@@ -14,13 +14,15 @@ interface ContentComponentFactoryProps {
   isPreview?: boolean
   onUpdate: (updates: Partial<CampaignSection>) => Promise<void>
   className?: string
+  allSections?: CampaignSection[]
 }
 
 export function ContentComponentFactory({
   section,
   isPreview = false,
   onUpdate,
-  className
+  className,
+  allSections
 }: ContentComponentFactoryProps) {
   // Route to appropriate content component based on section type
   switch (section.type) {
@@ -55,6 +57,8 @@ export function ContentComponentFactory({
           isEditing={!isPreview}
           onChange={(newSettings) => onUpdate({ settings: newSettings })}
           className={className}
+          allSections={allSections}
+          section={section}
         />
       )
 
@@ -131,6 +135,7 @@ export function ContentComponentFactory({
           isPreview={isPreview}
           onUpdate={onUpdate}
           className={className}
+          allSections={allSections}
         />
       )
 

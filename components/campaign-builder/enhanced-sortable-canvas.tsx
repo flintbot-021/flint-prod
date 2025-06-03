@@ -111,6 +111,7 @@ export function EnhancedSortableCanvas({
                   onConfigure={onSectionConfigure}
                   onTypeChange={onSectionTypeChange}
                   isCollapsible={showCollapsedSections}
+                  allSections={sections}
                 />
               ))}
             </div>

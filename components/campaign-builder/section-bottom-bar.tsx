@@ -41,6 +41,9 @@ export function SectionBottomBar({
   // Check if this is a capture section
   const isCaptureSection = section.type === 'capture-details'
   
+  // Check if this is an AI Logic section (configuration only, never shown to end users)
+  const isAILogicSection = section.type === 'logic-ai' || sectionType?.category === 'logic'
+  
   // Debug logging to check section type detection
   if (section.type === 'capture-details' || section.title?.includes('Capture')) {
     console.log('Capture section debug:', {
@@ -120,8 +123,8 @@ export function SectionBottomBar({
     return null
   }
 
-  // Don't render if no controls are needed
-  if (!isQuestionType && !showButtonPreview && !isHeroSection && !isBasicSection && !isCaptureSection) {
+  // Don't render if no controls are needed or if this is an AI Logic section
+  if (isAILogicSection || (!isQuestionType && !showButtonPreview && !isHeroSection && !isBasicSection && !isCaptureSection)) {
     return null
   }
 
