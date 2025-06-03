@@ -1,15 +1,16 @@
 'use client'
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, X, Brain, Play, Check, Lock, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, X, Brain, Play, Check, Lock, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CampaignSection } from '@/lib/types/campaign-builder'
+import { PromptGenerationRequest, PromptGenerationResponse } from '@/lib/services/prompt-generation'
 
 interface OutputVariable {
   id: string
@@ -66,6 +67,8 @@ export function AILogicSection({
 }: AILogicSectionProps) {
   const [testResult, setTestResult] = useState<string>('')
   const [isTestRunning, setIsTestRunning] = useState(false)
+  const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
+  const [hasAttemptedAutoGeneration, setHasAttemptedAutoGeneration] = useState(false)
   
   // Extract actual variables from campaign sections
   const extractedVariables = useMemo(() => {
@@ -77,7 +80,7 @@ export function AILogicSection({
   
   // Use extracted variables or fallback to provided ones
   const currentAvailableVariables = extractedVariables.length > 0 ? extractedVariables : availableVariables
-  
+
   // Collapsible state
   const [expandedSections, setExpandedSections] = useState({
     step1: true,  // Start with first section open
@@ -99,6 +102,96 @@ export function AILogicSection({
       onChange(newSettings)
     }
   }, [settings, onChange])
+
+  // Auto-generate prompt based on campaign context
+  const generateContextualPrompt = async () => {
+    if (!allSections.length || !section?.order) {
+      console.error('Cannot generate prompt: missing sections or section order')
+      return
+    }
+
+    setIsGeneratingPrompt(true)
+
+    try {
+      const request: PromptGenerationRequest = {
+        sections: allSections,
+        currentSectionOrder: section.order,
+        existingPrompt: settings.prompt,
+        outputVariables: settings.outputVariables.map(v => ({
+          name: v.name,
+          description: v.description
+        }))
+      }
+
+      const response = await fetch('/api/generate-prompt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request)
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result: PromptGenerationResponse = await response.json()
+
+      if (result.success) {
+        // Auto-apply the generated prompt
+        handleSettingChange('prompt', result.suggestedPrompt)
+        
+        // Don't auto-open step 2 - keep it closed for cleaner UI
+      }
+
+    } catch (error) {
+      console.error('Error generating prompt:', error)
+    } finally {
+      setIsGeneratingPrompt(false)
+    }
+  }
+
+  // Auto-generate prompt when component mounts if no prompt exists and variables are available
+  useEffect(() => {
+    // Consider prompt "empty" if it's blank, very short, or just a generic starter
+    const isPromptEmpty = !settings.prompt || 
+                         settings.prompt.trim().length < 20 ||
+                         settings.prompt.trim().startsWith('You are an expert')
+    
+    const shouldAutoGenerate = isPromptEmpty && 
+                              currentAvailableVariables.length > 0 && 
+                              allSections.length > 0 && 
+                              section?.order !== undefined &&
+                              !isGeneratingPrompt &&
+                              !hasAttemptedAutoGeneration
+
+    console.log('🔍 Auto-generation check:', {
+      hasPrompt: !!settings.prompt,
+      promptLength: settings.prompt?.length || 0,
+      promptStart: settings.prompt?.substring(0, 30) || '',
+      isPromptEmpty,
+      variableCount: currentAvailableVariables.length,
+      sectionCount: allSections.length,
+      sectionOrder: section?.order,
+      isGenerating: isGeneratingPrompt,
+      hasAttempted: hasAttemptedAutoGeneration,
+      shouldAutoGenerate
+    })
+
+    if (shouldAutoGenerate) {
+      console.log('🚀 Triggering auto-generation...')
+      setHasAttemptedAutoGeneration(true)
+      generateContextualPrompt()
+    }
+  }, [
+    settings.prompt,
+    currentAvailableVariables.length, 
+    allSections.length, 
+    section?.order, 
+    isGeneratingPrompt, 
+    hasAttemptedAutoGeneration,
+    generateContextualPrompt
+  ])
 
   // Step completion logic
   const step1Complete = useMemo(() => {
@@ -310,10 +403,34 @@ export function AILogicSection({
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Left: Prompt Editor */}
                   <div className="space-y-4">
-                    <div>
+                    <div className="flex items-center justify-between">
                       <Label className="text-sm font-medium text-gray-300 mb-2 block">
                         AI Prompt
                       </Label>
+                      {currentAvailableVariables.length > 0 && (
+                        <Button
+                          onClick={generateContextualPrompt}
+                          disabled={isGeneratingPrompt}
+                          size="sm"
+                          variant="outline"
+                          className="border-purple-500 text-purple-300 hover:bg-purple-900 hover:border-purple-400"
+                        >
+                          {isGeneratingPrompt ? (
+                            <>
+                              <div className="animate-spin h-4 w-4 mr-2 border-2 border-purple-300 border-t-transparent rounded-full" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4 mr-2" />
+                              Try Different Prompt
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
+
+                    <div>
                       <Textarea
                         value={settings.prompt || ''}
                         onChange={(e) => handleSettingChange('prompt', e.target.value)}
