@@ -58,7 +58,6 @@ function extractInputVariables(sections: CampaignSection[], currentOrder: number
 export function AILogicSection({
   settings,
   isPreview = false,
-  isEditing = false,
   onChange,
   availableVariables = [],
   className,
@@ -89,12 +88,12 @@ export function AILogicSection({
     step4: false
   })
 
-  const toggleSection = (section: keyof typeof expandedSections) => {
+  const toggleSection = useCallback((section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
     }))
-  }
+  }, [])
 
   const handleSettingChange = useCallback((key: string, value: any) => {
     if (onChange) {
@@ -103,8 +102,8 @@ export function AILogicSection({
     }
   }, [settings, onChange])
 
-  // Auto-generate prompt based on campaign context
-  const generateContextualPrompt = async () => {
+  // Manual prompt generation (only when user clicks button)
+  const generateContextualPrompt = useCallback(async () => {
     if (!allSections.length || !section?.order) {
       console.error('Cannot generate prompt: missing sections or section order')
       return
@@ -138,10 +137,7 @@ export function AILogicSection({
       const result: PromptGenerationResponse = await response.json()
 
       if (result.success) {
-        // Auto-apply the generated prompt
         handleSettingChange('prompt', result.suggestedPrompt)
-        
-        // Don't auto-open step 2 - keep it closed for cleaner UI
       }
 
     } catch (error) {
@@ -149,49 +145,42 @@ export function AILogicSection({
     } finally {
       setIsGeneratingPrompt(false)
     }
-  }
+  }, [allSections, section?.order, settings.prompt, settings.outputVariables, handleSettingChange])
 
-  // Auto-generate prompt when component mounts if no prompt exists and variables are available
+  // Smart auto-generation: only trigger once when conditions are right
   useEffect(() => {
-    // Consider prompt "empty" if it's blank, very short, or just a generic starter
+    // Only run if we haven't attempted auto-generation yet
+    if (hasAttemptedAutoGeneration) return
+    
+    // Check if prompt is empty or very basic
     const isPromptEmpty = !settings.prompt || 
                          settings.prompt.trim().length < 20 ||
                          settings.prompt.trim().startsWith('You are an expert')
     
-    const shouldAutoGenerate = isPromptEmpty && 
-                              currentAvailableVariables.length > 0 && 
-                              allSections.length > 0 && 
-                              section?.order !== undefined &&
-                              !isGeneratingPrompt &&
-                              !hasAttemptedAutoGeneration
+    // Check if we have the necessary data
+    const canAutoGenerate = isPromptEmpty && 
+                            currentAvailableVariables.length > 0 && 
+                            allSections.length > 0 && 
+                            section?.order !== undefined &&
+                            !isGeneratingPrompt
 
-    console.log('🔍 Auto-generation check:', {
-      hasPrompt: !!settings.prompt,
-      promptLength: settings.prompt?.length || 0,
-      promptStart: settings.prompt?.substring(0, 30) || '',
-      isPromptEmpty,
-      variableCount: currentAvailableVariables.length,
-      sectionCount: allSections.length,
-      sectionOrder: section?.order,
-      isGenerating: isGeneratingPrompt,
-      hasAttempted: hasAttemptedAutoGeneration,
-      shouldAutoGenerate
-    })
-
-    if (shouldAutoGenerate) {
-      console.log('🚀 Triggering auto-generation...')
+    if (canAutoGenerate) {
+      console.log('🚀 Auto-generating initial prompt...')
       setHasAttemptedAutoGeneration(true)
       generateContextualPrompt()
     }
-  }, [
-    settings.prompt,
-    currentAvailableVariables.length, 
-    allSections.length, 
-    section?.order, 
-    isGeneratingPrompt, 
-    hasAttemptedAutoGeneration,
-    generateContextualPrompt
-  ])
+  }, []) // Empty dependency array - only runs on mount
+
+  // Separate effect to mark as attempted when we have variables (prevents infinite attempts)
+  useEffect(() => {
+    if (currentAvailableVariables.length > 0 && !hasAttemptedAutoGeneration) {
+      // Small delay to ensure component is stable
+      const timer = setTimeout(() => {
+        setHasAttemptedAutoGeneration(false) // Reset flag when variables become available
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [currentAvailableVariables.length, hasAttemptedAutoGeneration])
 
   // Step completion logic
   const step1Complete = useMemo(() => {
@@ -209,37 +198,37 @@ export function AILogicSection({
            settings.outputVariables.every(v => v.name.trim() !== '' && v.description.trim() !== '')
   }, [settings.outputVariables])
 
-  const addOutputVariable = () => {
+  const addOutputVariable = useCallback(() => {
     const newVariable: OutputVariable = {
       id: Date.now().toString(),
       name: '',
       description: ''
     }
     handleSettingChange('outputVariables', [...settings.outputVariables, newVariable])
-  }
+  }, [settings.outputVariables, handleSettingChange])
 
-  const updateOutputVariable = (id: string, field: string, value: string) => {
+  const updateOutputVariable = useCallback((id: string, field: string, value: string) => {
     const updatedVariables = settings.outputVariables.map(variable =>
       variable.id === id ? { ...variable, [field]: value } : variable
     )
     handleSettingChange('outputVariables', updatedVariables)
-  }
+  }, [settings.outputVariables, handleSettingChange])
 
-  const removeOutputVariable = (id: string) => {
+  const removeOutputVariable = useCallback((id: string) => {
     const filteredVariables = settings.outputVariables.filter(variable => variable.id !== id)
     handleSettingChange('outputVariables', filteredVariables)
-  }
+  }, [settings.outputVariables, handleSettingChange])
 
-  const insertVariable = (variable: string) => {
+  const insertVariable = useCallback((variable: string) => {
     const currentValue = settings.prompt || ''
     const newValue = currentValue + `@${variable}`
     handleSettingChange('prompt', newValue)
-  }
+  }, [settings.prompt, handleSettingChange])
 
-  const updateTestInput = (variableName: string, value: string) => {
+  const updateTestInput = useCallback((variableName: string, value: string) => {
     const newTestInputs = { ...settings.testInputs, [variableName]: value }
     handleSettingChange('testInputs', newTestInputs)
-  }
+  }, [settings.testInputs, handleSettingChange])
 
   // Generate live preview of prompt with variables substituted
   const previewPrompt = useMemo(() => {
@@ -423,7 +412,7 @@ export function AILogicSection({
                           ) : (
                             <>
                               <Sparkles className="h-4 w-4 mr-2" />
-                              Try Different Prompt
+                              Generate Prompt
                             </>
                           )}
                         </Button>
@@ -629,16 +618,48 @@ export function AILogicSection({
                   </Button>
 
                   {testResult && (
-                    <div>
+                    <div className="space-y-4">
                       <Label className="text-sm font-medium text-gray-300 mb-3 block">
                         AI Response
                       </Label>
-                      <Textarea
-                        value={testResult}
-                        readOnly
-                        className="min-h-[120px] bg-gray-900 border-gray-600 text-gray-300 font-mono"
-                        rows={6}
-                      />
+                      
+                      {/* Parse test result and display in @variable format */}
+                      {(() => {
+                        try {
+                          const outputs = testResult.split('\n\n').reduce((acc, line) => {
+                            const [key, ...valueParts] = line.split(': ')
+                            if (key && valueParts.length > 0) {
+                              acc[key.trim()] = valueParts.join(': ').trim()
+                            }
+                            return acc
+                          }, {} as Record<string, string>)
+                          
+                          return (
+                            <div className="space-y-4">
+                              {Object.entries(outputs).map(([variable, value]) => (
+                                <div key={variable} className="flex items-start space-x-4">
+                                  <Label className="text-sm font-medium text-gray-300 w-32 flex-shrink-0 pt-2">
+                                    @{variable}:
+                                  </Label>
+                                  <div className="flex-1 bg-gray-700 border border-gray-600 rounded-md p-3 text-white text-sm">
+                                    {value}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )
+                        } catch (error) {
+                          // Fallback to original textarea if parsing fails
+                          return (
+                            <Textarea
+                              value={testResult}
+                              readOnly
+                              className="min-h-[120px] bg-gray-900 border-gray-600 text-gray-300 font-mono"
+                              rows={6}
+                            />
+                          )
+                        }
+                      })()}
                     </div>
                   )}
                 </div>
