@@ -27,6 +27,7 @@ export interface PromptGenerationRequest {
 export interface PromptGenerationResponse {
   success: boolean
   suggestedPrompt: string
+  suggestedOutputVariables: Array<{ name: string; description: string }>
   reasoning: string
   variables: string[]
   error?: string
@@ -76,6 +77,7 @@ export class PromptGenerationService {
       return {
         success: true,
         suggestedPrompt: parsed.prompt,
+        suggestedOutputVariables: parsed.outputVariables,
         reasoning: parsed.reasoning,
         variables: parsed.variables,
         processingTime
@@ -87,6 +89,7 @@ export class PromptGenerationService {
       return {
         success: false,
         suggestedPrompt: '',
+        suggestedOutputVariables: [],
         reasoning: '',
         variables: [],
         error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -187,8 +190,19 @@ Current prompt (improve this):
 Return your response as JSON:
 {
   "prompt": "The complete AI prompt starting with 'You are an expert...' and using @variable references",
+  "outputVariables": [
+    {"name": "recommendation", "description": "Personalized recommendation based on responses"},
+    {"name": "score", "description": "Numerical score or rating"}
+  ],
   "reasoning": "Brief explanation of your approach"
 }
+
+For outputVariables, suggest 2-4 meaningful variables that the AI should generate based on the campaign context. Consider variables like:
+- recommendation, advice, plan, strategy (for personalized guidance)
+- score, rating, percentage (for numerical assessments) 
+- insights, analysis, summary (for analytical content)
+- timeline, duration, steps (for process-oriented outputs)
+- category, type, level (for classification)
 
 Make it conversational and helpful. Remember to include the @variable references in the prompt.`
 
@@ -243,6 +257,7 @@ Make it conversational and helpful. Remember to include the @variable references
    */
   private parseGenerationResponse(response: string): {
     prompt: string
+    outputVariables: Array<{ name: string; description: string }>
     reasoning: string
     variables: string[]
   } {
@@ -255,6 +270,7 @@ Make it conversational and helpful. Remember to include the @variable references
       
       return {
         prompt: parsed.prompt || '',
+        outputVariables: Array.isArray(parsed.outputVariables) ? parsed.outputVariables : [],
         reasoning: parsed.reasoning || 'Auto-generated based on campaign context',
         variables: Array.isArray(parsed.variables) ? parsed.variables : []
       }
@@ -265,6 +281,7 @@ Make it conversational and helpful. Remember to include the @variable references
       
       return {
         prompt: promptMatch ? promptMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : '',
+        outputVariables: [],
         reasoning: reasoningMatch ? reasoningMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : 'Could not parse reasoning from response',
         variables: []
       }

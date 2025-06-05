@@ -127,6 +127,7 @@ export function SectionTopBar({
             validation={validateName}
             maxLength={50}
             required={true}
+            autoSave={false}
           />
         </div>
 

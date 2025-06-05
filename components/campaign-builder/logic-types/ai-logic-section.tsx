@@ -67,6 +67,7 @@ export function AILogicSection({
   const [testResult, setTestResult] = useState<string>('')
   const [isTestRunning, setIsTestRunning] = useState(false)
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
+  const [isGeneratingOutputs, setIsGeneratingOutputs] = useState(false)
   const [hasAttemptedAutoGeneration, setHasAttemptedAutoGeneration] = useState(false)
   
   // Extract actual variables from campaign sections
@@ -138,12 +139,72 @@ export function AILogicSection({
 
       if (result.success) {
         handleSettingChange('prompt', result.suggestedPrompt)
+        
+        // Only add output variables if none exist yet or very few exist
+        if (settings.outputVariables.length <= 1 && result.suggestedOutputVariables?.length > 0) {
+          const newOutputVariables = result.suggestedOutputVariables.map((suggested, index) => ({
+            id: (Date.now() + index).toString(),
+            name: suggested.name,
+            description: suggested.description
+          }))
+          handleSettingChange('outputVariables', newOutputVariables)
+        }
       }
 
     } catch (error) {
       console.error('Error generating prompt:', error)
     } finally {
       setIsGeneratingPrompt(false)
+    }
+  }, [allSections, section?.order, settings.prompt, settings.outputVariables, handleSettingChange])
+
+  // Generate output variables independently
+  const generateOutputVariables = useCallback(async () => {
+    if (!allSections.length || !section?.order) {
+      console.error('Cannot generate output variables: missing sections or section order')
+      return
+    }
+
+    setIsGeneratingOutputs(true)
+
+    try {
+      const request: PromptGenerationRequest = {
+        sections: allSections,
+        currentSectionOrder: section.order,
+        existingPrompt: settings.prompt,
+        outputVariables: settings.outputVariables.map(v => ({
+          name: v.name,
+          description: v.description
+        }))
+      }
+
+      const response = await fetch('/api/generate-prompt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request)
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result: PromptGenerationResponse = await response.json()
+
+      if (result.success && result.suggestedOutputVariables?.length > 0) {
+        const newOutputVariables = result.suggestedOutputVariables.map((suggested, index) => ({
+          id: (Date.now() + index).toString(),
+          name: suggested.name,
+          description: suggested.description
+        }))
+        handleSettingChange('outputVariables', newOutputVariables)
+      }
+
+    } catch (error) {
+      console.error('Error generating output variables:', error)
+    } finally {
+      setIsGeneratingOutputs(false)
     }
   }, [allSections, section?.order, settings.prompt, settings.outputVariables, handleSettingChange])
 
@@ -512,10 +573,33 @@ export function AILogicSection({
                     <p className="text-sm text-gray-300">
                       Define variables that the AI will generate, like @recommendation or @score
                     </p>
-                    <Button onClick={addOutputVariable} size="sm" variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Output
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                      {currentAvailableVariables.length > 0 && (
+                        <Button
+                          onClick={generateOutputVariables}
+                          disabled={isGeneratingOutputs}
+                          size="sm"
+                          variant="outline"
+                          className="border-purple-500 text-purple-300 hover:bg-purple-900 hover:border-purple-400"
+                        >
+                          {isGeneratingOutputs ? (
+                            <>
+                              <div className="animate-spin h-4 w-4 mr-2 border-2 border-purple-300 border-t-transparent rounded-full" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4 mr-2" />
+                              Generate Outputs
+                            </>
+                          )}
+                        </Button>
+                      )}
+                      <Button onClick={addOutputVariable} size="sm" variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Output
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="space-y-4">
