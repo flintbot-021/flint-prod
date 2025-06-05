@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useCallback, memo } from 'react'
 import { InlineEditableText } from '@/components/ui/inline-editable-text'
 import { Button } from '@/components/ui/button'
 import { CampaignSection } from '@/lib/types/campaign-builder'
@@ -36,15 +36,15 @@ interface MultipleChoiceSettings {
 }
 
 // Sortable Option Component for Edit Mode
-function SortableEditOption({ 
+const SortableEditOption = memo(function SortableEditOption({ 
   option, 
   onUpdate, 
   onDelete, 
   selectionType = 'single'
 }: {
   option: ChoiceOption
-  onUpdate: (id: string, text: string) => void
-  onDelete: (id: string) => void
+  onUpdate: (id: string, text: string) => Promise<void>
+  onDelete: (id: string) => Promise<void>
   selectionType?: SelectionType
 }) {
   const {
@@ -111,7 +111,7 @@ function SortableEditOption({
       </Button>
     </div>
   )
-}
+})
 
 export function MultipleChoiceQuestion({ 
   section, 
@@ -127,9 +127,9 @@ export function MultipleChoiceQuestion({
     content = '',
     subheading = '',
     options = [
-      { id: '1', text: 'Option 1', order: 1 },
-      { id: '2', text: 'Option 2', order: 2 },
-      { id: '3', text: 'Option 3', order: 3 }
+      { id: 'option-1', text: 'Option 1', order: 1 },
+      { id: 'option-2', text: 'Option 2', order: 2 },
+      { id: 'option-3', text: 'Option 3', order: 3 }
     ],
     selectionType = 'single',
     required = false,
@@ -144,11 +144,25 @@ export function MultipleChoiceQuestion({
     })
   )
 
-  // Sort options by order
-  const sortedOptions = [...options].sort((a, b) => a.order - b.order)
+  // Sort options by order - memoized to prevent unnecessary re-renders
+  const sortedOptions = useMemo(() => {
+    // Ensure all options have valid id and order values
+    const validOptions = options.map((option, index) => ({
+      id: option.id || `option-${index + 1}`,
+      text: option.text || `Option ${index + 1}`,
+      order: option.order || (index + 1)
+    }))
+    // Create a stable sort that doesn't cause React key issues
+    return validOptions.sort((a, b) => a.order - b.order)
+  }, [options])
+
+  // Memoize the sortable items array
+  const sortableItems = useMemo(() => {
+    return sortedOptions.map(o => o.id || `option-${o.order || 0}`)
+  }, [sortedOptions])
 
   // Handle settings updates
-  const updateSettings = async (newSettings: Partial<MultipleChoiceSettings>) => {
+  const updateSettings = useCallback(async (newSettings: Partial<MultipleChoiceSettings>) => {
     setIsSaving(true)
     try {
       await onUpdate({
@@ -163,59 +177,80 @@ export function MultipleChoiceQuestion({
     } finally {
       setIsSaving(false)
     }
-  }
+  }, [settings, onUpdate])
 
   // Handle content change
-  const handleContentChange = async (newContent: string) => {
+  const handleContentChange = useCallback(async (newContent: string) => {
     await updateSettings({ content: newContent })
-  }
+  }, [updateSettings])
 
   // Handle subheading change
-  const handleSubheadingChange = async (newSubheading: string) => {
+  const handleSubheadingChange = useCallback(async (newSubheading: string) => {
     await updateSettings({ subheading: newSubheading })
-  }
+  }, [updateSettings])
 
   // Handle option update
-  const handleUpdateOption = (optionId: string, newText: string) => {
-    const updatedOptions = options.map(option =>
-      option.id === optionId ? { ...option, text: newText } : option
-    )
-    updateSettings({ options: updatedOptions })
-  }
+  const handleUpdateOption = useCallback(async (optionId: string, newText: string) => {
+    const updatedOptions = options.map((option, index) => {
+      const currentId = option.id || `option-${index + 1}`
+      return currentId === optionId ? { 
+        ...option, 
+        id: currentId,
+        text: newText,
+        order: option.order || (index + 1)
+      } : {
+        ...option,
+        id: currentId,
+        order: option.order || (index + 1)
+      }
+    })
+    await updateSettings({ options: updatedOptions })
+  }, [options, updateSettings])
 
   // Handle option deletion
-  const handleDeleteOption = (optionId: string) => {
-    const updatedOptions = options.filter(option => option.id !== optionId)
-    updateSettings({ options: updatedOptions })
-  }
+  const handleDeleteOption = useCallback(async (optionId: string) => {
+    const updatedOptions = options
+      .filter((option, index) => (option.id || `option-${index + 1}`) !== optionId)
+      .map((option, index) => ({
+        ...option,
+        id: option.id || `option-${index + 1}`,
+        order: index + 1
+      }))
+    await updateSettings({ options: updatedOptions })
+  }, [options, updateSettings])
 
   // Handle adding new option
-  const handleAddOption = () => {
-    const newOrder = Math.max(...options.map(o => o.order), 0) + 1
+  const handleAddOption = useCallback(async () => {
+    const validOrders = options.map(o => o.order || 0).filter(order => !isNaN(order))
+    const newOrder = validOrders.length > 0 ? Math.max(...validOrders) + 1 : options.length + 1
     const newOption: ChoiceOption = {
-      id: `option-${Date.now()}`,
+      id: `option-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       text: `Option ${newOrder}`,
       order: newOrder
     }
-    updateSettings({ options: [...options, newOption] })
-  }
+    await updateSettings({ options: [...options, newOption] })
+  }, [options, updateSettings])
 
   // Handle drag end
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = useCallback(async (event: any) => {
     const { active, over } = event
 
-    if (active.id !== over?.id) {
+    if (active?.id && over?.id && active.id !== over.id) {
       const oldIndex = options.findIndex(option => option.id === active.id)
       const newIndex = options.findIndex(option => option.id === over.id)
       
-      const reorderedOptions = arrayMove(options, oldIndex, newIndex).map((option, index) => ({
-        ...option,
-        order: index + 1
-      }))
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reorderedOptions = arrayMove(options, oldIndex, newIndex).map((option, index) => ({
+          ...option,
+          id: option.id || `option-${index + 1}`,
+          text: option.text || `Option ${index + 1}`,
+          order: index + 1
+        }))
 
-      updateSettings({ options: reorderedOptions })
+        await updateSettings({ options: reorderedOptions })
+      }
     }
-  }
+  }, [options, updateSettings])
 
   if (isPreview) {
     // Preview Mode - Show how the question appears to users
@@ -238,15 +273,24 @@ export function MultipleChoiceQuestion({
 
           {/* Options */}
           <div className="space-y-3 pt-6">
-            {sortedOptions.map((option) => (
+            {sortedOptions.map((option, index) => (
               <label 
-                key={option.id} 
+                key={`preview-${option.id || index}`} 
                 className="flex items-center space-x-3 p-4 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
               >
                 {selectionType === 'single' ? (
-                  <input type="radio" name="preview-options" className="h-4 w-4" />
+                  <input 
+                    type="radio" 
+                    name={`preview-options-${section.id}`} 
+                    value={option.id}
+                    className="h-4 w-4" 
+                  />
                 ) : (
-                  <input type="checkbox" className="h-4 w-4" />
+                  <input 
+                    type="checkbox" 
+                    value={option.id}
+                    className="h-4 w-4" 
+                  />
                 )}
                 <span className="flex-1 text-lg text-white">{option.text}</span>
               </label>
@@ -299,11 +343,11 @@ export function MultipleChoiceQuestion({
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
-          <SortableContext items={options.map(o => o.id)} strategy={verticalListSortingStrategy}>
+          <SortableContext items={sortableItems} strategy={verticalListSortingStrategy}>
             <div className="space-y-3">
-              {sortedOptions.map((option) => (
+              {sortedOptions.map((option, index) => (
                 <SortableEditOption
-                  key={option.id}
+                  key={`${option.id || index}-${option.order || index}`}
                   option={option}
                   onUpdate={handleUpdateOption}
                   onDelete={handleDeleteOption}
