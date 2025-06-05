@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
-import { getCampaignById, updateCampaign } from '@/lib/data-access'
-import { Campaign } from '@/lib/types/database'
+import { getCampaignById, updateCampaign, getCampaignSections, createSection, updateSection, deleteSection, reorderSections } from '@/lib/data-access'
+import { Campaign, Section, SectionWithOptions } from '@/lib/types/database'
 import { CampaignSection, SectionType, getSectionTypeById } from '@/lib/types/campaign-builder'
 import { CampaignBuilderTopBar } from '@/components/campaign-builder/top-bar'
 import { SectionsMenu } from '@/components/campaign-builder/sections-menu'
@@ -32,6 +32,74 @@ import { DraggableSectionType } from '@/components/campaign-builder/draggable-se
 import { EnhancedSortableCanvas } from '@/components/campaign-builder/enhanced-sortable-canvas'
 import { CampaignPreview } from '@/components/campaign-builder/campaign-preview'
 import { cn } from '@/lib/utils'
+
+// Helper functions to convert between database and UI types
+const mapCampaignBuilderTypeToDatabase = (builderType: string): string => {
+  const typeMap: Record<string, string> = {
+    // Input & Questions
+    'question-text': 'text_question',
+    'question-multiple-choice': 'multiple_choice',
+    'question-slider': 'slider',
+    'question-date-time': 'text_question', // Could be a specialized type later
+    'question-upload': 'text_question', // Could be a specialized type later
+    
+    // Content
+    'content-hero': 'info',
+    'content-basic': 'info',
+    
+    // Capture
+    'capture-details': 'capture',
+    
+    // Logic
+    'logic-ai': 'logic',
+    
+    // Output
+    'output-results': 'output',
+    'output-download': 'output',
+    'output-redirect': 'output'
+  }
+  
+  return typeMap[builderType] || 'info' // Default fallback
+}
+
+const mapDatabaseTypeToCampaignBuilder = (dbType: string): string => {
+  const typeMap: Record<string, string> = {
+    'text_question': 'question-text',
+    'multiple_choice': 'question-multiple-choice', 
+    'slider': 'question-slider',
+    'info': 'content-basic',
+    'capture': 'capture-details',
+    'logic': 'logic-ai',
+    'output': 'output-results'
+  }
+  
+  return typeMap[dbType] || dbType // Return original if no mapping found
+}
+
+const convertDatabaseSectionToCampaignSection = (dbSection: SectionWithOptions): CampaignSection => {
+  return {
+    id: dbSection.id,
+    type: mapDatabaseTypeToCampaignBuilder(dbSection.type),
+    title: dbSection.title || '',
+    settings: (dbSection.configuration as unknown) as Record<string, unknown>,
+    order: dbSection.order_index,
+    isVisible: true, // This could be stored in configuration if needed
+    createdAt: dbSection.created_at,
+    updatedAt: dbSection.updated_at
+  }
+}
+
+const convertCampaignSectionToDatabase = (section: CampaignSection, campaignId: string) => {
+  return {
+    campaign_id: campaignId,
+    type: mapCampaignBuilderTypeToDatabase(section.type) as any,
+    title: section.title,
+    description: null,
+    order_index: section.order,
+    configuration: section.settings,
+    required: false // This could be determined from settings
+  }
+}
 
 export default function CampaignBuilderPage() {
   const { user, loading } = useAuth()
@@ -80,9 +148,16 @@ export default function CampaignBuilderPage() {
       }
       
       setCampaign(result.data)
-      // TODO: Load sections from database
-      // For now, using mock sections
-      setSections([])
+      
+      // Load sections from database
+      const sectionsResult = await getCampaignSections(params.id)
+      if (sectionsResult.success && sectionsResult.data) {
+        const campaignSections = sectionsResult.data.map(convertDatabaseSectionToCampaignSection)
+        setSections(campaignSections)
+      } else {
+        console.error('Error loading sections:', sectionsResult.error)
+        setSections([])
+      }
     } catch (err) {
       console.error('Error loading campaign:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to load campaign'
@@ -132,8 +207,8 @@ export default function CampaignBuilderPage() {
       setIsSaving(true)
       setError(null)
       
-      // TODO: Save sections to database
-      // For now, just show success
+      // Sections are automatically saved when created/updated/deleted
+      // This manual save can be used for other campaign-level changes
       
       toast({
         title: 'Campaign saved',
@@ -169,29 +244,66 @@ export default function CampaignBuilderPage() {
     setShowPublishModal(false)
   }
 
-  const handleSectionAdd = (sectionType: SectionType) => {
-    const newSection: CampaignSection = {
-      id: `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type: sectionType.id,
-      title: sectionType.name,
-      settings: sectionType.defaultSettings || {},
-      order: sections.length + 1,
-      isVisible: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
+  const handleSectionAdd = async (sectionType: SectionType) => {
+    if (!campaign) return
 
-    setSections(prev => [...prev, newSection])
-    toast({
-      title: 'Section added',
-      description: `${sectionType.name} section has been added to your campaign`
-    })
+    try {
+      setIsSaving(true)
+      
+      const sectionData = {
+        campaign_id: campaign.id,
+        type: mapCampaignBuilderTypeToDatabase(sectionType.id) as any,
+        title: sectionType.name,
+        description: null,
+        order_index: sections.length + 1,
+        configuration: (sectionType.defaultSettings || {}) as any,
+        required: false
+      }
+
+      const result = await createSection(sectionData)
+      
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to create section')
+      }
+
+      const newCampaignSection = convertDatabaseSectionToCampaignSection(result.data as SectionWithOptions)
+      setSections(prev => [...prev, newCampaignSection])
+      
+      toast({
+        title: 'Section added',
+        description: `${sectionType.name} section has been added to your campaign`
+      })
+    } catch (err) {
+      console.error('Error adding section:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add section'
+      toast({
+        title: 'Failed to add section',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleSectionUpdate = async (sectionId: string, updates: Partial<CampaignSection>) => {
     try {
-      // TODO: Update section in database
-      // For now, just update local state
+      setIsSaving(true)
+      
+      // Prepare database updates
+      const dbUpdates: any = {}
+      if (updates.title !== undefined) dbUpdates.title = updates.title
+      if (updates.settings !== undefined) dbUpdates.configuration = updates.settings
+      if (updates.order !== undefined) dbUpdates.order_index = updates.order
+      
+      // Update in database
+      const result = await updateSection(sectionId, dbUpdates)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update section')
+      }
+      
+      // Update local state
       setSections(prev => prev.map(section => 
         section.id === sectionId 
           ? { ...section, ...updates, updatedAt: new Date().toISOString() }
@@ -215,26 +327,61 @@ export default function CampaignBuilderPage() {
         variant: 'destructive'
       })
       throw err // Re-throw to let the inline editor handle it
+    } finally {
+      setIsSaving(false)
     }
   }
 
-  const handleSectionDelete = (sectionId: string) => {
-    setSections(prev => {
-      const filtered = prev.filter(section => section.id !== sectionId)
-      // Reorder remaining sections
-      const reordered = filtered.map((section, index) => ({
-        ...section,
-        order: index + 1,
-        updatedAt: new Date().toISOString()
-      }))
+  const handleSectionDelete = async (sectionId: string) => {
+    if (!campaign) return
+
+    try {
+      setIsSaving(true)
       
-      toast({
-        title: 'Section deleted',
-        description: 'Section has been removed from your campaign'
+      // Delete from database
+      const result = await deleteSection(sectionId)
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete section')
+      }
+      
+      setSections(prev => {
+        const filtered = prev.filter(section => section.id !== sectionId)
+        // Reorder remaining sections
+        const reordered = filtered.map((section, index) => ({
+          ...section,
+          order: index + 1,
+          updatedAt: new Date().toISOString()
+        }))
+        
+        // Update order in database for remaining sections
+        const reorderData = reordered.map(section => ({
+          id: section.id,
+          order_index: section.order
+        }))
+        
+        if (reorderData.length > 0) {
+          reorderSections(campaign.id, reorderData).catch(console.error)
+        }
+        
+        toast({
+          title: 'Section deleted',
+          description: 'Section has been removed from your campaign'
+        })
+        
+        return reordered
       })
-      
-      return reordered
-    })
+    } catch (err) {
+      console.error('Error deleting section:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete section'
+      toast({
+        title: 'Delete failed',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleSectionDuplicate = (sectionId: string) => {
@@ -342,11 +489,23 @@ export default function CampaignBuilderPage() {
           
           const reorderedItems = arrayMove(items, oldIndex, newIndex)
           // Update order property for all affected sections
-          return reorderedItems.map((section, index) => ({
+          const updatedItems = reorderedItems.map((section, index) => ({
             ...section,
             order: index + 1,
             updatedAt: new Date().toISOString()
           }))
+          
+          // Save reorder to database
+          if (campaign) {
+            const reorderData = updatedItems.map(section => ({
+              id: section.id,
+              order_index: section.order
+            }))
+            
+            reorderSections(campaign.id, reorderData).catch(console.error)
+          }
+          
+          return updatedItems
         })
         
         toast({
