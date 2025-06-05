@@ -11,6 +11,7 @@ import { Plus, X, Brain, Play, Check, Lock, ChevronDown, ChevronUp, Sparkles } f
 import { cn } from '@/lib/utils'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { PromptGenerationRequest, PromptGenerationResponse } from '@/lib/services/prompt-generation'
+import { storeAITestResults } from '@/lib/utils/ai-test-storage'
 
 interface OutputVariable {
   id: string
@@ -340,6 +341,13 @@ export function AILogicSection({
             .join('\n\n')
           
           setTestResult(`✅ AI Test Results:\n\n${formattedResponse}`)
+          
+          // Store both input test data AND AI outputs in localStorage for preview mode
+          const allTestData = {
+            ...settings.testInputs,  // User input data from Step 1
+            ...result.outputs        // AI-generated outputs from Step 4
+          }
+          storeAITestResults(allTestData)
         } else {
           setTestResult('⚠️ AI processed successfully but returned no structured outputs.')
         }
