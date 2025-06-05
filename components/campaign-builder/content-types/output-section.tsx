@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
 import { Upload, X, Hash } from 'lucide-react'
@@ -10,6 +10,7 @@ import { uploadFiles } from '@/lib/supabase/storage'
 import { ResultsGate } from '../results-gate'
 import type { VariableInterpolationContext } from '@/lib/types/output-section'
 import { Badge } from '@/components/ui/badge'
+import { getAITestResults, hasAITestResults, getAITestResult } from '@/lib/utils/ai-test-storage'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -84,8 +85,15 @@ function getSimpleVariables(sections: CampaignSection[], currentOrder: number): 
   return variables
 }
 
-// Generate sample values
+// Generate sample values - Use AI test results if available, fallback to defaults
 function getSampleValue(variableName: string): string {
+  // First, try to get real AI test result
+  const aiTestValue = getAITestResult(variableName)
+  if (aiTestValue !== null) {
+    return String(aiTestValue)
+  }
+
+  // Fallback to default sample values
   switch (variableName.toLowerCase()) {
     case 'recommendation':
     case 'advice':
@@ -104,19 +112,28 @@ function getSampleValue(variableName: string): string {
   }
 }
 
-// Generate sample data context
+// Generate sample data context - Enhanced with AI test results
 function generateSampleContext(variables: SimpleVariable[]): Record<string, string> {
   const context: Record<string, string> = {}
+  
+  // Get any stored AI test results
+  const aiTestResults = getAITestResults()
   
   variables.forEach(variable => {
     context[variable.name] = variable.sampleValue
   })
+  
+  // Merge in AI test results (they take priority over defaults)
+  Object.assign(context, aiTestResults)
   
   // Add defaults if no variables
   if (variables.length === 0) {
     context.name = 'Alex Johnson'
     context.score = '85'
     context.recommendation = 'Based on your answers, we recommend focusing on strength training.'
+    
+    // If we have AI test results, add those too
+    Object.assign(context, aiTestResults)
   }
   
   return context
@@ -134,6 +151,7 @@ export function OutputSection({
   allSections = []
 }: OutputSectionProps) {
   const [isUploading, setIsUploading] = useState(false)
+  const [aiTestDataTimestamp, setAiTestDataTimestamp] = useState(0)
   
   // Get current settings with defaults
   const settings = section.settings as OutputSettings || {}
@@ -151,11 +169,28 @@ export function OutputSection({
     [allSections, section.order]
   )
 
-  // Generate sample data
-  const sampleValues = useMemo(() => 
-    generateSampleContext(availableVariables), 
-    [availableVariables]
-  )
+  // Listen for localStorage changes to refresh AI test data
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setAiTestDataTimestamp(Date.now())
+    }
+
+    // Listen for storage events (works for changes from other tabs/windows)
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Also listen for custom events for same-tab updates
+    window.addEventListener('aiTestResultsUpdated', handleStorageChange)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('aiTestResultsUpdated', handleStorageChange)
+    }
+  }, [])
+
+  // Generate sample data - Include AI test results in dependency array
+  const sampleValues = useMemo(() => {
+    return generateSampleContext(availableVariables)
+  }, [availableVariables, aiTestDataTimestamp]) // Re-compute when AI test results change
 
   // Create variable interpolation context
   const variableContext: VariableInterpolationContext = {
@@ -263,14 +298,14 @@ export function OutputSection({
                 </h1>
                 
                 {subtitle && (
-                  <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">
+                  <div className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">
                     <VariableInterpolatedContent
                       content={subtitle}
                       context={variableContext}
                       showPreview={true}
                       enableRealTimeProcessing={true}
                     />
-                  </p>
+                  </div>
                 )}
               </div>
 
@@ -393,34 +428,52 @@ export function OutputSection({
             </div>
             
             <div className="grid grid-cols-1 gap-3">
-              {availableVariables.map((variable, index) => (
-                <div key={`${variable.name}-${index}`} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg border border-gray-700">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2">
-                      <Badge 
-                        variant={variable.type === 'input' ? 'secondary' : 'default'}
-                        className={cn(
-                          'text-xs',
-                          variable.type === 'input' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+              {availableVariables.map((variable, index) => {
+                const hasRealData = getAITestResult(variable.name) !== null
+                
+                return (
+                  <div key={`${variable.name}-${index}`} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg border border-gray-700">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2">
+                        <Badge 
+                          variant={variable.type === 'input' ? 'secondary' : 'default'}
+                          className={cn(
+                            'text-xs',
+                            variable.type === 'input' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                          )}
+                        >
+                          {variable.type}
+                        </Badge>
+                        <code className="text-sm font-mono text-orange-400">@{variable.name}</code>
+                        {hasRealData && (
+                          <Badge className="text-xs bg-emerald-100 text-emerald-800 border-emerald-300">
+                            ✅ AI Data
+                          </Badge>
                         )}
-                      >
-                        {variable.type}
-                      </Badge>
-                      <code className="text-sm font-mono text-orange-400">@{variable.name}</code>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">{variable.description}</p>
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">{variable.description}</p>
+                    <div className="text-right">
+                      <p className="text-xs text-gray-500">
+                        {hasRealData ? 'AI Result:' : 'Sample:'}
+                      </p>
+                      <p className="text-xs text-gray-300 font-mono max-w-32 truncate">{variable.sampleValue}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">Sample:</p>
-                    <p className="text-xs text-gray-300 font-mono max-w-32 truncate">{variable.sampleValue}</p>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
             
-            <p className="text-xs text-gray-500 text-center">
-              Type @ in the content above to insert these variables
-            </p>
+            <div className="space-y-2">
+              <p className="text-xs text-gray-500 text-center">
+                Type @ in the content above to insert these variables
+              </p>
+              {hasAITestResults() && (
+                <p className="text-xs text-emerald-400 text-center">
+                  ✅ Preview mode will show AI test results for variables marked with "AI Data"
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}

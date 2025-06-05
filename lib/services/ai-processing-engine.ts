@@ -37,7 +37,7 @@ export class AIProcessingEngine {
   private apiKey: string
   
   // Sensible defaults - no user configuration needed
-  private readonly DEFAULT_MODEL = 'gpt-4'
+  private readonly DEFAULT_MODEL = 'gpt-4o' // Supports JSON mode and is latest
   private readonly DEFAULT_TEMPERATURE = 0.7
   private readonly DEFAULT_MAX_TOKENS = 1000
   private readonly DEFAULT_TIMEOUT = 30000

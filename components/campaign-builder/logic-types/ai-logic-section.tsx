@@ -11,6 +11,7 @@ import { Plus, X, Brain, Play, Check, Lock, ChevronDown, ChevronUp, Sparkles } f
 import { cn } from '@/lib/utils'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { PromptGenerationRequest, PromptGenerationResponse } from '@/lib/services/prompt-generation'
+import { storeAITestResults } from '@/lib/utils/ai-test-storage'
 
 interface OutputVariable {
   id: string
@@ -67,7 +68,7 @@ export function AILogicSection({
   const [testResult, setTestResult] = useState<string>('')
   const [isTestRunning, setIsTestRunning] = useState(false)
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
-  const [hasAttemptedAutoGeneration, setHasAttemptedAutoGeneration] = useState(false)
+  const [isGeneratingOutputs, setIsGeneratingOutputs] = useState(false)
   
   // Extract actual variables from campaign sections
   const extractedVariables = useMemo(() => {
@@ -102,8 +103,10 @@ export function AILogicSection({
     }
   }, [settings, onChange])
 
-  // Manual prompt generation (only when user clicks button)
-  const generateContextualPrompt = useCallback(async () => {
+
+
+  // Generate prompt manually (triggered by "Suggest my prompt" button)
+  const generatePrompt = useCallback(async () => {
     if (!allSections.length || !section?.order) {
       console.error('Cannot generate prompt: missing sections or section order')
       return
@@ -138,6 +141,7 @@ export function AILogicSection({
 
       if (result.success) {
         handleSettingChange('prompt', result.suggestedPrompt)
+        console.log('✅ Prompt generated successfully')
       }
 
     } catch (error) {
@@ -147,40 +151,75 @@ export function AILogicSection({
     }
   }, [allSections, section?.order, settings.prompt, settings.outputVariables, handleSettingChange])
 
-  // Smart auto-generation: only trigger once when conditions are right
-  useEffect(() => {
-    // Only run if we haven't attempted auto-generation yet
-    if (hasAttemptedAutoGeneration) return
-    
-    // Check if prompt is empty or very basic
-    const isPromptEmpty = !settings.prompt || 
-                         settings.prompt.trim().length < 20 ||
-                         settings.prompt.trim().startsWith('You are an expert')
-    
-    // Check if we have the necessary data
-    const canAutoGenerate = isPromptEmpty && 
-                            currentAvailableVariables.length > 0 && 
-                            allSections.length > 0 && 
-                            section?.order !== undefined &&
-                            !isGeneratingPrompt
-
-    if (canAutoGenerate) {
-      console.log('🚀 Auto-generating initial prompt...')
-      setHasAttemptedAutoGeneration(true)
-      generateContextualPrompt()
+  // Generate outputs manually (triggered by "Suggest my outputs" button)
+  const generateOutputs = useCallback(async () => {
+    if (!allSections.length || !section?.order || !settings.prompt?.trim()) {
+      console.error('Cannot generate outputs: missing sections, section order, or prompt')
+      return
     }
-  }, []) // Empty dependency array - only runs on mount
 
-  // Separate effect to mark as attempted when we have variables (prevents infinite attempts)
-  useEffect(() => {
-    if (currentAvailableVariables.length > 0 && !hasAttemptedAutoGeneration) {
-      // Small delay to ensure component is stable
-      const timer = setTimeout(() => {
-        setHasAttemptedAutoGeneration(false) // Reset flag when variables become available
-      }, 100)
-      return () => clearTimeout(timer)
+    setIsGeneratingOutputs(true)
+
+    try {
+      const request: PromptGenerationRequest = {
+        sections: allSections,
+        currentSectionOrder: section.order,
+        existingPrompt: settings.prompt, // Use current prompt for context
+        outputVariables: settings.outputVariables.map(v => ({
+          name: v.name,
+          description: v.description
+        }))
+      }
+
+      const response = await fetch('/api/generate-prompt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request)
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result: PromptGenerationResponse = await response.json()
+
+      if (result.success && result.suggestedOutputVariables?.length > 0) {
+        // Take max 2 outputs and add an empty one for user input
+        const maxOutputs = result.suggestedOutputVariables.slice(0, 2)
+        const newOutputVariables = [
+          ...maxOutputs.map((suggested, index) => ({
+            id: (Date.now() + index).toString(),
+            name: suggested.name,
+            description: suggested.description
+          })),
+          // Add empty one for user input
+          {
+            id: (Date.now() + 999).toString(),
+            name: '',
+            description: ''
+          }
+        ]
+        
+        handleSettingChange('outputVariables', newOutputVariables)
+        console.log('✅ Output variables generated successfully')
+        
+        // Focus the last (empty) input after a brief delay
+        setTimeout(() => {
+          const lastInput = document.querySelector('[data-output-variable-name]:last-of-type input')
+          if (lastInput instanceof HTMLInputElement) {
+            lastInput.focus()
+          }
+        }, 100)
+      }
+
+    } catch (error) {
+      console.error('Error generating outputs:', error)
+    } finally {
+      setIsGeneratingOutputs(false)
     }
-  }, [currentAvailableVariables.length, hasAttemptedAutoGeneration])
+  }, [allSections, section?.order, settings.prompt, settings.outputVariables, handleSettingChange])
 
   // Step completion logic
   const step1Complete = useMemo(() => {
@@ -192,6 +231,8 @@ export function AILogicSection({
   const step2Complete = useMemo(() => {
     return settings.prompt && settings.prompt.trim() !== ''
   }, [settings.prompt])
+
+
 
   const step3Complete = useMemo(() => {
     return settings.outputVariables.length > 0 && 
@@ -245,42 +286,78 @@ export function AILogicSection({
   const runTest = async () => {
     setIsTestRunning(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      if (settings.outputVariables.length === 0) {
-        setTestResult('Please define at least one output variable to test the AI logic.')
+      // Validate required fields
+      if (!settings.prompt?.trim()) {
+        setTestResult('Please write an AI prompt in Step 2 before testing.')
         return
       }
       
-      const mockOutputs = settings.outputVariables.reduce((acc, variable) => {
-        const name = variable.name.toLowerCase()
-        const description = variable.description.toLowerCase()
-        
-        if (name.includes('recommendation') || description.includes('recommend')) {
-          acc[variable.name] = `Based on your inputs, here's a personalized recommendation tailored to your specific needs and goals.`
-        } else if (name.includes('score') || description.includes('score')) {
-          acc[variable.name] = Math.floor(Math.random() * 100)
-        } else if (name.includes('time') || description.includes('time')) {
-          acc[variable.name] = '45 minutes'
-        } else if (name.includes('plan') || description.includes('plan')) {
-          acc[variable.name] = 'A customized plan based on your responses and objectives'
-        } else if (name.includes('advice') || description.includes('advice')) {
-          acc[variable.name] = 'Here is some helpful advice based on your situation'
-        } else if (name.includes('result') || description.includes('result')) {
-          acc[variable.name] = 'Your personalized result based on the analysis'
+      if (settings.outputVariables.length === 0) {
+        setTestResult('Please define at least one output variable in Step 3 before testing.')
+        return
+      }
+
+      // Check if all test inputs are provided
+      const missingInputs = currentAvailableVariables.filter(variable => 
+        !settings.testInputs[variable] || settings.testInputs[variable].trim() === ''
+      )
+      
+      if (missingInputs.length > 0) {
+        setTestResult(`Please provide example answers for: ${missingInputs.map(v => '@' + v).join(', ')}`)
+        return
+      }
+
+      // Prepare the AI test request
+      const testRequest = {
+        prompt: settings.prompt,
+        variables: settings.testInputs,
+        outputVariables: settings.outputVariables.map(v => ({
+          id: v.id,
+          name: v.name,
+          description: v.description
+        }))
+      }
+
+      // Call the AI processing API
+      const response = await fetch('/api/ai-processing', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testRequest)
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const result = await response.json()
+
+      if (result.success) {
+        // Format the AI outputs for display
+        if (result.outputs && Object.keys(result.outputs).length > 0) {
+          const formattedResponse = Object.entries(result.outputs)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join('\n\n')
+          
+          setTestResult(`✅ AI Test Results:\n\n${formattedResponse}`)
+          
+          // Store both input test data AND AI outputs in localStorage for preview mode
+          const allTestData = {
+            ...settings.testInputs,  // User input data from Step 1
+            ...result.outputs        // AI-generated outputs from Step 4
+          }
+          storeAITestResults(allTestData)
         } else {
-          acc[variable.name] = `Sample output for ${variable.description || variable.name}`
+          setTestResult('⚠️ AI processed successfully but returned no structured outputs.')
         }
-        return acc
-      }, {} as Record<string, any>)
-      
-      const formattedResponse = Object.entries(mockOutputs)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join('\n\n')
-      
-      setTestResult(formattedResponse)
+      } else {
+        setTestResult(`❌ AI Test Failed: ${result.error || 'Unknown error occurred'}`)
+      }
+
     } catch (error) {
-      setTestResult('Error: Failed to generate response. Please check your prompt and try again.')
+      console.error('Test error:', error)
+      setTestResult(`❌ Error: ${error instanceof Error ? error.message : 'Failed to test AI logic. Please check your settings and try again.'}`)
     } finally {
       setIsTestRunning(false)
     }
@@ -397,25 +474,25 @@ export function AILogicSection({
                         AI Prompt
                       </Label>
                       {currentAvailableVariables.length > 0 && (
-                        <Button
-                          onClick={generateContextualPrompt}
-                          disabled={isGeneratingPrompt}
-                          size="sm"
-                          variant="outline"
-                          className="border-purple-500 text-purple-300 hover:bg-purple-900 hover:border-purple-400"
-                        >
-                          {isGeneratingPrompt ? (
-                            <>
-                              <div className="animate-spin h-4 w-4 mr-2 border-2 border-purple-300 border-t-transparent rounded-full" />
-                              Generating...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="h-4 w-4 mr-2" />
-                              Generate Prompt
-                            </>
-                          )}
-                        </Button>
+                                              <Button
+                        onClick={generatePrompt}
+                        disabled={isGeneratingPrompt}
+                        size="sm"
+                        variant="outline"
+                        className="border-purple-500 text-purple-300 hover:bg-purple-900 hover:border-purple-400"
+                      >
+                        {isGeneratingPrompt ? (
+                          <>
+                            <div className="animate-spin h-4 w-4 mr-2 border-2 border-purple-300 border-t-transparent rounded-full" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Suggest my prompt
+                          </>
+                        )}
+                      </Button>
                       )}
                     </div>
 
@@ -512,17 +589,40 @@ export function AILogicSection({
                     <p className="text-sm text-gray-300">
                       Define variables that the AI will generate, like @recommendation or @score
                     </p>
-                    <Button onClick={addOutputVariable} size="sm" variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Output
-                    </Button>
+                    <div className="flex items-center space-x-2">
+                      {currentAvailableVariables.length > 0 && (
+                                              <Button
+                        onClick={generateOutputs}
+                        disabled={isGeneratingOutputs || !settings.prompt?.trim()}
+                        size="sm"
+                        variant="outline"
+                        className="border-purple-500 text-purple-300 hover:bg-purple-900 hover:border-purple-400"
+                      >
+                        {isGeneratingOutputs ? (
+                          <>
+                            <div className="animate-spin h-4 w-4 mr-2 border-2 border-purple-300 border-t-transparent rounded-full" />
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Suggest my outputs
+                          </>
+                        )}
+                      </Button>
+                      )}
+                      <Button onClick={addOutputVariable} size="sm" variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Output
+                      </Button>
+                    </div>
                   </div>
 
                   <div className="space-y-4">
                     {settings.outputVariables.map((variable) => (
                       <Card key={variable.id} className="p-4 bg-gray-900 border-gray-700">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
+                          <div data-output-variable-name>
                             <Label className="text-xs text-gray-400 mb-1 block">Variable Name</Label>
                             <Input
                               value={variable.name}
