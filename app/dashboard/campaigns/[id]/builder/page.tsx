@@ -8,7 +8,7 @@ import { Campaign, Section, SectionWithOptions } from '@/lib/types/database'
 import { CampaignSection, SectionType, getSectionTypeById } from '@/lib/types/campaign-builder'
 import { CampaignBuilderTopBar } from '@/components/campaign-builder/top-bar'
 import { SectionsMenu } from '@/components/campaign-builder/sections-menu'
-import { SortableCanvas } from '@/components/campaign-builder/sortable-canvas'
+
 import { EnhancedSectionCard } from '@/components/campaign-builder/enhanced-section-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PublishModal } from '@/components/campaign-builder/publish-modal'
@@ -30,7 +30,6 @@ import {
 } from '@dnd-kit/sortable'
 import { DraggableSectionType } from '@/components/campaign-builder/draggable-section-type'
 import { EnhancedSortableCanvas } from '@/components/campaign-builder/enhanced-sortable-canvas'
-import { CampaignPreview } from '@/components/campaign-builder/campaign-preview'
 import { cn } from '@/lib/utils'
 
 // Helper functions to convert between database and UI types
@@ -113,7 +112,6 @@ export default function CampaignBuilderPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeDragItem, setActiveDragItem] = useState<SectionType | CampaignSection | null>(null)
-  const [activeTab, setActiveTab] = useState<'builder' | 'preview'>('builder')
   const [showPublishModal, setShowPublishModal] = useState(false)
 
   // DnD sensors
@@ -153,6 +151,12 @@ export default function CampaignBuilderPage() {
       const sectionsResult = await getCampaignSections(params.id)
       if (sectionsResult.success && sectionsResult.data) {
         const campaignSections = sectionsResult.data.map(convertDatabaseSectionToCampaignSection)
+        console.log('Loaded sections from database:', campaignSections.map(s => ({ 
+          id: s.id, 
+          title: s.title, 
+          order: s.order, 
+          order_index: sectionsResult.data?.find(ds => ds.id === s.id)?.order_index 
+        })))
         setSections(campaignSections)
       } else {
         console.error('Error loading sections:', sectionsResult.error)
@@ -164,6 +168,35 @@ export default function CampaignBuilderPage() {
       setError(errorMessage)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // Manual refresh function for debugging
+  const refreshSections = async () => {
+    if (!params.id || typeof params.id !== 'string') return
+    
+    try {
+      setIsSaving(true)
+      const sectionsResult = await getCampaignSections(params.id)
+      if (sectionsResult.success && sectionsResult.data) {
+        const campaignSections = sectionsResult.data.map(convertDatabaseSectionToCampaignSection)
+        console.log('Refreshed sections from database:', campaignSections.map(s => ({ 
+          id: s.id, 
+          title: s.title, 
+          order: s.order, 
+          order_index: sectionsResult.data?.find(ds => ds.id === s.id)?.order_index 
+        })))
+        setSections(campaignSections)
+        toast({
+          title: 'Sections refreshed',
+          description: 'Section order has been reloaded from database',
+          duration: 2000
+        })
+      }
+    } catch (err) {
+      console.error('Error refreshing sections:', err)
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -483,9 +516,19 @@ export default function CampaignBuilderPage() {
       const overId = over.id as string
 
       if (activeId !== overId) {
+        console.log('Reordering sections:', { activeId, overId })
+        
         setSections(items => {
           const oldIndex = items.findIndex(item => item.id === activeId)
           const newIndex = items.findIndex(item => item.id === overId)
+          
+          console.log('Current section order:', items.map(i => ({ id: i.id, title: i.title, order: i.order })))
+          console.log('Moving from index', oldIndex, 'to index', newIndex)
+          
+          if (oldIndex === -1 || newIndex === -1) {
+            console.error('Could not find section indices:', { oldIndex, newIndex, activeId, overId })
+            return items
+          }
           
           const reorderedItems = arrayMove(items, oldIndex, newIndex)
           // Update order property for all affected sections
@@ -495,6 +538,8 @@ export default function CampaignBuilderPage() {
             updatedAt: new Date().toISOString()
           }))
           
+          console.log('New section order:', updatedItems.map(i => ({ id: i.id, title: i.title, order: i.order })))
+          
           // Save reorder to database
           if (campaign) {
             const reorderData = updatedItems.map(section => ({
@@ -502,7 +547,28 @@ export default function CampaignBuilderPage() {
               order_index: section.order
             }))
             
-            reorderSections(campaign.id, reorderData).catch(console.error)
+            console.log('Saving reorder data to database:', reorderData)
+            
+            reorderSections(campaign.id, reorderData)
+              .then((result) => {
+                console.log('Reorder save result:', result)
+                if (!result.success) {
+                  console.error('Failed to save reorder:', result.error)
+                  toast({
+                    title: 'Reorder save failed',
+                    description: result.error || 'Failed to save section order',
+                    variant: 'destructive'
+                  })
+                }
+              })
+              .catch((error) => {
+                console.error('Reorder save error:', error)
+                toast({
+                  title: 'Reorder save failed',
+                  description: 'Failed to save section order',
+                  variant: 'destructive'
+                })
+              })
           }
           
           return updatedItems
@@ -639,79 +705,47 @@ export default function CampaignBuilderPage() {
                   </Card>
                 </div>
 
-                {/* Main Content - Tabbed Interface */}
+                {/* Main Content - Builder Canvas */}
                 <div className="lg:col-span-3">
                   <Card className="h-full">
-                    {/* Tab Navigation */}
-                    <div className="border-b border-border">
-                      <nav className="flex space-x-8 px-6 pt-4" aria-label="Tabs">
-                        <button
-                          onClick={() => setActiveTab('builder')}
-                          className={cn(
-                            "whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors",
-                            activeTab === 'builder'
-                              ? "border-blue-500 text-blue-600"
-                              : "border-transparent text-muted-foreground hover:text-foreground hover:border-input"
-                          )}
-                        >
-                          Builder
-                        </button>
-                        <button
-                          onClick={() => setActiveTab('preview')}
-                          className={cn(
-                            "whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors",
-                            activeTab === 'preview'
-                              ? "border-blue-500 text-blue-600"
-                              : "border-transparent text-muted-foreground hover:text-foreground hover:border-input"
-                          )}
-                        >
-                          Preview
-                        </button>
-                      </nav>
-                    </div>
-
-                    {/* Tab Content */}
-                    {activeTab === 'builder' ? (
-                      <>
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <CardTitle className="text-lg">Campaign Canvas</CardTitle>
-                              <CardDescription>
-                                Drag sections from the sidebar to build your campaign. Use the enhanced controls for inline editing, preview mode, and section management.
-                              </CardDescription>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-lg">Campaign Canvas</CardTitle>
+                          <CardDescription>
+                            Drag sections from the sidebar to build your campaign. Use the enhanced controls for inline editing, preview mode, and section management.
+                          </CardDescription>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          {sections.length > 0 && (
+                            <div className="text-sm text-muted-foreground">
+                              {sections.length} section{sections.length !== 1 ? 's' : ''} • {sections.filter(s => s.isVisible).length} visible
                             </div>
-                            {sections.length > 0 && (
-                              <div className="text-sm text-muted-foreground">
-                                {sections.length} section{sections.length !== 1 ? 's' : ''} • {sections.filter(s => s.isVisible).length} visible
-                              </div>
-                            )}
-                          </div>
-                        </CardHeader>
-                        <CardContent className="h-[calc(100%-140px)]">
-                          <EnhancedSortableCanvas
-                            sections={sections}
-                            onSectionUpdate={handleSectionUpdate}
-                            onSectionDelete={handleSectionDelete}
-                            onSectionDuplicate={handleSectionDuplicate}
-                            onSectionConfigure={handleSectionConfigure}
-                            onSectionTypeChange={handleSectionTypeChange}
-                            className="h-full"
-                            showCollapsedSections={true}
-                          />
-                        </CardContent>
-                      </>
-                    ) : (
-                      <div className="h-[calc(100%-60px)]">
-                        <CampaignPreview
-                          campaign={campaign}
-                          sections={sections}
-                          className="h-full"
-                          enableDeviceToggle={true}
-                          enableFullscreen={true}
-                        />
+                          )}
+                          {/* Debug refresh button */}
+                          <button
+                            onClick={refreshSections}
+                            disabled={isSaving}
+                            className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border disabled:opacity-50"
+                            title="Refresh sections from database"
+                          >
+                            {isSaving ? 'Refreshing...' : '🔄 Refresh'}
+                          </button>
+                        </div>
                       </div>
-                    )}
+                    </CardHeader>
+                    <CardContent className="h-[calc(100%-140px)]">
+                      <EnhancedSortableCanvas
+                        sections={sections}
+                        onSectionUpdate={handleSectionUpdate}
+                        onSectionDelete={handleSectionDelete}
+                        onSectionDuplicate={handleSectionDuplicate}
+                        onSectionConfigure={handleSectionConfigure}
+                        onSectionTypeChange={handleSectionTypeChange}
+                        className="h-full"
+                        showCollapsedSections={true}
+                      />
+                    </CardContent>
                   </Card>
                 </div>
               </div>
