@@ -9,27 +9,24 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Loader2, 
-  AlertCircle,
-  Globe,
-  Target,
-  MessageSquare,
-  Brain,
-  FileText,
-  CheckCircle,
-  Clock,
-  Shield,
-  Sliders,
-  Info,
-  Wifi,
-  WifiOff,
-  RefreshCcw,
-  AlertTriangle,
+  CheckCircle, 
+  ArrowLeft, 
+  ArrowRight, 
+  Brain, 
+  Target, 
+  MessageSquare, 
+  RefreshCw, 
+  Wifi, 
+  WifiOff, 
   Smartphone,
   Monitor,
-  Tablet
+  Tablet,
+  Zap,
+  Clock,
+  AlertCircle,
+  Loader2,
+  AlertTriangle,
+  Globe
 } from 'lucide-react'
 
 // Import Variable Interpolation Engine
@@ -133,6 +130,10 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null)
   const [pendingUpdates, setPendingUpdates] = useState<Map<string, any>>(new Map())
   const [isSessionRecovered, setIsSessionRecovered] = useState(false)
+
+  // Completion celebration state
+  const [showCompletionCelebration, setShowCompletionCelebration] = useState(false)
+  const [celebrationMessage, setCelebrationMessage] = useState('')
 
   const [campaignState, setCampaignState] = useState<CampaignState>({
     currentSection: 0,
@@ -314,10 +315,6 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       )
     }
   }
-
-  // Completion celebration system
-  const [showCompletionCelebration, setShowCompletionCelebration] = useState(false)
-  const [celebrationMessage, setCelebrationMessage] = useState('')
 
   // Trigger completion celebration
   const triggerCompletionCelebration = async () => {
@@ -1150,35 +1147,55 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // =============================================================================
 
   const loadPublicCampaign = async () => {
+    console.log('🔍 Starting loadPublicCampaign for slug:', slug)
+    
+    if (!slug || typeof slug !== 'string') {
+      console.error('❌ Invalid slug:', slug)
+      setErrorState(createError(
+        'Invalid campaign URL. Please check the link.',
+        'validation',
+        false
+      ))
+      setIsLoading(false)
+      return
+    }
+
     try {
       setIsLoading(true)
       setErrorState(null)
-
-      // Check network status first
-      if (!networkState.isOnline) {
-        throw new Error('No internet connection available')
-      }
-
+      
+      console.log('🌐 Getting Supabase client...')
       const supabase = await getSupabaseClient()
-
-      // Get campaign by published_url with activation check
+      
+      console.log('🔍 Querying campaign with slug:', slug)
+      // Get campaign by slug with debug info
       const { data: campaign, error: campaignError } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('published_url', slug)
+        .eq('slug', slug)
         .eq('status', 'published')
-        .eq('is_active', true)
         .single()
 
+      console.log('📊 Campaign query result:', { campaign, error: campaignError })
+
       if (campaignError || !campaign) {
+        console.error('❌ Campaign not found. Error:', campaignError)
         if (campaignError?.code === 'PGRST116') {
           throw new Error('Campaign not found')
         }
         throw new Error(campaignError?.message || 'Campaign not available')
       }
 
+      console.log('✅ Campaign found:', {
+        id: campaign.id,
+        name: campaign.name,
+        status: campaign.status,
+        slug: campaign.slug
+      })
+      
       setCampaign(campaign)
       
+      console.log('📋 Loading sections for campaign:', campaign.id)
       // Load real campaign sections from database
       const { data: sectionsData, error: sectionsError } = await supabase
         .from('sections')
@@ -1189,6 +1206,16 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         .eq('campaign_id', campaign.id)
         .order('order_index', { ascending: true })
 
+      console.log('📊 Sections query result:', { 
+        sectionsData: sectionsData?.map((s: any) => ({ 
+          id: s.id, 
+          title: s.title, 
+          type: s.type, 
+          order_index: s.order_index 
+        })), 
+        error: sectionsError 
+      })
+
       if (sectionsError) {
         throw new Error(`Failed to load campaign sections: ${sectionsError.message}`)
       }
@@ -1198,7 +1225,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       }
 
       setSections(sectionsData)
-
+      
       // Initialize campaign state
       setCampaignState(prev => ({
         ...prev,
@@ -1206,11 +1233,13 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         sessionId: crypto.randomUUID()
       }))
 
-    } catch (err) {
-      console.error('Error loading public campaign:', err)
-      handleError(err as Error, { function: 'loadPublicCampaign', slug })
+      console.log('✅ Campaign loaded successfully with', sectionsData.length, 'sections')
+    } catch (error) {
+      console.error('💥 Error loading campaign:', error)
+      handleError(error as Error, { function: 'loadPublicCampaign', slug: slug })
     } finally {
       setIsLoading(false)
+      console.log('🏁 loadPublicCampaign completed')
     }
   }
 
@@ -1479,14 +1508,38 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         "font-bold text-foreground mb-4 text-center",
         deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
       )}>
-        {title || 'Capture Section'}
+        {title || 'Get Your Personalized Results'}
       </h1>
       <p className={cn(
         "text-muted-foreground mb-8 text-center",
         deviceInfo?.type === 'mobile' ? "text-base px-4" : "text-lg"
       )}>
-        {description || 'Please provide your information.'}
+        {description || 'Enter your information to unlock AI-powered personalized insights.'}
       </p>
+
+      {/* Preview of what happens next */}
+      <div className="mb-8 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg max-w-lg mx-auto">
+        <div className="text-center">
+          <div className="flex items-center justify-center mb-3">
+            <Brain className="h-6 w-6 text-blue-600 mr-2" />
+            <span className="text-sm font-medium text-blue-800">What happens next:</span>
+          </div>
+          <div className="space-y-2 text-sm text-gray-700">
+            <div className="flex items-center justify-center">
+              <div className="w-2 h-2 bg-blue-600 rounded-full mr-3"></div>
+              <span>AI analyzes your responses</span>
+            </div>
+            <div className="flex items-center justify-center">
+              <div className="w-2 h-2 bg-purple-600 rounded-full mr-3"></div>
+              <span>Personalized insights generated</span>
+            </div>
+            <div className="flex items-center justify-center">
+              <div className="w-2 h-2 bg-green-600 rounded-full mr-3"></div>
+              <span>Custom results delivered</span>
+            </div>
+          </div>
+        </div>
+      </div>
       
       <form onSubmit={(e) => {
         e.preventDefault()
@@ -1497,48 +1550,63 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         })
         handleSectionComplete(index, data)
       }} className="space-y-6">
-        {(config.fields || getDefaultCaptureFields()).map((field: any, fieldIndex: number) => (
-          <div key={field.id || fieldIndex}>
-            <label className={cn(
-              "block font-medium text-foreground mb-2",
-              deviceInfo?.type === 'mobile' ? "text-base" : "text-sm"
-            )}>
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+        {/* Basic form fields would be rendered here by the actual capture component */}
+        <div className="space-y-4">
+          {/* Name Field */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground block">
+              Full Name <span className="text-red-500">*</span>
             </label>
             <input
-              type={field.type || 'text'}
-              name={field.id}
-              required={field.required}
-              className={cn(
-                "w-full border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                getMobileClasses("px-4 py-3"),
-                deviceInfo?.type === 'mobile' && "text-base" // Prevent zoom on iOS
-              )}
-              placeholder={field.placeholder || `Enter your ${field.label.toLowerCase()}`}
-              onChange={(e) => {
-                // Real-time response collection
-                collectResponse(section.id, field.id, e.target.value, {
-                  fieldType: field.type || 'text',
-                  fieldLabel: field.label,
-                  isRequired: field.required || false
-                })
-              }}
-              defaultValue={campaignState.userInputs[field.id] || ''}
+              type="text"
+              name="name"
+              required
+              placeholder="Enter your full name"
+              className="w-full px-4 py-3 border border-input rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-        ))}
-        
-        <div className="text-center pt-4">
-          <Button 
-            type="submit" 
-            className={getMobileClasses("bg-blue-600 hover:bg-blue-700 w-full")}
-            size={deviceInfo?.type === 'mobile' ? 'lg' : 'default'}
+
+          {/* Email Field */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground block">
+              Email Address <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              name="email"
+              required
+              placeholder="your@email.com"
+              className="w-full px-4 py-3 border border-input rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium text-lg transition-colors mt-6"
           >
-            Continue
-          </Button>
+            🚀 Generate My Results
+          </button>
         </div>
       </form>
+
+      {/* Trust signals */}
+      <div className="mt-8 text-center">
+        <div className="flex items-center justify-center space-x-6 text-sm text-muted-foreground">
+          <div className="flex items-center">
+            <CheckCircle className="h-4 w-4 text-green-600 mr-1" />
+            <span>Secure & Private</span>
+          </div>
+          <div className="flex items-center">
+            <Zap className="h-4 w-4 text-blue-600 mr-1" />
+            <span>AI-Powered</span>
+          </div>
+          <div className="flex items-center">
+            <Clock className="h-4 w-4 text-purple-600 mr-1" />
+            <span>Instant Results</span>
+          </div>
+        </div>
+      </div>
     </div>
   )
 
@@ -1721,49 +1789,209 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
   const renderLogicSection = (section: SectionWithOptions, index: number, config: any, title: string, description: string) => {
     const [isProcessing, setIsProcessing] = useState(false)
+    const [hasProcessed, setHasProcessed] = useState(false)
+    const [aiResults, setAiResults] = useState<Record<string, any>>({})
+    const [errorState, setErrorState] = useState<string | null>(null)
+    
+    // Check if capture has been completed
+    const canProcessAI = campaignState.completedSections.has(
+      sections.findIndex(s => s.type === 'capture')
+    )
     
     useEffect(() => {
-      // Auto-process logic section when it becomes active
-      processLogicSection()
-    }, [])
+      // Only auto-process if capture is complete and section is active
+      if (campaignState.currentSection === index && canProcessAI && !hasProcessed && !isProcessing) {
+        processLogicSection()
+      }
+    }, [campaignState.currentSection, index, canProcessAI, hasProcessed, isProcessing])
 
     const processLogicSection = async () => {
+      if (!canProcessAI) {
+        setErrorState('Please complete the information capture step first.')
+        return
+      }
+
       setIsProcessing(true)
+      setErrorState(null)
       
       try {
-        // Simulate AI processing time
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        // Extract AI logic settings
+        const logicSettings = section.configuration as any
+        const prompt = logicSettings?.prompt || 'Analyze the user responses and provide personalized recommendations.'
+        const outputVariables = logicSettings?.outputVariables || []
         
-        // Logic sections auto-advance after processing
-        handleSectionComplete(index, { 
+        if (!prompt.trim()) {
+          throw new Error('No AI prompt configured for this logic section.')
+        }
+
+        // Prepare AI request with user inputs
+        const aiRequest = {
+          prompt,
+          variables: campaignState.userInputs,
+          outputVariables: outputVariables.map((v: any) => ({
+            id: v.id,
+            name: v.name,
+            description: v.description
+          }))
+        }
+
+        // Call the AI processing API
+        const response = await fetch('/api/ai-processing', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(aiRequest)
+        })
+
+        if (!response.ok) {
+          throw new Error(`AI processing failed: ${response.status} ${response.statusText}`)
+        }
+
+        const result = await response.json()
+
+        if (!result.success) {
+          throw new Error(result.error || 'AI processing failed')
+        }
+
+        // Store AI results in campaign state
+        setAiResults(result.outputs || {})
+        setHasProcessed(true)
+
+        // Update campaign state with AI outputs
+        setCampaignState(prev => ({
+          ...prev,
+          userInputs: { ...prev.userInputs, ...result.outputs }
+        }))
+
+        // Complete the logic section
+        await handleSectionComplete(index, { 
           processed: true,
+          ai_outputs: result.outputs,
           logic_result: 'processed',
           timestamp: new Date().toISOString()
         })
+
       } catch (err) {
         console.error('Error processing logic section:', err)
-      } finally {
+        setErrorState(err instanceof Error ? err.message : 'Failed to process AI logic')
         setIsProcessing(false)
       }
     }
 
-    return (
-      <div className="text-center">
-        <Brain className="h-16 w-16 text-blue-600 mx-auto mb-6" />
-        <h1 className="text-3xl font-bold text-foreground mb-4">
-          {title || 'Processing Your Information'}
-        </h1>
-        
-        <div className="prose prose-lg mx-auto text-muted-foreground">
-          <p>{description || 'Please wait while we analyze your responses...'}</p>
+    // Show waiting state if capture not completed
+    if (!canProcessAI) {
+      return (
+        <div className="text-center">
+          <Clock className="h-16 w-16 text-gray-400 mx-auto mb-6" />
+          <h1 className="text-3xl font-bold text-foreground mb-4">
+            Almost Ready to Process
+          </h1>
+          
+          <div className="prose prose-lg mx-auto text-muted-foreground">
+            <p>Please complete the information capture step to unlock AI processing.</p>
+          </div>
+          
+          <div className="mt-8 p-4 bg-blue-50 rounded-lg max-w-md mx-auto">
+            <div className="text-blue-700 text-sm">
+              <strong>Next:</strong> Fill out your information to generate personalized results
+            </div>
+          </div>
         </div>
-        
-        {isProcessing && (
+      )
+    }
+
+    // Show processing state
+    if (isProcessing) {
+      return (
+        <div className="text-center">
+          <Brain className="h-16 w-16 text-blue-600 mx-auto mb-6 animate-pulse" />
+          <h1 className="text-3xl font-bold text-foreground mb-4">
+            {title || 'Processing Your Information'}
+          </h1>
+          
+          <div className="prose prose-lg mx-auto text-muted-foreground mb-8">
+            <p>{description || 'Please wait while we analyze your responses...'}</p>
+          </div>
+          
           <div className="mt-8 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-blue-600 mr-3" />
-            <span className="text-muted-foreground">Processing...</span>
+            <span className="text-muted-foreground">Analyzing your responses...</span>
+          </div>
+
+          {/* Show available inputs being processed */}
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg max-w-md mx-auto">
+            <div className="text-sm text-gray-600 mb-2">Processing your responses:</div>
+            <div className="space-y-1">
+              {Object.entries(campaignState.userInputs).map(([key, value]) => (
+                <div key={key} className="text-xs text-gray-500">
+                  <span className="font-medium">{key}:</span> {String(value).substring(0, 30)}...
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // Show error state
+    if (errorState) {
+      return (
+        <div className="text-center">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-6" />
+          <h1 className="text-3xl font-bold text-red-600 mb-4">
+            Processing Error
+          </h1>
+          
+          <div className="prose prose-lg mx-auto text-muted-foreground mb-8">
+            <p>{errorState}</p>
+          </div>
+          
+          <button
+            onClick={() => {
+              setErrorState(null)
+              setHasProcessed(false)
+              processLogicSection()
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      )
+    }
+
+    // Show completion state with AI results
+    return (
+      <div className="text-center">
+        <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-6" />
+        <h1 className="text-3xl font-bold text-foreground mb-4">
+          Processing Complete!
+        </h1>
+        
+        <div className="prose prose-lg mx-auto text-muted-foreground mb-8">
+          <p>Your responses have been analyzed and personalized results are ready.</p>
+        </div>
+
+        {/* Show AI results if available */}
+        {Object.keys(aiResults).length > 0 && (
+          <div className="mt-6 p-4 bg-green-50 rounded-lg max-w-lg mx-auto">
+            <div className="text-sm text-green-700 mb-2 font-medium">AI Processing Results:</div>
+            <div className="space-y-2">
+              {Object.entries(aiResults).map(([key, value]) => (
+                <div key={key} className="text-sm text-green-600">
+                  <span className="font-medium">{key}:</span> {String(value)}
+                </div>
+              ))}
+            </div>
           </div>
         )}
+
+        <div className="mt-8">
+          <div className="text-sm text-muted-foreground">
+            Continue to see your personalized results...
+          </div>
+        </div>
       </div>
     )
   }
@@ -1771,118 +1999,133 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const renderOutputSection = (section: SectionWithOptions, index: number, config: any, title: string, description: string) => {
     const [dynamicContent, setDynamicContent] = useState<string>('')
     const [hasProcessed, setHasProcessed] = useState(false)
+    const [isGenerating, setIsGenerating] = useState(false)
 
     useEffect(() => {
       if (!hasProcessed && campaignState.currentSection === index) {
         const processSection = async () => {
-          await processAIOutputSection(section)
+          setIsGenerating(true)
           
-          // Generate dynamic content
+          // Check if we have AI-generated outputs from previous logic sections
+          const hasAIOutputs = Object.keys(campaignState.userInputs).some(key => 
+            key.includes('_output') || key.includes('recommendation') || key.includes('score')
+          )
+
+          if (hasAIOutputs) {
+            // Use the real AI outputs for dynamic content generation
+            await processAIOutputSection(section)
+          }
+          
+          // Generate dynamic content with all available data
           const content = await generateDynamicContent(section)
           setDynamicContent(content)
           setHasProcessed(true)
+          setIsGenerating(false)
         }
         
         processSection()
       }
     }, [campaignState.currentSection, index, hasProcessed])
 
-    // Show AI processing state
-    if (aiProcessingState.isProcessing && campaignState.currentSection === index) {
+    // Show AI content generation state
+    if (isGenerating && campaignState.currentSection === index) {
       return (
         <div className="text-center max-w-2xl mx-auto">
           <Brain className="h-16 w-16 text-blue-600 mx-auto mb-6 animate-pulse" />
           <h1 className="text-3xl font-bold text-foreground mb-4">
-            Processing Your Results
+            Preparing Your Results
           </h1>
           
           <div className="mb-8">
             <div className="flex items-center justify-center mb-4">
               <div className="flex items-center space-x-2">
-                <div className="text-sm text-muted-foreground">{aiProcessingState.message}</div>
+                <div className="text-sm text-muted-foreground">Generating personalized content...</div>
                 <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
               </div>
             </div>
             
-            {/* Processing Progress Bar */}
+            {/* Simple progress indication */}
             <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${aiProcessingState.progress}%` }}
-              />
-            </div>
-            
-            {/* Processing Stages */}
-            <div className="flex justify-center space-x-8 text-xs">
-              <div className={cn(
-                "flex items-center space-x-1",
-                aiProcessingState.progress >= 20 ? "text-blue-600" : "text-gray-400"
-              )}>
-                <div className={cn(
-                  "w-2 h-2 rounded-full",
-                  aiProcessingState.progress >= 20 ? "bg-blue-600" : "bg-gray-300"
-                )} />
-                <span>Analyzing</span>
-              </div>
-              <div className={cn(
-                "flex items-center space-x-1",
-                aiProcessingState.progress >= 60 ? "text-blue-600" : "text-gray-400"
-              )}>
-                <div className={cn(
-                  "w-2 h-2 rounded-full",
-                  aiProcessingState.progress >= 60 ? "bg-blue-600" : "bg-gray-300"
-                )} />
-                <span>Generating</span>
-              </div>
-              <div className={cn(
-                "flex items-center space-x-1",
-                aiProcessingState.progress >= 90 ? "text-blue-600" : "text-gray-400"
-              )}>
-                <div className={cn(
-                  "w-2 h-2 rounded-full",
-                  aiProcessingState.progress >= 90 ? "bg-blue-600" : "bg-gray-300"
-                )} />
-                <span>Finalizing</span>
-              </div>
+              <div className="bg-blue-600 h-2 rounded-full animate-pulse w-3/4" />
             </div>
           </div>
           
           <p className="text-muted-foreground">
-            We're analyzing your responses to create personalized results just for you...
+            Customizing your results based on your responses and AI analysis...
           </p>
         </div>
       )
     }
 
-    // Show completed output
+    // Show completed output with AI-enhanced content
     return (
       <div className="text-center">
         <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-6" />
         <h1 className="text-3xl font-bold text-foreground mb-4">
-          {title || 'Your Results Are Ready!'}
+          {title || 'Your Personalized Results!'}
         </h1>
         
-        <div className="prose prose-lg mx-auto text-muted-foreground mb-8">
+        <div className="prose prose-lg mx-auto text-muted-foreground mb-8 max-w-4xl">
           {(() => {
             // Use dynamic content if generated, otherwise fall back to variable interpolation
             let content = dynamicContent || description || 'Thank you for completing this campaign.'
             
-            // Enhanced variable interpolation with campaign metrics
+            // Enhanced variable interpolation with ALL available data
             const enhancedVariables = {
-              ...campaignState.userInputs,
+              ...campaignState.userInputs, // Includes both user inputs AND AI outputs
               completion_time: Math.round((new Date().getTime() - campaignState.startTime.getTime()) / 1000),
               completion_percentage: progressMetrics.totalProgress,
               sections_completed: campaignState.completedSections.size,
-              total_sections: sections.length
+              total_sections: sections.length,
+              session_id: campaignState.sessionId,
+              timestamp: new Date().toISOString()
             }
             
+            // More sophisticated variable interpolation
             Object.entries(enhancedVariables).forEach(([key, value]) => {
-              content = content.replace(new RegExp(`@${key}`, 'g'), String(value))
+              const stringValue = String(value)
+              // Handle both @variable and {{variable}} syntax
+              content = content.replace(new RegExp(`@${key}`, 'g'), stringValue)
+              content = content.replace(new RegExp(`{{${key}}}`, 'g'), stringValue)
             })
+            
+            // Convert newlines to HTML breaks for better formatting
+            content = content.replace(/\n/g, '<br />')
             
             return <div dangerouslySetInnerHTML={{ __html: content }} />
           })()}
         </div>
+
+        {/* Show AI-generated insights if available */}
+        {(() => {
+          const aiOutputs = Object.entries(campaignState.userInputs).filter(([key]) => 
+            key.includes('recommendation') || key.includes('score') || key.includes('analysis') || 
+            key.includes('_output') || key.includes('insight')
+          )
+          
+          if (aiOutputs.length > 0) {
+            return (
+              <div className="mb-8 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg max-w-3xl mx-auto">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">
+                  🤖 AI-Powered Insights
+                </h3>
+                <div className="space-y-3">
+                  {aiOutputs.map(([key, value]) => (
+                    <div key={key} className="text-left">
+                      <div className="text-sm font-medium text-blue-700 capitalize mb-1">
+                        {key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim()}
+                      </div>
+                      <div className="text-gray-700 leading-relaxed">
+                        {String(value)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          }
+          return null
+        })()}
         
         {/* Enhanced Completion Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto mb-8">
@@ -1914,26 +2157,24 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
           <div className="bg-purple-50 rounded-lg p-4">
             <div className="flex items-center justify-center mb-2">
               <MessageSquare className="h-5 w-5 text-purple-600 mr-2" />
-              <span className="text-sm font-medium text-purple-800">Responses</span>
+              <span className="text-sm font-medium text-purple-800">Data Points</span>
             </div>
             <div className="text-xl font-bold text-purple-600">
               {Object.keys(campaignState.userInputs).length}
             </div>
           </div>
         </div>
-        
-        {/* Milestones Achieved */}
-        {progressMetrics.milestones.length > 0 && (
-          <div className="bg-muted rounded-lg p-6 max-w-2xl mx-auto">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Milestones Achieved</h3>
-            <div className="flex flex-wrap justify-center gap-2">
-              {progressMetrics.milestones.map((milestone, index) => (
-                <Badge key={index} variant="secondary" className="bg-green-100 text-green-800">
-                  ✓ {milestone}
-                </Badge>
-              ))}
-            </div>
-          </div>
+
+        {/* Show raw data for debugging in development */}
+        {process.env.NODE_ENV === 'development' && (
+          <details className="mt-8 p-4 bg-gray-100 rounded-lg text-left max-w-2xl mx-auto">
+            <summary className="cursor-pointer text-sm font-medium text-gray-600 mb-2">
+              🔧 Debug: All Variables (Development Only)
+            </summary>
+            <pre className="text-xs text-gray-500 overflow-auto">
+              {JSON.stringify(campaignState.userInputs, null, 2)}
+            </pre>
+          </details>
         )}
       </div>
     )
@@ -2234,7 +2475,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
                   </>
                 ) : (
                   <>
-                    <RefreshCcw className="h-4 w-4 mr-2" />
+                    <RefreshCw className="h-4 w-4 mr-2" />
                     Try Again
                   </>
                 )}
@@ -2456,7 +2697,20 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       {/* Section Content */}
       <div className="py-12 px-6">
-        {sections.map((section, index) => renderSectionContent(section, index, section.configuration || {}))}
+        <div className="max-w-4xl mx-auto">
+          {campaignState.currentSection < sections.length && (
+            <div key={campaignState.currentSection} className={cn(
+              "transition-all duration-300 ease-in-out",
+              isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0"
+            )}>
+              {renderSectionContentFallback(
+                sections[campaignState.currentSection], 
+                campaignState.currentSection, 
+                sections[campaignState.currentSection].configuration || {}
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Navigation */}
@@ -2474,7 +2728,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
               )}
               size={deviceInfo?.type === 'mobile' ? 'lg' : 'default'}
             >
-              <ChevronLeft className={cn(
+              <ArrowLeft className={cn(
                 "mr-1",
                 deviceInfo?.type === 'mobile' ? "h-5 w-5" : "h-4 w-4"
               )} />
@@ -2524,7 +2778,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
               size={deviceInfo?.type === 'mobile' ? 'lg' : 'default'}
             >
               Next
-              <ChevronRight className={cn(
+              <ArrowRight className={cn(
                 "ml-1",
                 deviceInfo?.type === 'mobile' ? "h-5 w-5" : "h-4 w-4"
               )} />

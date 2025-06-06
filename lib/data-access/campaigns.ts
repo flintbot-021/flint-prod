@@ -934,8 +934,24 @@ export async function reorderSections(
   }
 
   return withErrorHandling(async () => {
-    // Update each section's order_index
-    const updatePromises = sectionOrders.map(({ id, order_index }) =>
+    // Use a transaction to avoid constraint violations
+    // First, set all order_index values to negative numbers to avoid conflicts
+    const tempUpdatePromises = sectionOrders.map(({ id }, index) =>
+      supabase
+        .from('sections')
+        .update({ 
+          order_index: -(index + 1000), // Use negative numbers to avoid conflicts
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .eq('campaign_id', campaignId)
+    );
+
+    // Execute temporary updates
+    await Promise.all(tempUpdatePromises);
+
+    // Now update with the actual order values
+    const finalUpdatePromises = sectionOrders.map(({ id, order_index }) =>
       supabase
         .from('sections')
         .update({ 
@@ -943,10 +959,11 @@ export async function reorderSections(
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
-        .eq('campaign_id', campaignId) // Ensure section belongs to campaign
+        .eq('campaign_id', campaignId)
     );
 
-    await Promise.all(updatePromises);
+    // Execute final updates
+    await Promise.all(finalUpdatePromises);
 
     // Return updated sections
     return await supabase

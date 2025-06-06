@@ -35,13 +35,14 @@ interface AILogicSectionProps {
 }
 
 // Extract input variables from question sections that come before this AI logic section
+// Note: Excludes capture sections since those provide user data directly, not test data
 function extractInputVariables(sections: CampaignSection[], currentOrder: number): string[] {
   const precedingSections = sections.filter(s => s.order < currentOrder)
   const variables: string[] = []
   
   precedingSections.forEach(section => {
-    // Extract from question sections
-    if (section.type.includes('question-') || section.type.includes('capture')) {
+    // Extract from question sections only (exclude capture sections)
+    if (section.type.includes('question-')) {
       const settings = section.settings as any
       const variableName = settings?.variableName || 
                           (typeof section.title === 'string' ? section.title.toLowerCase().replace(/\s+/g, '_') : '') || 

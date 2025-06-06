@@ -24,7 +24,8 @@ import {
   Zap,
   Monitor,
   Tablet,
-  Smartphone
+  Smartphone,
+  ArrowRight
 } from 'lucide-react'
 
 // Import section components
@@ -99,54 +100,120 @@ const DEVICE_CONFIGS: Record<PreviewDevice, DeviceConfig> = {
 // AI LOGIC TESTING UTILITIES
 // =============================================================================
 
-// Simulate AI processing with realistic delays and sample outputs
-const simulateAIProcessing = async (prompt: string, userInputs: Record<string, any>) => {
-  // Simulate processing delay (1-3 seconds)
-  const delay = Math.random() * 2000 + 1000
-  await new Promise(resolve => setTimeout(resolve, delay))
+// Real AI processing using the same API as the campaign builder
+const processAIPrompt = async (prompt: string, userInputs: Record<string, any>) => {
+  const startTime = Date.now()
+  
+  console.log('🤖 AI PROCESSING: Original prompt:', prompt)
+  console.log('🤖 AI PROCESSING: User inputs for variables:', userInputs)
 
-  // Generate realistic sample outputs based on inputs
-  const recommendation = generateRecommendation(userInputs)
-  const score = Math.floor(Math.random() * 40) + 60 // 60-100 range
-  const insights = generateInsights(userInputs)
+  try {
+    // Prepare the AI test request in the same format as the campaign builder
+    const testRequest = {
+      prompt: prompt,
+      variables: userInputs,
+      outputVariables: [
+        { id: '1', name: 'recommendation', description: 'Main personalized recommendation or advice' },
+        { id: '2', name: 'target_time', description: 'Estimated time or duration' },
+        { id: '3', name: 'speed', description: 'Pace or speed recommendation' },
+        { id: '4', name: 'difficulty', description: 'Difficulty level assessment' },
+        { id: '5', name: 'tips', description: 'List of helpful tips or suggestions' }
+      ]
+    }
 
-  return {
-    recommendation,
-    score,
-    insights,
-    processingTime: Math.round(delay),
-    prompt: prompt,
-    interpolatedPrompt: interpolatePrompt(prompt, userInputs)
+    console.log('🤖 AI PROCESSING: API request:', testRequest)
+
+    // Call the real AI processing API
+    const response = await fetch('/api/ai-processing', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(testRequest)
+    })
+
+    if (!response.ok) {
+      throw new Error(`AI API error: ${response.status} ${response.statusText}`)
+    }
+
+    const result = await response.json()
+    const processingTime = Date.now() - startTime
+
+    console.log('🤖 AI PROCESSING: API response:', result)
+
+    if (result.success && result.outputs) {
+      return {
+        ...result.outputs,
+        score: Math.floor(Math.random() * 40) + 60, // Random score for preview
+        processingTime,
+        prompt: prompt,
+        rawResponse: result.rawResponse
+      }
+    } else {
+      throw new Error(result.error || 'AI processing failed')
+    }
+
+  } catch (error) {
+    console.error('🤖 AI PROCESSING: Error:', error)
+    
+    // Fallback to basic response if AI fails
+    const processingTime = Date.now() - startTime
+    const fallbackResponse = generateAIResponse(prompt, userInputs)
+    
+    return {
+      ...fallbackResponse,
+      score: Math.floor(Math.random() * 40) + 60,
+      processingTime,
+      prompt: prompt,
+      error: error instanceof Error ? error.message : 'AI processing failed'
+    }
   }
 }
 
-const generateRecommendation = (inputs: Record<string, any>) => {
+const generateAIResponse = (interpolatedPrompt: string, inputs: Record<string, any>) => {
   const name = inputs.name || 'User'
-  const goal = inputs.goal || 'growth'
   
-  const recommendations = {
-    growth: `${name}, based on your focus on business growth, I recommend implementing a customer acquisition strategy that leverages digital marketing channels. Focus on building strong brand awareness and customer loyalty programs.`,
-    efficiency: `${name}, since you're prioritizing efficiency, consider automating your core business processes and implementing lean methodologies. This will help reduce operational overhead while maintaining quality.`,
-    innovation: `${name}, with your interest in innovation, I suggest investing in emerging technologies that align with your industry. Consider establishing partnerships with tech companies and fostering a culture of continuous learning.`
+  // Generate dynamic response based on prompt content
+  if (interpolatedPrompt.toLowerCase().includes('bread') || interpolatedPrompt.toLowerCase().includes('baking')) {
+    return {
+      recommendation: `${name}, based on your responses, here's your personalized bread-making guide!`,
+      target_time: '45 minutes',
+      speed: 'Medium pace',
+      difficulty: 'Beginner-friendly',
+      tips: [
+        'Start with simple recipes like basic white bread',
+        'Room temperature ingredients mix better',
+        'Don\'t rush the rising process'
+      ]
+    }
   }
   
-  return recommendations[goal as keyof typeof recommendations] || recommendations.growth
-}
-
-const generateInsights = (inputs: Record<string, any>) => {
-  const insights = []
-  
-  if (inputs.name) {
-    insights.push(`User engagement level: High (provided personal information)`)
-  }
-  if (inputs.email) {
-    insights.push(`Email domain analysis: ${inputs.email.includes('@gmail.com') ? 'Personal' : 'Professional'} email`)
-  }
-  if (inputs.goal) {
-    insights.push(`Primary focus area: ${inputs.goal} - this indicates a ${inputs.goal === 'growth' ? 'scaling' : inputs.goal === 'efficiency' ? 'optimization' : 'transformation'} mindset`)
+  if (interpolatedPrompt.toLowerCase().includes('fitness') || interpolatedPrompt.toLowerCase().includes('workout')) {
+    return {
+      recommendation: `${name}, here's your personalized fitness plan!`,
+      target_time: '30 minutes',
+      speed: 'Progressive',
+      difficulty: 'Intermediate',
+      tips: [
+        'Start with compound movements',
+        'Focus on proper form over weight',
+        'Track your progress weekly'
+      ]
+    }
   }
   
-  return insights
+  // Default response for any other prompts
+  return {
+    recommendation: `${name}, based on your responses, here are your personalized recommendations.`,
+    target_time: '25 minutes',
+    speed: 'Your pace',
+    difficulty: 'Customized for you',
+    tips: [
+      'Take your time to understand each step',
+      'Practice makes perfect',
+      'Ask questions when needed'
+    ]
+  }
 }
 
 const interpolatePrompt = (prompt: string, inputs: Record<string, any>) => {
@@ -180,12 +247,8 @@ const shouldShowSection = (
   // Check conditional display rules (this would be expanded with actual business logic)
   const settings = section.settings as any
   
-  // Example: Logic sections only appear after certain inputs
-  if (section.type === 'logic' && !userInputs.name && !userInputs.email) {
-    return false
-  }
-  
-  // Example: Output sections only appear after AI processing
+  // Logic sections should always be visible if they exist - they'll handle their own state
+  // Output sections only appear after some user input exists
   if (section.type.startsWith('output-') && Object.keys(userInputs).length === 0) {
     return false
   }
@@ -229,6 +292,27 @@ function SectionRenderer({
   const [textInput, setTextInput] = useState('')
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null)
 
+  // Reset inputs when section changes
+  useEffect(() => {
+    setTextInput('')
+    setSelectedChoice(null)
+  }, [section.id])
+
+  // Auto-start AI processing for logic sections when they become active and have user inputs
+  useEffect(() => {
+    if (
+      isActive && 
+      section.type === 'logic' && 
+      !isProcessing && 
+      !processingResults &&
+      Object.keys(userInputs).length > 0 &&
+      (userInputs.name || userInputs.email) // Has capture data
+    ) {
+      // Automatically start AI processing
+      handleAIProcessing()
+    }
+  }, [isActive, section.type, userInputs, isProcessing, processingResults])
+
   // Validation logic
   const isRequired = (section.settings as any)?.required
   const isValidTextInput = !isRequired || (isRequired && textInput.trim().length > 0)
@@ -236,6 +320,8 @@ function SectionRenderer({
   
   const canProceed = () => {
     switch (section.type) {
+      case 'capture':
+        return textInput.trim().length > 0 && selectedChoice !== null && selectedChoice.trim().length > 0
       case 'text_question':
         return isValidTextInput
       case 'multiple_choice':
@@ -269,6 +355,7 @@ function SectionRenderer({
         return MessageSquare
       case 'logic':
         return Brain
+      case 'output':
       case 'output-results':
       case 'output-download':
       case 'output-redirect':
@@ -288,6 +375,7 @@ function SectionRenderer({
         return 'Multiple Choice'
       case 'logic':
         return 'AI Logic'
+      case 'output':
       case 'output-results':
         return 'Results'
       case 'output-download':
@@ -308,16 +396,24 @@ function SectionRenderer({
     setIsProcessing(true)
     try {
       const settings = section.settings as any
-      const prompt = settings.prompt || 'Analyze the user inputs and provide recommendations.'
+      const prompt = settings.prompt || settings.aiPrompt || 'Analyze the user inputs and provide recommendations.'
       
-      const results = await simulateAIProcessing(prompt, userInputs)
+      console.log('🧠 AI PROCESSING: Raw prompt from settings:', prompt)
+      console.log('🧠 AI PROCESSING: Input userInputs:', userInputs)
+      
+      const results = await processAIPrompt(prompt, userInputs)
+      console.log('🧠 AI PROCESSING: AI Results:', results)
       setProcessingResults(results)
       
-      // Complete the section with AI outputs
+      // Store AI outputs and auto-complete to advance to output section
       onSectionComplete(sectionIndex, {
         aiProcessing: true,
         ...results
       })
+      
+      // Immediately advance to output section after processing
+      onNext()
+      console.log('🧠 AI PROCESSING: Completed section with:', { aiProcessing: true, ...results })
     } catch (error) {
       console.error('AI Processing error:', error)
     } finally {
@@ -336,6 +432,142 @@ function SectionRenderer({
     const settings = section.settings || {}
 
     switch (section.type) {
+      case 'capture':
+        return (
+          <div className="min-h-screen bg-white flex flex-col relative">
+            {/* Main Content Area */}
+            <div className="flex-1 flex items-center justify-center px-6 pb-20">
+              <div className="w-full max-w-2xl mx-auto space-y-6">
+                {/* Main Heading */}
+                <div className="text-center">
+                  <h1 className="text-4xl font-bold text-gray-900">
+                    {((section.settings as any)?.content) || 'Get Your Personalized Results'}
+                  </h1>
+                </div>
+
+                {/* Optional Subheading */}
+                <div className="text-center">
+                  <p className="text-xl text-gray-600">
+                    {((section.settings as any)?.subheading) || 'Enter your information to unlock AI-powered personalized insights.'}
+                  </p>
+                </div>
+
+                {/* Preview of what happens next */}
+                <div className="mb-8 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center mb-3">
+                      <Brain className="h-6 w-6 text-blue-600 mr-2" />
+                      <span className="text-sm font-medium text-blue-800">What happens next:</span>
+                    </div>
+                    <div className="space-y-2 text-sm text-gray-700">
+                      <div className="flex items-center justify-center">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full mr-3"></div>
+                        <span>AI analyzes your responses</span>
+                      </div>
+                      <div className="flex items-center justify-center">
+                        <div className="w-2 h-2 bg-purple-600 rounded-full mr-3"></div>
+                        <span>Personalized insights generated</span>
+                      </div>
+                      <div className="flex items-center justify-center">
+                        <div className="w-2 h-2 bg-green-600 rounded-full mr-3"></div>
+                        <span>Custom results delivered</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Form Fields */}
+                <div className="space-y-4">
+                  {/* Name Field */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 block">
+                      Full Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={textInput}
+                      onChange={(e) => setTextInput(e.target.value)}
+                      placeholder="Enter your full name"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  {/* Email Field */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700 block">
+                      Email Address <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={selectedChoice || ''}
+                      onChange={(e) => setSelectedChoice(e.target.value)}
+                      placeholder="your@email.com"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+
+                {/* Trust signals */}
+                <div className="mt-8 text-center">
+                  <div className="flex items-center justify-center space-x-6 text-sm text-gray-500">
+                    <div className="flex items-center">
+                      <Target className="h-4 w-4 text-green-600 mr-1" />
+                      <span>Secure & Private</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Zap className="h-4 w-4 text-blue-600 mr-1" />
+                      <span>AI-Powered</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Eye className="h-4 w-4 text-purple-600 mr-1" />
+                      <span>Instant Results</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Fixed Bottom Bar */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 z-10">
+              <div className="max-w-2xl mx-auto flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={onPrevious}
+                    disabled={currentSectionIndex <= 0}
+                    className="flex items-center space-x-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span>Previous</span>
+                  </button>
+                  <div className="text-sm text-gray-500">
+                    <span>* Required</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (textInput && selectedChoice) {
+                                  console.log('🔵 CAPTURE: Completing with data:', { name: textInput, email: selectedChoice })
+            onSectionComplete(sectionIndex, {
+              name: textInput,
+              email: selectedChoice
+            })
+                    }
+                  }}
+                  disabled={!textInput || !selectedChoice}
+                  className={cn(
+                    "px-6 py-2 rounded-lg font-medium transition-colors",
+                    textInput && selectedChoice
+                      ? "bg-blue-600 hover:bg-blue-700 text-white"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  )}
+                >
+                  🚀 Generate My Results
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      
       case 'text_question':
         return (
           <div className="min-h-screen bg-white flex flex-col relative">
@@ -507,94 +739,137 @@ function SectionRenderer({
         )
       
       case 'logic':
+        // Logic section processes in background and auto-advances - no UI needed
         return (
           <div className="min-h-screen bg-white flex items-center justify-center">
             <div className="max-w-2xl mx-auto text-center space-y-6">
-              <Brain className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                {(settings as any).title || 'AI Processing'}
+              <Loader2 className="h-12 w-12 text-blue-600 mx-auto animate-spin" />
+              <h2 className="text-2xl font-bold text-gray-900">
+                Generating Your Results...
               </h2>
-              <p className="text-xl text-gray-600 mb-6">
-                {(settings as any).content || 'Our AI is analyzing your responses...'}
+              <p className="text-gray-600">
+                Please wait while we personalize your experience
               </p>
-            
-            {/* Show processing state */}
-            {isProcessing ? (
-              <div className="flex items-center justify-center space-x-2 mb-6">
-                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                <span className="text-sm text-muted-foreground">Processing...</span>
-              </div>
-            ) : processingResults ? (
-              <div className="space-y-4 mb-6">
-                <div className="p-4 bg-green-50 rounded-lg text-left">
-                  <h4 className="font-medium text-green-800 mb-2">✅ Processing Complete</h4>
-                  <p className="text-sm text-green-700">{processingResults.recommendation}</p>
-                  <div className="mt-2 flex items-center space-x-4 text-xs text-green-600">
-                    <span>Score: {processingResults.score}/100</span>
-                    <span>Time: {processingResults.processingTime}ms</span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="mb-6">
-                <Button 
-                  onClick={handleAIProcessing}
-                  className="bg-blue-600 hover:bg-blue-700"
-                  disabled={Object.keys(userInputs).length === 0}
-                >
-                  <Zap className="h-4 w-4 mr-2" />
-                  {previewConfig.enableAITesting ? 'Test AI Processing' : 'Start Processing'}
-                </Button>
-                
-                {Object.keys(userInputs).length === 0 && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Complete previous sections to enable AI processing
-                  </p>
-                )}
-              </div>
-            )}
-            
-            {/* Debug Info */}
-            {previewConfig.showDebugInfo && (
-              <div className="p-3 bg-muted rounded border-l-4 border-purple-500 text-left">
-                <p className="text-xs font-medium text-foreground">Debug: AI Logic Section</p>
-                <div className="text-xs text-muted-foreground mt-1 space-y-1">
-                  <p>Prompt: {(settings as any).prompt || 'No prompt defined'}</p>
-                  <p>Available inputs: {Object.keys(userInputs).join(', ') || 'None'}</p>
-                  {processingResults && (
-                    <details className="mt-2">
-                      <summary className="cursor-pointer font-medium">Processing Results</summary>
-                      <pre className="mt-1 text-xs bg-accent p-2 rounded overflow-auto">
-                        {JSON.stringify(processingResults, null, 2)}
-                      </pre>
-                    </details>
-                  )}
-                </div>
-              </div>
-            )}
             </div>
           </div>
         )
       
+      case 'output':
       case 'output-results':
       case 'output-download':
       case 'output-redirect':
         return (
-          <div>
-            <OutputSection
-              {...baseProps}
-            />
+          <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center">
+            <div className="max-w-4xl mx-auto space-y-12 px-6 py-16">
+              {/* Title */}
+              <div className="text-center space-y-4">
+                <h1 className="text-4xl md:text-5xl font-bold text-white">
+                  {/* Interpolate variables in title */}
+                  {((settings as any).title || 'Your Results').replace(/@(\w+)/g, (match: string, varName: string) => {
+                    return userInputs[varName] || aiOutputs[varName] || `[${varName}]`
+                  })}
+                </h1>
+                
+                {(settings as any).subtitle && (
+                  <div className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">
+                    {/* Interpolate variables in subtitle */}
+                    {((settings as any).subtitle).replace(/@(\w+)/g, (match: string, varName: string) => {
+                      return userInputs[varName] || aiOutputs[varName] || `[${varName}]`
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Content with Variable Interpolation */}
+              {(settings as any).content && (
+                <div className="text-lg text-gray-400 max-w-4xl mx-auto leading-relaxed text-center">
+                  {/* Enhanced variable interpolation for preview */}
+                  {((settings as any).content as string).replace(/@(\w+)/g, (match, varName) => {
+                    // First check AI outputs, then user inputs, then fallback
+                    if (aiOutputs[varName] !== undefined) {
+                      return String(aiOutputs[varName])
+                    }
+                    if (userInputs[varName] !== undefined) {
+                      return String(userInputs[varName])
+                    }
+                    
+                    // Variable-specific fallbacks with realistic data
+                    switch (varName) {
+                      case 'name':
+                        return userInputs.name || 'User'
+                      case 'email':
+                        return userInputs.email || 'user@example.com'
+                      case 'score':
+                        return aiOutputs.score?.toString() || '0'
+                      case 'recommendation':
+                        return aiOutputs.recommendation || 'No recommendation available'
+                      case 'target_time':
+                        return aiOutputs.target_time || '30 minutes'
+                      case 'speed':
+                        return aiOutputs.speed || 'Medium pace'
+                      case 'difficulty':
+                        return aiOutputs.difficulty || 'Moderate'
+                      case 'tips':
+                        return Array.isArray(aiOutputs.tips) ? aiOutputs.tips.join(', ') : aiOutputs.tips || 'Follow the recommendations'
+                      default:
+                        return `[${varName}]`
+                    }
+                  }).replace(/\[(\w+)\]/g, (match, varName) => {
+                    // Handle square bracket variables
+                    if (aiOutputs[varName] !== undefined) {
+                      return String(aiOutputs[varName])
+                    }
+                    if (userInputs[varName] !== undefined) {
+                      return String(userInputs[varName])
+                    }
+                    
+                    // Fallbacks for square bracket variables
+                    switch (varName) {
+                      case 'target_time':
+                        return aiOutputs.target_time || '30 minutes'
+                      case 'speed':
+                        return aiOutputs.speed || 'Medium pace'
+                      case 'difficulty':
+                        return aiOutputs.difficulty || 'Moderate'
+                      default:
+                        return match // Keep original if no fallback
+                    }
+                  })}
+                </div>
+              )}
+
+              {/* DEBUG: Log data being used */}
+              {(() => {
+                console.log('🎯 OUTPUT SECTION: userInputs:', userInputs)
+                console.log('🎯 OUTPUT SECTION: aiOutputs:', aiOutputs)
+                console.log('🎯 OUTPUT SECTION: Combined data for interpolation:', {...userInputs, ...aiOutputs})
+                return null
+              })()}
+
+              {/* Navigation Button */}
+              <div className="text-center">
+                <button
+                  onClick={() => {
+                    // In preview, just show completion
+                    alert('Campaign completed! In the live version, this would redirect or show download options.')
+                  }}
+                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-105"
+                >
+                  Complete Campaign
+                </button>
+              </div>
+            </div>
             
             {/* Debug Info */}
             {previewConfig.showDebugInfo && (
-              <div className="mt-4 p-3 bg-muted rounded border-l-4 border-orange-500">
-                <p className="text-xs font-medium text-foreground">Debug: Output Section</p>
-                <div className="text-xs text-muted-foreground mt-1 space-y-1">
+              <div className="absolute bottom-4 left-4 right-4 p-3 bg-black/80 rounded border border-white/20">
+                <p className="text-xs font-medium text-white">Debug: Output Section</p>
+                <div className="text-xs text-gray-300 mt-1 space-y-1">
                   <p>Type: {section.type}</p>
                   <p>Available variables: {Object.keys({...userInputs, ...aiOutputs}).join(', ') || 'None'}</p>
                   <details className="mt-2">
                     <summary className="cursor-pointer font-medium">Variable Context</summary>
-                    <pre className="mt-1 text-xs bg-accent p-2 rounded overflow-auto">
+                    <pre className="mt-1 text-xs bg-gray-900 p-2 rounded overflow-auto">
                       {JSON.stringify({...userInputs, ...aiOutputs}, null, 2)}
                     </pre>
                   </details>
@@ -751,6 +1026,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
   // =============================================================================
 
   const handleSectionComplete = (sectionIndex: number, data: any) => {
+    console.log('📝 SECTION COMPLETE:', { sectionIndex, data })
     setPreviewState(prev => {
       const newState = {
         ...prev,
@@ -762,17 +1038,26 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
       if (data.aiProcessing) {
         newState.aiOutputs = { ...prev.aiOutputs, ...data }
         newState.aiProcessingResults = { ...prev.aiProcessingResults, [sectionIndex]: data }
+        console.log('🔄 STORING AI OUTPUTS:', newState.aiOutputs)
       }
 
+      console.log('📊 NEW PREVIEW STATE:', {
+        userInputs: newState.userInputs,
+        aiOutputs: newState.aiOutputs,
+        completedSections: Array.from(newState.completedSections)
+      })
       return newState
     })
 
-    // Auto-advance to next section in sequence mode
-    if (previewConfig.mode === 'sequence' && sectionIndex < sections.length - 1) {
-      const delay = previewConfig.simulateRealTiming ? 1500 : 1000
-      setTimeout(() => {
-        handleNext()
-      }, delay)
+    // Auto-advance to next section in sequence mode, but NOT for logic sections
+    // Logic sections should show results and let user manually proceed
+    const currentSection = sections[sectionIndex]
+    const shouldAutoAdvance = previewConfig.mode === 'sequence' && 
+                             sectionIndex < sections.length - 1 && 
+                             currentSection?.type !== 'logic'
+    
+    if (shouldAutoAdvance) {
+      handleNext()
     }
   }
 
@@ -1001,7 +1286,6 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
           {/* Show only the current section */}
           {sections.length > 0 && previewState.currentSection < sections.length && (
             <SectionRenderer
-              key={sections[previewState.currentSection].id}
               section={sections[previewState.currentSection]}
               sectionIndex={previewState.currentSection}
               isActive={true}
