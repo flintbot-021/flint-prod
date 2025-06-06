@@ -1,10 +1,10 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Campaign } from '@/lib/types/database'
 import { CampaignSection } from '@/lib/types/campaign-builder'
-import { getCampaignById } from '@/lib/data-access'
+import { getCampaignById, getCampaignSections } from '@/lib/data-access'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,7 +21,10 @@ import {
   Eye,
   Settings,
   TestTube,
-  Zap
+  Zap,
+  Monitor,
+  Tablet,
+  Smartphone
 } from 'lucide-react'
 
 // Import section components
@@ -48,6 +51,48 @@ interface PreviewModeConfig {
   enableAITesting: boolean
   simulateRealTiming: boolean
   showDebugInfo: boolean
+}
+
+// =============================================================================
+// DEVICE CONFIGURATIONS
+// =============================================================================
+
+export type PreviewDevice = 'desktop' | 'tablet' | 'mobile'
+
+interface DeviceConfig {
+  name: string
+  icon: React.ComponentType<{ className?: string }>
+  width: number
+  height: number
+  maxWidth?: string
+  description: string
+}
+
+const DEVICE_CONFIGS: Record<PreviewDevice, DeviceConfig> = {
+  desktop: {
+    name: 'Desktop',
+    icon: Monitor,
+    width: 1200,
+    height: 800,
+    maxWidth: '100%',
+    description: 'Full desktop experience'
+  },
+  tablet: {
+    name: 'Tablet',
+    icon: Tablet,
+    width: 768,
+    height: 1024,
+    maxWidth: '768px',
+    description: 'iPad and tablet devices'
+  },
+  mobile: {
+    name: 'Mobile',
+    icon: Smartphone,
+    width: 375,
+    height: 667,
+    maxWidth: '375px',
+    description: 'iPhone and mobile devices'
+  }
 }
 
 // =============================================================================
@@ -177,8 +222,10 @@ function SectionRenderer({
   const getSectionIcon = (type: string) => {
     switch (type) {
       case 'capture':
+      case 'text_question':
         return Target
       case 'choice':
+      case 'multiple_choice':
         return MessageSquare
       case 'logic':
         return Brain
@@ -194,9 +241,11 @@ function SectionRenderer({
   const getSectionTypeLabel = (type: string) => {
     switch (type) {
       case 'capture':
-        return 'Capture'
+      case 'text_question':
+        return 'Text Question'
       case 'choice':
-        return 'Choice'
+      case 'multiple_choice':
+        return 'Multiple Choice'
       case 'logic':
         return 'AI Logic'
       case 'output-results':
@@ -248,6 +297,7 @@ function SectionRenderer({
 
     switch (section.type) {
       case 'capture':
+      case 'text_question':
         return (
           <div className="bg-background rounded-lg shadow-sm p-8">
             <h2 className="text-2xl font-bold text-foreground mb-4">
@@ -257,10 +307,32 @@ function SectionRenderer({
               {(settings as any).content || 'This is a capture section for collecting user information.'}
             </p>
             <div className="space-y-4">
-              {((settings as any).fields || [
-                { id: 'name', type: 'text', label: 'Full Name', required: true },
-                { id: 'email', type: 'email', label: 'Email Address', required: true }
-              ]).map((field: any, index: number) => (
+              {/* Handle text_question type */}
+              {section.type === 'text_question' ? (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    {(settings as any).question || (settings as any).content || 'Your answer'}
+                    {(settings as any).required && <span className="text-red-500 ml-1">*</span>}
+                  </label>
+                  <input
+                    type={(settings as any).inputType || 'text'}
+                    className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder={(settings as any).placeholder || 'Type your answer here...'}
+                    maxLength={(settings as any).maxLength || 500}
+                    onChange={(e) => {
+                      if (previewConfig.enableAITesting) {
+                        const newInputs = { ...userInputs, [section.id]: e.target.value }
+                        onSectionComplete(sectionIndex, newInputs)
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                // Handle capture/fields type
+                ((settings as any).fields || [
+                  { id: 'name', type: 'text', label: 'Full Name', required: true },
+                  { id: 'email', type: 'email', label: 'Email Address', required: true }
+                ]).map((field: any, index: number) => (
                 <div key={field.id || index}>
                   <label className="block text-sm font-medium text-foreground mb-2">
                     {field.label}
@@ -271,16 +343,17 @@ function SectionRenderer({
                     className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder={`Enter your ${field.label.toLowerCase()}`}
                     defaultValue={userInputs[field.id] || ''}
-                    onChange={(e) => {
-                      // In testing mode, immediately update inputs
-                      if (previewConfig.enableAITesting) {
-                        const newInputs = { ...userInputs, [field.id]: e.target.value }
-                        onSectionComplete(sectionIndex, newInputs)
-                      }
-                    }}
-                  />
-                </div>
-              ))}
+                      onChange={(e) => {
+                        // In testing mode, immediately update inputs
+                        if (previewConfig.enableAITesting) {
+                          const newInputs = { ...userInputs, [field.id]: e.target.value }
+                          onSectionComplete(sectionIndex, newInputs)
+                        }
+                      }}
+                    />
+                  </div>
+                ))
+              )}
             </div>
             <div className="mt-6">
               <Button 
@@ -311,24 +384,25 @@ function SectionRenderer({
         )
       
       case 'choice':
+      case 'multiple_choice':
         return (
           <div className="bg-background rounded-lg shadow-sm p-8">
             <h2 className="text-2xl font-bold text-foreground mb-4">
-              {(settings as any).title || 'Make Your Choice'}
+              {(settings as any).title || (settings as any).question || 'Make Your Choice'}
             </h2>
             <p className="text-muted-foreground mb-6">
               {(settings as any).content || 'Please select from the following options.'}
             </p>
             <div className="space-y-3">
-              {((settings as any).choices || [
-                { id: 'growth', text: 'Business Growth', value: 'growth' },
-                { id: 'efficiency', text: 'Efficiency Improvement', value: 'efficiency' },
-                { id: 'innovation', text: 'Innovation & Technology', value: 'innovation' }
+              {((settings as any).options || (settings as any).choices || [
+                { id: 'option-1', text: 'Option 1', value: 'option1' },
+                { id: 'option-2', text: 'Option 2', value: 'option2' },
+                { id: 'option-3', text: 'Option 3', value: 'option3' }
               ]).map((choice: any, index: number) => (
                 <div
                   key={choice.id || index}
                   className="p-4 border border-border rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
-                  onClick={() => onSectionComplete(sectionIndex, { choice: choice.value, [choice.id]: choice.value })}
+                  onClick={() => onSectionComplete(sectionIndex, { choice: choice.text || choice.value, [choice.id || `option-${index}`]: choice.text || choice.value })}
                 >
                   <div className="flex items-center">
                     <div className="w-4 h-4 border border-input rounded mr-3"></div>
@@ -652,7 +726,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
   // Parse URL parameters
   const initialSection = parseInt(searchParams?.get('section') || '0')
   const previewMode = searchParams?.get('mode') || 'sequence'
-  const deviceType = searchParams?.get('device') || 'desktop'
+  const deviceType = (searchParams?.get('device') || 'desktop') as PreviewDevice
   const bypassDisplayRules = searchParams?.get('bypass') === 'true'
 
   // State
@@ -660,6 +734,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
   const [sections, setSections] = useState<CampaignSection[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [currentDevice, setCurrentDevice] = useState<PreviewDevice>(deviceType)
   
   const [previewState, setPreviewState] = useState<PreviewState>({
     currentSection: initialSection,
@@ -717,96 +792,33 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
 
       setCampaign(result.data)
       
-      // TODO: Load actual campaign sections from database
-      // For now, create sample sections for testing
-      const now = new Date().toISOString()
-      const sampleSections: CampaignSection[] = [
-        {
-          id: '1',
-          type: 'capture',
-          title: 'Welcome Survey',
-          order: 0,
-          isVisible: true,
-          createdAt: now,
-          updatedAt: now,
-          settings: {
-            title: 'Welcome to Our Survey',
-            content: 'Please provide your information to get started.',
-            fields: [
-              { id: 'name', type: 'text', label: 'Full Name', required: true },
-              { id: 'email', type: 'email', label: 'Email Address', required: true }
-            ]
-          }
-        },
-        {
-          id: '2',
-          type: 'choice',
-          title: 'Primary Goal Selection',
-          order: 1,
-          isVisible: true,
-          createdAt: now,
-          updatedAt: now,
-          settings: {
-            title: 'What\'s your primary goal?',
-            content: 'Select the option that best describes your main objective.',
-            choices: [
-              { id: 'growth', text: 'Business Growth', value: 'growth' },
-              { id: 'efficiency', text: 'Efficiency Improvement', value: 'efficiency' },
-              { id: 'innovation', text: 'Innovation & Technology', value: 'innovation' }
-            ],
-            allowMultiple: false
-          }
-        },
-        {
-          id: '3',
-          type: 'logic',
-          title: 'AI Processing',
-          order: 2,
-          isVisible: true,
-          createdAt: now,
-          updatedAt: now,
-          settings: {
-            title: 'Processing Your Responses',
-            content: 'Our AI is analyzing your responses to provide personalized recommendations.',
-            prompt: 'Based on the user\'s name "@name", email "@email", and goal "@goal", provide a personalized recommendation.',
-            outputDefinitions: [
-              {
-                id: 'recommendation',
-                name: 'recommendation',
-                type: 'text',
-                description: 'Personalized recommendation based on user inputs'
-              },
-              {
-                id: 'score',
-                name: 'score',
-                type: 'number',
-                description: 'Compatibility score from 1-100'
-              }
-            ]
-          }
-        },
-        {
-          id: '4',
-          type: 'output-results',
-          title: 'Results Page',
-          order: 3,
-          isVisible: true,
-          createdAt: now,
-          updatedAt: now,
-          settings: {
-            title: 'Your Personalized Results',
-            content: 'Based on your responses, here are our recommendations:\n\n@recommendation\n\nYour compatibility score is @score out of 100.',
-            enableVariableInterpolation: true
-          }
-        }
-      ]
+      // Load actual campaign sections from database
+      const sectionsResult = await getCampaignSections(campaignId)
+      
+      if (!sectionsResult.success) {
+        throw new Error(sectionsResult.error || 'Failed to load campaign sections')
+      }
+
+      const sectionsData = sectionsResult.data || []
+      
+      // Convert SectionWithOptions to CampaignSection format
+      const campaignSections: CampaignSection[] = sectionsData.map((section, index) => ({
+        id: section.id,
+        type: section.type,
+        title: section.title || 'Untitled Section',
+        order: section.order_index || index,
+        isVisible: true, // Default to visible
+        createdAt: section.created_at,
+        updatedAt: section.updated_at,
+        settings: (section.configuration || {}) as unknown as Record<string, unknown>
+      }))
       
       // Filter sections based on display rules if not bypassing
-      const visibleSections = sampleSections.filter(section => 
+      const visibleSections = campaignSections.filter(section => 
         shouldShowSection(section, previewConfig, previewState.userInputs, previewState.completedSections)
       )
       
-      setSections(previewConfig.bypassDisplayRules ? sampleSections : visibleSections)
+      setSections(previewConfig.bypassDisplayRules ? campaignSections : visibleSections)
 
     } catch (err) {
       console.error('Error loading campaign:', err)
@@ -881,6 +893,85 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
   }
 
   // =============================================================================
+  // DEVICE HANDLERS
+  // =============================================================================
+
+  const handleDeviceChange = (device: PreviewDevice) => {
+    setCurrentDevice(device)
+    // Update URL to reflect device change
+    const url = new URL(window.location.href)
+    url.searchParams.set('device', device)
+    window.history.replaceState({}, '', url.toString())
+  }
+
+  // =============================================================================
+  // RENDER DEVICE-SPECIFIC CONTENT
+  // =============================================================================
+
+  const renderDeviceFrame = (content: React.ReactNode) => {
+    const config = DEVICE_CONFIGS[currentDevice]
+
+    if (currentDevice === 'desktop') {
+      return (
+        <div className="w-full h-full">
+          {content}
+        </div>
+      )
+    }
+
+    // Mobile/Tablet frame with device appearance
+    const frameStyles = {
+      width: `${config.width}px`,
+      height: `${config.height}px`,
+      maxWidth: config.maxWidth || '100%'
+    }
+
+    return (
+      <div className="flex items-center justify-center p-4 h-full">
+        <div
+          className={cn(
+            "relative bg-gray-900 rounded-[2rem] p-2 shadow-2xl",
+            currentDevice === 'mobile' && "rounded-[2.5rem]",
+            currentDevice === 'tablet' && "rounded-[1.5rem]"
+          )}
+          style={frameStyles}
+        >
+          {/* Device Screen */}
+          <div className={cn(
+            "bg-background rounded-[1.5rem] w-full h-full overflow-hidden relative",
+            currentDevice === 'mobile' && "rounded-[2rem]",
+            currentDevice === 'tablet' && "rounded-[1rem]"
+          )}>
+            {/* Status Bar (Mobile only) */}
+            {currentDevice === 'mobile' && (
+              <div className="h-6 bg-muted flex items-center justify-between px-4 text-xs">
+                <span className="font-medium">9:41</span>
+                <div className="flex space-x-1">
+                  <div className="w-4 h-2 bg-gray-300 rounded-sm"></div>
+                  <div className="w-6 h-2 bg-green-500 rounded-sm"></div>
+                </div>
+              </div>
+            )}
+            
+            {/* Content Area */}
+            <div className={cn(
+              "w-full h-full overflow-hidden relative",
+              currentDevice === 'mobile' && "h-[calc(100%-1.5rem)]"
+            )}>
+              {content}
+            </div>
+          </div>
+          
+          {/* Home Button (Mobile only) */}
+          {currentDevice === 'mobile' && (
+            <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-12 h-1 bg-gray-600 rounded-full"></div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // =============================================================================
   // RENDER STATES
   // =============================================================================
 
@@ -940,55 +1031,86 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
 
       {/* Preview Mode Indicator */}
       <div className="bg-blue-600 text-white text-center py-2 px-4">
-        <div className="flex items-center justify-center space-x-2">
-          <Play className="h-4 w-4" />
-          <span className="text-sm font-medium">
-            Preview Mode - {campaign.name}
-          </span>
-          
-          {/* Mode Indicators */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            {previewConfig.bypassDisplayRules && (
-              <Badge variant="secondary" className="bg-blue-500 text-white text-xs">
-                All Sections
-              </Badge>
-            )}
+            <Play className="h-4 w-4" />
+            <span className="text-sm font-medium">
+              Preview Mode - {campaign.name}
+            </span>
             
-            {previewConfig.enableAITesting && (
-              <Badge variant="secondary" className="bg-purple-500 text-white text-xs">
-                <TestTube className="h-3 w-3 mr-1" />
-                AI Testing
-              </Badge>
-            )}
-            
-            {previewConfig.showDebugInfo && (
-              <Badge variant="secondary" className="bg-muted0 text-white text-xs">
-                <Settings className="h-3 w-3 mr-1" />
-                Debug
-              </Badge>
-            )}
+            {/* Mode Indicators */}
+            <div className="flex items-center space-x-2">
+              {previewConfig.bypassDisplayRules && (
+                <Badge variant="secondary" className="bg-blue-500 text-white text-xs">
+                  All Sections
+                </Badge>
+              )}
+              
+              {previewConfig.enableAITesting && (
+                <Badge variant="secondary" className="bg-purple-500 text-white text-xs">
+                  <TestTube className="h-3 w-3 mr-1" />
+                  AI Testing
+                </Badge>
+              )}
+              
+              {previewConfig.showDebugInfo && (
+                <Badge variant="secondary" className="bg-gray-500 text-white text-xs">
+                  <Settings className="h-3 w-3 mr-1" />
+                  Debug
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {/* Device Toggle Controls */}
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-blue-100 mr-2">Device:</span>
+            <div className="flex border border-blue-400 rounded-lg overflow-hidden">
+              {Object.entries(DEVICE_CONFIGS).map(([key, deviceConfig]) => {
+                const IconComponent = deviceConfig.icon
+                return (
+                  <Button
+                    key={key}
+                    variant={currentDevice === key ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => handleDeviceChange(key as PreviewDevice)}
+                    className={cn(
+                      "h-8 px-3 rounded-none border-0 text-white hover:text-gray-900",
+                      currentDevice === key 
+                        ? "bg-white text-blue-600" 
+                        : "hover:bg-blue-500"
+                    )}
+                    title={deviceConfig.description}
+                  >
+                    <IconComponent className="h-3 w-3" />
+                  </Button>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Section Content */}
-      <div className="pb-20"> {/* Add padding for fixed navigation */}
-        {sections.map((section, index) => (
-          <SectionRenderer
-            key={section.id}
-            section={section}
-            sectionIndex={index}
-            isActive={index === previewState.currentSection}
-            userInputs={previewState.userInputs}
-            aiOutputs={previewState.aiOutputs}
-            previewConfig={previewConfig}
-            onSectionComplete={handleSectionComplete}
-            onUpdate={handleSectionUpdate}
-          />
-        ))}
-      </div>
+      {renderDeviceFrame(
+        <div className="min-h-full bg-background">
+          {sections.map((section, index) => (
+            <SectionRenderer
+              key={section.id}
+              section={section}
+              sectionIndex={index}
+              isActive={index === previewState.currentSection}
+              userInputs={previewState.userInputs}
+              aiOutputs={previewState.aiOutputs}
+              previewConfig={previewConfig}
+              onSectionComplete={handleSectionComplete}
+              onUpdate={handleSectionUpdate}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* Navigation */}
+      {/* Preview Navigation */}
       <PreviewNavigation
         currentSection={previewState.currentSection}
         totalSections={sections.length}

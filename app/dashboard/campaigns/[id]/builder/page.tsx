@@ -8,7 +8,7 @@ import { Campaign, Section, SectionWithOptions } from '@/lib/types/database'
 import { CampaignSection, SectionType, getSectionTypeById } from '@/lib/types/campaign-builder'
 import { CampaignBuilderTopBar } from '@/components/campaign-builder/top-bar'
 import { SectionsMenu } from '@/components/campaign-builder/sections-menu'
-import { SortableCanvas } from '@/components/campaign-builder/sortable-canvas'
+
 import { EnhancedSectionCard } from '@/components/campaign-builder/enhanced-section-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PublishModal } from '@/components/campaign-builder/publish-modal'
@@ -30,7 +30,6 @@ import {
 } from '@dnd-kit/sortable'
 import { DraggableSectionType } from '@/components/campaign-builder/draggable-section-type'
 import { EnhancedSortableCanvas } from '@/components/campaign-builder/enhanced-sortable-canvas'
-import { CampaignPreview } from '@/components/campaign-builder/campaign-preview'
 import { cn } from '@/lib/utils'
 
 // Helper functions to convert between database and UI types
@@ -113,7 +112,6 @@ export default function CampaignBuilderPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeDragItem, setActiveDragItem] = useState<SectionType | CampaignSection | null>(null)
-  const [activeTab, setActiveTab] = useState<'builder' | 'preview'>('builder')
   const [showPublishModal, setShowPublishModal] = useState(false)
 
   // DnD sensors
@@ -639,79 +637,36 @@ export default function CampaignBuilderPage() {
                   </Card>
                 </div>
 
-                {/* Main Content - Tabbed Interface */}
+                {/* Main Content - Builder Canvas */}
                 <div className="lg:col-span-3">
                   <Card className="h-full">
-                    {/* Tab Navigation */}
-                    <div className="border-b border-border">
-                      <nav className="flex space-x-8 px-6 pt-4" aria-label="Tabs">
-                        <button
-                          onClick={() => setActiveTab('builder')}
-                          className={cn(
-                            "whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors",
-                            activeTab === 'builder'
-                              ? "border-blue-500 text-blue-600"
-                              : "border-transparent text-muted-foreground hover:text-foreground hover:border-input"
-                          )}
-                        >
-                          Builder
-                        </button>
-                        <button
-                          onClick={() => setActiveTab('preview')}
-                          className={cn(
-                            "whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors",
-                            activeTab === 'preview'
-                              ? "border-blue-500 text-blue-600"
-                              : "border-transparent text-muted-foreground hover:text-foreground hover:border-input"
-                          )}
-                        >
-                          Preview
-                        </button>
-                      </nav>
-                    </div>
-
-                    {/* Tab Content */}
-                    {activeTab === 'builder' ? (
-                      <>
-                        <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <CardTitle className="text-lg">Campaign Canvas</CardTitle>
-                              <CardDescription>
-                                Drag sections from the sidebar to build your campaign. Use the enhanced controls for inline editing, preview mode, and section management.
-                              </CardDescription>
-                            </div>
-                            {sections.length > 0 && (
-                              <div className="text-sm text-muted-foreground">
-                                {sections.length} section{sections.length !== 1 ? 's' : ''} • {sections.filter(s => s.isVisible).length} visible
-                              </div>
-                            )}
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-lg">Campaign Canvas</CardTitle>
+                          <CardDescription>
+                            Drag sections from the sidebar to build your campaign. Use the enhanced controls for inline editing, preview mode, and section management.
+                          </CardDescription>
+                        </div>
+                        {sections.length > 0 && (
+                          <div className="text-sm text-muted-foreground">
+                            {sections.length} section{sections.length !== 1 ? 's' : ''} • {sections.filter(s => s.isVisible).length} visible
                           </div>
-                        </CardHeader>
-                        <CardContent className="h-[calc(100%-140px)]">
-                          <EnhancedSortableCanvas
-                            sections={sections}
-                            onSectionUpdate={handleSectionUpdate}
-                            onSectionDelete={handleSectionDelete}
-                            onSectionDuplicate={handleSectionDuplicate}
-                            onSectionConfigure={handleSectionConfigure}
-                            onSectionTypeChange={handleSectionTypeChange}
-                            className="h-full"
-                            showCollapsedSections={true}
-                          />
-                        </CardContent>
-                      </>
-                    ) : (
-                      <div className="h-[calc(100%-60px)]">
-                        <CampaignPreview
-                          campaign={campaign}
-                          sections={sections}
-                          className="h-full"
-                          enableDeviceToggle={true}
-                          enableFullscreen={true}
-                        />
+                        )}
                       </div>
-                    )}
+                    </CardHeader>
+                    <CardContent className="h-[calc(100%-140px)]">
+                      <EnhancedSortableCanvas
+                        sections={sections}
+                        onSectionUpdate={handleSectionUpdate}
+                        onSectionDelete={handleSectionDelete}
+                        onSectionDuplicate={handleSectionDuplicate}
+                        onSectionConfigure={handleSectionConfigure}
+                        onSectionTypeChange={handleSectionTypeChange}
+                        className="h-full"
+                        showCollapsedSections={true}
+                      />
+                    </CardContent>
                   </Card>
                 </div>
               </div>
