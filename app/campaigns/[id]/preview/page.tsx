@@ -205,7 +205,11 @@ function SectionRenderer({
   aiOutputs,
   previewConfig,
   onSectionComplete,
-  onUpdate
+  onUpdate,
+  onNext,
+  onPrevious,
+  currentSectionIndex,
+  totalSections
 }: {
   section: CampaignSection
   sectionIndex: number
@@ -215,9 +219,45 @@ function SectionRenderer({
   previewConfig: PreviewModeConfig
   onSectionComplete: (sectionIndex: number, data: any) => void
   onUpdate: (updates: Partial<CampaignSection>) => Promise<void>
+  onNext: () => void
+  onPrevious: () => void
+  currentSectionIndex: number
+  totalSections: number
 }) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingResults, setProcessingResults] = useState<any>(null)
+  const [textInput, setTextInput] = useState('')
+  const [selectedChoice, setSelectedChoice] = useState<string | null>(null)
+
+  // Validation logic
+  const isRequired = (section.settings as any)?.required
+  const isValidTextInput = !isRequired || (isRequired && textInput.trim().length > 0)
+  const isValidChoice = !isRequired || (isRequired && selectedChoice !== null)
+  
+  const canProceed = () => {
+    switch (section.type) {
+      case 'text_question':
+        return isValidTextInput
+      case 'multiple_choice':
+        return isValidChoice
+      default:
+        return true // Other sections don't have validation requirements
+    }
+  }
+
+  const handleNextClick = () => {
+    if (!canProceed()) return
+    
+    const data: Record<string, any> = {}
+    
+    if (section.type === 'text_question' && textInput.trim()) {
+      data.textResponse = textInput.trim()
+    } else if (section.type === 'multiple_choice' && selectedChoice) {
+      data.choice = selectedChoice
+    }
+    
+    onSectionComplete(sectionIndex, data)
+  }
 
   const getSectionIcon = (type: string) => {
     switch (type) {
@@ -296,144 +336,187 @@ function SectionRenderer({
     const settings = section.settings || {}
 
     switch (section.type) {
-      case 'capture':
       case 'text_question':
         return (
-          <div className="bg-background rounded-lg shadow-sm p-8">
-            <h2 className="text-2xl font-bold text-foreground mb-4">
-              {(settings as any).title || 'Capture Section'}
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              {(settings as any).content || 'This is a capture section for collecting user information.'}
-            </p>
-            <div className="space-y-4">
-              {/* Handle text_question type */}
-              {section.type === 'text_question' ? (
+          <div className="min-h-screen bg-white flex flex-col relative">
+            {/* Main Content Area */}
+            <div className="flex-1 flex items-center justify-center px-6 pb-20">
+              <div className="w-full max-w-2xl mx-auto space-y-6">
+                {/* Main Question Text */}
+                <div className="text-center">
+                  <h1 className="text-4xl font-bold text-gray-900">
+                    {((section.settings as any)?.content) || 'Your question text here...'}
+                  </h1>
+                </div>
+
+                {/* Optional Subheading */}
+                {(section.settings as any)?.subheading && (
+                  <div className="text-center">
+                    <p className="text-xl text-gray-600">
+                      {(section.settings as any).subheading}
+                    </p>
+                  </div>
+                )}
+
+                {/* Label */}
+                {(section.settings as any)?.label && (
+                  <div className="pt-6">
+                    <label className="text-sm font-medium text-gray-700 block">
+                      {(section.settings as any).label}
+                    </label>
+                  </div>
+                )}
+
+                {/* Input Field */}
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    {(settings as any).question || (settings as any).content || 'Your answer'}
-                    {(settings as any).required && <span className="text-red-500 ml-1">*</span>}
-                  </label>
                   <input
-                    type={(settings as any).inputType || 'text'}
-                    className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder={(settings as any).placeholder || 'Type your answer here...'}
-                    maxLength={(settings as any).maxLength || 500}
-                    onChange={(e) => {
-                      if (previewConfig.enableAITesting) {
-                        const newInputs = { ...userInputs, [section.id]: e.target.value }
-                        onSectionComplete(sectionIndex, newInputs)
-                      }
-                    }}
+                    type="text"
+                    value={textInput}
+                    onChange={(e) => setTextInput(e.target.value)}
+                    placeholder={(section.settings as any)?.placeholder || 'Type your answer here...'}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
-              ) : (
-                // Handle capture/fields type
-                ((settings as any).fields || [
-                  { id: 'name', type: 'text', label: 'Full Name', required: true },
-                  { id: 'email', type: 'email', label: 'Email Address', required: true }
-                ]).map((field: any, index: number) => (
-                <div key={field.id || index}>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    {field.label}
-                    {field.required && <span className="text-red-500 ml-1">*</span>}
-                  </label>
-                  <input
-                    type={field.type || 'text'}
-                    className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder={`Enter your ${field.label.toLowerCase()}`}
-                    defaultValue={userInputs[field.id] || ''}
-                      onChange={(e) => {
-                        // In testing mode, immediately update inputs
-                        if (previewConfig.enableAITesting) {
-                          const newInputs = { ...userInputs, [field.id]: e.target.value }
-                          onSectionComplete(sectionIndex, newInputs)
-                        }
-                      }}
-                    />
-                  </div>
-                ))
-              )}
-            </div>
-            <div className="mt-6">
-              <Button 
-                onClick={() => {
-                  const formData = new FormData(document.querySelector('form') as HTMLFormElement)
-                  const data: Record<string, any> = {}
-                  formData.forEach((value, key) => {
-                    data[key] = value
-                  })
-                  onSectionComplete(sectionIndex, data)
-                }}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Continue
-              </Button>
-            </div>
-            
-            {/* Debug Info */}
-            {previewConfig.showDebugInfo && (
-              <div className="mt-4 p-3 bg-muted rounded border-l-4 border-blue-500">
-                <p className="text-xs font-medium text-foreground">Debug: Capture Section</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Collected: {Object.keys(userInputs).join(', ') || 'None'}
-                </p>
               </div>
-            )}
+            </div>
+
+            {/* Fixed Bottom Bar */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 z-10">
+              <div className="max-w-2xl mx-auto flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={onPrevious}
+                    disabled={currentSectionIndex <= 0}
+                    className="flex items-center space-x-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span>Previous</span>
+                  </button>
+                  <div className="text-sm text-gray-500">
+                    {(section.settings as any)?.required && <span>* Required</span>}
+                  </div>
+                </div>
+                <button
+                  onClick={handleNextClick}
+                  disabled={!canProceed()}
+                  className={cn(
+                    "px-6 py-2 rounded-lg font-medium transition-colors",
+                    canProceed()
+                      ? "bg-blue-600 hover:bg-blue-700 text-white"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  )}
+                >
+                  {(section.settings as any)?.buttonLabel || 'Next'}
+                </button>
+              </div>
+            </div>
           </div>
         )
       
-      case 'choice':
       case 'multiple_choice':
         return (
-          <div className="bg-background rounded-lg shadow-sm p-8">
-            <h2 className="text-2xl font-bold text-foreground mb-4">
-              {(settings as any).title || (settings as any).question || 'Make Your Choice'}
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              {(settings as any).content || 'Please select from the following options.'}
-            </p>
-            <div className="space-y-3">
-              {((settings as any).options || (settings as any).choices || [
-                { id: 'option-1', text: 'Option 1', value: 'option1' },
-                { id: 'option-2', text: 'Option 2', value: 'option2' },
-                { id: 'option-3', text: 'Option 3', value: 'option3' }
-              ]).map((choice: any, index: number) => (
-                <div
-                  key={choice.id || index}
-                  className="p-4 border border-border rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
-                  onClick={() => onSectionComplete(sectionIndex, { choice: choice.text || choice.value, [choice.id || `option-${index}`]: choice.text || choice.value })}
-                >
-                  <div className="flex items-center">
-                    <div className="w-4 h-4 border border-input rounded mr-3"></div>
-                    <span className="text-foreground">{choice.text}</span>
+          <div className="min-h-screen bg-white flex flex-col relative">
+            {/* Main Content Area */}
+            <div className="flex-1 flex items-center justify-center px-6 pb-20">
+              <div className="w-full max-w-2xl mx-auto space-y-6">
+                {/* Main Question Text */}
+                <div className="text-center">
+                  <h1 className="text-4xl font-bold text-gray-900">
+                    {((section.settings as any)?.content) || 'Make Your Choice'}
+                  </h1>
+                </div>
+
+                {/* Optional Subheading */}
+                {(section.settings as any)?.subheading && (
+                  <div className="text-center">
+                    <p className="text-xl text-gray-600">
+                      {(section.settings as any).subheading}
+                    </p>
+                  </div>
+                )}
+
+                {/* Options */}
+                <div className="space-y-3 pt-6">
+                  {(((section.settings as any)?.options) || [
+                    { id: 'option-1', text: 'Option 1' },
+                    { id: 'option-2', text: 'Option 2' },
+                    { id: 'option-3', text: 'Option 3' }
+                  ]).map((option: any, index: number) => {
+                    const optionId = option.id || `option-${index}`
+                    const isSelected = selectedChoice === option.text
+                    return (
+                      <button
+                        key={optionId}
+                        onClick={() => setSelectedChoice(option.text)}
+                        className={cn(
+                          "w-full p-4 text-left border rounded-lg transition-colors",
+                          isSelected
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-300 hover:border-blue-300 hover:bg-blue-50"
+                        )}
+                      >
+                        <div className="flex items-center">
+                          <div className={cn(
+                            "w-4 h-4 border rounded-full mr-3 flex items-center justify-center",
+                            isSelected
+                              ? "border-blue-500 bg-blue-500"
+                              : "border-gray-400"
+                          )}>
+                            {isSelected && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                          </div>
+                          <span className="text-lg text-gray-900">{option.text}</span>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Fixed Bottom Bar */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 z-10">
+              <div className="max-w-2xl mx-auto flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={onPrevious}
+                    disabled={currentSectionIndex <= 0}
+                    className="flex items-center space-x-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    <span>Previous</span>
+                  </button>
+                  <div className="text-sm text-gray-500">
+                    {(section.settings as any)?.required && <span>* Required</span>}
                   </div>
                 </div>
-              ))}
-            </div>
-            
-            {/* Debug Info */}
-            {previewConfig.showDebugInfo && (
-              <div className="mt-4 p-3 bg-muted rounded border-l-4 border-green-500">
-                <p className="text-xs font-medium text-foreground">Debug: Choice Section</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Available choices: {((settings as any).choices || []).length}
-                </p>
+                <button
+                  onClick={handleNextClick}
+                  disabled={!canProceed()}
+                  className={cn(
+                    "px-6 py-2 rounded-lg font-medium transition-colors",
+                    canProceed()
+                      ? "bg-blue-600 hover:bg-blue-700 text-white"
+                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  )}
+                >
+                  Next
+                </button>
               </div>
-            )}
+            </div>
           </div>
         )
       
       case 'logic':
         return (
-          <div className="bg-background rounded-lg shadow-sm p-8 text-center">
-            <Brain className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-foreground mb-4">
-              {(settings as any).title || 'AI Processing'}
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              {(settings as any).content || 'Our AI is analyzing your responses...'}
-            </p>
+          <div className="min-h-screen bg-white flex items-center justify-center">
+            <div className="max-w-2xl mx-auto text-center space-y-6">
+              <Brain className="h-16 w-16 text-blue-600 mx-auto mb-4" />
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                {(settings as any).title || 'AI Processing'}
+              </h2>
+              <p className="text-xl text-gray-600 mb-6">
+                {(settings as any).content || 'Our AI is analyzing your responses...'}
+              </p>
             
             {/* Show processing state */}
             {isProcessing ? (
@@ -489,6 +572,7 @@ function SectionRenderer({
                 </div>
               </div>
             )}
+            </div>
           </div>
         )
       
@@ -522,197 +606,31 @@ function SectionRenderer({
       
       default:
         return (
-          <div className="text-center py-12">
-            <IconComponent className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              {typeLabel} Section
-            </h3>
-            <p className="text-muted-foreground">
-              This section type is not yet implemented in preview mode.
-            </p>
-            
-            {/* Debug Info */}
-            {previewConfig.showDebugInfo && (
-              <div className="mt-4 p-3 bg-muted rounded border-l-4 border-gray-500 text-left max-w-md mx-auto">
-                <p className="text-xs font-medium text-foreground">Debug: Unknown Section Type</p>
-                <p className="text-xs text-muted-foreground mt-1">Type: {section.type}</p>
+          <div className="min-h-screen bg-white flex items-center justify-center">
+            <div className="max-w-2xl mx-auto text-center space-y-6">
+              <div className="h-16 w-16 text-gray-400 mx-auto mb-4 flex items-center justify-center text-4xl">
+                ❓
               </div>
-            )}
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                Unknown Section Type
+              </h2>
+              <p className="text-xl text-gray-600">
+                Section type "{section.type}" is not yet supported in preview mode.
+              </p>
+            </div>
           </div>
         )
     }
   }
 
   return (
-    <div
-      className={cn(
-        "min-h-screen transition-all duration-300",
-        isActive ? "opacity-100" : "opacity-50 pointer-events-none"
-      )}
-    >
-      {/* Section Header */}
-      <div className="bg-background border-b py-4 px-6">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <IconComponent className="h-5 w-5 text-blue-600" />
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-              {typeLabel}
-            </Badge>
-            <span className="text-sm text-muted-foreground">Section {sectionIndex + 1}</span>
-            
-            {/* Testing Mode Indicators */}
-            {previewConfig.enableAITesting && (
-              <Badge variant="secondary" className="bg-purple-100 text-purple-700">
-                <TestTube className="h-3 w-3 mr-1" />
-                Testing
-              </Badge>
-            )}
-          </div>
-          
-          <div className="flex items-center space-x-2">
-            <Badge 
-              variant={isActive ? "default" : "secondary"} 
-              className="text-xs"
-            >
-              {isActive ? 'Active' : 'Preview'}
-            </Badge>
-            
-            {previewConfig.showDebugInfo && (
-              <Badge variant="outline" className="text-xs">
-                <Settings className="h-3 w-3 mr-1" />
-                Debug
-              </Badge>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Section Content */}
-      <div className="py-8 px-6 bg-muted min-h-[calc(100vh-80px)]">
-        {renderSectionContent()}
-      </div>
+    <div className="min-h-screen">
+      {renderSectionContent()}
     </div>
   )
 }
 
-// =============================================================================
-// PREVIEW NAVIGATION
-// =============================================================================
 
-function PreviewNavigation({
-  currentSection,
-  totalSections,
-  onPrevious,
-  onNext,
-  sections,
-  completedSections,
-  previewConfig,
-  onConfigChange
-}: {
-  currentSection: number
-  totalSections: number
-  onPrevious: () => void
-  onNext: () => void
-  sections: CampaignSection[]
-  completedSections: Set<number>
-  previewConfig: PreviewModeConfig
-  onConfigChange: (config: Partial<PreviewModeConfig>) => void
-}) {
-  return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg z-50">
-      <div className="max-w-4xl mx-auto px-6 py-4">
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onPrevious}
-            disabled={currentSection <= 0}
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Previous
-          </Button>
-          
-          <div className="flex items-center space-x-4">
-            {/* Preview Mode Controls */}
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => onConfigChange({ enableAITesting: !previewConfig.enableAITesting })}
-                className={cn(
-                  "text-xs px-2 py-1 rounded border transition-colors",
-                  previewConfig.enableAITesting 
-                    ? "bg-purple-100 text-purple-700 border-purple-200" 
-                    : "bg-accent text-muted-foreground border-border hover:bg-gray-200"
-                )}
-              >
-                <TestTube className="h-3 w-3 mr-1 inline" />
-                AI Testing
-              </button>
-              
-              <button
-                onClick={() => onConfigChange({ showDebugInfo: !previewConfig.showDebugInfo })}
-                className={cn(
-                  "text-xs px-2 py-1 rounded border transition-colors",
-                  previewConfig.showDebugInfo 
-                    ? "bg-gray-800 text-white border-gray-700" 
-                    : "bg-accent text-muted-foreground border-border hover:bg-gray-200"
-                )}
-              >
-                <Settings className="h-3 w-3 mr-1 inline" />
-                Debug
-              </button>
-              
-              <button
-                onClick={() => onConfigChange({ bypassDisplayRules: !previewConfig.bypassDisplayRules })}
-                className={cn(
-                  "text-xs px-2 py-1 rounded border transition-colors",
-                  previewConfig.bypassDisplayRules 
-                    ? "bg-blue-100 text-blue-700 border-blue-200" 
-                    : "bg-accent text-muted-foreground border-border hover:bg-gray-200"
-                )}
-              >
-                <Eye className="h-3 w-3 mr-1 inline" />
-                All Sections
-              </button>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-muted-foreground">
-                {currentSection + 1} of {totalSections}
-              </span>
-              
-              {/* Progress Dots */}
-              <div className="flex space-x-1">
-                {sections.map((_, index) => (
-                  <div
-                    key={index}
-                    className={cn(
-                      "w-2 h-2 rounded-full transition-colors",
-                      index === currentSection
-                        ? "bg-blue-600"
-                        : completedSections.has(index)
-                        ? "bg-green-500"
-                        : "bg-gray-300"
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onNext}
-            disabled={currentSection >= totalSections - 1}
-          >
-            Next
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // =============================================================================
 // MAIN COMPONENT
@@ -864,13 +782,6 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
     console.log('Section update in preview mode:', updates)
   }
 
-  const handlePrevious = () => {
-    setPreviewState(prev => ({
-      ...prev,
-      currentSection: Math.max(0, prev.currentSection - 1)
-    }))
-  }
-
   const handleNext = () => {
     setPreviewState(prev => ({
       ...prev,
@@ -878,18 +789,11 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
     }))
   }
 
-  const handleConfigChange = (configUpdates: Partial<PreviewModeConfig>) => {
-    setPreviewConfig(prev => {
-      const newConfig = { ...prev, ...configUpdates }
-      
-      // If bypass display rules changes, reload sections
-      if ('bypassDisplayRules' in configUpdates) {
-        // Trigger section reload with new rules
-        setTimeout(() => loadCampaign(), 100)
-      }
-      
-      return newConfig
-    })
+  const handlePrevious = () => {
+    setPreviewState(prev => ({
+      ...prev,
+      currentSection: Math.max(0, prev.currentSection - 1)
+    }))
   }
 
   // =============================================================================
@@ -1094,33 +998,28 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
       {/* Section Content */}
       {renderDeviceFrame(
         <div className="min-h-full bg-background">
-          {sections.map((section, index) => (
+          {/* Show only the current section */}
+          {sections.length > 0 && previewState.currentSection < sections.length && (
             <SectionRenderer
-              key={section.id}
-              section={section}
-              sectionIndex={index}
-              isActive={index === previewState.currentSection}
+              key={sections[previewState.currentSection].id}
+              section={sections[previewState.currentSection]}
+              sectionIndex={previewState.currentSection}
+              isActive={true}
               userInputs={previewState.userInputs}
               aiOutputs={previewState.aiOutputs}
               previewConfig={previewConfig}
               onSectionComplete={handleSectionComplete}
               onUpdate={handleSectionUpdate}
+              onNext={handleNext}
+              onPrevious={handlePrevious}
+              currentSectionIndex={previewState.currentSection}
+              totalSections={sections.length}
             />
-          ))}
+          )}
         </div>
       )}
 
-      {/* Preview Navigation */}
-      <PreviewNavigation
-        currentSection={previewState.currentSection}
-        totalSections={sections.length}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        sections={sections}
-        completedSections={previewState.completedSections}
-        previewConfig={previewConfig}
-        onConfigChange={handleConfigChange}
-      />
+
     </div>
   )
 } 
