@@ -101,24 +101,26 @@ const DEVICE_CONFIGS: Record<PreviewDevice, DeviceConfig> = {
 // =============================================================================
 
 // Real AI processing using the same API as the campaign builder
-const processAIPrompt = async (prompt: string, userInputs: Record<string, any>) => {
+const processAIPrompt = async (prompt: string, userInputs: Record<string, any>, sections: CampaignSection[]) => {
   const startTime = Date.now()
   
   console.log('🤖 AI PROCESSING: Original prompt:', prompt)
   console.log('🤖 AI PROCESSING: User inputs for variables:', userInputs)
 
   try {
+    // Extract output variables from AI logic section settings - same as campaign builder
+    const aiLogicSection = sections.find(s => s.type === 'logic')
+    const aiSettings = aiLogicSection?.settings as any
+    const outputVariables = aiSettings?.outputVariables || []
+    
+    console.log('🤖 AI PROCESSING: Found AI logic section settings:', aiSettings)
+    console.log('🤖 AI PROCESSING: Using output variables:', outputVariables)
+    
     // Prepare the AI test request in the same format as the campaign builder
     const testRequest = {
       prompt: prompt,
       variables: userInputs,
-      outputVariables: [
-        { id: '1', name: 'recommendation', description: 'Main personalized recommendation or advice' },
-        { id: '2', name: 'target_time', description: 'Estimated time or duration' },
-        { id: '3', name: 'speed', description: 'Pace or speed recommendation' },
-        { id: '4', name: 'difficulty', description: 'Difficulty level assessment' },
-        { id: '5', name: 'tips', description: 'List of helpful tips or suggestions' }
-      ]
+      outputVariables: outputVariables // Use ONLY the user-defined output variables
     }
 
     console.log('🤖 AI PROCESSING: API request:', testRequest)
@@ -272,7 +274,8 @@ function SectionRenderer({
   onNext,
   onPrevious,
   currentSectionIndex,
-  totalSections
+  totalSections,
+  sections
 }: {
   section: CampaignSection
   sectionIndex: number
@@ -286,6 +289,7 @@ function SectionRenderer({
   onPrevious: () => void
   currentSectionIndex: number
   totalSections: number
+  sections: CampaignSection[]
 }) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingResults, setProcessingResults] = useState<any>(null)
@@ -401,7 +405,7 @@ function SectionRenderer({
       console.log('🧠 AI PROCESSING: Raw prompt from settings:', prompt)
       console.log('🧠 AI PROCESSING: Input userInputs:', userInputs)
       
-      const results = await processAIPrompt(prompt, userInputs)
+      const results = await processAIPrompt(prompt, userInputs, sections)
       console.log('🧠 AI PROCESSING: AI Results:', results)
       setProcessingResults(results)
       
@@ -774,7 +778,14 @@ function SectionRenderer({
                   <div className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">
                     {/* Interpolate variables in subtitle */}
                     {((settings as any).subtitle).replace(/@(\w+)/g, (match: string, varName: string) => {
-                      return userInputs[varName] || aiOutputs[varName] || `[${varName}]`
+                      // Completely dynamic - use only available data
+                      if (aiOutputs[varName] !== undefined) {
+                        return String(aiOutputs[varName])
+                      }
+                      if (userInputs[varName] !== undefined) {
+                        return String(userInputs[varName])
+                      }
+                      return `@${varName}` // Keep placeholder if not found
                     })}
                   </div>
                 )}
@@ -785,55 +796,25 @@ function SectionRenderer({
                 <div className="text-lg text-gray-400 max-w-4xl mx-auto leading-relaxed text-center">
                   {/* Enhanced variable interpolation for preview */}
                   {((settings as any).content as string).replace(/@(\w+)/g, (match, varName) => {
-                    // First check AI outputs, then user inputs, then fallback
+                    // Completely dynamic - use only available data, no hardcoded fallbacks
                     if (aiOutputs[varName] !== undefined) {
                       return String(aiOutputs[varName])
                     }
                     if (userInputs[varName] !== undefined) {
                       return String(userInputs[varName])
                     }
-                    
-                    // Variable-specific fallbacks with realistic data
-                    switch (varName) {
-                      case 'name':
-                        return userInputs.name || 'User'
-                      case 'email':
-                        return userInputs.email || 'user@example.com'
-                      case 'score':
-                        return aiOutputs.score?.toString() || '0'
-                      case 'recommendation':
-                        return aiOutputs.recommendation || 'No recommendation available'
-                      case 'target_time':
-                        return aiOutputs.target_time || '30 minutes'
-                      case 'speed':
-                        return aiOutputs.speed || 'Medium pace'
-                      case 'difficulty':
-                        return aiOutputs.difficulty || 'Moderate'
-                      case 'tips':
-                        return Array.isArray(aiOutputs.tips) ? aiOutputs.tips.join(', ') : aiOutputs.tips || 'Follow the recommendations'
-                      default:
-                        return `[${varName}]`
-                    }
+                    // No fallbacks - keep placeholder if variable not found
+                    return `@${varName}`
                   }).replace(/\[(\w+)\]/g, (match, varName) => {
-                    // Handle square bracket variables
+                    // Completely dynamic - use only available data, no hardcoded fallbacks
                     if (aiOutputs[varName] !== undefined) {
                       return String(aiOutputs[varName])
                     }
                     if (userInputs[varName] !== undefined) {
                       return String(userInputs[varName])
                     }
-                    
-                    // Fallbacks for square bracket variables
-                    switch (varName) {
-                      case 'target_time':
-                        return aiOutputs.target_time || '30 minutes'
-                      case 'speed':
-                        return aiOutputs.speed || 'Medium pace'
-                      case 'difficulty':
-                        return aiOutputs.difficulty || 'Moderate'
-                      default:
-                        return match // Keep original if no fallback
-                    }
+                    // No fallbacks - keep placeholder if variable not found
+                    return `[${varName}]`
                   })}
                 </div>
               )}
@@ -1298,6 +1279,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
               onPrevious={handlePrevious}
               currentSectionIndex={previewState.currentSection}
               totalSections={sections.length}
+              sections={sections}
             />
           )}
         </div>
