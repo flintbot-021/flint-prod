@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select'
 import { CampaignSection, SECTION_TYPES, getSectionTypeById } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
+import { titleToVariableName, isQuestionSection } from '@/lib/utils/section-variables'
 import * as Icons from 'lucide-react'
 import {
   Eye,
@@ -27,6 +28,7 @@ import {
 
 interface SectionTopBarProps {
   section: CampaignSection
+  allSections?: CampaignSection[] // For variable name validation
   isPreview?: boolean
   isCollapsed?: boolean
   onNameChange: (name: string) => Promise<void>
@@ -42,6 +44,7 @@ interface SectionTopBarProps {
 
 export function SectionTopBar({
   section,
+  allSections = [],
   isPreview = false,
   isCollapsed = false,
   onNameChange,
@@ -63,6 +66,19 @@ export function SectionTopBar({
 
   // Check if this is an AI Logic section (configuration only, never shown to end users)
   const isAILogicSection = section.type === 'logic-ai' || sectionType?.category === 'logic'
+
+  // Check for duplicate variable names
+  const checkVariableNameConflict = (title: string): boolean => {
+    if (!isQuestionSection(section.type) || !title) return false
+    
+    const variableName = titleToVariableName(title)
+    return allSections.some(s => 
+      s.id !== section.id && 
+      isQuestionSection(s.type) && 
+      s.title && 
+      titleToVariableName(s.title) === variableName
+    )
+  }
 
   // Get available section types for the dropdown
   const availableTypes = SECTION_TYPES.filter(type => type.id !== section.type)
@@ -129,6 +145,28 @@ export function SectionTopBar({
             required={true}
             autoSave={false}
           />
+          
+          {/* Variable Preview Badge - Show for question sections */}
+          {isQuestionSection(section.type) && section.title && (
+            <div className="flex items-center space-x-2 mt-1">
+              <Badge 
+                variant={checkVariableNameConflict(section.title) ? "destructive" : "secondary"}
+                className={cn(
+                  "text-xs font-mono",
+                  checkVariableNameConflict(section.title) 
+                    ? "bg-red-50 text-red-700 border-red-200" 
+                    : "bg-blue-50 text-blue-700 border-blue-200"
+                )}
+              >
+                @{titleToVariableName(section.title)}
+              </Badge>
+              {checkVariableNameConflict(section.title) ? (
+                <span className="text-xs text-red-600">⚠️ Duplicate variable name</span>
+              ) : (
+                <span className="text-xs text-muted-foreground">← Variable name</span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Section Order Badge */}

@@ -398,6 +398,7 @@ export function SectionBlock({
         onConfigure={() => onConfigure?.(section.id)}
         onCollapseToggle={() => isCollapsible && setIsCollapsed(!isCollapsed)}
         dragHandleProps={{ ...attributes, ...listeners }}
+        allSections={allSections}
       />
 
       {/* Content Area */}
