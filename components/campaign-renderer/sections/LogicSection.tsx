@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Loader2, Zap, AlertCircle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
@@ -19,7 +19,6 @@ export function LogicSection({
   const [isProcessing, setIsProcessing] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [processingStatus, setProcessingStatus] = useState('Analyzing your responses...')
-  const hasProcessedRef = useRef(false)
 
   useEffect(() => {
     // Clear any existing test data from campaign builder before processing real data
@@ -29,14 +28,6 @@ export function LogicSection({
 
   const processAILogic = async () => {
     try {
-      // Prevent duplicate processing (React StrictMode or component re-mounting)
-      if (hasProcessedRef.current) {
-        console.log('🚫 AI Logic already processed, skipping duplicate call')
-        return
-      }
-      
-      // Mark as processing started to prevent duplicates
-      hasProcessedRef.current = true
       console.log('🧠 AI Logic Section - Processing for section:', section.id, 'type:', section.type)
       
       // Cast config to access AI-specific properties
@@ -69,17 +60,18 @@ export function LogicSection({
           Object.entries(value as Record<string, any>).forEach(([subKey, subValue]) => {
             if (subKey !== 'metadata' && subValue !== undefined && subValue !== null) {
               variables[subKey] = subValue
-              // Also try to extract the section ID as a variable name
-              variables[key] = subValue
             }
           })
+          // Also store the section ID with the first available value for backwards compatibility
+          const firstValue = Object.values(value as Record<string, any>).find(v => v !== undefined && v !== null && v !== 'metadata')
+          if (firstValue !== undefined) {
+            variables[key] = firstValue
+          }
         } else if (value !== undefined && value !== null) {
           variables[key] = value
         }
       })
 
-      console.log('🔄 Variables prepared for AI:', variables)
-      
       setProcessingStatus('Sending to AI...')
 
       // Prepare the AI request
@@ -92,8 +84,6 @@ export function LogicSection({
           description: v.description
         }))
       }
-
-      console.log('📤 AI Request:', aiRequest)
 
       // Call the AI processing API
       const response = await fetch('/api/ai-processing', {
@@ -109,7 +99,6 @@ export function LogicSection({
       }
 
       const result = await response.json()
-      console.log('📥 AI Response:', result)
 
       if (result.success && result.outputs) {
         setProcessingStatus('AI processing complete!')
@@ -122,9 +111,6 @@ export function LogicSection({
             requestedOutputs[outputVar.name] = result.outputs[outputVar.name]
           }
         })
-        
-        console.log('🎯 Filtered outputs (only requested variables):', requestedOutputs)
-        console.log('🗑️ Excluded extra AI outputs:', Object.keys(result.outputs).filter(key => !requestedOutputs.hasOwnProperty(key)))
         
         // Store only the requested AI results for output sections to use
         storeAITestResults(requestedOutputs)

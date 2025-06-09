@@ -307,12 +307,12 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
               <SharedSectionRenderer
                 section={currentSection}
                 index={currentSectionIndex}
-              isActive={true}
+                isActive={true}
                 isPreview={true}
                 campaignId={campaignId}
                 userInputs={campaignRenderer.userInputs}
-              onNext={handleNext}
-              onPrevious={handlePrevious}
+                onNext={handleNext}
+                onPrevious={handlePrevious}
                 onNavigateToSection={(index: number) => {
                   if (sectionsData.length > 0) {
                     campaignRenderer.goToSection(index)

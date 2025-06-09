@@ -7,34 +7,6 @@ import { Campaign, SectionWithOptions } from '@/lib/types/database'
 // Re-export for convenience
 export type { SectionWithOptions } from '@/lib/types/database'
 
-// Base props that all section components will receive
-export interface BaseSectionProps {
-  section: SectionWithOptions
-  index: number
-  isActive: boolean
-  isPreview?: boolean
-  campaignId?: string
-  
-  // Navigation handlers
-  onNext: () => void
-  onPrevious: () => void
-  onNavigateToSection: (index: number) => void
-  
-  // Data handlers
-  onSectionComplete: (sectionIndex: number, data: any) => void
-  onResponseUpdate: (sectionId: string, fieldId: string, value: any, metadata?: any) => void
-}
-
-// Campaign state management
-export interface CampaignState {
-  currentSection: number
-  userInputs: Record<string, any>
-  completedSections: Set<number>
-  startTime: Date
-  sessionId: string
-  leadId?: string
-}
-
 // Device and environment info
 export interface DeviceInfo {
   type: 'mobile' | 'tablet' | 'desktop'
@@ -91,6 +63,8 @@ export interface SectionConfiguration {
   placeholder?: string
   required?: boolean
   buttonLabel?: string
+  buttonText?: string
+  question?: string
   options?: Array<{
     id: string
     label: string
@@ -113,7 +87,25 @@ export interface SectionConfiguration {
   subtitle?: string
 }
 
-// Common section renderer props
+// Base props that all section components will receive
+export interface BaseSectionProps {
+  section: SectionWithOptions
+  index: number
+  isActive: boolean
+  isPreview?: boolean
+  campaignId?: string
+  
+  // Navigation handlers
+  onNext: () => void
+  onPrevious: () => void
+  onNavigateToSection: (index: number) => void
+  
+  // Data handlers
+  onSectionComplete: (sectionIndex: number, data: any) => void
+  onResponseUpdate: (sectionId: string, fieldId: string, value: any, metadata?: any) => void
+}
+
+// Enhanced props that section components actually use
 export interface SectionRendererProps extends BaseSectionProps {
   config: SectionConfiguration
   title: string
@@ -121,4 +113,14 @@ export interface SectionRendererProps extends BaseSectionProps {
   deviceInfo?: DeviceInfo
   networkState?: NetworkState
   userInputs?: Record<string, any>
+}
+
+// Campaign state management
+export interface CampaignState {
+  currentSection: number
+  userInputs: Record<string, any>
+  completedSections: Set<number>
+  startTime: Date
+  sessionId: string
+  leadId?: string
 } 

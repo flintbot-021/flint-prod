@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useMemo, useCallback } from 'react'
 import { SectionWithOptions } from '@/lib/types/database'
 import { useCampaignState } from './useCampaignState'
 import { useDeviceInfo } from './useDeviceInfo'
@@ -67,7 +67,7 @@ export function useCampaignRenderer({
   ])
 
   // Enhanced section complete handler with variable context updates
-  const handleSectionComplete = async (sectionIndex: number, data: any) => {
+  const handleSectionComplete = useCallback(async (sectionIndex: number, data: any) => {
     try {
       // Update variable context with new data
       variableEngine.updateContext({
@@ -80,10 +80,10 @@ export function useCampaignRenderer({
     } catch (error) {
       errorHandler.handleError(error as Error, `section_${sectionIndex}_completion`)
     }
-  }
+  }, [variableEngine, campaignState.userInputs, campaignState.completeSection, errorHandler.handleError])
 
   // Enhanced response update handler
-  const handleResponseUpdate = (
+  const handleResponseUpdate = useCallback((
     sectionId: string, 
     fieldId: string, 
     value: any, 
@@ -109,10 +109,10 @@ export function useCampaignRenderer({
     } catch (error) {
       errorHandler.handleError(error as Error, `response_update_${sectionId}_${fieldId}`)
     }
-  }
+  }, [campaignState.updateResponse, campaignState.userInputs, variableEngine, errorHandler.handleError])
 
   // Get current section with processed content
-  const getCurrentSection = async () => {
+  const getCurrentSection = useCallback(async () => {
     if (!sections[campaignState.currentSection]) return null
     
     const section = sections[campaignState.currentSection]
@@ -133,9 +133,10 @@ export function useCampaignRenderer({
       errorHandler.handleError(error as Error, 'section_content_processing')
       return section // Return original on error
     }
-  }
+  }, [sections, campaignState.currentSection, variableEngine, errorHandler.handleError])
 
-  return {
+  // Memoize the return value to prevent unnecessary re-creation
+  return useMemo(() => ({
     // Campaign state
     ...campaignState,
     
@@ -160,5 +161,18 @@ export function useCampaignRenderer({
     isReady: sections.length > 0 && !errorHandler.error,
     hasNetworkIssues: !networkState.isOnline,
     isMobile: deviceInfo.type === 'mobile'
-  }
+  }), [
+    campaignState,
+    deviceInfo,
+    networkState,
+    errorHandler.error,
+    errorHandler.clearError,
+    variableEngine.processVariables,
+    variableEngine.context,
+    handleSectionComplete,
+    handleResponseUpdate,
+    getCurrentSection,
+    sections.length,
+    networkState.isOnline
+  ])
 } 

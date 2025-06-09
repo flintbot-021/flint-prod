@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { AlertCircle } from 'lucide-react'
-import { BaseSectionProps, SectionConfiguration } from './types'
+import { BaseSectionProps, SectionConfiguration, SectionRendererProps } from './types'
 
 // Import section components
 import {
@@ -19,22 +19,55 @@ import {
 // MAIN SECTION RENDERER
 // =============================================================================
 
-interface SectionRendererPropsWithUserInputs extends BaseSectionProps {
+interface SectionRendererPropsExtended extends BaseSectionProps {
   userInputs?: Record<string, any>
 }
 
-export function SectionRenderer(props: SectionRendererPropsWithUserInputs) {
-  const { section, index, userInputs = {} } = props
+export function SectionRenderer(props: SectionRendererPropsExtended) {
+  const { section, userInputs = {} } = props
 
   // Extract configuration from section
   const config: SectionConfiguration = (section.configuration || {}) as SectionConfiguration
 
-  // Enhanced props with section content (no variable processing for now)
-  const enhancedProps = {
+  // Basic device info detection (can be enhanced by pages if needed)
+  const getBasicDeviceInfo = () => {
+    if (typeof window === 'undefined') {
+      return {
+        type: 'desktop' as const,
+        screenSize: { width: 1200, height: 800 },
+        orientation: 'landscape' as const,
+        touchCapable: false,
+        userAgent: '',
+        pixelRatio: 1
+      }
+    }
+    
+    const width = window.innerWidth
+    const height = window.innerHeight
+    const touchCapable = 'ontouchstart' in window
+    
+    let type: 'mobile' | 'tablet' | 'desktop'
+    if (width < 768) type = 'mobile'
+    else if (width < 1024) type = 'tablet' 
+    else type = 'desktop'
+    
+    return {
+      type,
+      screenSize: { width, height },
+      orientation: width > height ? 'landscape' as const : 'portrait' as const,
+      touchCapable,
+      userAgent: navigator.userAgent,
+      pixelRatio: window.devicePixelRatio || 1
+    }
+  }
+
+  // Enhanced props with all required fields for SectionRendererProps
+  const enhancedProps: SectionRendererProps = {
     ...props,
     config,
-    title: section.title || '',
-    description: section.description || '',
+    title: section.title || config.content || config.question || '',
+    description: section.description || config.subheading || '',
+    deviceInfo: getBasicDeviceInfo(),
     userInputs
   }
 
@@ -56,7 +89,6 @@ export function SectionRenderer(props: SectionRendererPropsWithUserInputs) {
       return <InfoSection {...enhancedProps} />
     
     case 'logic':
-      console.log('🎯 SectionRenderer routing to LogicSection for section:', section.id)
       return <LogicSection {...enhancedProps} />
     
     case 'output':
@@ -71,7 +103,7 @@ export function SectionRenderer(props: SectionRendererPropsWithUserInputs) {
 // UNSUPPORTED SECTION FALLBACK
 // =============================================================================
 
-function UnsupportedSection({ section, onNext }: BaseSectionProps & { config: SectionConfiguration, title: string, description: string }) {
+function UnsupportedSection({ section, onNext }: SectionRendererProps) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center max-w-md mx-auto">
