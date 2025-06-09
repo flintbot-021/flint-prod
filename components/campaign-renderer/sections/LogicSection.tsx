@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Loader2, Zap, AlertCircle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
@@ -19,16 +19,25 @@ export function LogicSection({
   const [isProcessing, setIsProcessing] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [processingStatus, setProcessingStatus] = useState('Analyzing your responses...')
+  const hasProcessedRef = useRef(false)
 
   useEffect(() => {
     // Clear any existing test data from campaign builder before processing real data
     clearAITestResults()
     processAILogic()
-  }, [])
+  }, []) // Empty dependency array - only run once on mount
 
   const processAILogic = async () => {
     try {
-      console.log('🧠 AI Logic Section - Processing for section:', section.id)
+      // Prevent duplicate processing (React StrictMode or component re-mounting)
+      if (hasProcessedRef.current) {
+        console.log('🚫 AI Logic already processed, skipping duplicate call')
+        return
+      }
+      
+      // Mark as processing started to prevent duplicates
+      hasProcessedRef.current = true
+      console.log('🧠 AI Logic Section - Processing for section:', section.id, 'type:', section.type)
       
       // Cast config to access AI-specific properties
       const aiConfig = config as any

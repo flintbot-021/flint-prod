@@ -56,6 +56,7 @@ export function SectionRenderer(props: SectionRendererPropsWithUserInputs) {
       return <InfoSection {...enhancedProps} />
     
     case 'logic':
+      console.log('🎯 SectionRenderer routing to LogicSection for section:', section.id)
       return <LogicSection {...enhancedProps} />
     
     case 'output':
