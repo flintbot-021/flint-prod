@@ -126,18 +126,15 @@ export class AIProcessingEngine {
    * Prepare the OpenAI API request with sensible defaults
    */
   private prepareAIRequest(prompt: string, outputVariables: OutputVariable[]) {
-    const systemPrompt = this.buildSystemPrompt(outputVariables)
+    // Combine user's domain prompt with output instructions
+    const combinedPrompt = this.buildCombinedPrompt(prompt, outputVariables)
 
     return {
       model: this.DEFAULT_MODEL,
       messages: [
         {
-          role: 'system' as const,
-          content: systemPrompt
-        },
-        {
           role: 'user' as const,
-          content: prompt
+          content: combinedPrompt
         }
       ],
       max_tokens: this.DEFAULT_MAX_TOKENS,
@@ -147,7 +144,34 @@ export class AIProcessingEngine {
   }
 
   /**
+   * Build combined prompt with user's domain expertise + output format instructions
+   */
+  private buildCombinedPrompt(userPrompt: string, outputVariables: OutputVariable[]): string {
+    if (outputVariables.length === 0) {
+      return userPrompt
+    }
+
+    const outputDescriptions = outputVariables.map(variable => 
+      `- ${variable.name}: ${variable.description}`
+    ).join('\n')
+
+    return `${userPrompt}
+
+Please provide your response as a JSON object containing these exact fields:
+${outputDescriptions}
+
+Requirements:
+- Return only valid JSON
+- Be specific and helpful in your responses
+- Use realistic values based on the context provided
+- If you cannot determine a field value, provide a reasonable estimate or explanation
+
+JSON Response:`
+  }
+
+  /**
    * Build system prompt for structured output
+   * @deprecated - replaced by buildCombinedPrompt
    */
   private buildSystemPrompt(outputVariables: OutputVariable[]): string {
     if (outputVariables.length === 0) {

@@ -104,17 +104,13 @@ const DEVICE_CONFIGS: Record<PreviewDevice, DeviceConfig> = {
 const processAIPrompt = async (prompt: string, userInputs: Record<string, any>, sections: CampaignSection[]) => {
   const startTime = Date.now()
   
-  console.log('🤖 AI PROCESSING: Original prompt:', prompt)
-  console.log('🤖 AI PROCESSING: User inputs for variables:', userInputs)
+  console.log('🤖 DATA CAPTURED:', userInputs)
 
   try {
     // Extract output variables from AI logic section settings - same as campaign builder
     const aiLogicSection = sections.find(s => s.type === 'logic')
     const aiSettings = aiLogicSection?.settings as any
     const outputVariables = aiSettings?.outputVariables || []
-    
-    console.log('🤖 AI PROCESSING: Found AI logic section settings:', aiSettings)
-    console.log('🤖 AI PROCESSING: Using output variables:', outputVariables)
     
     // Prepare the AI test request in the same format as the campaign builder
     const testRequest = {
@@ -123,7 +119,7 @@ const processAIPrompt = async (prompt: string, userInputs: Record<string, any>, 
       outputVariables: outputVariables // Use ONLY the user-defined output variables
     }
 
-    console.log('🤖 AI PROCESSING: API request:', testRequest)
+    console.log('🤖 SENT TO AI:', { prompt: prompt, variables: userInputs, expectedOutputs: outputVariables.map((v: any) => v.name) })
 
     // Call the real AI processing API
     const response = await fetch('/api/ai-processing', {
@@ -141,9 +137,8 @@ const processAIPrompt = async (prompt: string, userInputs: Record<string, any>, 
     const result = await response.json()
     const processingTime = Date.now() - startTime
 
-    console.log('🤖 AI PROCESSING: API response:', result)
-
     if (result.success && result.outputs) {
+      console.log('🤖 AI RETURNED:', result.outputs)
       return {
         ...result.outputs,
         score: Math.floor(Math.random() * 40) + 60, // Random score for preview
@@ -156,7 +151,7 @@ const processAIPrompt = async (prompt: string, userInputs: Record<string, any>, 
     }
 
   } catch (error) {
-    console.error('🤖 AI PROCESSING: Error:', error)
+    console.error('🤖 AI ERROR:', error)
     
     // Fallback to basic response if AI fails
     const processingTime = Date.now() - startTime
@@ -819,13 +814,7 @@ function SectionRenderer({
                 </div>
               )}
 
-              {/* DEBUG: Log data being used */}
-              {(() => {
-                console.log('🎯 OUTPUT SECTION: userInputs:', userInputs)
-                console.log('🎯 OUTPUT SECTION: aiOutputs:', aiOutputs)
-                console.log('🎯 OUTPUT SECTION: Combined data for interpolation:', {...userInputs, ...aiOutputs})
-                return null
-              })()}
+
 
               {/* Navigation Button */}
               <div className="text-center">
