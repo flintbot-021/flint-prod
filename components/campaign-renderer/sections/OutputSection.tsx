@@ -7,6 +7,26 @@ import { getMobileClasses } from '../utils'
 import { cn } from '@/lib/utils'
 import { getAITestResults, replaceVariablesWithTestData } from '@/lib/utils/ai-test-storage'
 
+/**
+ * Replace variables in content with provided variable values
+ */
+function replaceVariablesInContent(
+  text: string, 
+  variables: Record<string, any>,
+  fallbackText: string = 'placeholder'
+): string {
+  return text.replace(/@(\w+)/g, (match, variableName) => {
+    const value = variables[variableName]
+    
+    if (value !== undefined && value !== null && value !== '') {
+      return String(value)
+    }
+    
+    // Return original @variable if no data or fallback if specified
+    return fallbackText === 'placeholder' ? match : fallbackText
+  })
+}
+
 export function OutputSection({
   section,
   index,
@@ -27,11 +47,6 @@ export function OutputSection({
     const aiResults = getAITestResults()
     const allVariables = { ...userInputs, ...aiResults }
     
-    console.log('🎯 OutputSection - Available variables:', allVariables)
-    console.log('🔍 Full section object:', section)
-    console.log('🔍 Full config object:', config)
-    console.log('🔍 Section configuration:', section.configuration)
-    
     setAvailableVariables(allVariables)
     
     // Extract content from section configuration (database format)
@@ -39,10 +54,6 @@ export function OutputSection({
     const outputTitle = configuration?.title || config.title || title
     const outputSubtitle = configuration?.subtitle || config.subtitle 
     const outputContent = configuration?.content || config.content
-    
-    console.log('📄 Extracted title:', outputTitle)
-    console.log('📄 Extracted subtitle:', outputSubtitle)
-    console.log('📄 Extracted content:', outputContent)
     
     // Build complete content from all available fields
     let fullContent = ''
@@ -59,12 +70,9 @@ export function OutputSection({
       fullContent += `<div class="text-lg leading-relaxed">${outputContent.replace(/\n/g, '<br>')}</div>`
     }
     
-    console.log('📝 Full content to process:', fullContent)
-    
     // Process content with variables if any content exists
     if (fullContent) {
-      const processed = replaceVariablesWithTestData(fullContent, 'Not available')
-      console.log('✨ Processed content:', processed)
+      const processed = replaceVariablesInContent(fullContent, allVariables, 'Not available')
       setProcessedContent(processed)
     } else {
       // Create fallback content showing all available variables

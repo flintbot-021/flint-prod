@@ -93,7 +93,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
     sections: sectionsData,
     initialSection,
     onProgressUpdate: (progress, sectionIndex) => {
-      console.log('📊 Progress:', progress, 'Section:', sectionIndex)
+      // Progress updated
     }
   })
 
@@ -149,8 +149,6 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
   // =============================================================================
 
   const handleSectionComplete = (sectionIndex: number, data: any) => {
-    console.log('📝 SECTION COMPLETE:', { sectionIndex, data })
-    
     if (sectionsData.length > 0) {
       campaignRenderer.handleSectionComplete(sectionIndex, data)
     }
@@ -311,6 +309,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
                 isPreview={true}
                 campaignId={campaignId}
                 userInputs={campaignRenderer.userInputs}
+                sections={sectionsData}
                 onNext={handleNext}
                 onPrevious={handlePrevious}
                 onNavigateToSection={(index: number) => {
@@ -320,10 +319,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
                 }}
                 onSectionComplete={handleSectionComplete}
                 onResponseUpdate={(sectionId: string, fieldId: string, value: any, metadata?: any) => {
-                  // Only log final values, not character-by-character typing
-                  if (metadata?.isComplete) {
-                    console.log('📝 Response Complete:', { sectionId, fieldId, value })
-                  }
+                  // Response updated
                 }}
               />
             )}

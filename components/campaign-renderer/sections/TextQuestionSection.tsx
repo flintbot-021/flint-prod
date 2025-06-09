@@ -60,10 +60,19 @@ export function TextQuestionSection({
       return
     }
 
-    onSectionComplete(index, {
+    const submissionData = {
       [section.id]: trimmedValue,
       text_response: trimmedValue
-    })
+    }
+
+    console.log('📝 TEXT QUESTION SUBMISSION:')
+    console.log('  Section ID:', section.id)
+    console.log('  Section Title:', section.title)
+    console.log('  Text Value:', trimmedValue)
+    console.log('  Submission Data:', submissionData)
+    console.log('  Section Index:', index)
+
+    onSectionComplete(index, submissionData)
   }
 
   // Handle key shortcuts

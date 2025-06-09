@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import type { SectionWithOptions } from '@/lib/types/database'
 
 // =============================================================================
@@ -49,56 +49,84 @@ export function useCampaignState(
   // Core state
   const [currentSection, setCurrentSection] = useState(initialSection)
   const [userInputs, setUserInputs] = useState<Record<string, any>>({})
-  const [completedSections, setCompletedSections] = useState<Set<number>>(new Set<number>())
+  const [completedSectionsArray, setCompletedSectionsArray] = useState<number[]>([])
   const [leadId, setLeadId] = useState<string | undefined>()
   const [startTime] = useState(new Date())
 
-  // Navigation functions
+  // Create stable Set reference - only recreate when array actually changes
+  const completedSections = useMemo(() => 
+    new Set(completedSectionsArray), 
+    [completedSectionsArray]
+  )
+
+  // Stable navigation functions with consistent dependencies
   const goToSection = useCallback((index: number) => {
-    if (index >= 0 && index < sections.length) {
+    if (index >= 0 && index < sections.length && index !== currentSection) {
       setCurrentSection(index)
     }
-  }, [sections.length])
+  }, [sections.length, currentSection])
 
   const goNext = useCallback(() => {
-    if (currentSection < sections.length - 1) {
-      setCurrentSection(prev => prev + 1)
-    }
-  }, [currentSection, sections.length])
+    setCurrentSection(prev => prev < sections.length - 1 ? prev + 1 : prev)
+  }, [sections.length])
 
   const goPrevious = useCallback(() => {
-    if (currentSection > 0) {
-      setCurrentSection(prev => prev - 1)
-    }
-  }, [currentSection])
+    setCurrentSection(prev => prev > 0 ? prev - 1 : prev)
+  }, [])
 
-  // Navigation state
-  const canGoNext = currentSection < sections.length - 1
-  const canGoPrevious = currentSection > 0
+  // Memoize navigation state to prevent unnecessary re-renders
+  const navigationState = useMemo(() => ({
+    canGoNext: currentSection < sections.length - 1,
+    canGoPrevious: currentSection > 0
+  }), [currentSection, sections.length])
 
-  // Data management
+  // Stable data management functions
   const updateResponse = useCallback((
     sectionId: string, 
     fieldId: string, 
     value: any, 
     metadata?: any
   ) => {
-    setUserInputs(prev => ({
-      ...prev,
-      [sectionId]: {
-        ...prev[sectionId],
-        [fieldId]: value,
-        [`${fieldId}_metadata`]: metadata
+    setUserInputs(prev => {
+      // Prevent unnecessary updates if value hasn't changed
+      const currentValue = prev[sectionId]?.[fieldId]
+      if (currentValue === value) return prev
+      
+      return {
+        ...prev,
+        [sectionId]: {
+          ...prev[sectionId],
+          [fieldId]: value,
+          [`${fieldId}_metadata`]: metadata
+        }
       }
-    }))
+    })
   }, [])
 
   const completeSection = useCallback(async (sectionIndex: number, data: any) => {
-    // Update user inputs with section data
-    setUserInputs(prev => ({ ...prev, ...data }))
+    console.log('🎯 COMPLETE SECTION CALLED:')
+    console.log('  Section Index:', sectionIndex)
+    console.log('  Data received:', data)
+    console.log('  Current userInputs before update:', userInputs)
+    console.log('  Section already completed?', completedSections.has(sectionIndex))
     
-    // Mark section as completed
-    setCompletedSections(prev => new Set([...prev, sectionIndex]))
+    // Prevent duplicate completion
+    if (completedSections.has(sectionIndex)) {
+      console.log(`Section ${sectionIndex} already completed, skipping`)
+      return
+    }
+    
+    // Update user inputs with section data
+    setUserInputs(prev => {
+      const newUserInputs = { ...prev, ...data }
+      console.log('  UserInputs updated to:', newUserInputs)
+      return newUserInputs
+    })
+    
+    // Mark section as completed using array update
+    setCompletedSectionsArray(prev => 
+      prev.includes(sectionIndex) ? prev : [...prev, sectionIndex]
+    )
     
     // Handle lead creation for capture sections
     if (sections[sectionIndex]?.type === 'capture' && !leadId && onLeadCreate) {
@@ -113,7 +141,10 @@ export function useCampaignState(
     }
     
     // Calculate progress
-    const progress = Math.round(((sectionIndex + 1) / sections.length) * 100)
+    const newCompletedCount = completedSections.has(sectionIndex) 
+      ? completedSections.size 
+      : completedSections.size + 1
+    const progress = Math.round((newCompletedCount / sections.length) * 100)
     onProgressUpdate?.(progress, sectionIndex)
     
     // Auto-advance to next section
@@ -122,19 +153,21 @@ export function useCampaignState(
         setCurrentSection(sectionIndex + 1)
       }, 300) // Small delay for better UX
     }
-  }, [sections, leadId, onLeadCreate, onProgressUpdate])
+  }, [sections, leadId, onLeadCreate, onProgressUpdate, completedSections, userInputs])
 
   const resetCampaign = useCallback(() => {
     setCurrentSection(0)
     setUserInputs({})
-    setCompletedSections(new Set())
+    setCompletedSectionsArray([])
     setLeadId(undefined)
   }, [])
 
-  // Progress calculations
-  const progress = Math.round((completedSections.size / sections.length) * 100)
-  const totalSections = sections.length
-  const isComplete = completedSections.size === sections.length
+  // Memoize progress calculations to prevent unnecessary re-renders
+  const progressState = useMemo(() => ({
+    progress: Math.round((completedSections.size / sections.length) * 100),
+    totalSections: sections.length,
+    isComplete: completedSections.size === sections.length
+  }), [completedSections.size, sections.length])
 
   // Auto-save functionality (debounced)
   useEffect(() => {
@@ -145,7 +178,7 @@ export function useCampaignState(
         localStorage.setItem(`campaign_state_${sessionIdRef.current}`, JSON.stringify({
           currentSection,
           userInputs,
-          completedSections: Array.from(completedSections),
+          completedSections: completedSectionsArray,
           leadId,
           startTime,
           lastUpdated: new Date()
@@ -156,9 +189,10 @@ export function useCampaignState(
     }, 1000)
 
     return () => clearTimeout(timer)
-  }, [currentSection, userInputs, completedSections, leadId, startTime])
+  }, [currentSection, userInputs, completedSectionsArray, leadId, startTime])
 
-  return {
+  // Return stable object references
+  return useMemo(() => ({
     // State
     currentSection,
     userInputs,
@@ -171,8 +205,8 @@ export function useCampaignState(
     goToSection,
     goNext,
     goPrevious,
-    canGoNext,
-    canGoPrevious,
+    canGoNext: navigationState.canGoNext,
+    canGoPrevious: navigationState.canGoPrevious,
     
     // Data management
     updateResponse,
@@ -180,8 +214,25 @@ export function useCampaignState(
     resetCampaign,
     
     // Progress
-    progress,
-    totalSections,
-    isComplete
-  }
+    progress: progressState.progress,
+    totalSections: progressState.totalSections,
+    isComplete: progressState.isComplete
+  }), [
+    currentSection,
+    userInputs,
+    completedSections,
+    leadId,
+    startTime,
+    goToSection,
+    goNext,
+    goPrevious,
+    navigationState.canGoNext,
+    navigationState.canGoPrevious,
+    updateResponse,
+    completeSection,
+    resetCampaign,
+    progressState.progress,
+    progressState.totalSections,
+    progressState.isComplete
+  ])
 } 

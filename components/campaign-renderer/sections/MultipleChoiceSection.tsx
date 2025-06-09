@@ -52,10 +52,20 @@ export function MultipleChoiceSection({
   const handleSubmit = () => {
     if (isRequired && !selectedValue) return
     
-    onSectionComplete(index, {
+    const submissionData = {
       [section.id]: selectedValue,
       choice: selectedValue
-    })
+    }
+
+    console.log('🔘 MULTIPLE CHOICE SUBMISSION:')
+    console.log('  Section ID:', section.id)
+    console.log('  Section Title:', section.title)
+    console.log('  Selected Value:', selectedValue)
+    console.log('  Submission Data:', submissionData)
+    console.log('  Section Index:', index)
+    console.log('  Available Choices:', normalizedChoices)
+
+    onSectionComplete(index, submissionData)
   }
 
   const isValid = !isRequired || selectedValue

@@ -97,13 +97,23 @@ export class AIProcessingEngine {
   private replaceVariables(prompt: string, variables: Record<string, any>): string {
     let processedPrompt = prompt
 
+    console.log('🔄 Starting variable replacement...')
+    console.log('🔄 Original prompt:', prompt)
+    console.log('🔄 Available variables:', variables)
+
     // Replace @variable mentions with actual values
     Object.entries(variables).forEach(([name, value]) => {
       const regex = new RegExp(`@${name}\\b`, 'g')
       const stringValue = this.formatVariableValue(value)
+      const beforeReplace = processedPrompt
       processedPrompt = processedPrompt.replace(regex, stringValue)
+      
+      if (beforeReplace !== processedPrompt) {
+        console.log(`🔄 Replaced @${name} with "${stringValue}"`)
+      }
     })
 
+    console.log('🔄 Final processed prompt:', processedPrompt)
     return processedPrompt
   }
 
@@ -152,22 +162,15 @@ export class AIProcessingEngine {
     }
 
     const outputDescriptions = outputVariables.map(variable => 
-      `- ${variable.name}: ${variable.description}`
+      `${variable.name}: ${variable.description}`
     ).join('\n')
 
     return `${userPrompt}
 
-IMPORTANT: Return ONLY a JSON object with exactly these fields and NO additional fields:
+Please return the following:
 ${outputDescriptions}
 
-Requirements:
-- Return valid JSON with ONLY the specified fields above
-- Do NOT add any extra fields, properties, or additional information
-- Do NOT include explanations, recommendations, or supplementary data
-- Use realistic values based on the context provided
-- If you cannot determine a field value, provide a reasonable estimate
-
-JSON Response:`
+Return only a JSON object with these exact fields and no additional text.`
   }
 
   /**

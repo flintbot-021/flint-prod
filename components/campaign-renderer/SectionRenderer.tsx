@@ -1,8 +1,8 @@
 'use client'
 
-import React from 'react'
+import React, { useMemo } from 'react'
 import { AlertCircle } from 'lucide-react'
-import { BaseSectionProps, SectionConfiguration, SectionRendererProps } from './types'
+import { BaseSectionProps, SectionConfiguration, SectionRendererProps, SectionWithOptions } from './types'
 
 // Import section components
 import {
@@ -21,16 +21,20 @@ import {
 
 interface SectionRendererPropsExtended extends BaseSectionProps {
   userInputs?: Record<string, any>
+  sections?: SectionWithOptions[]
 }
 
 export function SectionRenderer(props: SectionRendererPropsExtended) {
-  const { section, userInputs = {} } = props
+  const { section, userInputs = {}, sections } = props
 
-  // Extract configuration from section
-  const config: SectionConfiguration = (section.configuration || {}) as SectionConfiguration
+  // Extract configuration from section - memoized
+  const config: SectionConfiguration = useMemo(() => 
+    (section.configuration || {}) as SectionConfiguration, 
+    [section.configuration]
+  )
 
-  // Basic device info detection (can be enhanced by pages if needed)
-  const getBasicDeviceInfo = () => {
+  // Basic device info detection (can be enhanced by pages if needed) - memoized
+  const deviceInfo = useMemo(() => {
     if (typeof window === 'undefined') {
       return {
         type: 'desktop' as const,
@@ -59,17 +63,29 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
       userAgent: navigator.userAgent,
       pixelRatio: window.devicePixelRatio || 1
     }
-  }
+  }, []) // Empty deps - device info shouldn't change during session
 
-  // Enhanced props with all required fields for SectionRendererProps
-  const enhancedProps: SectionRendererProps = {
+  // Memoize title and description extraction
+  const sectionTitle = useMemo(() => 
+    section.title || config.content || config.question || '', 
+    [section.title, config.content, config.question]
+  )
+  
+  const sectionDescription = useMemo(() => 
+    section.description || config.subheading || '', 
+    [section.description, config.subheading]
+  )
+
+  // Enhanced props with all required fields for SectionRendererProps - memoized
+  const enhancedProps: SectionRendererProps = useMemo(() => ({
     ...props,
     config,
-    title: section.title || config.content || config.question || '',
-    description: section.description || config.subheading || '',
-    deviceInfo: getBasicDeviceInfo(),
-    userInputs
-  }
+    title: sectionTitle,
+    description: sectionDescription,
+    deviceInfo,
+    userInputs,
+    sections
+  }), [props, config, sectionTitle, sectionDescription, deviceInfo, userInputs, sections])
 
   // Route to appropriate section component based on type
   switch (section.type) {

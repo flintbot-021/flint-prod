@@ -1436,14 +1436,14 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // =============================================================================
   // SECTION RENDERING - Now handled by SharedSectionRenderer
   // =============================================================================
-  
+
   // Note: Individual section rendering functions have been removed and replaced
   // with the SharedSectionRenderer component for consistency and maintainability
 
   // =============================================================================
   // LEGACY RENDERING FUNCTIONS REMOVED
   // =============================================================================
-  
+
   // These functions have been replaced by SharedSectionRenderer components
 
 
