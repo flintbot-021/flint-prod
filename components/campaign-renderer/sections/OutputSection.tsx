@@ -5,31 +5,19 @@ import { ChevronLeft, ChevronRight, Share2, CheckCircle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses } from '../utils'
 import { cn } from '@/lib/utils'
-import { getAITestResults, replaceVariablesWithTestData } from '@/lib/utils/ai-test-storage'
+import { getAITestResults } from '@/lib/utils/ai-test-storage'
 import { titleToVariableName, isQuestionSection, extractResponseValue } from '@/lib/utils/section-variables'
+import { VariableInterpolatedContent } from '@/components/ui/variable-interpolated-content'
+import type { VariableInterpolationContext } from '@/lib/types/output-section'
 
-/**
- * Replace variables in content with provided variable values
- */
-function replaceVariablesInContent(
-  text: string, 
-  variables: Record<string, any>,
-  fallbackText: string = 'placeholder'
-): string {
-  return text.replace(/@(\w+)/g, (match, variableName) => {
-    const value = variables[variableName]
-    
-    if (value !== undefined && value !== null && value !== '') {
-      return String(value)
-    }
-    
-    // Return original @variable if no data or fallback if specified
-    return fallbackText === 'placeholder' ? match : fallbackText
-  })
-}
+
 
 interface OutputSectionConfig {
-  content: string
+  title?: string
+  subtitle?: string
+  content?: string
+  image?: string
+  textAlignment?: 'left' | 'center' | 'right'
 }
 
 export function OutputSection({
@@ -46,10 +34,36 @@ export function OutputSection({
   ...props
 }: SectionRendererProps) {
   const [isSharing, setIsSharing] = useState(false)
-  const [processedContent, setProcessedContent] = useState<string>('')
-  const [availableVariables, setAvailableVariables] = useState<Record<string, any>>({})
 
   const outputConfig = config as OutputSectionConfig
+  
+  // Get settings with defaults and null safety
+  const settings = {
+    title: outputConfig?.title || title || 'Your Results',
+    subtitle: outputConfig?.subtitle || description || 'Based on your answers, here\'s what we found',
+    content: outputConfig?.content || 'Hello @name! Your score is @score out of 100.\n\n@recommendation\n\nThanks for taking our quiz!',
+    image: outputConfig?.image || '',
+    textAlignment: outputConfig?.textAlignment || 'center'
+  }
+
+  // Simple variable replacement fallback function
+  const simpleVariableReplace = (text: string, variables: Record<string, any>): string => {
+    try {
+      if (!text || typeof text !== 'string') return text || ''
+      
+      let result = text
+      Object.entries(variables || {}).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          const regex = new RegExp(`@${key}\\b`, 'g')
+          result = result.replace(regex, String(value))
+        }
+      })
+      return result
+    } catch (error) {
+      console.error('Error in simple variable replacement:', error)
+      return text || ''
+    }
+  }
 
   // Build complete variable map
   const variableMap = useMemo(() => {
@@ -82,87 +96,54 @@ export function OutputSection({
     return map
   }, [sections, userInputs])
 
-  // Interpolate variables in content
-  const interpolatedContent = useMemo(() => {
-    let content = outputConfig?.content || ''
-    
-    // Replace @variable with actual values
-    Object.entries(variableMap).forEach(([variable, value]) => {
-      const regex = new RegExp(`@${variable}\\b`, 'g')
-      content = content.replace(regex, String(value))
-    })
-    
-    return content
-  }, [outputConfig?.content, variableMap])
+  // Create variable interpolation context with error handling
+  const variableContext: VariableInterpolationContext = useMemo(() => {
+    try {
+      return {
+        variables: variableMap || {},
+        availableVariables: [],
+        formatters: {},
+        conditionalRules: []
+      }
+    } catch (error) {
+      console.error('Error creating variable context:', error)
+      return {
+        variables: {},
+        availableVariables: [],
+        formatters: {},
+        conditionalRules: []
+      }
+    }
+  }, [variableMap])
 
-  // Parse content for basic formatting (you can enhance this)
-  const formatContent = (content: string) => {
-    return content
-      .split('\n')
-      .map((line, index) => {
-        // Handle basic markdown-like formatting
-        let formattedLine = line
-        
-        // Bold text: **text**
-        formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        
-        // Italic text: *text*
-        formattedLine = formattedLine.replace(/\*(.*?)\*/g, '<em>$1</em>')
-        
-        return (
-          <div key={index} className="mb-2">
-            <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
-          </div>
-        )
-      })
+  // Get text alignment class
+  const getAlignmentClass = (alignment: string) => {
+    switch (alignment) {
+      case 'left': return 'text-left'
+      case 'right': return 'text-right'
+      case 'center':
+      default: return 'text-center'
+    }
   }
 
-  useEffect(() => {
-    // Build complete content from all available fields
-    let fullContent = ''
-    
-    if (title) {
-      fullContent += `<h1 class="text-4xl font-bold mb-4">${title}</h1>`
+  // Safe content renderer with fallback
+  const renderContent = (content: string, fallback?: string) => {
+    try {
+      // Try to use VariableInterpolatedContent
+      return (
+        <VariableInterpolatedContent
+          content={content || ''}
+          context={variableContext}
+          showPreview={true}
+          enableRealTimeProcessing={true}
+        />
+      )
+    } catch (error) {
+      console.error('Error rendering VariableInterpolatedContent, using fallback:', error)
+      // Fallback to simple replacement
+      const processedContent = simpleVariableReplace(content || fallback || '', variableMap)
+      return <span>{processedContent}</span>
     }
-    
-    if (description) {
-      fullContent += `<p class="text-xl text-gray-600 mb-6">${description}</p>`
-    }
-    
-    if (outputConfig?.content) {
-      fullContent += `<div class="text-lg leading-relaxed">${outputConfig.content.replace(/\n/g, '<br>')}</div>`
-    }
-    
-    // Process content with variables if any content exists
-    if (fullContent) {
-      const processed = replaceVariablesInContent(fullContent, variableMap, 'Not available')
-      setProcessedContent(processed)
-    } else {
-      // Create fallback content showing all available variables
-      const fallbackContent = createFallbackContent(variableMap)
-      setProcessedContent(fallbackContent)
-    }
-  }, [title, description, outputConfig?.content, variableMap])
-
-  const createFallbackContent = (variables: Record<string, any>) => {
-    if (Object.keys(variables).length === 0) {
-      return '<p>No data available to display.</p>'
-    }
-
-    const variableList = Object.entries(variables)
-      .filter(([key, value]) => value !== undefined && value !== null && value !== '')
-      .map(([key, value]) => `<div class="mb-4 p-4 bg-gray-50 rounded-lg">
-        <h3 class="font-semibold text-gray-900 mb-2">${key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')}</h3>
-        <p class="text-gray-700">${value}</p>
-      </div>`)
-      .join('')
-
-    return `
-      <div class="space-y-4">
-        <h2 class="text-xl font-bold text-gray-900 mb-4">Your Personalized Results</h2>
-        ${variableList}
-      </div>
-    `
   }
 
   const handleShare = async () => {
@@ -192,14 +173,17 @@ export function OutputSection({
     })
   }
 
-     if (!outputConfig?.content) {
-     return (
-       <div className="p-8 text-center text-gray-500">
-         <p>No output content configured</p>
-         <p className="text-sm mt-2">Configure this section in the campaign builder</p>
-       </div>
-     )
-   }
+  // Show fallback if no content is configured
+  if (!settings.title && !settings.subtitle && !settings.content && !settings.image) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center p-8 text-muted-foreground">
+          <h2 className="text-xl font-medium mb-2">No output content configured</h2>
+          <p className="text-sm">Configure this section in the campaign builder to display personalized results</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -220,32 +204,68 @@ export function OutputSection({
         </div>
       </div>
 
-      {/* Main Content - same structure as other sections */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-3xl mx-auto space-y-8">
-          {/* Main Content Display */}
-          <div className="text-center space-y-6">
-            {processedContent ? (
-              <div className={cn(
-                "text-foreground prose prose-lg max-w-none",
-                deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+      {/* Main Content - Enhanced layout like builder preview */}
+      <div className="flex-1 px-6 py-12">
+        <div className="w-full max-w-4xl mx-auto space-y-12">
+          {/* Image */}
+          {settings.image && (
+            <div className="w-full">
+              <img 
+                src={settings.image}
+                alt={settings.title || 'Section image'}
+                className="w-full h-64 md:h-80 object-cover rounded-lg"
+              />
+            </div>
+          )}
+
+          {/* Text Content with Variable Interpolation */}
+          <div className={cn('space-y-6', getAlignmentClass(settings.textAlignment))}>
+            <div className="space-y-4">
+              <h1 className={cn(
+                "font-bold text-foreground",
+                deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
               )}>
-                <div dangerouslySetInnerHTML={{ __html: processedContent }} />
-              </div>
-            ) : (
-              <div className="text-center text-muted-foreground">
-                <h1 className={cn(
-                  "font-bold text-foreground mb-4",
-                  deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
-                )}>
-                  Loading Results...
-                </h1>
-                <p className="text-sm">Processing your responses and AI-generated content.</p>
-              </div>
+                <VariableInterpolatedContent
+                  content={settings.title || ''}
+                  context={variableContext}
+                  showPreview={true}
+                  enableRealTimeProcessing={true}
+                />
+              </h1>
+              
+              {settings.subtitle && (
+                                 <div className={cn(
+                   "text-muted-foreground max-w-3xl",
+                   settings.textAlignment === 'center' ? "mx-auto" : "",
+                   deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
+                 )}>
+                   <VariableInterpolatedContent
+                     content={settings.subtitle || ''}
+                     context={variableContext}
+                     showPreview={true}
+                     enableRealTimeProcessing={true}
+                   />
+                 </div>
+              )}
+            </div>
+
+            {settings.content && (
+                             <div className={cn(
+                 "text-foreground max-w-4xl leading-relaxed",
+                 settings.textAlignment === 'center' ? "mx-auto" : "",
+                 deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+               )}>
+                 <VariableInterpolatedContent
+                   content={settings.content || ''}
+                   context={variableContext}
+                   showPreview={true}
+                   enableRealTimeProcessing={true}
+                 />
+               </div>
             )}
           </div>
 
-          {/* Debug Info (only in preview) */}
+          {/* Debug Info (only in development) */}
           {process.env.NODE_ENV === 'development' && (
             <details className="bg-gray-100 border border-gray-300 rounded-lg p-4">
               <summary className="cursor-pointer font-medium text-gray-700 mb-2">
@@ -257,8 +277,8 @@ export function OutputSection({
             </details>
           )}
 
-          {/* Action Buttons - same style as other sections */}
-          <div className="flex justify-center space-x-3">
+          {/* Action Buttons */}
+          <div className="flex justify-center space-x-3 pt-8">
             <button
               onClick={handleShare}
               disabled={isSharing}
