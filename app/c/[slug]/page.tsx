@@ -42,6 +42,16 @@ import {
   UpdateEventType
 } from '@/lib/variable-system'
 
+// Import NEW shared components and hooks
+import { SectionRenderer as SharedSectionRenderer } from '@/components/campaign-renderer'
+import { 
+  useCampaignRenderer, 
+  useDeviceInfo, 
+  useNetworkState, 
+  useErrorHandler, 
+  useVariableEngine 
+} from '@/hooks'
+
 // =============================================================================
 // TYPE DEFINITIONS
 // =============================================================================
@@ -107,15 +117,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const [sections, setSections] = useState<SectionWithOptions[]>([])
   const [isLoading, setIsLoading] = useState(true)
   
-  // Enhanced error state
-  const [errorState, setErrorState] = useState<ErrorState | null>(null)
-  const [networkState, setNetworkState] = useState<NetworkState>({
-    isOnline: true,
-    connectionType: 'unknown',
-    effectiveType: 'unknown',
-    downlink: 0
-  })
-  const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null)
+  // Use shared hooks for common functionality
+  const deviceInfo = useDeviceInfo()
+  const networkState = useNetworkState()
+  const errorHandler = useErrorHandler()
+  const variableEngine = useVariableEngine()
   
   // Restore missing state variables
   const [runtimeEngine, setRuntimeEngine] = useState<CachedRuntimeExecutionEngine | null>(null)
@@ -267,10 +273,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     
     if (!validation.canAccess) {
       // Show user-friendly error message
-      setErrorState(createError(validation.reason || 'Cannot access this section yet', 'validation', false))
-      
-      // Clear error after 3 seconds
-      setTimeout(() => setErrorState(null), 3000)
+      errorHandler.handleError(validation.reason || 'Cannot access this section yet', 'section_navigation')
       
       return false
     }
@@ -443,7 +446,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         newNetworkState.lastOnline = new Date()
       }
 
-      setNetworkState(newNetworkState)
+      // Network state now managed by useNetworkState hook
     }
 
     // Initial check
@@ -490,7 +493,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         pixelRatio: window.devicePixelRatio || 1
       }
 
-      setDeviceInfo(newDeviceInfo)
+      // Device info now managed by useDeviceInfo hook
     }
 
     updateDeviceInfo()
@@ -2703,11 +2706,18 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
               "transition-all duration-300 ease-in-out",
               isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0"
             )}>
-              {renderSectionContentFallback(
-                sections[campaignState.currentSection], 
-                campaignState.currentSection, 
-                sections[campaignState.currentSection].configuration || {}
-              )}
+              {/* Use SharedSectionRenderer for consistent experience */}
+              <SharedSectionRenderer
+                section={sections[campaignState.currentSection]}
+                index={campaignState.currentSection}
+                isActive={true}
+                isPreview={false}
+                onNext={handleNext}
+                onPrevious={handlePrevious}
+                onNavigateToSection={navigateToSection}
+                onSectionComplete={handleSectionComplete}
+                onResponseUpdate={collectResponse}
+              />
             </div>
           )}
         </div>

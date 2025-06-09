@@ -1,0 +1,130 @@
+'use client'
+
+import React, { useState } from 'react'
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle } from 'lucide-react'
+import { SectionRendererProps } from '../types'
+import { getMobileClasses, getDefaultChoices } from '../utils'
+import { cn } from '@/lib/utils'
+
+export function MultipleChoiceSection({
+  section,
+  index,
+  config,
+  title,
+  description,
+  deviceInfo,
+  onPrevious,
+  onSectionComplete,
+  onResponseUpdate
+}: SectionRendererProps) {
+  const [selectedValue, setSelectedValue] = useState<string>('')
+  
+  const choices = config.options || getDefaultChoices()
+  const isRequired = config.required ?? true
+  const buttonLabel = config.buttonLabel || 'Continue'
+
+  const handleSelect = (value: string) => {
+    setSelectedValue(value)
+    onResponseUpdate(section.id, 'choice', value, {
+      inputType: 'multiple_choice',
+      isRequired: isRequired
+    })
+  }
+
+  const handleSubmit = () => {
+    if (isRequired && !selectedValue) return
+    
+    onSectionComplete(index, {
+      [section.id]: selectedValue,
+      choice: selectedValue
+    })
+  }
+
+  const isValid = !isRequired || selectedValue
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-shrink-0 p-6 border-b border-border">
+        <div className="flex items-center justify-between max-w-4xl mx-auto">
+          <button
+            onClick={onPrevious}
+            className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="h-5 w-5 mr-1" />
+            <span className="hidden sm:inline">Previous</span>
+          </button>
+          <span className="text-sm text-muted-foreground">Question {index + 1}</span>
+        </div>
+      </div>
+
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-2xl mx-auto space-y-8">
+          <div className="text-center space-y-4">
+            <h1 className={cn(
+              "font-bold text-foreground",
+              deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
+            )}>
+              {title || 'Choose an option'}
+            </h1>
+            
+            {description && (
+              <p className={cn(
+                "text-muted-foreground",
+                deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+              )}>
+                {description}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {choices.map((choice) => (
+              <button
+                key={choice.id}
+                onClick={() => handleSelect(choice.value)}
+                className={cn(
+                  "w-full p-4 border rounded-lg text-left transition-all duration-200",
+                  "flex items-center space-x-3",
+                  getMobileClasses("", deviceInfo?.type),
+                  selectedValue === choice.value
+                    ? "border-blue-500 bg-blue-50 text-blue-900"
+                    : "border-border hover:border-blue-300 hover:bg-gray-50"
+                )}
+              >
+                {selectedValue === choice.value ? (
+                  <CheckCircle2 className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                ) : (
+                  <Circle className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                )}
+                <span className={cn(
+                  "flex-1",
+                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                )}>
+                  {choice.label}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex justify-end">
+            <button
+              onClick={handleSubmit}
+              disabled={!isValid}
+              className={cn(
+                "px-6 py-3 rounded-lg font-medium transition-all duration-200",
+                "flex items-center space-x-2",
+                getMobileClasses("", deviceInfo?.type),
+                isValid
+                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              )}
+            >
+              <span>{buttonLabel}</span>
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+} 
