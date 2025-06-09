@@ -1,9 +1,8 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { AlertCircle } from 'lucide-react'
 import { BaseSectionProps, SectionConfiguration } from './types'
-import { processVariableContent, interpolateTextSimple } from './utils'
 
 // Import section components
 import {
@@ -20,47 +19,23 @@ import {
 // MAIN SECTION RENDERER
 // =============================================================================
 
-export function SectionRenderer(props: BaseSectionProps) {
-  const { section, index } = props
-  const [processedTitle, setProcessedTitle] = useState('')
-  const [processedDescription, setProcessedDescription] = useState('')
-  const [isProcessingVariables, setIsProcessingVariables] = useState(false)
+interface SectionRendererPropsWithUserInputs extends BaseSectionProps {
+  userInputs?: Record<string, any>
+}
+
+export function SectionRenderer(props: SectionRendererPropsWithUserInputs) {
+  const { section, index, userInputs = {} } = props
 
   // Extract configuration from section
   const config: SectionConfiguration = (section.configuration || {}) as SectionConfiguration
 
-  // Process variables in title and description
-  useEffect(() => {
-    const processVariables = async () => {
-      setIsProcessingVariables(true)
-      try {
-        // Create a context from current user inputs (passed via props if needed)
-        const context = {} // This will be enhanced with actual user inputs later
-        
-        const title = await processVariableContent(section.title || '', context)
-        const description = await processVariableContent(section.description || '', context)
-        
-        setProcessedTitle(title)
-        setProcessedDescription(description)
-      } catch (error) {
-        console.error('Error processing variables:', error)
-        // Fallback to simple interpolation
-        setProcessedTitle(interpolateTextSimple(section.title || '', {}))
-        setProcessedDescription(interpolateTextSimple(section.description || '', {}))
-      } finally {
-        setIsProcessingVariables(false)
-      }
-    }
-
-    processVariables()
-  }, [section.title, section.description])
-
-  // Enhanced props with processed content
+  // Enhanced props with section content (no variable processing for now)
   const enhancedProps = {
     ...props,
     config,
-    title: processedTitle,
-    description: processedDescription
+    title: section.title || '',
+    description: section.description || '',
+    userInputs
   }
 
   // Route to appropriate section component based on type

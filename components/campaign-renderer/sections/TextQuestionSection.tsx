@@ -29,7 +29,14 @@ export function TextQuestionSection({
   const inputType = config.input_type || 'textarea'
   const placeholder = config.placeholder || 'Type your response here...'
   const label = config.label || title
-  const buttonLabel = config.buttonLabel || 'Continue'
+  
+  // Cast config to access additional properties
+  const configData = config as any
+  const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
+  
+  // Get the actual content from config
+  const headline = configData.content || configData.question || title || 'Please share your thoughts'
+  const subheading = configData.subheading || description
   
   // Handle text changes
   const handleTextChange = (value: string) => {
@@ -106,15 +113,15 @@ export function TextQuestionSection({
               "font-bold text-foreground",
               deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
             )}>
-              {title || 'Please share your thoughts'}
+              {headline}
             </h1>
             
-            {description && (
+            {subheading && (
               <p className={cn(
                 "text-muted-foreground",
                 deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
               )}>
-                {description}
+                {subheading}
               </p>
             )}
           </div>

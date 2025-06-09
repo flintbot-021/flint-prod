@@ -120,4 +120,5 @@ export interface SectionRendererProps extends BaseSectionProps {
   description: string
   deviceInfo?: DeviceInfo
   networkState?: NetworkState
+  userInputs?: Record<string, any>
 } 

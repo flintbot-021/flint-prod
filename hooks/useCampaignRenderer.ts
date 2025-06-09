@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect } from 'react'
 import { SectionWithOptions } from '@/lib/types/database'
 import { useCampaignState } from './useCampaignState'
 import { useDeviceInfo } from './useDeviceInfo'
@@ -46,7 +46,7 @@ export function useCampaignRenderer({
   })
 
   // Update variable context when campaign state changes
-  useMemo(() => {
+  useEffect(() => {
     variableEngine.updateContext({
       leadData: campaignState.userInputs,
       sessionData: {
@@ -62,8 +62,8 @@ export function useCampaignRenderer({
     campaignState.sessionId, 
     campaignState.currentSection,
     campaignState.progress,
-    campaignState.leadId,
-    variableEngine
+    campaignState.leadId
+    // Note: Removed variableEngine from dependencies to prevent infinite loop
   ])
 
   // Enhanced section complete handler with variable context updates

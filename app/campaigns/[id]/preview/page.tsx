@@ -87,15 +87,15 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentDevice, setCurrentDevice] = useState<PreviewDevice>(deviceType)
-
-  // Use shared campaign renderer hook
-  const campaignRenderer = sectionsData.length > 0 ? useCampaignRenderer({
+  
+  // Use shared campaign renderer hook (always call it, never conditionally)
+  const campaignRenderer = useCampaignRenderer({
     sections: sectionsData,
     initialSection,
     onProgressUpdate: (progress, sectionIndex) => {
       console.log('📊 Progress:', progress, 'Section:', sectionIndex)
     }
-  }) : null
+  })
 
   // =============================================================================
   // EFFECTS
@@ -108,10 +108,10 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
   }, [campaignId])
 
   useEffect(() => {
-    if (campaignRenderer) {
+    if (sectionsData.length > 0) {
       campaignRenderer.goToSection(initialSection)
     }
-  }, [initialSection, campaignRenderer])
+  }, [initialSection, sectionsData.length])
 
   // =============================================================================
   // DATA LOADING
@@ -151,19 +151,19 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
   const handleSectionComplete = (sectionIndex: number, data: any) => {
     console.log('📝 SECTION COMPLETE:', { sectionIndex, data })
     
-    if (campaignRenderer) {
+    if (sectionsData.length > 0) {
       campaignRenderer.handleSectionComplete(sectionIndex, data)
     }
   }
 
   const handleNext = () => {
-    if (campaignRenderer) {
+    if (sectionsData.length > 0) {
       campaignRenderer.goNext()
     }
   }
 
   const handlePrevious = () => {
-    if (campaignRenderer) {
+    if (sectionsData.length > 0) {
       campaignRenderer.goPrevious()
     }
   }
@@ -206,8 +206,8 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
             "bg-background rounded-[1.5rem] w-full h-full overflow-hidden relative",
             currentDevice === 'mobile' && "rounded-[2rem]",
             currentDevice === 'tablet' && "rounded-[1rem]"
-          )}>
-            {content}
+            )}>
+              {content}
           </div>
         </div>
       </div>
@@ -255,7 +255,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
     )
   }
 
-  const currentSectionIndex = campaignRenderer?.currentSection || 0
+  const currentSectionIndex = campaignRenderer.currentSection
   const currentSection = sectionsData[currentSectionIndex]
 
   return (
@@ -283,7 +283,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
                     onClick={() => handleDeviceChange(key as PreviewDevice)}
                     className={cn(
                       "p-2 rounded-lg transition-colors",
-                      currentDevice === key
+                      currentDevice === key 
                         ? "bg-blue-100 text-blue-700"
                         : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
                     )}
@@ -300,8 +300,8 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
 
       {/* Preview Content */}
       <div className="flex-1 relative">
-        {renderDeviceFrame(
-          <div className="min-h-full bg-background">
+      {renderDeviceFrame(
+        <div className="min-h-full bg-background">
             {/* Show current section using shared renderer */}
             {sectionsData.length > 0 && currentSectionIndex < sectionsData.length && (
               <SharedSectionRenderer
@@ -310,10 +310,11 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
                 isActive={true}
                 isPreview={true}
                 campaignId={campaignId}
+                userInputs={campaignRenderer.userInputs}
                 onNext={handleNext}
                 onPrevious={handlePrevious}
                 onNavigateToSection={(index: number) => {
-                  if (campaignRenderer) {
+                  if (sectionsData.length > 0) {
                     campaignRenderer.goToSection(index)
                   }
                 }}
@@ -339,8 +340,8 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
                 </div>
               </div>
             </div>
-          </div>
-        )}
+        </div>
+      )}
       </div>
     </div>
   )

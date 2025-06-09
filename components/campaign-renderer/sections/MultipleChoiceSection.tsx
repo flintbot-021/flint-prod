@@ -21,7 +21,25 @@ export function MultipleChoiceSection({
   
   const choices = config.options || getDefaultChoices()
   const isRequired = config.required ?? true
-  const buttonLabel = config.buttonLabel || 'Continue'
+  
+  // Cast config to access additional properties
+  const configData = config as any
+  const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
+  
+  // Get the actual content from config
+  const headline = configData.content || configData.question || title || 'Choose an option'
+  const subheading = configData.subheading || description
+  
+  // Transform choices to ensure consistent structure
+  const normalizedChoices = choices.map((choice, index) => {
+    // Handle different possible structures
+    const rawChoice = choice as any
+    return {
+      id: rawChoice.id || rawChoice.option_id || `choice-${index}`,
+      label: rawChoice.label || rawChoice.text || rawChoice.option_text || `Option ${index + 1}`,
+      value: rawChoice.value || rawChoice.option_value || rawChoice.id || rawChoice.option_id || `option-${index}`
+    }
+  })
 
   const handleSelect = (value: string) => {
     setSelectedValue(value)
@@ -64,46 +82,51 @@ export function MultipleChoiceSection({
               "font-bold text-foreground",
               deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
             )}>
-              {title || 'Choose an option'}
+              {headline}
             </h1>
             
-            {description && (
+            {subheading && (
               <p className={cn(
                 "text-muted-foreground",
                 deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
               )}>
-                {description}
+                {subheading}
               </p>
             )}
           </div>
 
-          <div className="space-y-3">
-            {choices.map((choice) => (
-              <button
-                key={choice.id}
-                onClick={() => handleSelect(choice.value)}
-                className={cn(
-                  "w-full p-4 border rounded-lg text-left transition-all duration-200",
-                  "flex items-center space-x-3",
-                  getMobileClasses("", deviceInfo?.type),
-                  selectedValue === choice.value
-                    ? "border-blue-500 bg-blue-50 text-blue-900"
-                    : "border-border hover:border-blue-300 hover:bg-gray-50"
-                )}
-              >
-                {selectedValue === choice.value ? (
-                  <CheckCircle2 className="h-5 w-5 text-blue-600 flex-shrink-0" />
-                ) : (
-                  <Circle className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                )}
-                <span className={cn(
-                  "flex-1",
-                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
-                )}>
-                  {choice.label}
-                </span>
-              </button>
-            ))}
+          <div className="space-y-4">
+            {normalizedChoices.map((choice, choiceIndex) => {
+              const isSelected = selectedValue === choice.value
+              
+              return (
+                <button
+                  key={`${choice.id}-${choiceIndex}`}
+                  onClick={() => handleSelect(choice.value)}
+                  className={cn(
+                    "w-full p-4 border-2 rounded-xl text-left transition-all duration-200",
+                    "flex items-center space-x-3 shadow-sm hover:shadow-md",
+                    getMobileClasses("", deviceInfo?.type),
+                    isSelected
+                      ? "border-blue-500 bg-blue-50 text-blue-900 shadow-blue-100"
+                      : "border-gray-200 hover:border-blue-300 hover:bg-gray-50 bg-white"
+                  )}
+                >
+                  {isSelected ? (
+                    <CheckCircle2 className="h-6 w-6 text-blue-600 flex-shrink-0" />
+                  ) : (
+                    <Circle className="h-6 w-6 text-gray-400 flex-shrink-0" />
+                  )}
+                  <span className={cn(
+                    "flex-1 font-medium",
+                    deviceInfo?.type === 'mobile' ? "text-base" : "text-lg",
+                    isSelected ? "text-blue-900" : "text-gray-900"
+                  )}>
+                    {choice.label}
+                  </span>
+                </button>
+              )
+            })}
           </div>
 
           <div className="flex justify-end">
