@@ -136,6 +136,9 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null)
   const [pendingUpdates, setPendingUpdates] = useState<Map<string, any>>(new Map())
   const [isSessionRecovered, setIsSessionRecovered] = useState(false)
+  
+  // Temporary compatibility bridge for legacy error handling
+  const [errorState, setErrorState] = useState<ErrorState | null>(null)
 
   // Completion celebration state
   const [showCompletionCelebration, setShowCompletionCelebration] = useState(false)
@@ -508,7 +511,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
   // Auto-recovery for transient errors
   useEffect(() => {
-    if (errorState?.type === 'network' && networkState.isOnline && errorState.retryCount === 0) {
+    if (errorHandler.error?.type === 'network' && networkState.isOnline && errorHandler.error.retryCount === 0) {
       // Auto-retry when network comes back online
       const timer = setTimeout(() => {
         recoverFromError()
@@ -516,7 +519,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       
       return () => clearTimeout(timer)
     }
-  }, [errorState, networkState.isOnline])
+  }, [errorHandler.error, networkState.isOnline])
 
   // Mobile-optimized touch targets
   const getMobileClasses = (baseClasses: string): string => {
@@ -562,6 +565,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   useEffect(() => {
     const initializeSession = async () => {
       if (campaign && !isSessionRecovered) {
+        // Create lead record immediately for RLS policy compliance
+        await createInitialLead()
         await recoverSession()
       }
     }
@@ -890,29 +895,46 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // Enhanced batch response saving
   const saveBatchResponses = async (responses: any[]) => {
     try {
+      // Ensure we have a lead ID before saving responses
+      if (!campaignState.leadId) {
+        console.log('⚠️ No lead ID available, creating lead first...')
+        await createInitialLead()
+        
+        // Wait for state to update, then check again
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
+        // If still no lead ID, skip saving responses
+        if (!campaignState.leadId) {
+          console.error('❌ Failed to create lead, skipping response save')
+          return
+        }
+      }
+
       const supabase = await getSupabaseClient()
 
-      // Prepare batch data
+      // Prepare batch data - map to correct lead_responses schema
       const responseRecords = responses.map(response => ({
-        session_id: response.metadata.sessionId,
+        lead_id: campaignState.leadId, // Required for lead_responses table
         section_id: response.sectionId,
-        field_id: response.fieldId,
         response_value: String(response.value),
         response_type: typeof response.value === 'number' ? 'number' : 
                        typeof response.value === 'boolean' ? 'boolean' : 'text',
         response_data: {
           originalValue: response.value,
-          metadata: response.metadata
-        },
-        section_index: response.metadata.sectionIndex,
-        created_at: response.metadata.timestamp
+          fieldId: response.fieldId, // Store field_id in response_data instead
+          metadata: response.metadata,
+          sectionIndex: response.metadata.sectionIndex,
+          sessionId: response.metadata.sessionId
+        }
       }))
+
+      console.log('💾 Saving responses with lead_id:', campaignState.leadId)
 
       // Batch upsert responses
       const { error: responsesError } = await supabase
         .from('lead_responses')
         .upsert(responseRecords, {
-          onConflict: 'session_id,section_id,field_id'
+          onConflict: 'lead_id,section_id'
         })
 
       if (responsesError) {
@@ -990,8 +1012,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       if (existingSession.lead_responses) {
         existingSession.lead_responses.forEach((response: any) => {
-          recoveredInputs[response.field_id] = response.response_value
-          completedSections.add(response.section_index || 0)
+          // Use section_id as key since field_id doesn't exist in lead_responses table
+          recoveredInputs[response.section_id] = response.response_value
+          // Get section_index from response_data if available
+          const sectionIndex = response.response_data?.sectionIndex || 0
+          completedSections.add(sectionIndex)
         })
       }
 
@@ -1015,6 +1040,53 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
   }
 
+  // Create initial lead record for RLS policy compliance
+  const createInitialLead = async () => {
+    try {
+      if (!campaign || campaignState.leadId) return // Already has a lead
+      
+      const supabase = await getSupabaseClient()
+      
+      // Create anonymous lead record with minimal data
+      const leadData = {
+        campaign_id: campaign.id,
+        email: `anonymous_${campaignState.sessionId}@temp.local`, // Temporary email
+        name: null,
+        phone: null,
+        ip_address: null,
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        metadata: {
+          session_id: campaignState.sessionId,
+          start_time: campaignState.startTime.toISOString(),
+          is_anonymous: true,
+          initial_referrer: typeof document !== 'undefined' ? document.referrer : null
+        }
+      }
+
+      const { data: lead, error } = await supabase
+        .from('leads')
+        .insert(leadData)
+        .select()
+        .single()
+
+      if (error) {
+        throw error
+      }
+
+      // Store lead ID for future use
+      setCampaignState(prev => ({
+        ...prev,
+        leadId: lead.id
+      }))
+
+      console.log('✅ Initial lead created:', lead.id)
+
+    } catch (err) {
+      console.error('Error creating initial lead:', err)
+      // Don't throw - allow campaign to continue even if lead creation fails
+    }
+  }
+
   // Create new session record
   const createSession = async () => {
     try {
@@ -1023,6 +1095,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       const sessionData = {
         session_id: campaignState.sessionId,
         campaign_id: campaign?.id,
+        lead_id: campaignState.leadId, // Link to lead if available
         start_time: campaignState.startTime.toISOString(),
         last_section_index: campaignState.currentSection,
         device_info: getDeviceInfo(),
@@ -1154,29 +1227,26 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     
     if (!slug || typeof slug !== 'string') {
       console.error('❌ Invalid slug:', slug)
-      setErrorState(createError(
-        'Invalid campaign URL. Please check the link.',
-        'validation',
-        false
-      ))
+      errorHandler.handleError('Invalid campaign URL. Please check the link.', 'validation')
       setIsLoading(false)
       return
     }
 
     try {
       setIsLoading(true)
-      setErrorState(null)
+      errorHandler.clearError()
       
       console.log('🌐 Getting Supabase client...')
       const supabase = await getSupabaseClient()
       
       console.log('🔍 Querying campaign with slug:', slug)
-      // Get campaign by slug with debug info
+      // Get campaign by published_url with debug info
       const { data: campaign, error: campaignError } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('slug', slug)
+        .eq('published_url', slug)
         .eq('status', 'published')
+        .eq('is_active', true)
         .single()
 
       console.log('📊 Campaign query result:', { campaign, error: campaignError })
@@ -1310,38 +1380,65 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       const supabase = await getSupabaseClient()
 
-      // Create or update lead record
-      const leadData = {
-        campaign_id: campaign.id,
-        name: data.name || data.full_name || null,
-        email: data.email,
-        phone: data.phone || null,
-        ip_address: null, // Could be captured server-side
-        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-        metadata: {
-          session_id: campaignState.sessionId,
-          completed_sections: Array.from(campaignState.completedSections),
-          start_time: campaignState.startTime.toISOString()
+      if (campaignState.leadId) {
+        // Update existing lead record (created during initialization)
+        const updateData = {
+          name: data.name || data.full_name || null,
+          email: data.email,
+          phone: data.phone || null,
+          metadata: {
+            session_id: campaignState.sessionId,
+            completed_sections: Array.from(campaignState.completedSections),
+            start_time: campaignState.startTime.toISOString(),
+            is_anonymous: false, // No longer anonymous since they provided real data
+            capture_time: new Date().toISOString()
+          }
         }
+
+        const { error } = await supabase
+          .from('leads')
+          .update(updateData)
+          .eq('id', campaignState.leadId)
+
+        if (error) {
+          throw error
+        }
+
+        console.log('✅ Lead data updated for existing lead:', campaignState.leadId)
+      } else {
+        // Fallback: create new lead if none exists
+        const leadData = {
+          campaign_id: campaign.id,
+          name: data.name || data.full_name || null,
+          email: data.email,
+          phone: data.phone || null,
+          ip_address: null,
+          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+          metadata: {
+            session_id: campaignState.sessionId,
+            completed_sections: Array.from(campaignState.completedSections),
+            start_time: campaignState.startTime.toISOString(),
+            is_anonymous: false
+          }
+        }
+
+        const { data: lead, error } = await supabase
+          .from('leads')
+          .insert(leadData)
+          .select()
+          .single()
+
+        if (error) {
+          throw error
+        }
+
+        setCampaignState(prev => ({
+          ...prev,
+          leadId: lead.id
+        }))
+
+        console.log('✅ New lead created:', lead.id)
       }
-
-      const { data: lead, error } = await supabase
-        .from('leads')
-        .upsert(leadData, {
-          onConflict: 'campaign_id,email'
-        })
-        .select()
-        .single()
-
-      if (error) {
-        throw error
-      }
-
-      // Store lead ID for future use
-      setCampaignState(prev => ({
-        ...prev,
-        leadId: lead.id
-      }))
 
     } catch (err) {
       console.error('Error saving lead data:', err)
@@ -1515,7 +1612,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       }
     }
 
-    setErrorState(errorState)
+    errorHandler.handleError(errorState.message, 'campaign')
     
     // Log error for analytics
     console.error('Campaign Error:', errorState)
@@ -1547,9 +1644,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         const result = await operation()
         
         // Clear error state on success
-        if (errorState?.retryable) {
-          setErrorState(prev => prev ? { ...prev, recovered: true } : null)
-          setTimeout(() => setErrorState(null), 2000)
+        if (errorHandler.error?.retryable) {
+          errorHandler.clearError()
         }
         
         return result
