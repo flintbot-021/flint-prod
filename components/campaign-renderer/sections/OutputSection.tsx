@@ -7,8 +7,7 @@ import { getMobileClasses } from '../utils'
 import { cn } from '@/lib/utils'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
 import { titleToVariableName, isQuestionSection, extractResponseValue } from '@/lib/utils/section-variables'
-import { VariableInterpolatedContent } from '@/components/ui/variable-interpolated-content'
-import type { VariableInterpolationContext } from '@/lib/types/output-section'
+
 
 
 
@@ -96,25 +95,7 @@ export function OutputSection({
     return map
   }, [sections, userInputs])
 
-  // Create variable interpolation context with error handling
-  const variableContext: VariableInterpolationContext = useMemo(() => {
-    try {
-      return {
-        variables: variableMap || {},
-        availableVariables: [],
-        formatters: {},
-        conditionalRules: []
-      }
-    } catch (error) {
-      console.error('Error creating variable context:', error)
-      return {
-        variables: {},
-        availableVariables: [],
-        formatters: {},
-        conditionalRules: []
-      }
-    }
-  }, [variableMap])
+
 
   // Get text alignment class
   const getAlignmentClass = (alignment: string) => {
@@ -126,25 +107,7 @@ export function OutputSection({
     }
   }
 
-  // Safe content renderer with fallback
-  const renderContent = (content: string, fallback?: string) => {
-    try {
-      // Try to use VariableInterpolatedContent
-      return (
-        <VariableInterpolatedContent
-          content={content || ''}
-          context={variableContext}
-          showPreview={true}
-          enableRealTimeProcessing={true}
-        />
-      )
-    } catch (error) {
-      console.error('Error rendering VariableInterpolatedContent, using fallback:', error)
-      // Fallback to simple replacement
-      const processedContent = simpleVariableReplace(content || fallback || '', variableMap)
-      return <span>{processedContent}</span>
-    }
-  }
+
 
   const handleShare = async () => {
     setIsSharing(true)
@@ -225,12 +188,7 @@ export function OutputSection({
                 "font-bold text-foreground",
                 deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
               )}>
-                <VariableInterpolatedContent
-                  content={settings.title || ''}
-                  context={variableContext}
-                  showPreview={true}
-                  enableRealTimeProcessing={true}
-                />
+                {simpleVariableReplace(settings.title, variableMap)}
               </h1>
               
               {settings.subtitle && (
@@ -239,12 +197,7 @@ export function OutputSection({
                    settings.textAlignment === 'center' ? "mx-auto" : "",
                    deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
                  )}>
-                   <VariableInterpolatedContent
-                     content={settings.subtitle || ''}
-                     context={variableContext}
-                     showPreview={true}
-                     enableRealTimeProcessing={true}
-                   />
+                   {simpleVariableReplace(settings.subtitle, variableMap)}
                  </div>
               )}
             </div>
@@ -255,12 +208,9 @@ export function OutputSection({
                  settings.textAlignment === 'center' ? "mx-auto" : "",
                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
                )}>
-                 <VariableInterpolatedContent
-                   content={settings.content || ''}
-                   context={variableContext}
-                   showPreview={true}
-                   enableRealTimeProcessing={true}
-                 />
+                 {simpleVariableReplace(settings.content, variableMap).split('\n').map((line, i) => (
+                   <div key={i} className="mb-2">{line}</div>
+                 ))}
                </div>
             )}
           </div>
