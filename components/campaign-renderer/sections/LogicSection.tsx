@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { Loader2, Zap, AlertCircle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
-import { storeAITestResults } from '@/lib/utils/ai-test-storage'
+import { storeAITestResults, clearAITestResults } from '@/lib/utils/ai-test-storage'
 
 export function LogicSection({
   section,
@@ -21,14 +21,14 @@ export function LogicSection({
   const [processingStatus, setProcessingStatus] = useState('Analyzing your responses...')
 
   useEffect(() => {
+    // Clear any existing test data from campaign builder before processing real data
+    clearAITestResults()
     processAILogic()
   }, [])
 
   const processAILogic = async () => {
     try {
-      console.log('🧠 AI Logic Section - Starting processing')
-      console.log('📊 Section config:', config)
-      console.log('📝 User inputs available:', userInputs)
+      console.log('🧠 AI Logic Section - Processing for section:', section.id)
       
       // Cast config to access AI-specific properties
       const aiConfig = config as any
@@ -46,9 +46,7 @@ export function LogicSection({
         return
       }
 
-      console.log('🤖 AI Config detected:')
-      console.log('📋 Prompt:', aiConfig.prompt)
-      console.log('🏷️ Output Variables:', aiConfig.outputVariables)
+      console.log('🤖 AI Config detected - Prompt length:', aiConfig.prompt?.length, 'Output vars:', aiConfig.outputVariables?.length)
       
       setProcessingStatus('Preparing AI processing...')
       
@@ -108,8 +106,19 @@ export function LogicSection({
         setProcessingStatus('AI processing complete!')
         console.log('✅ AI outputs generated:', result.outputs)
         
-        // Store AI results for output sections to use
-        storeAITestResults(result.outputs)
+        // Filter outputs to only include the configured variables
+        const requestedOutputs: Record<string, any> = {}
+        aiConfig.outputVariables.forEach((outputVar: any) => {
+          if (result.outputs[outputVar.name] !== undefined) {
+            requestedOutputs[outputVar.name] = result.outputs[outputVar.name]
+          }
+        })
+        
+        console.log('🎯 Filtered outputs (only requested variables):', requestedOutputs)
+        console.log('🗑️ Excluded extra AI outputs:', Object.keys(result.outputs).filter(key => !requestedOutputs.hasOwnProperty(key)))
+        
+        // Store only the requested AI results for output sections to use
+        storeAITestResults(requestedOutputs)
         
         // Complete the section with AI outputs
         setTimeout(() => {

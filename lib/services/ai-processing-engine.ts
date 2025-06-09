@@ -157,14 +157,15 @@ export class AIProcessingEngine {
 
     return `${userPrompt}
 
-Please provide your response as a JSON object containing these exact fields:
+IMPORTANT: Return ONLY a JSON object with exactly these fields and NO additional fields:
 ${outputDescriptions}
 
 Requirements:
-- Return only valid JSON
-- Be specific and helpful in your responses
+- Return valid JSON with ONLY the specified fields above
+- Do NOT add any extra fields, properties, or additional information
+- Do NOT include explanations, recommendations, or supplementary data
 - Use realistic values based on the context provided
-- If you cannot determine a field value, provide a reasonable estimate or explanation
+- If you cannot determine a field value, provide a reasonable estimate
 
 JSON Response:`
   }

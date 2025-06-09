@@ -307,12 +307,12 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
               <SharedSectionRenderer
                 section={currentSection}
                 index={currentSectionIndex}
-                isActive={true}
+              isActive={true}
                 isPreview={true}
                 campaignId={campaignId}
                 userInputs={campaignRenderer.userInputs}
-                onNext={handleNext}
-                onPrevious={handlePrevious}
+              onNext={handleNext}
+              onPrevious={handlePrevious}
                 onNavigateToSection={(index: number) => {
                   if (sectionsData.length > 0) {
                     campaignRenderer.goToSection(index)
@@ -320,7 +320,10 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
                 }}
                 onSectionComplete={handleSectionComplete}
                 onResponseUpdate={(sectionId: string, fieldId: string, value: any, metadata?: any) => {
-                  console.log('📝 Response Update:', { sectionId, fieldId, value, metadata })
+                  // Only log final values, not character-by-character typing
+                  if (metadata?.isComplete) {
+                    console.log('📝 Response Complete:', { sectionId, fieldId, value })
+                  }
                 }}
               />
             )}
