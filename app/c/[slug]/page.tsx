@@ -2052,6 +2052,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
                 isPreview={false}
                 campaignId={campaign?.id}
                 userInputs={campaignState.userInputs}
+                sections={sections}
                 onNext={handleNext}
                 onPrevious={handlePrevious}
                 onNavigateToSection={navigateToSection}
