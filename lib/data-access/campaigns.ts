@@ -382,7 +382,7 @@ export async function validateCampaignForPublishing(
           id,
           type,
           title,
-          settings
+          configuration
         )
       `)
       .eq('id', campaignId)

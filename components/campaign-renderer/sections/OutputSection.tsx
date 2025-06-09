@@ -192,26 +192,26 @@ export function OutputSection({
               </h1>
               
               {settings.subtitle && (
-                                 <div className={cn(
+              <div className={cn(
                    "text-muted-foreground max-w-3xl",
                    settings.textAlignment === 'center' ? "mx-auto" : "",
                    deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
-                 )}>
+              )}>
                    {simpleVariableReplace(settings.subtitle, variableMap)}
                  </div>
               )}
-            </div>
+              </div>
 
             {settings.content && (
                              <div className={cn(
                  "text-foreground max-w-4xl leading-relaxed",
                  settings.textAlignment === 'center' ? "mx-auto" : "",
                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
-               )}>
+                )}>
                  {simpleVariableReplace(settings.content, variableMap).split('\n').map((line, i) => (
                    <div key={i} className="mb-2">{line}</div>
                  ))}
-               </div>
+              </div>
             )}
           </div>
 
