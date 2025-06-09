@@ -5,6 +5,7 @@ import { Loader2, Zap, AlertCircle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { storeAITestResults, clearAITestResults } from '@/lib/utils/ai-test-storage'
+import { buildVariablesFromInputs } from '@/lib/utils/section-variables'
 
 function LogicSectionComponent({
   section,
@@ -66,169 +67,24 @@ function LogicSectionComponent({
 
       setProcessingStatus('Preparing AI processing...')
       
-      // Get the predefined variable names from AI configuration
-      const predefinedVariables = Object.keys(aiConfig.testInputs || {})
+      // ✅ SUPER SIMPLE APPROACH - Use new helper functions
       
       console.log('🎯 =========================')
-      console.log('🎯 AI LOGIC SECTION PROCESSING')
+      console.log('🎯 SIMPLIFIED AI LOGIC PROCESSING')
       console.log('🎯 =========================')
       console.log('🔍 AI Config:', {
         prompt: aiConfig.prompt,
-        predefinedVariables,
-        outputVariables: aiConfig.outputVariables,
-        testInputs: aiConfig.testInputs
+        outputVariables: aiConfig.outputVariables
       })
       
       console.log('📝 Raw userInputs received:', userInputs)
+      console.log('📋 Total sections:', sections.length)
       
-      // Log detailed section information for debugging
-      console.log('📋 Available sections:')
-      sections.forEach((sec, idx) => {
-        const config = sec.configuration as any
-        console.log(`  [${idx}] Section "${sec.title}" (${sec.type}):`, {
-          id: sec.id,
-          type: sec.type,
-          title: sec.title,
-          hasOptions: !!(config?.options),
-          optionsCount: config?.options?.length || 0,
-          options: config?.options?.map((opt: any) => ({ id: opt.id, text: opt.text })) || []
-        })
-      })
+      // Super simple: build variables from section titles and user responses
+      const variables = buildVariablesFromInputs(sections, userInputs)
       
-      // Map user responses to predefined AI variables
-      const variables: Record<string, any> = {}
-      
-      console.log('🔄 Processing userInputs to extract variables...')
-      
-      // Only process question section responses (exclude capture sections)
-      Object.entries(userInputs).forEach(([key, value]) => {
-        console.log(`\n📊 Processing userInput key: "${key}"`)
-        console.log(`   Value:`, value)
-        console.log(`   Type: ${typeof value}`)
-        
-        // Skip capture section data (email, name from leads)
-        if (key === 'email' || key === 'name' || key.includes('capture')) {
-          console.log(`   ⏭️ Skipping capture data: ${key}`)
-          return
-        }
-        
-        // Skip processing capture section nested objects entirely
-        const isCaptureSectionId = sections.some(section => 
-          section.id === key && section.type === 'capture'
-        )
-        if (isCaptureSectionId) {
-          console.log(`   ⏭️ Skipping capture section object: ${key}`)
-          return
-        }
-        
-        // Handle both direct values and nested response objects
-        if (typeof value === 'object' && value !== null) {
-          console.log(`   🔍 Processing nested object...`)
-          // Extract the actual response value from nested objects
-          Object.entries(value as Record<string, any>).forEach(([subKey, subValue]) => {
-            console.log(`     Sub-key: "${subKey}" = ${subValue} (${typeof subValue})`)
-            
-            if (subKey !== 'metadata' && subValue !== undefined && subValue !== null) {
-              // If this matches a predefined variable name, use it
-              if (predefinedVariables.includes(subKey)) {
-                console.log(`     ✅ Matched predefined variable "${subKey}" with value: ${subValue}`)
-                variables[subKey] = subValue
-              } else {
-                console.log(`     ❌ "${subKey}" not in predefined variables: [${predefinedVariables.join(', ')}]`)
-              }
-            }
-          })
-        } else if (value !== undefined && value !== null) {
-          // If this key matches a predefined variable name, use it
-          if (predefinedVariables.includes(key)) {
-            console.log(`   ✅ Direct match for predefined variable "${key}" with value: ${value}`)
-            variables[key] = value
-          } else {
-            console.log(`   ❌ "${key}" not in predefined variables: [${predefinedVariables.join(', ')}]`)
-          }
-        }
-      })
-      
-      console.log('\n🔍 Variables found so far:', variables)
-      console.log(`🔍 Missing variables: [${predefinedVariables.filter(v => !variables[v]).join(', ')}]`)
-      
-      // For any missing predefined variables, try to find them by matching section titles
-      // This handles the case where variable names match section titles
-      predefinedVariables.forEach(variableName => {
-        if (!variables[variableName]) {
-          console.log(`\n🎯 Looking for missing variable: "${variableName}"`)
-          
-          // Find section with matching title (ONLY from question sections, not capture)
-          const matchingSection = sections.find(s => {
-            const cleanTitle = s.title?.toLowerCase().replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '')
-            console.log(`     Comparing "${cleanTitle}" with "${variableName}" (section type: ${s.type})`)
-            // Only match question sections, not capture sections
-            return cleanTitle === variableName && s.type !== 'capture'
-          })
-          
-          if (matchingSection) {
-            console.log(`     ✅ Found matching section: "${matchingSection.title}" (${matchingSection.type})`)
-            
-            // Get the user's response for this section
-            const sectionResponse = userInputs[matchingSection.id]
-            console.log(`     Section response:`, sectionResponse)
-            
-            if (typeof sectionResponse === 'object' && sectionResponse !== null) {
-              // Extract the actual response value
-              const responseEntries = Object.entries(sectionResponse as Record<string, any>)
-              console.log(`     Response entries:`, responseEntries)
-              
-              const responseValue = Object.values(sectionResponse as Record<string, any>).find(
-                v => v !== undefined && v !== null && v !== 'metadata'
-              )
-              
-              if (responseValue) {
-                console.log(`     Found response value: ${responseValue} (${typeof responseValue})`)
-                
-                // Convert choice IDs to actual choice text if needed
-                if (typeof responseValue === 'string' && responseValue.startsWith('option-')) {
-                  console.log(`     🔄 Converting choice ID to text...`)
-                  const config = matchingSection.configuration as any
-                  if (config?.options && Array.isArray(config.options)) {
-                    console.log(`     Available options:`, config.options)
-                    const choice = config.options.find((opt: any) => opt.id === responseValue)
-                    if (choice?.text) {
-                      console.log(`     ✅ Converted "${responseValue}" to "${choice.text}"`)
-                      variables[variableName] = choice.text
-                    } else {
-                      console.log(`     ❌ Choice not found for ID: ${responseValue}`)
-                      variables[variableName] = responseValue
-                    }
-                  } else {
-                    console.log(`     ❌ No options configuration found`)
-                    variables[variableName] = responseValue
-                  }
-                } else {
-                  console.log(`     ✅ Using direct value: ${responseValue}`)
-                  variables[variableName] = responseValue
-                }
-              } else {
-                console.log(`     ❌ No valid response value found`)
-              }
-            } else if (sectionResponse !== undefined && sectionResponse !== null) {
-              console.log(`     ✅ Using direct section response: ${sectionResponse}`)
-              variables[variableName] = sectionResponse
-            } else {
-              console.log(`     ❌ No section response found`)
-            }
-          } else {
-            console.log(`     ❌ No matching section found for variable "${variableName}"`)
-          }
-        }
-      })
-
-      console.log('\n🎯 =========================')
-      console.log('🎯 FINAL VARIABLE MAPPING')
-      console.log('🎯 =========================')
-      console.log('🔍 Final variables for AI:', variables)
-      console.log('🔍 Expected variables:', predefinedVariables)
-      console.log('🔍 Variables mapped successfully:', Object.keys(variables))
-      console.log('🔍 Variables still missing:', predefinedVariables.filter(v => !variables[v]))
+      console.log('✅ Simple variable mapping:', variables)
+      console.log('✅ Variables found:', Object.keys(variables))
 
       setProcessingStatus('Sending to AI...')
 

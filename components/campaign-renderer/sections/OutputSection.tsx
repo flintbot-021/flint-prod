@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Share2, CheckCircle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses } from '../utils'
 import { cn } from '@/lib/utils'
 import { getAITestResults, replaceVariablesWithTestData } from '@/lib/utils/ai-test-storage'
+import { titleToVariableName, isQuestionSection, extractResponseValue } from '@/lib/utils/section-variables'
 
 /**
  * Replace variables in content with provided variable values
@@ -27,6 +28,10 @@ function replaceVariablesInContent(
   })
 }
 
+interface OutputSectionConfig {
+  content: string
+}
+
 export function OutputSection({
   section,
   index,
@@ -36,50 +41,108 @@ export function OutputSection({
   deviceInfo,
   onPrevious,
   onSectionComplete,
-  userInputs = {}
+  userInputs = {},
+  sections = [],
+  ...props
 }: SectionRendererProps) {
   const [isSharing, setIsSharing] = useState(false)
   const [processedContent, setProcessedContent] = useState<string>('')
   const [availableVariables, setAvailableVariables] = useState<Record<string, any>>({})
 
-  useEffect(() => {
-    // Get AI-generated variables and user inputs
+  const outputConfig = config as OutputSectionConfig
+
+  // Build complete variable map
+  const variableMap = useMemo(() => {
+    const map: Record<string, any> = {}
+    
+    // Add input variables from question sections
+    const questionSections = sections.filter(s => 
+      isQuestionSection(s.type) && s.title
+    )
+    
+    questionSections.forEach(sec => {
+      if (sec.title) {
+        const variableName = titleToVariableName(sec.title)
+        const response = userInputs[sec.id]
+        
+        if (response) {
+          map[variableName] = extractResponseValue(response, sec)
+        }
+      }
+    })
+    
+    // Add AI output variables from stored results
     const aiResults = getAITestResults()
-    const allVariables = { ...userInputs, ...aiResults }
+    if (aiResults) {
+      Object.entries(aiResults).forEach(([key, value]) => {
+        map[key] = value
+      })
+    }
     
-    setAvailableVariables(allVariables)
+    return map
+  }, [sections, userInputs])
+
+  // Interpolate variables in content
+  const interpolatedContent = useMemo(() => {
+    let content = outputConfig?.content || ''
     
-    // Extract content from section configuration (database format)
-    const configuration = section.configuration as any
-    const outputTitle = configuration?.title || config.title || title
-    const outputSubtitle = configuration?.subtitle || config.subtitle 
-    const outputContent = configuration?.content || config.content
+    // Replace @variable with actual values
+    Object.entries(variableMap).forEach(([variable, value]) => {
+      const regex = new RegExp(`@${variable}\\b`, 'g')
+      content = content.replace(regex, String(value))
+    })
     
+    return content
+  }, [outputConfig?.content, variableMap])
+
+  // Parse content for basic formatting (you can enhance this)
+  const formatContent = (content: string) => {
+    return content
+      .split('\n')
+      .map((line, index) => {
+        // Handle basic markdown-like formatting
+        let formattedLine = line
+        
+        // Bold text: **text**
+        formattedLine = formattedLine.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        
+        // Italic text: *text*
+        formattedLine = formattedLine.replace(/\*(.*?)\*/g, '<em>$1</em>')
+        
+        return (
+          <div key={index} className="mb-2">
+            <span dangerouslySetInnerHTML={{ __html: formattedLine }} />
+          </div>
+        )
+      })
+  }
+
+  useEffect(() => {
     // Build complete content from all available fields
     let fullContent = ''
     
-    if (outputTitle) {
-      fullContent += `<h1 class="text-4xl font-bold mb-4">${outputTitle}</h1>`
+    if (title) {
+      fullContent += `<h1 class="text-4xl font-bold mb-4">${title}</h1>`
     }
     
-    if (outputSubtitle) {
-      fullContent += `<p class="text-xl text-gray-600 mb-6">${outputSubtitle}</p>`
+    if (description) {
+      fullContent += `<p class="text-xl text-gray-600 mb-6">${description}</p>`
     }
     
-    if (outputContent) {
-      fullContent += `<div class="text-lg leading-relaxed">${outputContent.replace(/\n/g, '<br>')}</div>`
+    if (outputConfig?.content) {
+      fullContent += `<div class="text-lg leading-relaxed">${outputConfig.content.replace(/\n/g, '<br>')}</div>`
     }
     
     // Process content with variables if any content exists
     if (fullContent) {
-      const processed = replaceVariablesInContent(fullContent, allVariables, 'Not available')
+      const processed = replaceVariablesInContent(fullContent, variableMap, 'Not available')
       setProcessedContent(processed)
     } else {
       // Create fallback content showing all available variables
-      const fallbackContent = createFallbackContent(allVariables)
+      const fallbackContent = createFallbackContent(variableMap)
       setProcessedContent(fallbackContent)
     }
-  }, [section.configuration, config, title, userInputs])
+  }, [title, description, outputConfig?.content, variableMap])
 
   const createFallbackContent = (variables: Record<string, any>) => {
     if (Object.keys(variables).length === 0) {
@@ -128,6 +191,15 @@ export function OutputSection({
       output_viewed: true
     })
   }
+
+     if (!outputConfig?.content) {
+     return (
+       <div className="p-8 text-center text-gray-500">
+         <p>No output content configured</p>
+         <p className="text-sm mt-2">Configure this section in the campaign builder</p>
+       </div>
+     )
+   }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -180,7 +252,7 @@ export function OutputSection({
                 🔍 Debug: Available Variables
               </summary>
               <pre className="text-xs text-gray-600 bg-white p-2 rounded border overflow-auto">
-                {JSON.stringify(availableVariables, null, 2)}
+                {JSON.stringify(variableMap, null, 2)}
               </pre>
             </details>
           )}
