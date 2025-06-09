@@ -80,6 +80,24 @@ function LogicSectionComponent({
       console.log('📝 Raw userInputs received:', userInputs)
       console.log('📋 Total sections:', sections.length)
       
+      // ADD DETAILED DEBUGGING
+      console.log('🔍 Sections detailed analysis:')
+      sections.forEach((section, idx) => {
+        console.log(`  Section ${idx}:`, {
+          id: section.id,
+          title: section.title,
+          type: section.type,
+          hasOptions: !!section.options,
+          optionsCount: section.options?.length || 0,
+          options: section.options?.map(opt => ({ value: opt.value, label: opt.label })) || []
+        })
+      })
+      
+      console.log('🔍 UserInputs detailed analysis:')
+      Object.entries(userInputs).forEach(([sectionId, response]) => {
+        console.log(`  Input for ${sectionId}:`, response)
+      })
+      
       // Super simple: build variables from section titles and user responses
       const variables = buildVariablesFromInputs(sections, userInputs)
       

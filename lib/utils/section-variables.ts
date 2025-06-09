@@ -41,7 +41,7 @@ export function extractSectionVariables(sections: SectionWithOptions[]): Record<
 }
 
 /**
- * Extract the actual response value from a user input, handling nested objects and choice conversion
+ * Extract the actual response value from a user input, resolving option IDs to meaningful values
  */
 export function extractResponseValue(response: any, section: SectionWithOptions): any {
   let value = response
@@ -49,14 +49,39 @@ export function extractResponseValue(response: any, section: SectionWithOptions)
   // Handle nested response objects
   if (typeof response === 'object' && response !== null && response.response) {
     value = response.response
+  }
+  
+  // For multiple choice sections, resolve option IDs to actual values
+  if (section.type === 'multiple_choice' && typeof value === 'string') {
+    // First, try to find options in section.options (from section_options table)
+    if (section.options && section.options.length > 0) {
+      const matchedOption = section.options.find((opt: any) => opt.value === value)
+      if (matchedOption) {
+        // Return the human-readable label from section_options table
+        return matchedOption.label
+      }
+    }
     
-    // Convert choice IDs to text if needed
-    if (typeof value === 'string' && value.startsWith('option-')) {
-      const choice = section.options?.find((opt: any) => opt.value === value)
-      value = choice?.label || value
+    // If not found, try the section configuration (campaign builder stores options here)
+    if (section.configuration) {
+      const config = section.configuration as any
+      if (config.options && Array.isArray(config.options)) {
+        // Campaign builder format: { id: 'option-1', text: 'Option 1', order: 1 }
+        const configOption = config.options.find((opt: any) => opt.id === value)
+        if (configOption && configOption.text) {
+          // Return the text field from campaign builder format
+          return configOption.text
+        }
+      }
     }
   }
   
+  // For slider sections, the value might already be the actual number
+  if (section.type === 'slider') {
+    return value // Should already be the numeric value
+  }
+  
+  // For text questions, return as-is
   return value
 }
 
@@ -70,6 +95,10 @@ export function buildVariablesFromInputs(
 ): Record<string, any> {
   const variables: Record<string, any> = {}
   
+  console.log('🔍 Building variables from inputs...')
+  console.log('📋 Sections:', sections.map(s => ({ id: s.id, title: s.title, type: s.type, optionsCount: s.options?.length || 0 })))
+  console.log('📝 User inputs:', userInputs)
+  
   sections.forEach(section => {
     // Only process question sections
     if (isQuestionSection(section.type) && section.title) {
@@ -77,10 +106,19 @@ export function buildVariablesFromInputs(
       const userResponse = userInputs[section.id]
       
       if (userResponse) {
-        variables[variableName] = extractResponseValue(userResponse, section)
+        const resolvedValue = extractResponseValue(userResponse, section)
+        variables[variableName] = resolvedValue
+        
+        console.log(`✅ Variable "${variableName}": ${userResponse} → ${resolvedValue}`)
+        if (section.options && section.type === 'multiple_choice') {
+          console.log(`   Options available:`, section.options.map((opt: any) => `${opt.value}="${opt.label}"`))
+        }
+      } else {
+        console.log(`⚠️ No response found for section ${section.id} (${section.title})`)
       }
     }
   })
   
+  console.log('🎯 Final variables:', variables)
   return variables
 } 
