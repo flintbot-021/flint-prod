@@ -95,7 +95,11 @@ function LogicSectionComponent({
       
       console.log('🔍 UserInputs detailed analysis:')
       Object.entries(userInputs).forEach(([sectionId, response]) => {
-        console.log(`  Input for ${sectionId}:`, response)
+        if (Array.isArray(response) && response.length > 0 && response[0]?.url) {
+          console.log(`  📁 Files found for ${sectionId}:`, response.map(f => ({ name: f.name, type: f.type, url: f.url })))
+        } else {
+          console.log(`  📝 Input for ${sectionId}:`, response)
+        }
       })
       
       // Super simple: build variables from section titles and user responses
@@ -137,9 +141,9 @@ function LogicSectionComponent({
       let response: Response
       
       if (hasFileVariables) {
-        // For file variables, we need to send FormData 
-        // In a live campaign, we'd need to fetch the actual files from storage
-        // For now, create a FormData request with the metadata
+        // For file variables, we need to send FormData with actual file content
+        setProcessingStatus('Retrieving uploaded files...')
+        
         const formData = new FormData()
         formData.append('prompt', aiRequest.prompt)
         formData.append('variables', JSON.stringify(aiRequest.variables))
@@ -147,8 +151,86 @@ function LogicSectionComponent({
         formData.append('hasFileVariables', 'true')
         formData.append('fileVariableNames', JSON.stringify(aiRequest.fileVariableNames))
         
-        // TODO: Fetch actual files from storage and append them
-        // For now, we'll need to update the API to handle cases where files aren't uploaded
+        // Fetch actual files from storage and append them
+        console.log('📁 Fetching files from storage for AI processing...')
+        
+        for (const fileVariable of fileVariables) {
+          // Look for uploaded file info in userInputs
+          // Files are stored under the section ID and may be in different formats
+          let uploadedFiles: any[] = []
+          
+          // Check different possible keys where files might be stored
+          const possibleKeys = [
+            fileVariable.section.id,                    // Direct section ID
+            `${fileVariable.section.id}_files`,         // Section ID + _files
+            fileVariable.name,                          // Variable name
+            `${fileVariable.section.id}_${fileVariable.name}` // Combined
+          ]
+          
+          for (const key of possibleKeys) {
+            const value = userInputs[key]
+            if (Array.isArray(value) && value.length > 0) {
+              // Check if these look like uploaded file objects
+              if (value.some(item => item && typeof item === 'object' && item.url && item.name)) {
+                uploadedFiles = value
+                console.log(`📄 Found files for ${fileVariable.name} under key "${key}":`, uploadedFiles)
+                break
+              }
+            }
+          }
+          
+          // If no files found, also check the submission data from onSectionComplete
+          if (uploadedFiles.length === 0) {
+            // Check for files in the submission format
+            const submissionData = Object.entries(userInputs).find(([key, value]) => {
+              if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                return Array.isArray(value[fileVariable.section.id]) || 
+                       Array.isArray(value.files)
+              }
+              return false
+            })
+            
+            if (submissionData && submissionData[1]) {
+              const data = submissionData[1] as any
+              uploadedFiles = data[fileVariable.section.id] || data.files || []
+              console.log(`📄 Found files for ${fileVariable.name} in submission data:`, uploadedFiles)
+            }
+          }
+          
+          if (uploadedFiles.length > 0) {
+            // Get the first file (could handle multiple files later)
+            const uploadedFileInfo = uploadedFiles[0]
+            if (uploadedFileInfo && uploadedFileInfo.url) {
+              try {
+                console.log(`⬇️ Downloading file ${uploadedFileInfo.name} from ${uploadedFileInfo.url}`)
+                
+                // Fetch the file content from Supabase storage
+                const fileResponse = await fetch(uploadedFileInfo.url)
+                if (fileResponse.ok) {
+                  const fileBlob = await fileResponse.blob()
+                  const file = new File([fileBlob], uploadedFileInfo.name, { 
+                    type: uploadedFileInfo.type 
+                  })
+                  
+                  formData.append(`file_${fileVariable.name}`, file)
+                  console.log(`✅ Successfully added file ${uploadedFileInfo.name} (${file.size} bytes) for variable ${fileVariable.name}`)
+                } else {
+                  console.warn(`⚠️ Failed to fetch file for ${fileVariable.name}: HTTP ${fileResponse.status}`)
+                }
+              } catch (fileError) {
+                console.error(`❌ Error fetching file for ${fileVariable.name}:`, fileError)
+              }
+            } else {
+              console.warn(`⚠️ File info missing URL for ${fileVariable.name}:`, uploadedFileInfo)
+            }
+          } else {
+            console.log(`⚠️ No uploaded files found for variable ${fileVariable.name}`)
+            console.log('🔍 Available userInputs keys:', Object.keys(userInputs))
+            console.log('🔍 Checked keys:', possibleKeys)
+          }
+        }
+        
+        setProcessingStatus('Sending files to AI for analysis...')
         
         response = await fetch(apiEndpoint, {
           method: 'POST',
