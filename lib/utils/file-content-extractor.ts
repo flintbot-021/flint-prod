@@ -31,16 +31,26 @@ export async function extractFileContentFromBuffer(
 ): Promise<FileContentResult> {
   try {
     console.log(`📄 Extracting content from ${fileName} (${fileType})`)
+    console.log(`🔍 File type analysis:`, {
+      fileName,
+      fileType,
+      isTextPlain: fileType === 'text/plain',
+      isPdf: fileType === 'application/pdf',
+      isImage: fileType.startsWith('image/'),
+      isDocument: fileType.includes('document') || fileType.includes('word')
+    })
     
     if (fileType === 'text/plain') {
       return await extractTextFileFromBuffer(fileBuffer, fileName)
     }
     
     if (fileType === 'application/pdf') {
+      console.log(`📋 Processing as PDF document`)
       return await extractPdfFileFromBuffer(fileBuffer, fileName)
     }
     
     if (fileType.startsWith('image/')) {
+      console.log(`🖼️ Processing as image for Vision API`)
       return await extractImageFileFromBuffer(fileBuffer, fileName, fileType)
     }
     
@@ -49,6 +59,7 @@ export async function extractFileContentFromBuffer(
     }
     
     // Fallback: try to read as text
+    console.log(`❓ Unknown file type, attempting text extraction as fallback`)
     return await extractTextFileFromBuffer(fileBuffer, fileName)
     
   } catch (error) {
