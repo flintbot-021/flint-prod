@@ -980,9 +980,9 @@ export function AILogicSection({
         </ul>
         {fileVariables.length > 0 && (
           <div className="mt-4 p-3 bg-purple-900/50 border border-purple-700 rounded-lg">
-            <p className="text-sm text-purple-200 font-medium mb-2">📄 File Upload Integration</p>
+            <p className="text-sm text-purple-200 font-medium mb-2">📄 Direct File Processing</p>
             <p className="text-xs text-purple-300">
-              Your AI can analyze uploaded files! Use @{fileVariables.map(v => v.name).join(', @')} in your prompt to reference file content. The AI will receive the extracted text content from documents, images with OCR, and other supported file types.
+              Your AI can analyze uploaded files directly! Use @{fileVariables.map(v => v.name).join(', @')} in your prompt to reference file content. All file types (PDFs, documents, images) are sent directly to OpenAI which can read and analyze them natively without any preprocessing required.
             </p>
           </div>
         )}

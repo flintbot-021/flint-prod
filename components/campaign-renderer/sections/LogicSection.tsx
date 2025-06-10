@@ -115,7 +115,7 @@ function LogicSectionComponent({
       
       console.log('📁 File variables detected:', fileVariables.map(v => v.name))
 
-      setProcessingStatus(hasFileVariables ? 'Processing files and sending to AI...' : 'Sending to AI...')
+      setProcessingStatus(hasFileVariables ? 'Processing files with AI...' : 'Sending to AI...')
 
       // Prepare the AI request using the predefined configuration
       const aiRequest = {
@@ -135,14 +135,14 @@ function LogicSectionComponent({
 
       console.log('🤖 AI Request being sent:', aiRequest)
 
-      // Use the appropriate API endpoint based on whether we have file variables
+      // Use the appropriate API endpoint - files are now sent directly to OpenAI
       const apiEndpoint = hasFileVariables ? '/api/ai-processing-with-files' : '/api/ai-processing'
       
       let response: Response
       
       if (hasFileVariables) {
-        // For file variables, we need to send FormData with actual file content
-        setProcessingStatus('Retrieving uploaded files...')
+        // For file variables, we send files directly to OpenAI via our API
+        setProcessingStatus('Retrieving files for AI analysis...')
         
         const formData = new FormData()
         formData.append('prompt', aiRequest.prompt)
@@ -151,8 +151,8 @@ function LogicSectionComponent({
         formData.append('hasFileVariables', 'true')
         formData.append('fileVariableNames', JSON.stringify(aiRequest.fileVariableNames))
         
-        // Fetch actual files from storage and append them
-        console.log('📁 Fetching files from storage for AI processing...')
+        // Fetch actual files from storage and append them for direct OpenAI processing
+        console.log('📁 Fetching files from storage for direct OpenAI processing...')
         
         for (const fileVariable of fileVariables) {
           // Look for uploaded file info in userInputs
@@ -204,7 +204,7 @@ function LogicSectionComponent({
               try {
                 console.log(`⬇️ Downloading file ${uploadedFileInfo.name} from ${uploadedFileInfo.url}`)
                 
-                // Fetch the file content from Supabase storage
+                // Fetch the file content from Supabase storage for direct OpenAI upload
                 const fileResponse = await fetch(uploadedFileInfo.url)
                 if (fileResponse.ok) {
                   const fileBlob = await fileResponse.blob()
@@ -213,7 +213,7 @@ function LogicSectionComponent({
                   })
                   
                   formData.append(`file_${fileVariable.name}`, file)
-                  console.log(`✅ Successfully added file ${uploadedFileInfo.name} (${file.size} bytes) for variable ${fileVariable.name}`)
+                  console.log(`✅ Successfully prepared file ${uploadedFileInfo.name} (${file.size} bytes) for OpenAI processing`)
                 } else {
                   console.warn(`⚠️ Failed to fetch file for ${fileVariable.name}: HTTP ${fileResponse.status}`)
                 }
@@ -230,7 +230,7 @@ function LogicSectionComponent({
           }
         }
         
-        setProcessingStatus('Sending files to AI for analysis...')
+        setProcessingStatus('Sending files to OpenAI for analysis...')
         
         response = await fetch(apiEndpoint, {
           method: 'POST',
@@ -255,7 +255,7 @@ function LogicSectionComponent({
       console.log('🤖 AI Response received:', result)
 
       if (result.success && result.outputs) {
-        setProcessingStatus('AI processing complete!')
+        setProcessingStatus('OpenAI processing complete!')
         console.log('✅ AI processing completed successfully')
         
         // Filter outputs to only include the configured variables

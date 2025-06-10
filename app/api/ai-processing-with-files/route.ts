@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAIProcessingEngine, AITestRequest } from '@/lib/services/ai-processing-engine'
-import { extractFileContentFromBuffer, combineFileContents } from '@/lib/utils/file-content-extractor'
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -77,13 +76,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`🤖 [API-${requestId}] Starting AI processing with file support`)
     
-    // Enhanced variables with file content
+    // Enhanced variables and file objects for direct OpenAI upload
     let enhancedVariables = { ...variables }
-    let imageVariables: Record<string, { base64Data: string; mimeType: string; fileName: string }> = {}
+    let fileObjects: Record<string, { file: File; variableName: string }> = {}
     
-    // Process uploaded test files from FormData
+    // Process uploaded test files from FormData - prepare for direct OpenAI upload
     if (hasFileVariables && fileVariableNames.length > 0) {
-      console.log(`📁 [API-${requestId}] Processing file variables:`, fileVariableNames)
+      console.log(`📁 [API-${requestId}] Processing file variables for direct OpenAI upload:`, fileVariableNames)
       
       try {
         // Process each uploaded test file from FormData
@@ -91,73 +90,34 @@ export async function POST(request: NextRequest) {
           const file = formData.get(`file_${variableName}`) as File
           
           if (file && file instanceof File) {
-            console.log(`📄 [API-${requestId}] Processing test file for ${variableName}: ${file.name}`)
+            console.log(`📄 [API-${requestId}] Preparing file for direct OpenAI upload: ${file.name} (${file.type})`)
             
-            // Extract content directly from file buffer
-            const fileBuffer = await file.arrayBuffer()
-            
-            try {
-              const contentResult = await extractFileContentFromBuffer(
-                fileBuffer,
-                file.name,
-                file.type
-              )
-              
-              if (contentResult.success) {
-                if (contentResult.isImage && contentResult.base64Data) {
-                  // Handle image files with Vision API
-                  imageVariables[variableName] = {
-                    base64Data: contentResult.base64Data,
-                    mimeType: contentResult.mimeType || file.type,
-                    fileName: file.name
-                  }
-                  console.log(`🖼️ [API-${requestId}] Added image variable ${variableName} for Vision API`)
-                } else if (contentResult.content) {
-                  // Handle text/document files normally
-                  enhancedVariables[variableName] = `File: ${file.name}\n${contentResult.content}`
-                  console.log(`✅ [API-${requestId}] Enhanced variable ${variableName} with test file content`)
-                }
-              } else {
-                enhancedVariables[variableName] = `File: ${file.name}\n[Error: ${contentResult.error || 'Could not extract content'}]`
-                console.log(`⚠️ [API-${requestId}] Failed to extract content from ${file.name}`)
-              }
-            } catch (extractError) {
-              console.error(`❌ [API-${requestId}] Error extracting content from ${file.name}:`, extractError)
-              enhancedVariables[variableName] = `File: ${file.name}\n[Error: Failed to extract content]`
+            // Send all files directly to OpenAI (PDFs, documents, images, etc.)
+            fileObjects[variableName] = {
+              file: file,
+              variableName: variableName
             }
+            
+            // Add placeholder in variables to reference the file
+            enhancedVariables[variableName] = `[FILE: ${file.name} - will be processed directly by OpenAI]`
+            console.log(`📋 [API-${requestId}] Added file ${file.name} for direct OpenAI processing`)
+            
           } else {
             console.log(`⚠️ [API-${requestId}] No test file found for variable ${variableName}`)
-            
-            // Try to get the file from variables (which might contain file data from user inputs)
-            const fileVariable = variables[variableName]
-            if (fileVariable && typeof fileVariable === 'object' && fileVariable.url) {
-              try {
-                console.log(`🔄 [API-${requestId}] Attempting to fetch file from storage: ${fileVariable.url}`)
-                
-                // For now, add a placeholder that indicates we found a file reference
-                enhancedVariables[variableName] = `File: ${fileVariable.name || 'uploaded_file'}\n[File uploaded to campaign - Vision API processing not available for storage files yet]`
-                console.log(`📁 [API-${requestId}] Added storage file placeholder for ${variableName}`)
-              } catch (fetchError) {
-                console.error(`❌ [API-${requestId}] Error fetching storage file:`, fetchError)
-                enhancedVariables[variableName] = `[File variable: ${variableName} - error accessing file]`
-              }
-            } else {
-              // No file found at all
-              enhancedVariables[variableName] = `[File variable: ${variableName} - no file provided]`
-            }
+            enhancedVariables[variableName] = `[FILE VARIABLE: ${variableName} - no file provided]`
           }
         }
       } catch (fileError) {
         console.error(`❌ [API-${requestId}] File processing error:`, fileError)
-        // Continue with processing even if file extraction fails
+        // Continue with processing even if file preparation fails
       }
     }
 
     console.log(`📤 [API-${requestId}] Final prompt sent to AI:`, prompt)
     console.log(`📋 [API-${requestId}] Enhanced variables sent to AI:`, Object.keys(enhancedVariables))
-    console.log(`🖼️ [API-${requestId}] Image variables sent to AI:`, Object.keys(imageVariables))
+    console.log(`📁 [API-${requestId}] Files for direct upload:`, Object.keys(fileObjects))
 
-    // Create AI processing engine and process the request
+    // Create AI processing engine and process the request with direct file support
     const engine = createAIProcessingEngine(openaiApiKey)
     const result = await engine.processPrompt({
       prompt,
@@ -165,7 +125,7 @@ export async function POST(request: NextRequest) {
       outputVariables,
       hasFileVariables,
       fileVariableNames,
-      imageVariables: Object.keys(imageVariables).length > 0 ? imageVariables : undefined
+      fileObjects: Object.keys(fileObjects).length > 0 ? fileObjects : undefined
     })
 
     console.log(`✅ [API-${requestId}] AI processing completed successfully`)
