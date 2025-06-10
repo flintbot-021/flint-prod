@@ -160,6 +160,8 @@ export class AIProcessingEngine {
   private prepareAIRequest(prompt: string, outputVariables: OutputVariable[], imageVariables?: Record<string, { base64Data: string; mimeType: string; fileName: string }>) {
     // Combine user's domain prompt with output instructions
     const combinedPrompt = this.buildCombinedPrompt(prompt, outputVariables)
+    
+    console.log('🚀 Final prompt being sent to OpenAI:', combinedPrompt)
 
     // Check if we have images - if so, create multi-modal content
     if (imageVariables && Object.keys(imageVariables).length > 0) {
@@ -218,13 +220,19 @@ export class AIProcessingEngine {
       return userPrompt
     }
 
+    // First, list all the output field names clearly
+    const outputNames = outputVariables.map(variable => variable.name).join(', ')
+    
+    // Then, provide descriptions separately for clarity
     const outputDescriptions = outputVariables.map(variable => 
-      `${variable.name}: ${variable.description}`
+      `- ${variable.name} = ${variable.description}`
     ).join('\n')
 
     return `${userPrompt}
 
-Please return the following:
+Please return the following outputs: ${outputNames}
+
+Output descriptions:
 ${outputDescriptions}
 
 Return only a JSON object with these exact fields and no additional text.`
