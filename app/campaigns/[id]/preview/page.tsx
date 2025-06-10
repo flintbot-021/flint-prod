@@ -319,7 +319,8 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
                 }}
                 onSectionComplete={handleSectionComplete}
                 onResponseUpdate={(sectionId: string, fieldId: string, value: any, metadata?: any) => {
-                  // Response updated
+                  // Store response in campaignRenderer for AI processing
+                  campaignRenderer.handleResponseUpdate(sectionId, fieldId, value, metadata)
                 }}
               />
             )}
