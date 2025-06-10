@@ -30,7 +30,8 @@ export type ResponseType =
   | 'choice'
   | 'number'
   | 'boolean'
-  | 'multiple_choice';
+  | 'multiple_choice'
+  | 'files';
 
 export type VariableType = 
   | 'text'

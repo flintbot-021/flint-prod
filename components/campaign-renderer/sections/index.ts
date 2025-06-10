@@ -6,6 +6,7 @@
 export { CaptureSection } from './CaptureSection'
 export { TextQuestionSection } from './TextQuestionSection'
 export { MultipleChoiceSection } from './MultipleChoiceSection'
+export { UploadSection } from './UploadSection'
 export { SliderSection } from './SliderSection'
 export { InfoSection } from './InfoSection'
 export { LogicSection } from './LogicSection'

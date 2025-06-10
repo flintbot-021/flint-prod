@@ -9,12 +9,35 @@ import {
   CaptureSection,
   TextQuestionSection,
   MultipleChoiceSection,
+  UploadSection,
   SliderSection,
   InfoSection,
   LogicSection,
   OutputSection,
   DynamicRedirectSection
 } from './sections'
+
+// =============================================================================
+// SECTION TYPE DETECTION HELPERS
+// =============================================================================
+
+// Helper function to detect if a text_question is actually an upload question
+function isUploadQuestion(config: SectionConfiguration): boolean {
+  // Check for upload-specific configuration fields
+  return !!(
+    config.maxFiles ||
+    config.allowImages ||
+    config.allowDocuments ||
+    config.allowVideo ||
+    config.allowAudio ||
+    config.maxFileSize
+  )
+}
+
+// Helper function to detect if a text_question is a date-time question
+function isDateTimeQuestion(config: SectionConfiguration): boolean {
+  return !!(config.includeDate || config.includeTime)
+}
 
 // =============================================================================
 // MAIN SECTION RENDERER
@@ -94,6 +117,14 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
       return <CaptureSection {...enhancedProps} />
     
     case 'text_question':
+      // Check if this is actually an upload question
+      if (isUploadQuestion(config)) {
+        return <UploadSection {...enhancedProps} />
+      }
+      // Check if this is actually a date-time question (for future implementation)
+      // if (isDateTimeQuestion(config)) {
+      //   return <DateTimeSection {...enhancedProps} />
+      // }
       return <TextQuestionSection {...enhancedProps} />
     
     case 'multiple_choice':
