@@ -21,7 +21,6 @@ export interface AITestRequest {
   outputVariables: OutputVariable[]
   hasFileVariables?: boolean
   fileVariableNames?: string[]
-  imageVariables?: Record<string, { base64Data: string; mimeType: string; fileName: string }>
   fileObjects?: Record<string, { file: File; variableName: string }>
 }
 
@@ -72,10 +71,10 @@ export class AIProcessingEngine {
         return await this.processPromptWithDirectFileUpload(request, startTime)
       }
 
-      // Fallback to existing logic for image variables and text-only
-      const finalPrompt = this.replaceVariables(request.prompt, request.variables, request.imageVariables)
+      // Fallback for text-only processing
+      const finalPrompt = this.replaceVariables(request.prompt, request.variables)
 
-      const aiRequest = this.prepareAIRequest(finalPrompt, request.outputVariables, request.imageVariables)
+      const aiRequest = this.prepareAIRequest(finalPrompt, request.outputVariables)
       const response = await this.callOpenAI(aiRequest)
 
       const outputs = this.extractOutputs(response.content, request.outputVariables)
@@ -209,7 +208,7 @@ export class AIProcessingEngine {
   /**
    * Replace variables in prompt text with actual values
    */
-  private replaceVariables(prompt: string, variables: Record<string, any>, imageVariables?: Record<string, any>): string {
+  private replaceVariables(prompt: string, variables: Record<string, any>): string {
     let processedPrompt = prompt
 
     console.log('🔄 Starting variable replacement...')
@@ -227,19 +226,6 @@ export class AIProcessingEngine {
         console.log(`🔄 Replaced @${name} with "${stringValue}"`)
       }
     })
-
-    // Replace image variable mentions with placeholders since images are sent separately
-    if (imageVariables) {
-      Object.entries(imageVariables).forEach(([name, imageData]) => {
-        const regex = new RegExp(`@${name}\\b`, 'g')
-        const beforeReplace = processedPrompt
-        processedPrompt = processedPrompt.replace(regex, `[Image: ${imageData.fileName}]`)
-        
-        if (beforeReplace !== processedPrompt) {
-          console.log(`🔄 Replaced @${name} with image placeholder for ${imageData.fileName}`)
-        }
-      })
-    }
 
     console.log('🔄 Final processed prompt:', processedPrompt)
     return processedPrompt
@@ -263,45 +249,11 @@ export class AIProcessingEngine {
   /**
    * Prepare the OpenAI API request with sensible defaults
    */
-  private prepareAIRequest(prompt: string, outputVariables: OutputVariable[], imageVariables?: Record<string, { base64Data: string; mimeType: string; fileName: string }>) {
+  private prepareAIRequest(prompt: string, outputVariables: OutputVariable[]): any {
     // Combine user's domain prompt with output instructions
     const combinedPrompt = this.buildCombinedPrompt(prompt, outputVariables)
     
     console.log('🚀 Final prompt being sent to OpenAI:', combinedPrompt)
-
-    // Check if we have images - if so, create multi-modal content
-    if (imageVariables && Object.keys(imageVariables).length > 0) {
-      const content: Array<any> = [
-        {
-          type: 'text',
-          text: combinedPrompt
-        }
-      ]
-
-      // Add images to content
-      Object.entries(imageVariables).forEach(([variableName, imageData]) => {
-        content.push({
-          type: 'image_url',
-          image_url: {
-            url: `data:${imageData.mimeType};base64,${imageData.base64Data}`,
-            detail: 'high' // Use high detail for better analysis
-          }
-        })
-      })
-
-      return {
-        model: this.DEFAULT_MODEL,
-        messages: [
-          {
-            role: 'user' as const,
-            content: content
-          }
-        ],
-        max_tokens: this.DEFAULT_MAX_TOKENS,
-        temperature: this.DEFAULT_TEMPERATURE,
-        response_format: outputVariables.length > 0 ? { type: 'json_object' as const } : undefined
-      }
-    }
 
     // Fallback to text-only request
     return {
@@ -342,30 +294,6 @@ Output descriptions:
 ${outputDescriptions}
 
 Return only a JSON object with these exact fields and no additional text.`
-  }
-
-  /**
-   * Build system prompt for structured output
-   * @deprecated - replaced by buildCombinedPrompt
-   */
-  private buildSystemPrompt(outputVariables: OutputVariable[]): string {
-    if (outputVariables.length === 0) {
-      return 'You are a helpful assistant. Provide a clear and comprehensive response to the user\'s request.'
-    }
-
-    const outputDescriptions = outputVariables.map(variable => 
-      `- ${variable.name}: ${variable.description}`
-    ).join('\n')
-
-    return `You are a helpful assistant that provides structured responses in JSON format.
-
-Please respond with a JSON object containing these fields:
-${outputDescriptions}
-
-Guidelines:
-- Always return valid JSON
-- Be clear and helpful in your responses
-- If you cannot determine a field value, use a reasonable default or explanation`
   }
 
   /**

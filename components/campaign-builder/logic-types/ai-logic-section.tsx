@@ -982,7 +982,7 @@ export function AILogicSection({
           <div className="mt-4 p-3 bg-purple-900/50 border border-purple-700 rounded-lg">
             <p className="text-sm text-purple-200 font-medium mb-2">📄 Direct File Processing</p>
             <p className="text-xs text-purple-300">
-              Your AI can analyze uploaded files directly! Use @{fileVariables.map(v => v.name).join(', @')} in your prompt to reference file content. Files are sent directly to OpenAI which can read PDFs, documents, and images without any preprocessing required.
+              Your AI can analyze uploaded files directly! Use @{fileVariables.map(v => v.name).join(', @')} in your prompt to reference file content. All file types (PDFs, documents, images) are sent directly to OpenAI which can read and analyze them natively without any preprocessing required.
             </p>
           </div>
         )}

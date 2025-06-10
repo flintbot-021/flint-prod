@@ -92,40 +92,16 @@ export async function POST(request: NextRequest) {
           if (file && file instanceof File) {
             console.log(`📄 [API-${requestId}] Preparing file for direct OpenAI upload: ${file.name} (${file.type})`)
             
-            // For PDFs and documents, send directly to OpenAI
-            if (file.type === 'application/pdf' || 
-                file.type.includes('document') || 
-                file.type.includes('word') ||
-                file.type === 'text/plain') {
-              
-              fileObjects[variableName] = {
-                file: file,
-                variableName: variableName
-              }
-              
-              // Add placeholder in variables to reference the file
-              enhancedVariables[variableName] = `[FILE: ${file.name} - will be processed directly by OpenAI]`
-              console.log(`📋 [API-${requestId}] Added file ${file.name} for direct OpenAI processing`)
-              
-            } else if (file.type.startsWith('image/')) {
-              // Images still go through base64 conversion for Vision API
-              const fileBuffer = await file.arrayBuffer()
-              const uint8Array = new Uint8Array(fileBuffer)
-              const base64String = Buffer.from(uint8Array).toString('base64')
-              
-              fileObjects[variableName] = {
-                file: file,
-                variableName: variableName
-              }
-              
-              enhancedVariables[variableName] = `[IMAGE: ${file.name} - will be processed by Vision API]`
-              console.log(`🖼️ [API-${requestId}] Added image ${file.name} for Vision API processing`)
-              
-            } else {
-              // Unsupported file type
-              enhancedVariables[variableName] = `[UNSUPPORTED FILE TYPE: ${file.name} (${file.type})]`
-              console.log(`⚠️ [API-${requestId}] Unsupported file type: ${file.type}`)
+            // Send all files directly to OpenAI (PDFs, documents, images, etc.)
+            fileObjects[variableName] = {
+              file: file,
+              variableName: variableName
             }
+            
+            // Add placeholder in variables to reference the file
+            enhancedVariables[variableName] = `[FILE: ${file.name} - will be processed directly by OpenAI]`
+            console.log(`📋 [API-${requestId}] Added file ${file.name} for direct OpenAI processing`)
+            
           } else {
             console.log(`⚠️ [API-${requestId}] No test file found for variable ${variableName}`)
             enhancedVariables[variableName] = `[FILE VARIABLE: ${variableName} - no file provided]`
