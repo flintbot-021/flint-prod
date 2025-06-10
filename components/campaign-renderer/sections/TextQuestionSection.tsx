@@ -26,7 +26,7 @@ export function TextQuestionSection({
   const [isFocused, setIsFocused] = useState(false)
   
   const isRequired = config.required ?? true
-  const inputType = config.input_type || 'textarea'
+  const inputType = config.inputType || 'textarea'
   const placeholder = config.placeholder || 'Type your response here...'
   const label = config.label || title
   

@@ -76,7 +76,6 @@ export interface SectionConfiguration {
   min_label?: string
   max_label?: string
   default_value?: number
-  input_type?: 'text' | 'textarea' | 'email' | 'tel' | 'number'
   prompt?: string
   outputVariables?: Array<{
     id: string
@@ -85,6 +84,22 @@ export interface SectionConfiguration {
   }>
   title?: string
   subtitle?: string
+  
+  // Upload-specific configuration
+  maxFiles?: number
+  allowImages?: boolean
+  allowDocuments?: boolean
+  allowVideo?: boolean
+  allowAudio?: boolean
+  maxFileSize?: number
+  
+  // Date-time specific configuration
+  includeDate?: boolean
+  includeTime?: boolean
+  
+  // Text input specific configuration
+  inputType?: 'text' | 'textarea' | 'email' | 'tel' | 'number'
+  maxLength?: number
 }
 
 // Base props that all section components will receive
