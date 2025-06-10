@@ -136,7 +136,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null)
   const [pendingUpdates, setPendingUpdates] = useState<Map<string, any>>(new Map())
   const [isSessionRecovered, setIsSessionRecovered] = useState(false)
-  
+
   // Temporary compatibility bridge for legacy error handling
   const [errorState, setErrorState] = useState<ErrorState | null>(null)
 
@@ -1407,35 +1407,35 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         console.log('✅ Lead data updated for existing lead:', campaignState.leadId)
       } else {
         // Fallback: create new lead if none exists
-        const leadData = {
-          campaign_id: campaign.id,
-          name: data.name || data.full_name || null,
-          email: data.email,
-          phone: data.phone || null,
+      const leadData = {
+        campaign_id: campaign.id,
+        name: data.name || data.full_name || null,
+        email: data.email,
+        phone: data.phone || null,
           ip_address: null,
-          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-          metadata: {
-            session_id: campaignState.sessionId,
-            completed_sections: Array.from(campaignState.completedSections),
+        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+        metadata: {
+          session_id: campaignState.sessionId,
+          completed_sections: Array.from(campaignState.completedSections),
             start_time: campaignState.startTime.toISOString(),
             is_anonymous: false
-          }
         }
+      }
 
-        const { data: lead, error } = await supabase
-          .from('leads')
+      const { data: lead, error } = await supabase
+        .from('leads')
           .insert(leadData)
-          .select()
-          .single()
+        .select()
+        .single()
 
-        if (error) {
-          throw error
-        }
+      if (error) {
+        throw error
+      }
 
-        setCampaignState(prev => ({
-          ...prev,
-          leadId: lead.id
-        }))
+      setCampaignState(prev => ({
+        ...prev,
+        leadId: lead.id
+      }))
 
         console.log('✅ New lead created:', lead.id)
       }

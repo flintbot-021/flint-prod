@@ -6,6 +6,7 @@ import { OutputSection } from './output-section'
 import { HeroSection } from './hero-section'
 import { BasicSection } from './basic-section'
 import { AILogicSection } from '../logic-types/ai-logic-section'
+import { DynamicRedirectSection } from './dynamic-redirect-section'
 import { cn } from '@/lib/utils'
 import { AlertCircle, FileText, Image as ImageIcon, Type } from 'lucide-react'
 
@@ -131,6 +132,17 @@ export function ContentComponentFactory({
     case 'output-redirect':
       return (
         <OutputSection
+          section={section}
+          isPreview={isPreview}
+          onUpdate={onUpdate}
+          className={className}
+          allSections={allSections}
+        />
+      )
+
+    case 'output-dynamic-redirect':
+      return (
+        <DynamicRedirectSection
           section={section}
           isPreview={isPreview}
           onUpdate={onUpdate}

@@ -10,6 +10,7 @@ export { SliderSection } from './SliderSection'
 export { InfoSection } from './InfoSection'
 export { LogicSection } from './LogicSection'
 export { OutputSection } from './OutputSection'
+export { DynamicRedirectSection } from './DynamicRedirectSection'
 
 // Re-export types for convenience
 export type { SectionRendererProps } from '../types' 

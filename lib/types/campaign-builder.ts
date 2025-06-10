@@ -256,6 +256,24 @@ export const SECTION_TYPES: SectionType[] = [
       message: 'Redirecting you now...',
       showCountdown: true
     }
+  },
+  {
+    id: 'output-dynamic-redirect',
+    name: 'Dynamic Redirect',
+    description: 'Redirect to Webflow page with dynamic data integration',
+    icon: 'Globe',
+    category: 'output',
+    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    defaultSettings: {
+      targetUrl: '',
+      dataTransmissionMethod: 'localStorage',
+      delay: 2,
+      showPreloader: true,
+      preloaderMessage: 'Preparing your personalized page...',
+      variableMappings: [],
+      customAttributes: true,
+      scriptTemplate: ''
+    }
   }
 ]
 
