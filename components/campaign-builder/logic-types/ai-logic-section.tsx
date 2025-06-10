@@ -7,12 +7,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, X, Brain, Play, Check, Lock, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
+import { Plus, X, Brain, Play, Check, Lock, ChevronDown, ChevronUp, Sparkles, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { PromptGenerationRequest, PromptGenerationResponse } from '@/lib/services/prompt-generation'
 import { storeAITestResults } from '@/lib/utils/ai-test-storage'
-import { titleToVariableName, isQuestionSection } from '@/lib/utils/section-variables'
+import { titleToVariableName, isQuestionSection, extractInputVariablesWithTypes, isFileVariable } from '@/lib/utils/section-variables'
 
 interface OutputVariable {
   id: string
@@ -24,6 +24,8 @@ interface AILogicSectionProps {
   settings: {
     prompt: string
     outputVariables: OutputVariable[]
+    testInputs?: Record<string, any>
+    testFiles?: Record<string, File>
   }
   isPreview?: boolean
   isEditing?: boolean
@@ -35,11 +37,48 @@ interface AILogicSectionProps {
 }
 
 // Extract input variables from question sections that come before this AI logic section
-// ✅ SIMPLIFIED: Use section titles directly as variable names  
+// Enhanced to handle both text and file variables
 function extractInputVariables(sections: CampaignSection[], currentOrder: number): string[] {
   return sections
     .filter(s => s.order < currentOrder && isQuestionSection(s.type) && s.title)
     .map(s => titleToVariableName(s.title))
+}
+
+// Extract input variables with type information for AI processing
+function extractInputVariablesWithTypesFromBuilder(sections: CampaignSection[], currentOrder: number): Array<{
+  name: string
+  title: string
+  type: 'text' | 'file'
+  section: CampaignSection
+}> {
+  return sections
+    .filter(s => s.order < currentOrder && isQuestionSection(s.type) && s.title)
+    .map(section => ({
+      name: titleToVariableName(section.title),
+      title: section.title,
+      type: isFileVariableFromBuilder(section) ? 'file' : 'text',
+      section
+    }))
+}
+
+// Check if a campaign builder section is a file variable
+function isFileVariableFromBuilder(section: CampaignSection): boolean {
+  if (section.type === 'question-upload') {
+    return true
+  }
+  // For text questions, check settings for upload configuration
+  if (section.type === 'question-text') {
+    const settings = section.settings as any
+    return !!(
+      settings.maxFiles ||
+      settings.allowImages ||
+      settings.allowDocuments ||
+      settings.allowVideo ||
+      settings.allowAudio ||
+      settings.maxFileSize
+    )
+  }
+  return false
 }
 
 export function AILogicSection({
@@ -56,16 +95,30 @@ export function AILogicSection({
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
   const [isGeneratingOutputs, setIsGeneratingOutputs] = useState(false)
   
-  // Extract actual variables from campaign sections
-  const extractedVariables = useMemo(() => {
+  // Extract actual variables from campaign sections with type information
+  const extractedVariablesWithTypes = useMemo(() => {
     if (allSections.length > 0 && section?.order !== undefined) {
-      return extractInputVariables(allSections, section.order)
+      return extractInputVariablesWithTypesFromBuilder(allSections, section.order)
     }
-    return availableVariables
-  }, [allSections, section?.order, availableVariables])
+    return []
+  }, [allSections, section?.order])
+  
+  // Extract just the variable names for backward compatibility
+  const extractedVariables = useMemo(() => {
+    return extractedVariablesWithTypes.map(v => v.name)
+  }, [extractedVariablesWithTypes])
   
   // Use extracted variables or fallback to provided ones
   const currentAvailableVariables = extractedVariables.length > 0 ? extractedVariables : availableVariables
+  
+  // Separate text and file variables
+  const textVariables = useMemo(() => {
+    return extractedVariablesWithTypes.filter(v => v.type === 'text')
+  }, [extractedVariablesWithTypes])
+  
+  const fileVariables = useMemo(() => {
+    return extractedVariablesWithTypes.filter(v => v.type === 'file')
+  }, [extractedVariablesWithTypes])
 
   // Collapsible state
   const [expandedSections, setExpandedSections] = useState({
@@ -209,9 +262,21 @@ export function AILogicSection({
 
   // Step completion logic
   const step1Complete = useMemo(() => {
-    // ✅ SIMPLIFIED: Always true since we don't need test inputs anymore
-    return currentAvailableVariables.length > 0
-  }, [currentAvailableVariables])
+    // Check if we have variables and all required inputs are provided
+    if (extractedVariablesWithTypes.length === 0) return false
+    
+    // For text variables, require test inputs
+    const missingTextInputs = textVariables.filter(variable => 
+      !(settings.testInputs || {})[variable.name] || (settings.testInputs || {})[variable.name]?.trim() === ''
+    )
+    
+    // For file variables, require test files
+    const missingTestFiles = fileVariables.filter(variable => 
+      !(settings.testFiles || {})[variable.name]
+    )
+    
+    return missingTextInputs.length === 0 && missingTestFiles.length === 0
+  }, [extractedVariablesWithTypes, textVariables, fileVariables, settings.testInputs, settings.testFiles])
 
   const step2Complete = useMemo(() => {
     return settings.prompt && settings.prompt.trim() !== ''
@@ -252,19 +317,31 @@ export function AILogicSection({
   }, [settings.prompt, handleSettingChange])
 
   const updateTestInput = useCallback((variableName: string, value: string) => {
-    const newTestInputs = { ...settings.testInputs, [variableName]: value }
+    const newTestInputs = { ...(settings.testInputs || {}), [variableName]: value }
     handleSettingChange('testInputs', newTestInputs)
   }, [settings.testInputs, handleSettingChange])
+
+  const updateTestFile = useCallback((variableName: string, file: File | null) => {
+    const newTestFiles = { ...(settings.testFiles || {}) }
+    if (file) {
+      newTestFiles[variableName] = file
+    } else {
+      delete newTestFiles[variableName]
+    }
+    handleSettingChange('testFiles', newTestFiles)
+  }, [settings.testFiles, handleSettingChange])
 
   // Generate live preview of prompt with variables substituted
   const previewPrompt = useMemo(() => {
     let preview = settings.prompt || ''
-    Object.entries(settings.testInputs).forEach(([variable, value]) => {
-      if (value.trim()) {
-        const regex = new RegExp(`@${variable}\\b`, 'g')
-        preview = preview.replace(regex, `**${value}**`)
-      }
-    })
+    if (settings.testInputs) {
+      Object.entries(settings.testInputs).forEach(([variable, value]) => {
+        if (value && typeof value === 'string' && value.trim()) {
+          const regex = new RegExp(`@${variable}\\b`, 'g')
+          preview = preview.replace(regex, `**${value}**`)
+        }
+      })
+    }
     return preview
   }, [settings.prompt, settings.testInputs])
 
@@ -282,25 +359,104 @@ export function AILogicSection({
         return
       }
 
-      // Check if all test inputs are provided
-      const missingInputs = currentAvailableVariables.filter(variable => 
-        !settings.testInputs[variable] || settings.testInputs[variable].trim() === ''
+      // Check if all text inputs are provided
+      const missingTextInputs = textVariables.filter(variable => 
+        !(settings.testInputs || {})[variable.name] || (settings.testInputs || {})[variable.name]?.trim() === ''
       )
       
-      if (missingInputs.length > 0) {
-        setTestResult(`Please provide example answers for: ${missingInputs.map(v => '@' + v).join(', ')}`)
+      if (missingTextInputs.length > 0) {
+        setTestResult(`Please provide example answers for: ${missingTextInputs.map(v => '@' + v.name).join(', ')}`)
+        return
+      }
+
+      // Check if all file variables have test files uploaded
+      const missingTestFiles = fileVariables.filter(variable => 
+        !(settings.testFiles || {})[variable.name]
+      )
+      
+      if (missingTestFiles.length > 0) {
+        setTestResult(`Please upload test files for: ${missingTestFiles.map(v => '@' + v.name).join(', ')}`)
         return
       }
 
       // Prepare the AI test request
+      const testVariables = { ...(settings.testInputs || {}) }
+      
+      // If we have file variables with actual uploaded files, use the file-aware API
+      const hasUploadedFiles = fileVariables.length > 0 && fileVariables.every(v => (settings.testFiles || {})[v.name])
+      
+      if (hasUploadedFiles) {
+        // Use the file-aware API endpoint
+        const formData = new FormData()
+        formData.append('prompt', settings.prompt)
+        formData.append('variables', JSON.stringify(testVariables))
+        formData.append('outputVariables', JSON.stringify(settings.outputVariables.map(v => ({
+          id: v.id,
+          name: v.name,
+          description: v.description
+        }))))
+        formData.append('hasFileVariables', 'true')
+        formData.append('fileVariableNames', JSON.stringify(fileVariables.map(v => v.name)))
+        
+        // Add the actual uploaded files
+        fileVariables.forEach(variable => {
+          const file = (settings.testFiles || {})[variable.name]
+          if (file) {
+            formData.append(`file_${variable.name}`, file)
+          }
+        })
+
+        const response = await fetch('/api/ai-processing-with-files', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const result = await response.json()
+
+        if (result.success) {
+          // Format the AI outputs for display
+          if (result.outputs && Object.keys(result.outputs).length > 0) {
+            const formattedResponse = Object.entries(result.outputs)
+              .map(([key, value]) => `${key}: ${value}`)
+              .join('\n\n')
+            
+            setTestResult(`✅ AI Test Results (with real file content):\n\n${formattedResponse}`)
+            
+            // Store both input test data AND AI outputs in localStorage for preview mode
+            const allTestData = {
+              ...(settings.testInputs || {}),  // User input data from Step 1
+              ...result.outputs        // AI-generated outputs from Step 4
+            }
+            storeAITestResults(allTestData)
+          } else {
+            setTestResult('⚠️ AI processed successfully but returned no structured outputs.')
+          }
+        } else {
+          setTestResult(`❌ AI Test Failed: ${result.error || 'Unknown error occurred'}`)
+        }
+        
+        return
+      }
+      
+      // For text-only variables, add placeholder content for file variables (if any)
+      fileVariables.forEach(variable => {
+        testVariables[variable.name] = `[EXAMPLE FILE CONTENT for ${variable.title}]\n\nThis is placeholder content that represents what would be extracted from an uploaded file. In the actual campaign, the real file content will be analyzed by the AI.`
+      })
+      
       const testRequest = {
         prompt: settings.prompt,
-        variables: settings.testInputs,
+        variables: testVariables,
         outputVariables: settings.outputVariables.map(v => ({
           id: v.id,
           name: v.name,
           description: v.description
-        }))
+        })),
+        hasFileVariables: fileVariables.length > 0,
+        fileVariableNames: fileVariables.map(v => v.name)
       }
 
       // Call the AI processing API
@@ -329,7 +485,7 @@ export function AILogicSection({
           
           // Store both input test data AND AI outputs in localStorage for preview mode
           const allTestData = {
-            ...settings.testInputs,  // User input data from Step 1
+            ...(settings.testInputs || {}),  // User input data from Step 1
             ...result.outputs        // AI-generated outputs from Step 4
           }
           storeAITestResults(allTestData)
@@ -390,29 +546,87 @@ export function AILogicSection({
 
             {expandedSections.step1 && (
               <div className="mt-6">
-                {currentAvailableVariables.length === 0 ? (
+                {extractedVariablesWithTypes.length === 0 ? (
                   <div className="text-center py-8 text-gray-400 bg-gray-900 rounded-lg">
                     <p className="font-medium">No input variables available</p>
                     <p className="text-sm">Add question sections first to create variables for AI processing</p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     <p className="text-sm text-gray-300 mb-4">
                       Enter example answers for each question. These help you design your AI prompt.
                     </p>
-                    {currentAvailableVariables.map((variable) => (
-                      <div key={variable} className="flex items-center space-x-4">
-                        <Label className="text-sm font-medium text-gray-300 w-32 flex-shrink-0">
-                          @{variable}:
-                        </Label>
-                        <Input
-                          value={settings.testInputs[variable] || ''}
-                          onChange={(e) => updateTestInput(variable, e.target.value)}
-                          placeholder={`Example answer for ${variable}`}
-                          className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                        />
+                    
+                    {/* Text Variables */}
+                    {textVariables.length > 0 && (
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-medium text-gray-200">Text Inputs</h4>
+                        {textVariables.map((variable) => (
+                          <div key={variable.name} className="flex items-center space-x-4">
+                            <Label className="text-sm font-medium text-gray-300 w-32 flex-shrink-0">
+                              @{variable.name}:
+                            </Label>
+                            <Input
+                              value={(settings.testInputs || {})[variable.name] || ''}
+                              onChange={(e) => updateTestInput(variable.name, e.target.value)}
+                              placeholder={`Example answer for ${variable.title}`}
+                              className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                            />
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
+                    
+                    {/* File Variables */}
+                    {fileVariables.length > 0 && (
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-medium text-gray-200 flex items-center space-x-2">
+                          <Upload className="w-4 h-4" />
+                          <span>Test File Uploads</span>
+                        </h4>
+                        <div className="bg-gray-900 p-4 rounded-lg space-y-4">
+                          <p className="text-sm text-gray-300 mb-3">
+                            Upload test files to see how your AI will process them:
+                          </p>
+                          {fileVariables.map((variable) => (
+                            <div key={variable.name} className="space-y-2">
+                              <div className="flex items-center space-x-3">
+                                <Badge variant="outline" className="border-purple-500 text-purple-300">
+                                  @{variable.name}
+                                </Badge>
+                                <span className="text-sm text-gray-400">{variable.title}</span>
+                              </div>
+                              <div className="ml-4">
+                                <input
+                                  type="file"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0] || null
+                                    updateTestFile(variable.name, file)
+                                  }}
+                                  className="block w-full text-sm text-gray-300 
+                                           file:mr-4 file:py-2 file:px-4
+                                           file:rounded-md file:border-0
+                                           file:text-sm file:font-medium
+                                           file:bg-purple-600 file:text-white
+                                           hover:file:bg-purple-700
+                                           file:cursor-pointer"
+                                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+                                />
+                                {(settings.testFiles || {})[variable.name] && (
+                                  <p className="text-xs text-green-400 mt-1 flex items-center space-x-1">
+                                    <Check className="w-3 h-3" />
+                                    <span>✓ {(settings.testFiles || {})[variable.name]?.name}</span>
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          <p className="text-xs text-gray-500 mt-3">
+                            💡 These test files will be analyzed during AI testing to show you exactly how your prompts work with real content.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -758,12 +972,20 @@ export function AILogicSection({
       <Card className="p-6 bg-blue-900 border-blue-700">
         <h4 className="font-medium text-blue-100 mb-3">How This Works</h4>
         <ul className="text-sm text-blue-200 space-y-2">
-          <li>• <strong>Step 1:</strong> Add example answers to see how your AI will work</li>
-          <li>• <strong>Step 2:</strong> Write a prompt using @variables to reference user inputs</li>
+          <li>• <strong>Step 1:</strong> Add example answers and upload test files to see how your AI will work</li>
+          <li>• <strong>Step 2:</strong> Write a prompt using @variables to reference user inputs and file content</li>
           <li>• <strong>Step 3:</strong> Define what outputs the AI should generate</li>
-          <li>• <strong>Step 4:</strong> Test to see the AI response with your examples</li>
+          <li>• <strong>Step 4:</strong> Test to see the AI response with your examples and real uploaded files</li>
           <li>• <strong>Final:</strong> Use output variables like @recommendation in your results section</li>
         </ul>
+        {fileVariables.length > 0 && (
+          <div className="mt-4 p-3 bg-purple-900/50 border border-purple-700 rounded-lg">
+            <p className="text-sm text-purple-200 font-medium mb-2">📄 File Upload Integration</p>
+            <p className="text-xs text-purple-300">
+              Your AI can analyze uploaded files! Use @{fileVariables.map(v => v.name).join(', @')} in your prompt to reference file content. The AI will receive the extracted text content from documents, images with OCR, and other supported file types.
+            </p>
+          </div>
+        )}
       </Card>
     </div>
   )

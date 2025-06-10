@@ -22,6 +22,31 @@ export function isQuestionSection(sectionType: string): boolean {
 }
 
 /**
+ * Check if a text_question section is actually an upload question
+ */
+export function isUploadQuestion(config: any): boolean {
+  // Check for upload-specific configuration fields
+  return !!(
+    config.maxFiles ||
+    config.allowImages ||
+    config.allowDocuments ||
+    config.allowVideo ||
+    config.allowAudio ||
+    config.maxFileSize
+  )
+}
+
+/**
+ * Check if section should be treated as a file variable for AI processing
+ */
+export function isFileVariable(section: SectionWithOptions): boolean {
+  if (section.type === 'text_question') {
+    return isUploadQuestion(section.configuration || {})
+  }
+  return false
+}
+
+/**
  * Extract all question section variables from campaign sections
  * Returns mapping of variable name to original title
  */
@@ -38,6 +63,26 @@ export function extractSectionVariables(sections: SectionWithOptions[]): Record<
     })
     
   return variables
+}
+
+/**
+ * Extract input variables with type information for AI processing
+ * Returns array of variables with metadata
+ */
+export function extractInputVariablesWithTypes(sections: SectionWithOptions[], currentOrder: number): Array<{
+  name: string
+  title: string
+  type: 'text' | 'file'
+  section: SectionWithOptions
+}> {
+  return sections
+    .filter(s => s.order_index < currentOrder && isQuestionSection(s.type) && s.title)
+    .map(section => ({
+      name: titleToVariableName(section.title!),
+      title: section.title!,
+      type: isFileVariable(section) ? 'file' : 'text',
+      section
+    }))
 }
 
 /**
