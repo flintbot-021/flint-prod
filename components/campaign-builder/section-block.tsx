@@ -206,7 +206,7 @@ export function SectionBlock({
     // Use content component factory for content types
     const contentTypes = [
       'info', 'text-block', 'image-block', 'hero', 'content', 'video', 'divider', 'spacer',
-      'content-hero', 'content-basic', 'logic-ai', 'output-results', 'output-download', 'output-redirect', 'output-dynamic-redirect'
+      'content-hero', 'content-basic', 'logic-ai', 'output-results', 'output-download', 'output-redirect', 'output-dynamic-redirect', 'output-html-embed'
     ]
     if (contentTypes.includes(section.type)) {
       return (

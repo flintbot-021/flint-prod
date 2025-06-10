@@ -14,7 +14,8 @@ import {
   InfoSection,
   LogicSection,
   OutputSection,
-  DynamicRedirectSection
+  DynamicRedirectSection,
+  HtmlEmbedSection
 } from './sections'
 
 // =============================================================================
@@ -144,6 +145,9 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     
     case 'dynamic_redirect':
       return <DynamicRedirectSection {...enhancedProps} />
+    
+    case 'html_embed':
+      return <HtmlEmbedSection {...enhancedProps} />
     
     default:
       return <UnsupportedSection {...enhancedProps} />
