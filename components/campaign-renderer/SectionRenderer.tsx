@@ -12,7 +12,8 @@ import {
   SliderSection,
   InfoSection,
   LogicSection,
-  OutputSection
+  OutputSection,
+  DynamicRedirectSection
 } from './sections'
 
 // =============================================================================
@@ -109,6 +110,9 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     
     case 'output':
       return <OutputSection {...enhancedProps} />
+    
+    case 'dynamic_redirect':
+      return <DynamicRedirectSection {...enhancedProps} />
     
     default:
       return <UnsupportedSection {...enhancedProps} />

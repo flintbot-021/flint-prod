@@ -121,4 +121,39 @@ export function buildVariablesFromInputs(
   
   console.log('🎯 Final variables:', variables)
   return variables
+}
+
+/**
+ * Extract available variables from sections for use in other components
+ * Returns array of variable info objects
+ */
+export function getVariablesFromSections(sections: any[]): Array<{name: string; description: string; type: 'input' | 'output'}> {
+  const variables: Array<{name: string; description: string; type: 'input' | 'output'}> = []
+  
+  sections.forEach(section => {
+    // Input variables from question sections
+    if (isQuestionSection(section.type) && section.title) {
+      const variableName = titleToVariableName(section.title)
+      variables.push({
+        name: variableName,
+        description: `User input from: ${section.title}`,
+        type: 'input'
+      })
+    }
+    
+    // Output variables from AI logic sections
+    if (section.type === 'logic-ai' && section.settings?.outputVariables) {
+      section.settings.outputVariables.forEach((outputVar: any) => {
+        if (outputVar.name) {
+          variables.push({
+            name: outputVar.name,
+            description: outputVar.description || `AI output: ${outputVar.name}`,
+            type: 'output'
+          })
+        }
+      })
+    }
+  })
+  
+  return variables
 } 

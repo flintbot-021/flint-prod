@@ -22,7 +22,8 @@ export type SectionType =
   | 'info'
   | 'capture'
   | 'logic'
-  | 'output';
+  | 'output'
+  | 'dynamic_redirect';
 
 export type ResponseType = 
   | 'text'
@@ -384,6 +385,26 @@ export interface OutputConfiguration extends BaseSectionConfiguration {
 }
 
 /**
+ * Dynamic redirect section configuration
+ */
+export interface DynamicRedirectConfiguration extends BaseSectionConfiguration {
+  targetUrl: string;
+  dataTransmissionMethod: 'localStorage' | 'sessionStorage' | 'urlParams' | 'sessionAPI';
+  delay: number;
+  showPreloader: boolean;
+  preloaderMessage: string;
+  variableMappings: Array<{
+    id: string;
+    campaignVariable: string;
+    webflowAttribute: string;
+    elementSelector?: string;
+    transformationType: 'text' | 'html' | 'attribute' | 'style';
+  }>;
+  customAttributes: boolean;
+  scriptTemplate?: string;
+}
+
+/**
  * Union type for all section configurations
  */
 export type SectionConfiguration = 
@@ -393,7 +414,8 @@ export type SectionConfiguration =
   | InfoConfiguration
   | CaptureConfiguration
   | LogicConfiguration
-  | OutputConfiguration;
+  | OutputConfiguration
+  | DynamicRedirectConfiguration;
 
 /**
  * Variable configuration for different variable types
