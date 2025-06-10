@@ -10,8 +10,6 @@ import { getAITestResults } from '@/lib/utils/ai-test-storage'
 interface DynamicRedirectConfig {
   targetUrl?: string
   dataTransmissionMethod?: 'localStorage' | 'sessionStorage' | 'urlParams' | 'postMessage'
-  delay?: number
-  showPreloader?: boolean
   preloaderMessage?: string
   variableMappings?: any[]
 }
@@ -27,7 +25,6 @@ export function DynamicRedirectSection({
   userInputs = {},
   sections = []
 }: SectionRendererProps) {
-  const [countdown, setCountdown] = useState<number>(0)
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hasRedirectedRef = useRef(false)
@@ -37,112 +34,93 @@ export function DynamicRedirectSection({
   const settings = {
     targetUrl: redirectConfig?.targetUrl || '',
     dataTransmissionMethod: redirectConfig?.dataTransmissionMethod || 'postMessage',
-    delay: redirectConfig?.delay || 2,
-    showPreloader: redirectConfig?.showPreloader !== false,
-    preloaderMessage: redirectConfig?.preloaderMessage || 'Preparing your personalized page...',
+    preloaderMessage: redirectConfig?.preloaderMessage || 'Get your personalized results',
     variableMappings: redirectConfig?.variableMappings || []
   }
 
-  useEffect(() => {
+  // Prepare data for transmission
+  const prepareAndRedirect = async () => {
     // Prevent multiple redirects
-    if (hasRedirectedRef.current) return
-
-    if (!settings.targetUrl) {
-      setError('No target URL configured')
+    if (hasRedirectedRef.current) {
+      console.log('🛑 Redirect already happened, skipping')
       return
     }
-
-    // Validate URL
-    try {
-      new URL(settings.targetUrl)
-    } catch {
-      setError('Invalid target URL')
-      return
-    }
-
-    // Start countdown
-    setCountdown(settings.delay)
     
-    // Prepare data for transmission
-    const prepareAndRedirect = async () => {
-      try {
-        console.log('🔍 =================================')
-        console.log('🔍 DYNAMIC REDIRECT DEBUG SESSION')
-        console.log('🔍 =================================')
-        console.log('📋 Total sections received:', sections.length)
-        console.log('📝 Total user inputs received:', Object.keys(userInputs).length)
-        console.log('🔍 Raw sections:', sections.map(s => ({ id: s.id, title: s.title, type: s.type })))
-        console.log('🔍 Raw userInputs:', userInputs)
-        
-        // Build variables from all campaign data
-        const inputVariables = buildVariablesFromInputs(sections, userInputs)
-        console.log('📊 Input variables result:', inputVariables)
-        
-        const aiVariables = getAITestResults() || {}
-        console.log('🤖 AI variables result:', aiVariables)
-        
-        const allData = {
-          ...inputVariables,
-          ...aiVariables,
-          // Add metadata
-          campaignId: section.id,
-          timestamp: new Date().toISOString(),
-          source: 'flint-campaign'
-        }
+    try {
+      console.log('🔍 =================================')
+      console.log('🔍 DYNAMIC REDIRECT DEBUG SESSION')
+      console.log('🔍 =================================')
+      console.log('📋 Total sections received:', sections.length)
+      console.log('📝 Total user inputs received:', Object.keys(userInputs).length)
+      console.log('🔍 Raw sections:', sections.map(s => ({ id: s.id, title: s.title, type: s.type })))
+      console.log('🔍 Raw userInputs:', userInputs)
+      
+      // Build variables from all campaign data
+      const inputVariables = buildVariablesFromInputs(sections, userInputs)
+      console.log('📊 Input variables result:', inputVariables)
+      
+      const aiVariables = getAITestResults() || {}
+      console.log('🤖 AI variables result:', aiVariables)
+      
+      const allData = {
+        ...inputVariables,
+        ...aiVariables,
+        // Add metadata
+        campaignId: section.id,
+        timestamp: new Date().toISOString(),
+        source: 'flint-campaign'
+      }
 
-        console.log('🚀 Final data to store:', allData)
-        console.log('📊 Data keys:', Object.keys(allData))
-        console.log('📊 Data values:', Object.values(allData))
+      console.log('🚀 Final data to store:', allData)
+      console.log('📊 Data keys:', Object.keys(allData))
+      console.log('📊 Data values:', Object.values(allData))
 
-        // Transmit data based on method
-        switch (settings.dataTransmissionMethod) {
-          case 'localStorage':
-            const dataToStore = JSON.stringify(allData)
-            console.log('💾 About to store data:', dataToStore)
-            localStorage.setItem('flint_campaign_data', dataToStore)
-            const storedData = localStorage.getItem('flint_campaign_data')
-            console.log('✅ Verification - Data stored in localStorage:', storedData)
-            console.log('🔍 Verification - Parsed stored data:', JSON.parse(storedData || '{}'))
-            break
-            
-          case 'sessionStorage':
-            sessionStorage.setItem('flint_campaign_data', JSON.stringify(allData))
-            break
-            
-          case 'urlParams':
-            // For URL params, we need to be careful about URL length limits
-            const urlParams = new URLSearchParams()
-            
-            // Only include essential data for URL params due to length limits
-            Object.entries(allData).forEach(([key, value]) => {
-              if (value !== null && value !== undefined) {
-                const stringValue = String(value)
-                // Skip very long values to prevent URL overflow
-                if (stringValue.length < 100) {
-                  urlParams.set(key, stringValue)
-                }
+      // Transmit data based on method
+      switch (settings.dataTransmissionMethod) {
+        case 'localStorage':
+          const dataToStore = JSON.stringify(allData)
+          console.log('💾 About to store data:', dataToStore)
+          localStorage.setItem('flint_campaign_data', dataToStore)
+          const storedData = localStorage.getItem('flint_campaign_data')
+          console.log('✅ Verification - Data stored in localStorage:', storedData)
+          console.log('🔍 Verification - Parsed stored data:', JSON.parse(storedData || '{}'))
+          
+          // Open window for localStorage
+          console.log('🚀 Opening Webflow page for localStorage method...')
+          window.open(settings.targetUrl, '_blank')
+          hasRedirectedRef.current = true
+          return
+          
+        case 'sessionStorage':
+          sessionStorage.setItem('flint_campaign_data', JSON.stringify(allData))
+          
+          // Open window for sessionStorage
+          console.log('🚀 Opening Webflow page for sessionStorage method...')
+          window.open(settings.targetUrl, '_blank')
+          hasRedirectedRef.current = true
+          return
+          
+        case 'urlParams':
+          // For URL params, we need to be careful about URL length limits
+          const urlParams = new URLSearchParams()
+          
+          // Only include essential data for URL params due to length limits
+          Object.entries(allData).forEach(([key, value]) => {
+            if (value !== null && value !== undefined) {
+              const stringValue = String(value)
+              // Skip very long values to prevent URL overflow
+              if (stringValue.length < 100) {
+                urlParams.set(key, stringValue)
               }
-            })
-            
-            const separator = settings.targetUrl.includes('?') ? '&' : '?'
-            const finalUrl = `${settings.targetUrl}${separator}${urlParams.toString()}`
-            
-            // Check URL length (most browsers support ~2000 chars)
-            if (finalUrl.length > 1900) {
-              console.warn('URL too long, falling back to postMessage method')
-              // Fall through to postMessage approach
-            } else {
-              // For URL params, open in new window for debugging
-              console.log('🚀 Opening Webflow page with URL params in new window for debugging...')
-              window.open(finalUrl, '_blank')
-              hasRedirectedRef.current = true
-              return
             }
-            break
-            
-          case 'postMessage':
-          default:
-            // Use postMessage API for cross-origin data transfer (best approach)
+          })
+          
+          const separator = settings.targetUrl.includes('?') ? '&' : '?'
+          const finalUrl = `${settings.targetUrl}${separator}${urlParams.toString()}`
+          
+          // Check URL length (most browsers support ~2000 chars)
+          if (finalUrl.length > 1900) {
+            console.warn('URL too long, falling back to postMessage method')
             // Store data temporarily in sessionStorage with a unique key
             const transferKey = `flint_transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
             sessionStorage.setItem(transferKey, JSON.stringify(allData))
@@ -151,18 +129,18 @@ export function DynamicRedirectSection({
             const keyParam = settings.targetUrl.includes('?') ? '&' : '?'
             const transferUrl = `${settings.targetUrl}${keyParam}flint_key=${transferKey}`
             
-            console.log('🚀 Opening Webflow page with postMessage transfer...')
+            console.log('🚀 Opening Webflow page with postMessage transfer (URL fallback)...')
             const targetWindow = window.open(transferUrl, '_blank')
             
             // Send data via postMessage after a short delay (let page load)
             setTimeout(() => {
               if (targetWindow && !targetWindow.closed) {
-                console.log('📤 Sending data via postMessage...')
+                console.log('📤 Sending data via postMessage (URL fallback)...')
                 targetWindow.postMessage({
                   type: 'FLINT_CAMPAIGN_DATA',
                   data: allData,
                   transferKey: transferKey
-                }, '*') // In production, specify exact origin for security
+                }, '*')
                 
                 // Clean up after sending
                 setTimeout(() => {
@@ -173,47 +151,83 @@ export function DynamicRedirectSection({
             
             hasRedirectedRef.current = true
             return
-        }
-
-        // For localStorage/sessionStorage, open in new window for debugging
-        console.log('🚀 Opening Webflow page in new window for debugging...')
-        window.open(settings.targetUrl, '_blank')
-        hasRedirectedRef.current = true
-
-      } catch (error) {
-        console.error('Error preparing redirect data:', error)
-        setError('Failed to prepare data for redirect')
+          } else {
+            // For URL params, open in new window for debugging
+            console.log('🚀 Opening Webflow page with URL params in new window for debugging...')
+            window.open(finalUrl, '_blank')
+            hasRedirectedRef.current = true
+            return
+          }
+          break
+          
+        case 'postMessage':
+        default:
+          // Use postMessage API for cross-origin data transfer (best approach)
+          // Store data temporarily in sessionStorage with a unique key
+          const transferKey = `flint_transfer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+          sessionStorage.setItem(transferKey, JSON.stringify(allData))
+          
+          // Open target window with transfer key
+          const keyParam = settings.targetUrl.includes('?') ? '&' : '?'
+          const transferUrl = `${settings.targetUrl}${keyParam}flint_key=${transferKey}`
+          
+          console.log('🚀 Opening Webflow page with postMessage transfer...')
+          const targetWindow = window.open(transferUrl, '_blank')
+          
+          // Send data via postMessage after a short delay (let page load)
+          setTimeout(() => {
+            if (targetWindow && !targetWindow.closed) {
+              console.log('📤 Sending data via postMessage...')
+              targetWindow.postMessage({
+                type: 'FLINT_CAMPAIGN_DATA',
+                data: allData,
+                transferKey: transferKey
+              }, '*') // In production, specify exact origin for security
+              
+              // Clean up after sending
+              setTimeout(() => {
+                sessionStorage.removeItem(transferKey)
+              }, 5000)
+            }
+          }, 1000)
+          
+          hasRedirectedRef.current = true
+          return
       }
+
+    } catch (error) {
+      console.error('Error preparing redirect data:', error)
+      setError('Failed to prepare data for redirect')
+    }
+  }
+
+  useEffect(() => {
+    // Validate URL on mount
+    if (!settings.targetUrl) {
+      setError('No target URL configured')
+      return
     }
 
-    // Countdown timer
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          setIsRedirecting(true)
-          prepareAndRedirect()
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    try {
+      new URL(settings.targetUrl)
+    } catch {
+      setError('Invalid target URL')
+      return
+    }
 
-    // Complete section immediately
+    // Complete section immediately when component mounts
     onSectionComplete(index, {
-      [section.id]: 'redirect_prepared',
+      [section.id]: 'redirect_ready',
       redirect_target: settings.targetUrl,
       data_method: settings.dataTransmissionMethod
     })
-
-    return () => clearInterval(timer)
   }, [])
 
-  const handleManualRedirect = () => {
+  const handleRedirect = () => {
     if (!hasRedirectedRef.current && settings.targetUrl) {
+      console.log('🚀 Opening personalized page...')
       setIsRedirecting(true)
-      window.location.href = settings.targetUrl
-      hasRedirectedRef.current = true
+      prepareAndRedirect()
     }
   }
 
@@ -270,22 +284,6 @@ export function DynamicRedirectSection({
               <p className="text-muted-foreground">{description}</p>
             )}
 
-            {!isRedirecting && countdown > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">
-                  Redirecting in {countdown} second{countdown !== 1 ? 's' : ''}...
-                </p>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-1000"
-                    style={{ 
-                      width: `${((settings.delay - countdown) / settings.delay) * 100}%` 
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
             {isRedirecting && (
               <p className="text-sm text-muted-foreground">
                 Taking you to your personalized page...
@@ -293,18 +291,19 @@ export function DynamicRedirectSection({
             )}
           </div>
 
-          {/* Manual redirect option */}
+          {/* Redirect button */}
           {!isRedirecting && (
             <button
-              onClick={handleManualRedirect}
+              onClick={handleRedirect}
               className={cn(
-                "px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                "flex items-center space-x-2 mx-auto",
-                "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl"
+                "px-8 py-4 rounded-lg font-semibold transition-all duration-200",
+                "flex items-center space-x-3 mx-auto text-lg",
+                "bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700",
+                "text-white shadow-lg hover:shadow-xl transform hover:scale-105"
               )}
             >
-              <span>Go Now</span>
-              <ExternalLink className="h-4 w-4" />
+              <span>View Your Results</span>
+              <ExternalLink className="h-5 w-5" />
             </button>
           )}
 
@@ -318,7 +317,6 @@ export function DynamicRedirectSection({
                 {JSON.stringify({
                   targetUrl: settings.targetUrl,
                   method: settings.dataTransmissionMethod,
-                  delay: settings.delay,
                   mappingsCount: settings.variableMappings.length
                 }, null, 2)}
               </pre>
