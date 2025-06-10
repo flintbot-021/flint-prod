@@ -117,42 +117,24 @@ export function DynamicRedirectSection({
       if (value === undefined || value === null) return;
       
       if (CONFIG.debug) {
-        console.log(\`🔍 Processing variable: @\${key} = "\${value}"\`);
+        console.log(\`🔍 Processing variable: \${key} = "\${value}"\`);
       }
       
-      // 1. Replace @variable in text content using a more robust approach
-      function replaceInTextNodes(node) {
-        if (node.nodeType === Node.TEXT_NODE) {
-          const originalText = node.textContent;
-          if (originalText && originalText.includes(\`@\${key}\`)) {
-            const newText = originalText.replace(
-              new RegExp(\`@\${key}\\\\b\`, 'g'), 
-              value
-            );
-            if (newText !== originalText) {
-              node.textContent = newText;
-              if (CONFIG.debug) {
-                console.log(\`📝 Replaced @\${key} in text: "\${originalText}" → "\${newText}"\`);
-              }
-            }
-          }
-        } else {
-          // Recursively process child nodes
-          for (let child of node.childNodes) {
-            replaceInTextNodes(child);
-          }
-        }
-      }
-      
-      // Process the entire document body
-      replaceInTextNodes(document.body);
-      
-      // 2. Replace data-variable attributes
-      const attributeElements = document.querySelectorAll(\`[data-variable="\${key}"]\`);
-      attributeElements.forEach(element => {
+      // Find elements with variable-name attribute
+      const variableElements = document.querySelectorAll(\`[variable-name="\${key}"]\`);
+      variableElements.forEach(element => {
         element.textContent = value;
         if (CONFIG.debug) {
-          console.log(\`🏷️ Set data-variable="\${key}" to: "\${value}"\`);
+          console.log(\`✅ Set variable-name="\${key}" to: "\${value}"\`);
+        }
+      });
+      
+      // Also support legacy data-variable for backwards compatibility
+      const legacyElements = document.querySelectorAll(\`[data-variable="\${key}"]\`);
+      legacyElements.forEach(element => {
+        element.textContent = value;
+        if (CONFIG.debug) {
+          console.log(\`✅ Set data-variable="\${key}" to: "\${value}" (legacy)\`);
         }
       });
     });
@@ -365,18 +347,18 @@ export function DynamicRedirectSection({
               <div className="flex items-start gap-3">
                 <span className="font-bold text-lg">1.</span>
                 <div>
-                  <div className="font-medium">Inline Text Variables:</div>
-                  <div>Type <code className="bg-blue-200 px-2 py-1 rounded font-mono">@variablename</code> directly in your Webflow text elements</div>
-                  <div className="text-xs mt-1 opacity-75">Example: "Hello @name! Your score is @score."</div>
+                  <div className="font-medium">Add Variable Attributes:</div>
+                  <div>Add <code className="bg-blue-200 px-2 py-1 rounded font-mono">variable-name="variablename"</code> to any text element</div>
+                  <div className="text-xs mt-1 opacity-75">Example: &lt;h2 variable-name="name"&gt;Fallback Text&lt;/h2&gt;</div>
                 </div>
               </div>
               
               <div className="flex items-start gap-3">
                 <span className="font-bold text-lg">2.</span>
                 <div>
-                  <div className="font-medium">Element Attributes:</div>
-                  <div>Add <code className="bg-blue-200 px-2 py-1 rounded font-mono">data-variable="variablename"</code> to any element</div>
-                  <div className="text-xs mt-1 opacity-75">Example: &lt;div data-variable="recommendation"&gt;&lt;/div&gt;</div>
+                  <div className="font-medium">Multiple Variables:</div>
+                  <div>Use different variable names for different data points</div>
+                  <div className="text-xs mt-1 opacity-75">Example: &lt;span variable-name="score"&gt;0&lt;/span&gt;</div>
                 </div>
               </div>
               
@@ -409,9 +391,10 @@ export function DynamicRedirectSection({
           <div className="p-4 bg-amber-50 rounded-lg">
             <h4 className="font-medium text-amber-900 mb-2">💡 Real Examples:</h4>
             <div className="space-y-2 text-sm text-amber-800">
-              <div><span className="font-medium">Webflow Text:</span> <code className="bg-amber-200 px-1 rounded font-mono">"Thanks @name! Your result: @recommendation"</code></div>
-              <div><span className="font-medium">Webflow Element:</span> <code className="bg-amber-200 px-1 rounded font-mono">&lt;h2 data-variable="score"&gt;&lt;/h2&gt;</code></div>
-              <div><span className="font-medium">Button Text:</span> <code className="bg-amber-200 px-1 rounded font-mono">&lt;a data-variable="call_to_action"&gt;Click Here&lt;/a&gt;</code></div>
+              <div><span className="font-medium">Heading:</span> <code className="bg-amber-200 px-1 rounded font-mono">&lt;h1 variable-name="name"&gt;Your Name&lt;/h1&gt;</code></div>
+              <div><span className="font-medium">Result Text:</span> <code className="bg-amber-200 px-1 rounded font-mono">&lt;p variable-name="recommendation"&gt;Your result&lt;/p&gt;</code></div>
+              <div><span className="font-medium">Score Display:</span> <code className="bg-amber-200 px-1 rounded font-mono">&lt;span variable-name="score"&gt;0&lt;/span&gt;</code></div>
+              <div><span className="font-medium">Button Text:</span> <code className="bg-amber-200 px-1 rounded font-mono">&lt;a variable-name="call_to_action"&gt;Click Here&lt;/a&gt;</code></div>
             </div>
           </div>
         </CardContent>
