@@ -5,7 +5,7 @@ import { Loader2, Zap, AlertCircle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { storeAITestResults, clearAITestResults } from '@/lib/utils/ai-test-storage'
-import { buildVariablesFromInputs } from '@/lib/utils/section-variables'
+import { buildVariablesFromInputs, extractInputVariablesWithTypes, isFileVariable } from '@/lib/utils/section-variables'
 
 function LogicSectionComponent({
   section,
@@ -104,7 +104,14 @@ function LogicSectionComponent({
       console.log('✅ Simple variable mapping:', variables)
       console.log('✅ Variables found:', Object.keys(variables))
 
-      setProcessingStatus('Sending to AI...')
+      // Check if we have file variables that need special processing
+      const variablesWithTypes = extractInputVariablesWithTypes(sections, index)
+      const fileVariables = variablesWithTypes.filter(v => v.type === 'file')
+      const hasFileVariables = fileVariables.length > 0
+      
+      console.log('📁 File variables detected:', fileVariables.map(v => v.name))
+
+      setProcessingStatus(hasFileVariables ? 'Processing files and sending to AI...' : 'Sending to AI...')
 
       // Prepare the AI request using the predefined configuration
       const aiRequest = {
@@ -114,19 +121,49 @@ function LogicSectionComponent({
           id: v.id,
           name: v.name,
           description: v.description
-        }))
+        })),
+        hasFileVariables,
+        fileVariableNames: fileVariables.map(v => v.name),
+        // Add lead/campaign info for file processing
+        leadId: userInputs.leadId || 'preview-lead',
+        campaignId: userInputs.campaignId || 'preview-campaign'
       }
 
       console.log('🤖 AI Request being sent:', aiRequest)
 
-      // Call the AI processing API
-      const response = await fetch('/api/ai-processing', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(aiRequest)
-      })
+      // Use the appropriate API endpoint based on whether we have file variables
+      const apiEndpoint = hasFileVariables ? '/api/ai-processing-with-files' : '/api/ai-processing'
+      
+      let response: Response
+      
+      if (hasFileVariables) {
+        // For file variables, we need to send FormData 
+        // In a live campaign, we'd need to fetch the actual files from storage
+        // For now, create a FormData request with the metadata
+        const formData = new FormData()
+        formData.append('prompt', aiRequest.prompt)
+        formData.append('variables', JSON.stringify(aiRequest.variables))
+        formData.append('outputVariables', JSON.stringify(aiRequest.outputVariables))
+        formData.append('hasFileVariables', 'true')
+        formData.append('fileVariableNames', JSON.stringify(aiRequest.fileVariableNames))
+        
+        // TODO: Fetch actual files from storage and append them
+        // For now, we'll need to update the API to handle cases where files aren't uploaded
+        
+        response = await fetch(apiEndpoint, {
+          method: 'POST',
+          body: formData
+        })
+      } else {
+        // Call the AI processing API with JSON for text-only variables
+        response = await fetch(apiEndpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(aiRequest)
+        })
+      }
 
       if (!response.ok) {
         throw new Error(`AI API error: ${response.status} ${response.statusText}`)

@@ -19,6 +19,9 @@ export interface AITestRequest {
   prompt: string
   variables: Record<string, any>
   outputVariables: OutputVariable[]
+  hasFileVariables?: boolean
+  fileVariableNames?: string[]
+  imageVariables?: Record<string, { base64Data: string; mimeType: string; fileName: string }>
 }
 
 export interface AITestResponse {
@@ -37,7 +40,7 @@ export class AIProcessingEngine {
   private apiKey: string
   
   // Sensible defaults - no user configuration needed
-  private readonly DEFAULT_MODEL = 'gpt-4o' // Supports JSON mode and is latest
+  private readonly DEFAULT_MODEL = 'gpt-4o' // Supports JSON mode, vision, and is latest
   private readonly DEFAULT_TEMPERATURE = 0.7
   private readonly DEFAULT_MAX_TOKENS = 1000
   private readonly DEFAULT_TIMEOUT = 30000
@@ -57,11 +60,17 @@ export class AIProcessingEngine {
     const startTime = Date.now()
 
     try {
-      // 1. Replace variables in prompt
-      const processedPrompt = this.replaceVariables(request.prompt, request.variables)
+      // 1. Replace variables in prompt (text variables normally, image variables with placeholders)
+      const textVariables = { ...request.variables }
+      if (request.imageVariables) {
+        Object.keys(request.imageVariables).forEach(key => {
+          delete textVariables[key]
+        })
+      }
+      const processedPrompt = this.replaceVariables(request.prompt, textVariables, request.imageVariables)
 
-      // 2. Prepare AI request with defaults
-      const aiRequest = this.prepareAIRequest(processedPrompt, request.outputVariables)
+      // 2. Prepare AI request with defaults and image support
+      const aiRequest = this.prepareAIRequest(processedPrompt, request.outputVariables, request.imageVariables)
 
       // 3. Call OpenAI API
       const aiResponse = await this.callOpenAI(aiRequest)
@@ -94,7 +103,7 @@ export class AIProcessingEngine {
   /**
    * Replace variables in prompt text with actual values
    */
-  private replaceVariables(prompt: string, variables: Record<string, any>): string {
+  private replaceVariables(prompt: string, variables: Record<string, any>, imageVariables?: Record<string, any>): string {
     let processedPrompt = prompt
 
     console.log('🔄 Starting variable replacement...')
@@ -112,6 +121,19 @@ export class AIProcessingEngine {
         console.log(`🔄 Replaced @${name} with "${stringValue}"`)
       }
     })
+
+    // Replace image variable mentions with placeholders since images are sent separately
+    if (imageVariables) {
+      Object.entries(imageVariables).forEach(([name, imageData]) => {
+        const regex = new RegExp(`@${name}\\b`, 'g')
+        const beforeReplace = processedPrompt
+        processedPrompt = processedPrompt.replace(regex, `[Image: ${imageData.fileName}]`)
+        
+        if (beforeReplace !== processedPrompt) {
+          console.log(`🔄 Replaced @${name} with image placeholder for ${imageData.fileName}`)
+        }
+      })
+    }
 
     console.log('🔄 Final processed prompt:', processedPrompt)
     return processedPrompt
@@ -135,10 +157,45 @@ export class AIProcessingEngine {
   /**
    * Prepare the OpenAI API request with sensible defaults
    */
-  private prepareAIRequest(prompt: string, outputVariables: OutputVariable[]) {
+  private prepareAIRequest(prompt: string, outputVariables: OutputVariable[], imageVariables?: Record<string, { base64Data: string; mimeType: string; fileName: string }>) {
     // Combine user's domain prompt with output instructions
     const combinedPrompt = this.buildCombinedPrompt(prompt, outputVariables)
 
+    // Check if we have images - if so, create multi-modal content
+    if (imageVariables && Object.keys(imageVariables).length > 0) {
+      const content: Array<any> = [
+        {
+          type: 'text',
+          text: combinedPrompt
+        }
+      ]
+
+      // Add images to content
+      Object.entries(imageVariables).forEach(([variableName, imageData]) => {
+        content.push({
+          type: 'image_url',
+          image_url: {
+            url: `data:${imageData.mimeType};base64,${imageData.base64Data}`,
+            detail: 'high' // Use high detail for better analysis
+          }
+        })
+      })
+
+      return {
+        model: this.DEFAULT_MODEL,
+        messages: [
+          {
+            role: 'user' as const,
+            content: content
+          }
+        ],
+        max_tokens: this.DEFAULT_MAX_TOKENS,
+        temperature: this.DEFAULT_TEMPERATURE,
+        response_format: outputVariables.length > 0 ? { type: 'json_object' as const } : undefined
+      }
+    }
+
+    // Fallback to text-only request
     return {
       model: this.DEFAULT_MODEL,
       messages: [
