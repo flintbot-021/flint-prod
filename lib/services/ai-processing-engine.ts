@@ -22,6 +22,7 @@ export interface AITestRequest {
   hasFileVariables?: boolean
   fileVariableNames?: string[]
   imageVariables?: Record<string, { base64Data: string; mimeType: string; fileName: string }>
+  fileObjects?: Record<string, { file: File; variableName: string }>
 }
 
 export interface AITestResponse {
@@ -38,6 +39,7 @@ export interface AITestResponse {
 
 export class AIProcessingEngine {
   private apiKey: string
+  private openai: any // We'll import OpenAI client
   
   // Sensible defaults - no user configuration needed
   private readonly DEFAULT_MODEL = 'gpt-4o' // Supports JSON mode, vision, and is latest
@@ -46,6 +48,9 @@ export class AIProcessingEngine {
   private readonly DEFAULT_TIMEOUT = 30000
 
   constructor(apiKey: string) {
+    if (!apiKey) {
+      throw new Error('OpenAI API key is required')
+    }
     this.apiKey = apiKey
   }
 
@@ -54,44 +59,145 @@ export class AIProcessingEngine {
   // =============================================================================
 
   /**
-   * Process a prompt with variable substitution and AI execution
+   * Process AI request with support for direct file uploads
    */
   async processPrompt(request: AITestRequest): Promise<AITestResponse> {
     const startTime = Date.now()
 
     try {
-      // 1. Replace variables in prompt (text variables normally, image variables with placeholders)
-      const textVariables = { ...request.variables }
-      if (request.imageVariables) {
-        Object.keys(request.imageVariables).forEach(key => {
-          delete textVariables[key]
-        })
+      console.log('🔄 Processing AI request with direct file support...')
+
+      // Handle direct file uploads to OpenAI
+      if (request.fileObjects && Object.keys(request.fileObjects).length > 0) {
+        return await this.processPromptWithDirectFileUpload(request, startTime)
       }
-      const processedPrompt = this.replaceVariables(request.prompt, textVariables, request.imageVariables)
 
-      // 2. Prepare AI request with defaults and image support
-      const aiRequest = this.prepareAIRequest(processedPrompt, request.outputVariables, request.imageVariables)
+      // Fallback to existing logic for image variables and text-only
+      const finalPrompt = this.replaceVariables(request.prompt, request.variables, request.imageVariables)
 
-      // 3. Call OpenAI API
-      const aiResponse = await this.callOpenAI(aiRequest)
+      const aiRequest = this.prepareAIRequest(finalPrompt, request.outputVariables, request.imageVariables)
+      const response = await this.callOpenAI(aiRequest)
 
-      // 4. Extract outputs from response
-      const outputs = this.extractOutputs(aiResponse.content, request.outputVariables)
+      const outputs = this.extractOutputs(response.content, request.outputVariables)
 
-      const processingTime = Date.now() - startTime
+      console.log('✅ AI processing completed successfully')
 
       return {
         success: true,
         outputs,
-        rawResponse: aiResponse.content,
-        processingTime
+        rawResponse: response.content,
+        processingTime: Date.now() - startTime
       }
+
     } catch (error) {
-      const processingTime = Date.now() - startTime
+      console.error('❌ AI processing failed:', error)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-        processingTime
+        error: error instanceof Error ? error.message : 'Unknown processing error',
+        processingTime: Date.now() - startTime
+      }
+    }
+  }
+
+  /**
+   * Process prompt with direct file uploads to OpenAI
+   */
+  private async processPromptWithDirectFileUpload(request: AITestRequest, startTime: number): Promise<AITestResponse> {
+    try {
+      console.log('📁 Processing with direct OpenAI file upload...')
+
+      // Create OpenAI client
+      const OpenAI = (await import('openai')).default
+      const openai = new OpenAI({ apiKey: this.apiKey })
+
+      // Upload files to OpenAI first
+      const uploadedFiles: Record<string, string> = {}
+      
+      if (request.fileObjects) {
+        for (const [variableName, fileObj] of Object.entries(request.fileObjects)) {
+          try {
+            console.log(`📤 Uploading ${fileObj.file.name} to OpenAI...`)
+            
+            // Convert File to the format OpenAI expects
+            const fileBuffer = await fileObj.file.arrayBuffer()
+            const file = new File([fileBuffer], fileObj.file.name, { type: fileObj.file.type })
+            
+            const uploadedFile = await openai.files.create({
+              file: file,
+              purpose: 'user_data'
+            })
+            
+            uploadedFiles[variableName] = uploadedFile.id
+            console.log(`✅ Uploaded ${fileObj.file.name} with ID: ${uploadedFile.id}`)
+            
+          } catch (uploadError) {
+            console.error(`❌ Failed to upload ${fileObj.file.name}:`, uploadError)
+            // Continue with other files
+          }
+        }
+      }
+
+      // Build content array for OpenAI
+      const content: Array<any> = []
+
+      // Add uploaded files to content
+      Object.entries(uploadedFiles).forEach(([variableName, fileId]) => {
+        content.push({
+          type: 'file',
+          file: {
+            file_id: fileId
+          }
+        })
+      })
+
+      // Replace variables in prompt (excluding file variables since they're handled above)
+      const textVariables = { ...request.variables }
+      if (request.fileObjects) {
+        Object.keys(request.fileObjects).forEach(variableName => {
+          delete textVariables[variableName] // Remove file variables from text replacement
+        })
+      }
+
+      const finalPrompt = this.replaceVariables(request.prompt, textVariables)
+
+      // Add the text prompt
+      content.push({
+        type: 'text',
+        text: this.buildCombinedPrompt(finalPrompt, request.outputVariables)
+      })
+
+      // Make the API call with files
+      const response = await openai.chat.completions.create({
+        model: this.DEFAULT_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: content
+          }
+        ],
+        max_tokens: this.DEFAULT_MAX_TOKENS,
+        temperature: this.DEFAULT_TEMPERATURE,
+        response_format: request.outputVariables.length > 0 ? { type: 'json_object' } : undefined
+      })
+
+      const responseContent = response.choices[0]?.message?.content || ''
+      const outputs = this.extractOutputs(responseContent, request.outputVariables)
+
+      console.log('✅ AI processing with files completed successfully')
+
+      return {
+        success: true,
+        outputs,
+        rawResponse: responseContent,
+        processingTime: Date.now() - startTime
+      }
+
+    } catch (error) {
+      console.error('❌ AI processing with files failed:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'File processing error',
+        processingTime: Date.now() - startTime
       }
     }
   }
