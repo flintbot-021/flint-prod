@@ -14,7 +14,10 @@ import {
   TestTube,
   Monitor,
   Tablet,
-  Smartphone
+  Smartphone,
+  ChevronLeft,
+  ChevronRight,
+  ArrowLeft
 } from 'lucide-react'
 
 // Import NEW shared components
@@ -194,7 +197,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
       <div className="flex items-center justify-center p-4 h-full">
         <div
           className={cn(
-            "relative bg-gray-900 rounded-[2rem] p-2 shadow-2xl",
+            "relative bg-slate-800 rounded-[2rem] p-2 shadow-2xl",
             currentDevice === 'mobile' && "rounded-[2.5rem]",
             currentDevice === 'tablet' && "rounded-[1.5rem]"
           )}
@@ -218,10 +221,10 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Loading campaign preview...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Loading campaign preview...</p>
         </div>
       </div>
     )
@@ -229,11 +232,11 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center max-w-md">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Preview Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Preview Error</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
           <Button onClick={() => window.location.reload()} variant="outline">
             Try Again
           </Button>
@@ -244,10 +247,10 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
 
   if (!campaign || sectionsData.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="h-8 w-8 text-amber-500 mx-auto mb-4" />
-          <p className="text-gray-600">No sections found for this campaign.</p>
+          <p className="text-muted-foreground">No sections found for this campaign.</p>
         </div>
       </div>
     )
@@ -255,40 +258,88 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
 
   const currentSectionIndex = campaignRenderer.currentSection
   const currentSection = sectionsData[currentSectionIndex]
+  const canGoPrevious = currentSectionIndex > 0
+  const canGoNext = currentSectionIndex < sectionsData.length - 1
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
+    <div className="min-h-screen bg-background">
+      {/* Consolidated Header */}
+      <div className="bg-card border-b border-border sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <TestTube className="h-6 w-6 text-blue-600 mr-3" />
-              <div>
-                <h1 className="text-lg font-semibold text-gray-900">
-                  Preview: {campaign.name}
-                </h1>
+            {/* Left: Campaign Info */}
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => window.history.back()}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              
+              <div className="flex items-center">
+                <Eye className="h-5 w-5 text-primary mr-3" />
+                <div>
+                  <h1 className="text-lg font-semibold">
+                    Preview: {campaign.name}
+                  </h1>
+                </div>
               </div>
             </div>
             
-            {/* Device Selector */}
-            <div className="flex items-center space-x-2">
+            {/* Center: Navigation Controls */}
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevious}
+                disabled={!canGoPrevious}
+                className="text-sm"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Previous
+              </Button>
+              
+              <Badge variant="secondary" className="px-3 py-1 text-sm font-medium">
+                {currentSectionIndex + 1} / {sectionsData.length}
+              </Badge>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNext}
+                disabled={!canGoNext}
+                className="text-sm"
+              >
+                Next
+                <ChevronRight className="h-4 w-4 ml-1" />
+              </Button>
+            </div>
+            
+            {/* Right: Device Selector */}
+            <div className="flex items-center space-x-1 bg-muted rounded-lg p-1">
               {Object.entries(DEVICE_CONFIGS).map(([key, config]) => {
                 const IconComponent = config.icon
+                const isActive = currentDevice === key
+                
                 return (
-                  <button
+                  <Button
                     key={key}
+                    variant={isActive ? "default" : "ghost"}
+                    size="sm"
                     onClick={() => handleDeviceChange(key as PreviewDevice)}
                     className={cn(
-                      "p-2 rounded-lg transition-colors",
-                      currentDevice === key 
-                        ? "bg-blue-100 text-blue-700"
-                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                      "h-8 w-8 p-0",
+                      isActive 
+                        ? "bg-background text-foreground shadow-sm" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                     )}
                     title={config.description}
                   >
-                    <IconComponent className="h-5 w-5" />
-                  </button>
+                    <IconComponent className="h-4 w-4" />
+                  </Button>
                 )
               })}
             </div>
@@ -297,9 +348,9 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
       </div>
 
       {/* Preview Content */}
-      <div className="flex-1 relative">
-      {renderDeviceFrame(
-        <div className="min-h-full bg-background">
+      <div className="flex-1 pt-0">
+        {renderDeviceFrame(
+          <div className="min-h-full bg-background">
             {/* Show current section using shared renderer */}
             {sectionsData.length > 0 && currentSectionIndex < sectionsData.length && (
               <SharedSectionRenderer
@@ -324,24 +375,8 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
                 }}
               />
             )}
-            
-            {/* Preview Status Bar */}
-            <div className="fixed bottom-0 left-0 right-0 bg-blue-600 text-white p-2">
-              <div className="max-w-4xl mx-auto flex items-center justify-between text-sm">
-                <div className="flex items-center">
-                  <Eye className="h-4 w-4 mr-2" />
-                  <span>Preview Mode</span>
-                </div>
-                
-                <div className="flex items-center space-x-4">
-                  <span>
-                    Section {currentSectionIndex + 1} of {sectionsData.length}
-                  </span>
-                </div>
-              </div>
-            </div>
-        </div>
-      )}
+          </div>
+        )}
       </div>
     </div>
   )
