@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react'
+import { MessageSquare } from 'lucide-react'
 import { SectionRendererProps } from '../types'
-import { getMobileClasses } from '../utils'
 import { cn } from '@/lib/utils'
+import { getMobileClasses } from '../utils'
+import { SectionNavigationBar } from '../SectionNavigationBar'
 
 // =============================================================================
 // TEXT QUESTION SECTION COMPONENT
@@ -22,107 +23,95 @@ export function TextQuestionSection({
   onSectionComplete,
   onResponseUpdate
 }: SectionRendererProps) {
-  const [textValue, setTextValue] = useState('')
-  const [isFocused, setIsFocused] = useState(false)
-  
-  const isRequired = config.required ?? true
-  const inputType = config.inputType || 'textarea'
-  const placeholder = config.placeholder || 'Type your response here...'
-  const label = config.label || title
-  
-  // Cast config to access additional properties
+  const [inputValue, setInputValue] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  // Get configuration
   const configData = config as any
+  const question = configData.content || configData.question || title || 'Please enter your response'
+  const subheading = configData.subheading || description || ''
+  const fieldLabel = configData.label || configData.fieldLabel || ''
+  const placeholder = configData.placeholder || 'Type your answer here...'
+  const isRequired = configData.required ?? true
+  const minLength = configData.minLength || 1
+  const maxLength = configData.maxLength || 500
   const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
-  
-  // Get the actual content from config
-  const headline = configData.content || configData.question || title || 'Please share your thoughts'
-  const subheading = configData.subheading || description
-  
-  // Handle text changes
-  const handleTextChange = (value: string) => {
-    setTextValue(value)
+
+  const validateInput = (value: string): string | null => {
+    if (isRequired && value.trim().length === 0) {
+      return 'This field is required'
+    }
     
-    // Real-time response update
+    if (value.length < minLength) {
+      return `Please enter at least ${minLength} character${minLength !== 1 ? 's' : ''}`
+    }
+    
+    if (value.length > maxLength) {
+      return `Please keep your response under ${maxLength} characters`
+    }
+    
+    return null
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value
+    setInputValue(value)
+    setError(null)
+
+    // Real-time validation
+    const validationError = validateInput(value)
+    if (validationError) {
+      setError(validationError)
+    }
+
+    // Report to parent component for real-time updates
     onResponseUpdate(section.id, 'text_response', value, {
-      inputType: inputType,
-      isRequired: isRequired,
-      wordCount: value.trim().split(/\s+/).filter(word => word.length > 0).length,
-      characterCount: value.length
+      inputType: 'text',
+      isValid: !validationError,
+      isRequired: isRequired
     })
   }
 
-  // Handle submission
-  const handleSubmit = () => {
-    const trimmedValue = textValue.trim()
+  const handleContinue = () => {
+    const validationError = validateInput(inputValue)
     
-    if (isRequired && !trimmedValue) {
-      // Could add validation feedback here
+    if (validationError) {
+      setError(validationError)
       return
     }
 
-    const submissionData = {
-      [section.id]: trimmedValue,
-      text_response: trimmedValue
-    }
-
-    console.log('📝 TEXT QUESTION SUBMISSION:')
-    console.log('  Section ID:', section.id)
-    console.log('  Section Title:', section.title)
-    console.log('  Text Value:', trimmedValue)
-    console.log('  Submission Data:', submissionData)
-    console.log('  Section Index:', index)
-
-    onSectionComplete(index, submissionData)
+    onSectionComplete(index, {
+      [section.id]: inputValue.trim(),
+      text_response: inputValue.trim()
+    })
   }
 
-  // Handle key shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault()
-        if (!isRequired || textValue.trim()) {
-          handleSubmit()
-        }
-      }
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      handleContinue()
     }
+  }
 
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [textValue, isRequired])
+  const canContinue = !isRequired || (inputValue.trim().length >= minLength && inputValue.length <= maxLength)
 
-  const isValid = !isRequired || textValue.trim().length > 0
-  const wordCount = textValue.trim().split(/\s+/).filter(word => word.length > 0).length
+  // Generate validation text for bottom bar
+  const validationText = isRequired ? (
+    minLength > 1 ? 
+      `Minimum ${minLength} characters required` : 
+      'This field is required'
+  ) : undefined
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header with navigation */}
-      <div className="flex-shrink-0 p-6 border-b border-border">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <button
-            onClick={onPrevious}
-            className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ChevronLeft className="h-5 w-5 mr-1" />
-            <span className="hidden sm:inline">Previous</span>
-          </button>
-          
-          <div className="flex items-center">
-            <MessageSquare className="h-5 w-5 text-blue-600 mr-2" />
-            <span className="text-sm text-muted-foreground">Question {index + 1}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
+    <div className="h-full bg-background flex flex-col pb-20">
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl mx-auto space-y-8">
-          {/* Question Title */}
           <div className="text-center space-y-4">
             <h1 className={cn(
               "font-bold text-foreground",
               deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
             )}>
-              {headline}
+              {question}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
             </h1>
             
             {subheading && (
@@ -135,94 +124,64 @@ export function TextQuestionSection({
             )}
           </div>
 
-          {/* Input Field */}
           <div className="space-y-4">
-            {label && label !== title && (
+            {fieldLabel && (
               <label className="block text-sm font-medium text-foreground">
-                {label}
-                {isRequired && <span className="text-red-500 ml-1">*</span>}
+                {fieldLabel}
               </label>
             )}
-
-            {inputType === 'textarea' ? (
-              <textarea
-                value={textValue}
-                onChange={(e) => handleTextChange(e.target.value)}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                placeholder={placeholder}
-                rows={6}
-                className={cn(
-                  "w-full px-4 py-3 border rounded-lg resize-none transition-all duration-200",
-                  "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                  "placeholder:text-muted-foreground",
-                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg",
-                  isFocused ? "border-blue-500 shadow-lg" : "border-border",
-                  getMobileClasses("", deviceInfo?.type)
-                )}
-              />
-            ) : (
-              <input
-                type={inputType}
-                value={textValue}
-                onChange={(e) => handleTextChange(e.target.value)}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                placeholder={placeholder}
-                className={cn(
-                  "w-full px-4 py-3 border rounded-lg transition-all duration-200",
-                  "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                  "placeholder:text-muted-foreground",
-                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg",
-                  isFocused ? "border-blue-500 shadow-lg" : "border-border",
-                  getMobileClasses("", deviceInfo?.type)
-                )}
-              />
-            )}
-
-            {/* Character/Word Count */}
-            {inputType === 'textarea' && textValue && (
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{wordCount} {wordCount === 1 ? 'word' : 'words'}</span>
-                <span>{textValue.length} characters</span>
-              </div>
-            )}
-
-            {/* Validation message */}
-            {isRequired && !textValue.trim() && textValue.length > 0 && (
-              <p className="text-red-500 text-sm">This field is required</p>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end space-x-3">
-            <button
-              onClick={handleSubmit}
-              disabled={!isValid}
+            <textarea
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyPress={handleKeyPress}
+              placeholder={placeholder}
+              rows={6}
+              maxLength={maxLength}
               className={cn(
-                "px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                "flex items-center space-x-2",
-                getMobileClasses("", deviceInfo?.type),
-                isValid
-                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                "w-full p-4 border rounded-lg resize-none",
+                "focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                "transition-all duration-200",
+                error 
+                  ? "border-red-500 focus:ring-red-500" 
+                  : "border-gray-300",
+                getMobileClasses("text-base", deviceInfo?.type)
               )}
-            >
-              <span>{buttonLabel}</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+            />
 
-          {/* Keyboard shortcut hint */}
-          {deviceInfo?.type !== 'mobile' && (
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">
-                Press <kbd className="px-2 py-1 bg-muted rounded text-xs">Ctrl</kbd> + <kbd className="px-2 py-1 bg-muted rounded text-xs">Enter</kbd> to continue
-              </p>
+            {/* Character Counter */}
+            <div className="flex justify-between items-center text-sm">
+              <div>
+                {error && (
+                  <span className="text-red-600">{error}</span>
+                )}
+              </div>
+              <span className={cn(
+                "text-muted-foreground",
+                inputValue.length > maxLength * 0.9 && "text-amber-600",
+                inputValue.length >= maxLength && "text-red-600"
+              )}>
+                {inputValue.length}/{maxLength}
+              </span>
             </div>
-          )}
+
+
+          </div>
         </div>
       </div>
+
+      {/* Shared Navigation Bar */}
+      <SectionNavigationBar
+        onPrevious={onPrevious}
+        icon={<MessageSquare className="h-5 w-5 text-primary" />}
+        label={`Question ${index + 1}`}
+        validationText={validationText}
+        actionButton={{
+          label: buttonLabel,
+          onClick: handleContinue,
+          disabled: !canContinue
+        }}
+        deviceInfo={deviceInfo}
+      />
     </div>
   )
 } 

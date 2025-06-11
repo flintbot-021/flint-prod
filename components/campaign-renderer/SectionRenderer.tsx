@@ -160,7 +160,7 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
 
 function UnsupportedSection({ section, onNext }: SectionRendererProps) {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="h-full bg-background flex items-center justify-center">
       <div className="text-center max-w-md mx-auto">
         <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-foreground mb-2">

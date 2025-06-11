@@ -139,7 +139,7 @@ export function OutputSection({
   // Show fallback if no content is configured
   if (!settings.title && !settings.subtitle && !settings.content && !settings.image) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="h-full bg-background flex items-center justify-center">
         <div className="text-center p-8 text-muted-foreground">
           <h2 className="text-xl font-medium mb-2">No output content configured</h2>
           <p className="text-sm">Configure this section in the campaign builder to display personalized results</p>
@@ -149,7 +149,7 @@ export function OutputSection({
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-full bg-background flex flex-col">
       {/* Header with navigation - same as other sections */}
       <div className="flex-shrink-0 p-6 border-b border-border">
         <div className="flex items-center justify-between max-w-4xl mx-auto">

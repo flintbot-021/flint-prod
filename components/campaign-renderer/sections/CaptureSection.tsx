@@ -81,7 +81,7 @@ export function CaptureSection({
   const isFormValid = formData.name.trim() && formData.email.trim() && isValidEmail(formData.email)
 
   return (
-    <div className="min-h-screen bg-white flex flex-col relative">
+    <div className="h-full bg-white flex flex-col relative">
       {/* Main Content Area */}
       <div className="flex-1 flex items-center justify-center px-6 pb-20">
         <div className="w-full max-w-2xl mx-auto space-y-6">

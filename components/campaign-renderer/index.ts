@@ -16,6 +16,9 @@ export {
   OutputSection
 } from './sections'
 
+// Shared components
+export { SectionNavigationBar } from './SectionNavigationBar'
+
 // Types and utilities
 export type {
   BaseSectionProps,

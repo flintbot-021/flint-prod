@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Activity } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses } from '../utils'
 import { cn } from '@/lib/utils'
+import { SectionNavigationBar } from '../SectionNavigationBar'
 
 export function SliderSection({
   section,
@@ -17,45 +18,52 @@ export function SliderSection({
   onSectionComplete,
   onResponseUpdate
 }: SectionRendererProps) {
-  const minValue = config.min_value || 0
-  const maxValue = config.max_value || 10
-  const step = config.step || 1
-  const defaultValue = config.default_value || Math.floor((minValue + maxValue) / 2)
-  
-  const [value, setValue] = useState(defaultValue)
+  // Get configuration
+  const configData = config as any
+  const question = configData.content || configData.question || title || 'Rate your response'
+  const subheading = configData.subheading || description
+  const minValue = configData.minValue || 1
+  const maxValue = configData.maxValue || 10
+  const step = configData.step || 1
+  const minLabel = configData.minLabel || 'Low'
+  const maxLabel = configData.maxLabel || 'High'
+  const isRequired = configData.required ?? true
+  const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
 
-  const handleChange = (newValue: number) => {
-    setValue(newValue)
-    onResponseUpdate(section.id, 'slider_value', newValue, {
+  const [sliderValue, setSliderValue] = useState<number>(Math.floor((minValue + maxValue) / 2))
+
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value)
+    setSliderValue(value)
+    
+    // Report to parent component
+    onResponseUpdate(section.id, 'slider_value', value, {
       inputType: 'slider',
-      min: minValue,
-      max: maxValue,
-      step: step
+      isRequired: isRequired,
+      range: { min: minValue, max: maxValue, step }
     })
   }
 
-  const handleSubmit = () => {
+  const handleContinue = () => {
     onSectionComplete(index, {
-      [section.id]: value,
-      slider_value: value
+      [section.id]: sliderValue,
+      slider_response: sliderValue
     })
   }
+
+  // Generate tick marks for visual feedback
+  const generateTicks = () => {
+    const ticks = []
+    for (let i = minValue; i <= maxValue; i += step) {
+      ticks.push(i)
+    }
+    return ticks
+  }
+
+  const ticks = generateTicks()
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex-shrink-0 p-6 border-b border-border">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <button
-            onClick={onPrevious}
-            className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ChevronLeft className="h-5 w-5 mr-1" />
-            <span className="hidden sm:inline">Previous</span>
-          </button>
-          <span className="text-sm text-muted-foreground">Question {index + 1}</span>
-        </div>
-      </div>
-
+    <div className="h-full bg-background flex flex-col pb-20">
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           <div className="text-center space-y-4">
@@ -63,58 +71,99 @@ export function SliderSection({
               "font-bold text-foreground",
               deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
             )}>
-              {title || 'Rate your response'}
+              {question}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
             </h1>
             
-            {description && (
+            {subheading && (
               <p className={cn(
                 "text-muted-foreground",
                 deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
               )}>
-                {description}
+                {subheading}
               </p>
             )}
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-8">
+            {/* Current Value Display */}
             <div className="text-center">
-              <span className="text-4xl font-bold text-blue-600">{value}</span>
-            </div>
-            
-            <div className="space-y-2">
-              <input
-                type="range"
-                min={minValue}
-                max={maxValue}
-                step={step}
-                value={value}
-                onChange={(e) => handleChange(Number(e.target.value))}
-                className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-              />
-              
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>{config.min_label || minValue}</span>
-                <span>{config.max_label || maxValue}</span>
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary text-primary-foreground text-2xl font-bold">
+                {sliderValue}
               </div>
             </div>
-          </div>
 
-          <div className="flex justify-end">
-            <button
-              onClick={handleSubmit}
-              className={cn(
-                "px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                "flex items-center space-x-2",
-                "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl",
-                getMobileClasses("", deviceInfo?.type)
-              )}
-            >
-              <span>Continue</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
+            {/* Slider Container */}
+            <div className="space-y-4">
+              <div className="relative">
+                <input
+                  type="range"
+                  min={minValue}
+                  max={maxValue}
+                  step={step}
+                  value={sliderValue}
+                  onChange={handleSliderChange}
+                  className={cn(
+                    "w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer",
+                    "slider-thumb:appearance-none slider-thumb:w-6 slider-thumb:h-6",
+                    "slider-thumb:rounded-full slider-thumb:bg-primary",
+                    "slider-thumb:cursor-pointer slider-thumb:shadow-lg",
+                    "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+                  )}
+                  style={{
+                    background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${
+                      ((sliderValue - minValue) / (maxValue - minValue)) * 100
+                    }%, #e5e7eb ${
+                      ((sliderValue - minValue) / (maxValue - minValue)) * 100
+                    }%, #e5e7eb 100%)`
+                  }}
+                />
+
+                {/* Tick marks */}
+                <div className="flex justify-between mt-2">
+                  {ticks.map((tick) => (
+                    <div key={tick} className="flex flex-col items-center">
+                      <div className={cn(
+                        "w-0.5 h-2 bg-gray-300",
+                        tick === sliderValue && "bg-primary"
+                      )} />
+                      <span className={cn(
+                        "text-xs mt-1",
+                        tick === sliderValue ? "text-primary font-medium" : "text-muted-foreground"
+                      )}>
+                        {tick}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Labels */}
+              <div className="flex justify-between items-center text-sm text-muted-foreground">
+                <span>{minLabel}</span>
+                <span>{maxLabel}</span>
+              </div>
+            </div>
+
+            {/* Additional context */}
+            <div className="text-center text-sm text-muted-foreground">
+              Move the slider to select your rating from {minValue} to {maxValue}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Shared Navigation Bar */}
+      <SectionNavigationBar
+        onPrevious={onPrevious}
+        icon={<Activity className="h-5 w-5 text-primary" />}
+        label={`Rating ${index + 1}`}
+        actionButton={{
+          label: buttonLabel,
+          onClick: handleContinue
+        }}
+        deviceInfo={deviceInfo}
+      />
     </div>
   )
 } 
