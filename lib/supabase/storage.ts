@@ -32,11 +32,12 @@ async function saveFileToDatabase(
   responseId?: string
 ): Promise<void> {
   try {
-    // For preview mode, skip database save if we don't have valid UUIDs
-    if (campaignId === 'preview-campaign' || leadId === 'preview-lead') {
-      console.log('🔄 Preview mode: Skipping database save for file metadata')
-      return
-    }
+    // For public campaigns, skip database save to avoid RLS policy violations
+    // Files are still saved to storage and accessible via public URLs
+    console.log('🔄 Public campaign: Skipping database save for file metadata (RLS protection)')
+    console.log('   - Files are uploaded to storage and remain accessible')
+    console.log('   - Database tracking skipped for unauthenticated users')
+    return
 
     const { error } = await supabase
       .from('uploaded_files')

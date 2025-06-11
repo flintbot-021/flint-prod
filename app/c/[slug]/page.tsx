@@ -40,8 +40,8 @@ import {
 
 // Import NEW shared components and hooks
 import { SectionRenderer as SharedSectionRenderer } from '@/components/campaign-renderer'
+import { useCampaignRenderer } from '@/hooks/useCampaignRenderer'
 import { 
-  useCampaignRenderer, 
   useDeviceInfo, 
   useNetworkState, 
   useErrorHandler, 
@@ -140,9 +140,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null)
   const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null)
   
-  // Enhanced response collection state
-  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const [pendingUpdates, setPendingUpdates] = useState<Map<string, any>>(new Map())
+  // Simplified session state - response collection handled by campaignRenderer hook
   const [isSessionRecovered, setIsSessionRecovered] = useState(false)
 
   // Temporary compatibility bridge for legacy error handling
@@ -162,10 +160,15 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         const age = Date.now() - timestamp
         const maxAge = 24 * 60 * 60 * 1000 // 24 hours
         
-        // Use existing session if less than 24 hours old
-        if (age < maxAge) {
+        // Check if session ID is in old format (contains underscores)
+        // New format is UUID v4 (xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx)
+        const isOldFormat = sessionId.includes('session_') || sessionId.includes('_')
+        
+        // Use existing session if less than 24 hours old AND in new UUID format
+        if (age < maxAge && !isOldFormat) {
           return sessionId
         } else {
+          // Clear old session (expired or old format)
           localStorage.removeItem(storageKey)
         }
       } catch (err) {
@@ -173,7 +176,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       }
     }
     
-    // Create new session
+    // Create new session with proper UUID format
     const newSessionId = generateSessionId()
     localStorage.setItem(storageKey, JSON.stringify({
       sessionId: newSessionId,
@@ -183,155 +186,18 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     return newSessionId
   })
 
-  const [campaignState, setCampaignState] = useState<CampaignState>({
-    currentSection: 0,
-    userInputs: {},
-    completedSections: new Set(),
-    startTime: new Date(),
-    sessionId
-  })
-
-  // Simplified navigation 
-  const navigateToSection = async (sectionIndex: number) => {
-    if (isTransitioning || sectionIndex === campaignState.currentSection) return
-    if (sectionIndex < 0 || sectionIndex >= sections.length) return
-
-    // Save immediately before navigation
-    await saveImmediately()
-
-    setIsTransitioning(true)
-    setCampaignState(prev => ({
-      ...prev,
-      currentSection: sectionIndex
-    }))
-
-    // Update session progress in database
-    try {
+  // Use campaign renderer hook for clean response handling (like preview page)
+  const campaignRenderer = useCampaignRenderer({
+    sections: sections,
+    initialSection: 0, // Start at 0 like preview page
+    campaignId: campaign?.id,  // Pass campaign ID for file uploads
+    onProgressUpdate: (progress, sectionIndex) => {
+      // Update session progress in database
       if (campaign) {
-        await updateSession(campaignState.sessionId, {
-          current_section_index: sectionIndex
-        })
+        updateSessionProgress(sectionIndex)
       }
-    } catch (err) {
-      console.error('Error updating session progress:', err)
     }
-
-    // Reset transition state after animation
-    setTimeout(() => setIsTransitioning(false), 300)
-  }
-
-  // AI Content Generation for Output Sections
-  const generateDynamicContent = async (section: SectionWithOptions): Promise<string> => {
-    try {
-      if (!runtimeEngine) {
-        return section.description || 'Thank you for completing this campaign.'
-      }
-
-      // Prepare context for AI generation
-      const responseContext = {
-        userResponses: campaignState.userInputs,
-        campaignInfo: {
-          name: campaign?.name,
-          id: campaign?.id,
-          type: 'lead_magnet'
-        },
-        sessionInfo: {
-          completedSections: Array.from(campaignState.completedSections),
-          totalSections: sections.length,
-          timeSpent: Math.round((new Date().getTime() - campaignState.startTime.getTime()) / 1000)
-        }
-      }
-
-      // Use the Variable Interpolation Engine for dynamic content
-      const template = section.description || section.title || 'Thank you for completing this campaign.'
-      const generatedContent = await processVariableContent(template, responseContext)
-
-      return generatedContent
-
-    } catch (err) {
-      console.error('Error generating dynamic content:', err)
-      return interpolateTextSimple(
-        section.description || 'Thank you for completing this campaign.',
-        campaignState.userInputs
-      )
-    }
-  }
-
-  // Enhanced loading states for AI processing
-  const [aiProcessingState, setAiProcessingState] = useState<{
-    isProcessing: boolean
-    stage: string
-    progress: number
-    message: string
-  }>({
-    isProcessing: false,
-    stage: '',
-    progress: 0,
-    message: ''
   })
-
-  // AI processing flow for output sections
-  const processAIOutputSection = async (section: SectionWithOptions): Promise<void> => {
-    setAiProcessingState({
-      isProcessing: true,
-      stage: 'analyzing',
-      progress: 20,
-      message: 'Analyzing your responses...'
-    })
-
-    try {
-      // Stage 1: Analyze responses
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      setAiProcessingState(prev => ({
-        ...prev,
-        stage: 'generating',
-        progress: 60,
-        message: 'Generating personalized content...'
-      }))
-
-      // Stage 2: Generate content
-      const dynamicContent = await generateDynamicContent(section)
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      setAiProcessingState(prev => ({
-        ...prev,
-        stage: 'finalizing',
-        progress: 90,
-        message: 'Finalizing your results...'
-      }))
-
-      // Stage 3: Finalize
-      await new Promise(resolve => setTimeout(resolve, 500))
-
-      setAiProcessingState(prev => ({
-        ...prev,
-        progress: 100,
-        message: 'Complete!'
-      }))
-
-      // Update section content with generated content
-      // (This would normally update the section state or trigger a re-render)
-      
-      setTimeout(() => {
-        setAiProcessingState({
-          isProcessing: false,
-          stage: '',
-          progress: 0,
-          message: ''
-        })
-      }, 500)
-
-    } catch (err) {
-      console.error('AI processing error:', err)
-      setAiProcessingState({
-        isProcessing: false,
-        stage: 'error',
-        progress: 0,
-        message: 'Processing failed. Showing standard content.'
-      })
-    }
-  }
 
   // =============================================================================
   // EFFECTS
@@ -474,33 +340,43 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       try {
         // Try to get existing session first
-        const sessionResult = await getSession(campaignState.sessionId)
+        const sessionResult = await getSession(sessionId)
 
         if (sessionResult.success && sessionResult.data && sessionResult.data.campaign_id === campaign.id) {
           // Found existing session - restore state
           const session = sessionResult.data
 
-          setCampaignState(prev => ({
-            ...prev,
-            userInputs: session.responses || {},
-            completedSections: new Set(session.completed_sections || []),
-            currentSection: session.current_section_index || 0,
-            leadId: undefined // Will be set by lead check below
-          }))
-
-          // Check for associated lead
-          const leadResult = await getLeadBySession(campaignState.sessionId)
-          if (leadResult.success && leadResult.data) {
-            setCampaignState(prev => ({ ...prev, leadId: leadResult.data!.id }))
-          }
+                     // Restore session state using individual updates
+           const responses = session.responses || {}
+           for (const [key, responseData] of Object.entries(responses)) {
+             // Extract sectionId and fieldId from key format "sectionId_fieldId"
+             const parts = key.split('_')
+             if (parts.length >= 2) {
+               const sectionId = parts[0]
+               const fieldId = parts.slice(1).join('_')
+               
+               // Handle both object format and direct value format
+               if (responseData && typeof responseData === 'object' && 'value' in responseData) {
+                 const data = responseData as any
+                 campaignRenderer.handleResponseUpdate(sectionId, fieldId, data.value, data.metadata)
+               } else {
+                 campaignRenderer.handleResponseUpdate(sectionId, fieldId, responseData)
+               }
+             }
+           }
+           
+           // Set current section if available
+           if (session.current_section_index !== undefined) {
+             campaignRenderer.goToSection(session.current_section_index)
+           }
         } else {
           // No existing session found - create new one
           const createResult = await createSession({
-            session_id: campaignState.sessionId,
+            session_id: sessionId,
             campaign_id: campaign.id,
             current_section_index: 0,
             completed_sections: [],
-            start_time: campaignState.startTime.toISOString(),
+            start_time: new Date().toISOString(),
             last_activity: new Date().toISOString(),
             is_completed: false,
             responses: {},
@@ -527,62 +403,16 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
   // Use refs to avoid stale closure issues
   const campaignRef = useRef(campaign)
-  const pendingUpdatesRef = useRef(pendingUpdates)
+  // NOTE: pendingUpdatesRef removed - handled by campaignRenderer hook
   
   // Update refs when values change
   useEffect(() => {
     campaignRef.current = campaign
   }, [campaign])
   
-  useEffect(() => {
-    pendingUpdatesRef.current = pendingUpdates
-  }, [pendingUpdates])
+  // NOTE: pendingUpdates useEffect removed - handled by campaignRenderer hook
 
-  // Auto-save on unmount, visibility change, and input blur - set up once
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (pendingUpdatesRef.current.size > 0) {
-        flushPendingUpdates()
-      }
-    }
-
-    const handleVisibilityChange = () => {
-      if (document.hidden && pendingUpdatesRef.current.size > 0) {
-        flushPendingUpdates()
-      }
-    }
-
-    // Save immediately when user blurs from any input
-    const handleInputBlur = (event: FocusEvent) => {
-      const target = event.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
-        if (pendingUpdatesRef.current.size > 0) {
-          saveImmediately()
-        }
-      }
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    document.addEventListener('focusout', handleInputBlur, true) // Use capture phase
-
-    return () => {
-      // Save any pending updates on cleanup
-      if (pendingUpdatesRef.current.size > 0) {
-        handleBeforeUnload()
-      }
-      window.removeEventListener('beforeunload', handleBeforeUnload)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      document.removeEventListener('focusout', handleInputBlur, true)
-    }
-  }, []) // Empty dependency array - set up once only
-
-  // Update session progress when section changes
-  useEffect(() => {
-    if (campaign && isSessionRecovered) {
-      updateSessionProgress()
-    }
-  }, [campaignState.currentSection, campaignState.completedSections, campaign, isSessionRecovered])
+  // NOTE: Auto-save event handlers removed - now handled by campaignRenderer hook
 
   // Keyboard navigation
   useEffect(() => {
@@ -612,11 +442,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
           break
         case 'Home':
           event.preventDefault()
-          navigateToSection(0)
+          handleNavigateToSection(0)
           break
         case 'End':
           event.preventDefault()
-          navigateToSection(sections.length - 1)
+          handleNavigateToSection(sections.length - 1)
           break
       }
     }
@@ -680,13 +510,13 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     if (!campaign) return
 
     const currentUrl = new URL(window.location.href)
-    const sectionParam = campaignState.currentSection + 1
+    const sectionParam = campaignRenderer.currentSection + 1
     
     // Update URL without triggering navigation
     const newUrl = `${currentUrl.pathname}?section=${sectionParam}${currentUrl.hash}`
     window.history.replaceState(
       { 
-        sectionIndex: campaignState.currentSection,
+        sectionIndex: campaignRenderer.currentSection,
         campaignSlug: campaign.published_url 
       },
       `${campaign.name} - Section ${sectionParam}`,
@@ -696,13 +526,13 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     // Handle browser back/forward
     const handlePopState = (event: PopStateEvent) => {
       if (event.state?.sectionIndex !== undefined) {
-        navigateToSection(event.state.sectionIndex)
+        handleNavigateToSection(event.state.sectionIndex)
       }
     }
 
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [campaign, campaignState.currentSection])
+  }, [campaign, campaignRenderer.currentSection])
 
   // Parse URL section parameter on load (only if no session recovery happened)
   useEffect(() => {
@@ -717,10 +547,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       const sectionIndex = parseInt(sectionParam) - 1
       if (sectionIndex >= 0 && sectionIndex < sections.length) {
         console.log(`🔗 [URL] Setting section from URL: ${sectionIndex}`)
-        setCampaignState(prev => ({
-          ...prev,
-          currentSection: sectionIndex
-        }))
+        campaignRenderer.goToSection(sectionIndex)
       }
     } else {
       console.log('🔗 [URL] No section parameter found, staying at section 0')
@@ -738,23 +565,21 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         variables: {
           getAllVariables: () => [],
           getValue: (id: string) => {
-            return campaignState.userInputs[id] || 
+            return campaignRenderer.userInputs[id] || 
                    getCampaignVariable(id) || 
                    getSessionVariable(id)
           },
-          setValue: async (id: string, value: any) => {
-            setCampaignState(prev => ({
-              ...prev,
-              userInputs: { ...prev.userInputs, [id]: value }
-            }))
-          }
+                      setValue: async (id: string, value: any) => {
+              // Use handleResponseUpdate for updating values
+              campaignRenderer.handleResponseUpdate('global', id, value)
+            }
         },
         session: {
-          responses: campaignState.userInputs,
+          responses: campaignRenderer.userInputs,
           metadata: {
-            sessionId: campaignState.sessionId,
-            startTime: campaignState.startTime,
-            currentSection: campaignState.currentSection
+            sessionId: sessionId,
+            startTime: new Date(),
+            currentSection: campaignRenderer.currentSection
           }
         },
         cache: {
@@ -804,126 +629,10 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   }
 
   // Real-time response collection with auto-save using new session-based approach
-  const collectResponse = async (sectionId: string, fieldId: string, value: any, metadata: any = {}) => {
-    try {
-      // Guard against race conditions - don't allow responses until campaign is loaded
-      if (!campaign) {
-        console.warn('⚠️ Campaign not loaded yet, deferring response collection')
-        return
-      }
-      
-      // Refresh session timestamp on activity
-      if (typeof window !== 'undefined') {
-        const storageKey = `flint_session_${slug}`
-        const stored = localStorage.getItem(storageKey)
-        if (stored) {
-          try {
-            const sessionData = JSON.parse(stored)
-            sessionData.timestamp = Date.now()
-            localStorage.setItem(storageKey, JSON.stringify(sessionData))
-          } catch (err) {
-            // Ignore storage errors
-          }
-        }
-      }
-      
-      // Update local state immediately
-      setCampaignState(prev => ({
-        ...prev,
-        userInputs: { 
-          ...prev.userInputs, 
-          [fieldId]: value,
-          [`${sectionId}_${fieldId}`]: value 
-        }
-      }))
+  // NOTE: Removed complex collectResponse function - now using clean campaignRenderer.handleResponseUpdate approach like preview page
+  // All file upload handling, auto-save logic, and response collection is now handled elegantly by the useCampaignRenderer hook
 
-      // Add to pending updates queue for batch saving
-      const updateKey = `${sectionId}_${fieldId}`
-      const updateData = {
-        sectionId,
-        fieldId,
-        value,
-        metadata: {
-          ...metadata,
-          timestamp: new Date().toISOString(),
-          sessionId: campaignState.sessionId,
-          sectionIndex: campaignState.currentSection,
-          deviceInfo: getDeviceInfo(),
-          interactionType: 'input_change'
-        }
-      }
-
-      setPendingUpdates(prev => new Map(prev.set(updateKey, updateData)))
-
-      // Debounced auto-save - wait 3 seconds after user stops typing
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current)
-      }
-
-      autoSaveTimeoutRef.current = setTimeout(() => {
-        flushPendingUpdates()
-      }, 3000) // Save after 3 seconds of inactivity
-
-      // Update variable system in real-time
-      if (updateSystem) {
-        await updateSystem.updateVariable(fieldId, value, {
-          source: 'user_input',
-          propagate: true
-        })
-      }
-
-    } catch (err) {
-      console.error('Error collecting response:', err)
-      globalErrorHandler.handleError(
-        globalErrorHandler.createError(
-          err as Error,
-          ErrorCategory.VARIABLE,
-          { 
-            location: { function: 'collectResponse' },
-            metadata: { sectionId, fieldId, value }
-          }
-        )
-      )
-    }
-  }
-
-  // Manual save function for immediate save (on blur, navigation, etc.)
-  const saveImmediately = async () => {
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current)
-      autoSaveTimeoutRef.current = null
-    }
-    await flushPendingUpdates()
-  }
-
-  // Batch flush pending updates to database using new session approach
-  const flushPendingUpdates = async () => {
-    if (pendingUpdates.size === 0) return
-
-    // Don't clear updates just because campaign is temporarily unavailable
-    // Instead, wait a bit and retry if needed
-    if (!campaign) {
-      console.warn('⚠️ [FLUSH] Campaign temporarily unavailable, retrying in 100ms')
-      setTimeout(() => {
-        if (campaign && pendingUpdates.size > 0) {
-          flushPendingUpdates()
-        }
-      }, 100)
-      return
-    }
-
-    try {
-      const updates = Array.from(pendingUpdates.values())
-      await saveBatchResponsesToSession(updates)
-      setPendingUpdates(new Map())
-      
-      logger.info('Batch responses saved to session successfully')
-
-    } catch (err) {
-      console.error('Error flushing pending updates:', err)
-      // Keep updates in queue for retry
-    }
-  }
+  // NOTE: Manual save and batch flush functions removed - handled by campaignRenderer hook
 
   // Simple session-based response saving (no more fake leads!)
   const saveBatchResponsesToSession = async (responses: any[]) => {
@@ -951,13 +660,13 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       console.log('💾 Saving responses to session JSONB:', Object.keys(responseUpdates).length, 'responses')
 
       // Update session responses using new data access layer
-      const result = await updateSession(campaignState.sessionId, {
+      const result = await updateSession(sessionId, {
         responses: {
-          ...campaignState.userInputs, // Keep existing responses
+          ...campaignRenderer.userInputs, // Keep existing responses
           ...responseUpdates // Add new responses
         },
-        current_section_index: campaignState.currentSection,
-        completed_sections: Array.from(campaignState.completedSections)
+        current_section_index: campaignRenderer.currentSection,
+        completed_sections: Array.from(campaignRenderer.completedSections)
       })
 
       if (!result.success) {
@@ -973,38 +682,32 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   }
 
   // Update session progress tracking
-  const updateSessionProgress = async (overrideSectionIndex?: number) => {
+  const updateSessionProgress = async (sectionIndex?: number) => {
     try {
       if (!campaign) {
         console.warn('⚠️ Campaign not loaded, cannot update session progress')
         return
       }
 
-      const currentSectionIndex = overrideSectionIndex !== undefined ? overrideSectionIndex : campaignState.currentSection
-
-      // Use new session data access layer
-      const result = await updateSession(campaignState.sessionId, {
-        current_section_index: currentSectionIndex,
-        completed_sections: Array.from(campaignState.completedSections),
-        is_completed: campaignState.completedSections.size >= sections.length
+      const currentSection = sectionIndex !== undefined ? sectionIndex : campaignRenderer.currentSection
+      
+      const result = await updateSession(sessionId, {
+        current_section_index: currentSection,
+        completed_sections: Array.from(campaignRenderer.completedSections),
+        is_completed: campaignRenderer.isComplete
       })
 
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to update session progress')
+      if (result.success) {
+        console.log('📍 Session progress updated:', { 
+          section: currentSection, 
+          completedSections: campaignRenderer.completedSections.size,
+          totalSections: sections.length
+        })
       }
-
-      console.log('📍 Session progress updated:', { 
-        section: currentSectionIndex, 
-        completedSections: campaignState.completedSections.size,
-        totalSections: sections.length
-      })
-
     } catch (err) {
       console.error('Error updating session progress:', err)
     }
   }
-
-  // Session management functions removed - now handled directly in useEffect above
 
   // =============================================================================
   // HELPER FUNCTIONS
@@ -1015,10 +718,10 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     const campaignVars: Record<string, any> = {
       campaign_name: campaign?.name || '',
       campaign_id: campaign?.id || '',
-      user_session: campaignState.sessionId,
-      current_section: campaignState.currentSection + 1,
+      user_session: sessionId,
+      current_section: campaignRenderer.currentSection + 1,
       total_sections: sections.length,
-      start_time: campaignState.startTime.toISOString()
+      start_time: new Date().toISOString()
     }
     return campaignVars[id]
   }
@@ -1057,12 +760,12 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       campaign_name: campaign?.name || '',
       campaign_id: campaign?.id || '',
       campaign_description: campaign?.description || '',
-      user_session: campaignState.sessionId,
-      current_section: campaignState.currentSection + 1,
+      user_session: sessionId,
+      current_section: campaignRenderer.currentSection + 1,
       total_sections: sections.length,
-      start_time: campaignState.startTime.toISOString(),
-      completion_rate: Math.round((campaignState.completedSections.size / sections.length) * 100),
-      time_elapsed: Math.round((new Date().getTime() - campaignState.startTime.getTime()) / 1000)
+      start_time: new Date().toISOString(),
+      completion_rate: Math.round((campaignRenderer.completedSections.size / sections.length) * 100),
+      time_elapsed: Math.round((new Date().getTime() - new Date().getTime()) / 1000)
     }
   }
 
@@ -1086,7 +789,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     let result = content
     
     // Replace user input variables
-    Object.entries(campaignState.userInputs).forEach(([key, value]) => {
+    Object.entries(campaignRenderer.userInputs).forEach(([key, value]) => {
       result = result.replace(new RegExp(`@${key}`, 'g'), String(value))
     })
     
@@ -1181,12 +884,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       setSections(sectionsData)
       
-      // Initialize campaign state (keep existing sessionId)
-      setCampaignState(prev => ({
-        ...prev,
-        startTime: new Date()
-        // sessionId already set in initial state, don't regenerate
-      }))
+              // Initialize campaign state - renderer starts with empty state by default
+        console.log('✅ Campaign renderer initialized with empty state')
 
       console.log('✅ Campaign loaded successfully with', sectionsData.length, 'sections')
     } catch (error) {
@@ -1202,175 +901,28 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // EVENT HANDLERS
   // =============================================================================
 
-  const handleSectionComplete = async (sectionIndex: number, data: any) => {
-    try {
-      const section = sections[sectionIndex]
-      
-      // Store response data
-      setCampaignState(prev => ({
-        ...prev,
-        userInputs: { ...prev.userInputs, ...data },
-        completedSections: new Set([...prev.completedSections, sectionIndex])
-      }))
-
-      // Update variables in the runtime engine
-      if (updateSystem) {
-        for (const [key, value] of Object.entries(data)) {
-          await updateSystem.updateVariable(key, value, {
-            source: 'user_input',
-            propagate: true
-          })
-        }
-      }
-
-      // Save to database for capture sections
-      if (section.type === 'capture') {
-        await saveLeadData(data)
-      }
-
-      // Save response to database
-      await saveResponse(section.id, data)
-
-      // Auto-advance to next section after a brief delay
-      if (sectionIndex < sections.length - 1) {
-        setTimeout(() => {
-          setCampaignState(prev => ({
-            ...prev,
-            currentSection: Math.min(sections.length - 1, prev.currentSection + 1)
-          }))
-        }, 1000)
-      }
-
-    } catch (err) {
-      console.error('Error completing section:', err)
-      globalErrorHandler.handleError(
-        globalErrorHandler.createError(
-          err as Error,
-          ErrorCategory.VARIABLE,
-          { 
-            location: { function: 'handleSectionComplete' },
-            metadata: { sectionIndex, data }
-          }
-        )
-      )
+  const handleSectionComplete = (sectionIndex: number, data: any) => {
+    if (sections.length > 0) {
+      campaignRenderer.handleSectionComplete(sectionIndex, data)
     }
   }
 
-  const saveLeadData = async (data: any) => {
-    try {
-      if (!campaign) return
-
-      const supabase = await getSupabaseClient()
-
-      if (campaignState.leadId) {
-        // Update existing lead record
-        const updateData = {
-          name: data.name || data.full_name || null,
-          email: data.email,
-          phone: data.phone || null,
-          metadata: {
-            session_id: campaignState.sessionId,
-            converted_at: new Date().toISOString(),
-            capture_time: new Date().toISOString()
-          }
-        }
-
-        const { error } = await supabase
-          .from('leads')
-          .update(updateData)
-          .eq('id', campaignState.leadId)
-
-        if (error) {
-          throw error
-        }
-
-        console.log('✅ Lead data updated for existing lead:', campaignState.leadId)
-      } else {
-        // Create new real lead (no more fake emails!)
-        const leadData = {
-          session_id: campaignState.sessionId,
-          campaign_id: campaign.id,
-          name: data.name || data.full_name || null,
-          email: data.email,
-          phone: data.phone || null,
-          converted_at: new Date().toISOString(),
-          conversion_section_id: null, // Could be set if we know which section captured them
-          metadata: {
-            session_id: campaignState.sessionId,
-            capture_time: new Date().toISOString()
-          }
-        }
-
-        // Use new data access layer to create lead
-        const result = await createLead(leadData)
-
-        if (!result.success || !result.data) {
-          throw new Error(result.error || 'Failed to create lead')
-        }
-
-        setCampaignState(prev => ({
-          ...prev,
-          leadId: result.data!.id
-        }))
-
-        console.log('✅ New real lead created:', result.data!.id)
-      }
-
-    } catch (err) {
-      console.error('Error saving lead data:', err)
-      // Don't throw - allow campaign to continue even if lead saving fails
-    }
-  }
-
-  const saveResponse = async (sectionId: string, responseData: any) => {
-    try {
-      // Responses are now saved automatically via collectResponse -> session JSONB
-      // This function is kept for compatibility but responses go through the session system
-      console.log('📝 Response saved to session for section:', sectionId)
-
-      // Use the new session-based response collection
-      await addResponse(campaignState.sessionId, sectionId, responseData)
-
-    } catch (err) {
-      console.error('Error saving response to session:', err)
-      // Don't throw - allow campaign to continue
+  const handleNext = () => {
+    if (sections.length > 0) {
+      campaignRenderer.goNext()
     }
   }
 
   const handlePrevious = () => {
-    if (isTransitioning || campaignState.currentSection <= 0) return
-
-    const newSectionIndex = Math.max(0, campaignState.currentSection - 1)
-
-    setIsTransitioning(true)
-    setCampaignState(prev => ({
-      ...prev,
-      currentSection: newSectionIndex
-    }))
-
-    // Update session progress in database with the new section index
-    updateSessionProgress(newSectionIndex)
-
-    // Reset transition state after animation
-    setTimeout(() => setIsTransitioning(false), 300)
+    if (sections.length > 0) {
+      campaignRenderer.goPrevious()
+    }
   }
 
-  const handleNext = () => {
-    if (isTransitioning || campaignState.currentSection >= sections.length - 1) return
-
-    const newSectionIndex = Math.min(sections.length - 1, campaignState.currentSection + 1)
-
-    setIsTransitioning(true)
-    setCampaignState(prev => ({
-      ...prev,
-      currentSection: newSectionIndex
-    }))
-
-    // Update session progress in database with the new section index
-    updateSessionProgress(newSectionIndex)
-
-    // Reset transition state after animation
-    setTimeout(() => setIsTransitioning(false), 300)
+  const handleNavigateToSection = (index: number) => {
+    if (sections.length > 0) {
+      campaignRenderer.goToSection(index)
+    }
   }
 
   // =============================================================================
@@ -1665,7 +1217,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
                   // Navigate to first incomplete capture section
                   const captureSection = sections.findIndex(s => s.type === 'capture')
                   if (captureSection >= 0) {
-                    navigateToSection(captureSection)
+                    handleNavigateToSection(captureSection)
                   }
                 }}
                 className={getMobileClasses("bg-green-600 hover:bg-green-700 w-full")}
@@ -1732,25 +1284,28 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   return (
     <div className="h-screen bg-muted">
       {/* Section Content */}
-      {campaignState.currentSection < sections.length && (
-        <div key={campaignState.currentSection} className={cn(
+      {campaignRenderer.currentSection < sections.length && (
+        <div key={campaignRenderer.currentSection} className={cn(
           "h-full transition-all duration-300 ease-in-out",
           isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0"
         )}>
           {/* Use SharedSectionRenderer for consistent experience */}
           <SharedSectionRenderer
-            section={sections[campaignState.currentSection]}
-            index={campaignState.currentSection}
+            section={sections[campaignRenderer.currentSection]}
+            index={campaignRenderer.currentSection}
             isActive={true}
             isPreview={false}
             campaignId={campaign?.id}
-            userInputs={campaignState.userInputs}
+            userInputs={campaignRenderer.userInputs}
             sections={sections}
             onNext={handleNext}
             onPrevious={handlePrevious}
-            onNavigateToSection={navigateToSection}
+            onNavigateToSection={handleNavigateToSection}
             onSectionComplete={handleSectionComplete}
-            onResponseUpdate={collectResponse}
+            onResponseUpdate={(sectionId: string, fieldId: string, value: any, metadata?: any) => {
+              // Use clean campaignRenderer approach like preview page
+              campaignRenderer.handleResponseUpdate(sectionId, fieldId, value, metadata)
+            }}
           />
         </div>
       )}
