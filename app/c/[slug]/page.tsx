@@ -43,7 +43,7 @@ import {
 } from '@/lib/variable-system'
 
 // Import NEW shared components and hooks
-import { SectionRenderer as SharedSectionRenderer } from '@/components/campaign-renderer'
+import { SectionRenderer as SharedSectionRenderer, SectionNavigationBar } from '@/components/campaign-renderer'
 import { 
   useCampaignRenderer, 
   useDeviceInfo, 
@@ -2065,78 +2065,57 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       </div>
 
       {/* Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <Button
-              variant="outline"
-              onClick={handlePrevious}
-              disabled={isTransitioning || campaignState.currentSection <= 0}
-              className={cn(
-                getMobileClasses("transition-all duration-200"),
-                isTransitioning && "opacity-50 cursor-not-allowed",
-                deviceInfo?.type === 'mobile' && "px-6 py-3"
-              )}
-              size={deviceInfo?.type === 'mobile' ? 'lg' : 'default'}
-            >
-              <ArrowLeft className={cn(
-                "mr-1",
-                deviceInfo?.type === 'mobile' ? "h-5 w-5" : "h-4 w-4"
-              )} />
-              Previous
-            </Button>
-            
-            {/* Enhanced Progress Indicator with Navigation Hints */}
-            <div className="flex flex-col items-center space-y-2">
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-muted-foreground">
-                  {campaignState.currentSection + 1} of {sections.length}
-                </span>
-                {isTransitioning && (
-                  <div className="flex items-center">
-                    <Loader2 className="h-3 w-3 animate-spin text-blue-600 mr-1" />
-                    <span className="text-xs text-blue-600">Transitioning...</span>
-                  </div>
-                )}
-              </div>
-              
-              {/* Device-specific Navigation Hints */}
-              <div className="text-xs text-gray-400 text-center max-w-xs">
-                {deviceInfo?.touchCapable 
-                  ? "Swipe left/right or use buttons to navigate"
-                  : "Use arrow keys or buttons to navigate"
-                }
-              </div>
-              
-              {/* Network Status in Navigation */}
-              {!networkState.isOnline && (
-                <div className="flex items-center text-xs text-red-500">
-                  <WifiOff className="h-3 w-3 mr-1" />
-                  <span>Offline</span>
-                </div>
-              )}
+      <SectionNavigationBar
+        variant="full"
+        onPrevious={handlePrevious}
+        onNext={handleNext}
+        canGoPrevious={!isTransitioning && campaignState.currentSection > 0}
+        canGoNext={!isTransitioning && campaignState.currentSection < sections.length - 1}
+        progress={{
+          current: campaignState.currentSection + 1,
+          total: sections.length,
+          percentage: progressMetrics.weightedProgress,
+          timeEstimate: progressMetrics.timeEstimate,
+          completionForecast: progressMetrics.completionForecast
+        }}
+        status={{
+          isSaving: pendingUpdates.size > 0,
+          isSaved: pendingUpdates.size === 0 && isSessionRecovered && campaignState.userInputs && Object.keys(campaignState.userInputs).length > 0,
+          isOffline: !networkState.isOnline
+        }}
+        navigationHints={{
+          text: deviceInfo?.touchCapable 
+            ? "Swipe left/right or use buttons to navigate"
+            : "Use arrow keys or buttons to navigate",
+          isTouchDevice: deviceInfo?.touchCapable
+        }}
+                 sectionDots={{
+           sections: sections.map((section, index) => {
+             const canAccess = canAccessSection(index).canAccess
+             return {
+               index,
+               title: section.title || undefined,
+               isCompleted: campaignState.completedSections.has(index),
+               canAccess
+             }
+           }),
+          currentIndex: campaignState.currentSection,
+          onSectionClick: (index) => {
+            if (!isTransitioning) {
+              navigateToSectionWithValidation(index)
+            }
+          }
+        }}
+        deviceInfo={deviceInfo}
+        centerContent={
+          isTransitioning ? (
+            <div className="flex items-center">
+              <Loader2 className="h-3 w-3 animate-spin text-blue-600 mr-1" />
+              <span className="text-xs text-blue-600">Transitioning...</span>
             </div>
-            
-            <Button
-              variant="outline"
-              onClick={handleNext}
-              disabled={isTransitioning || campaignState.currentSection >= sections.length - 1}
-              className={cn(
-                getMobileClasses("transition-all duration-200"),
-                isTransitioning && "opacity-50 cursor-not-allowed",
-                deviceInfo?.type === 'mobile' && "px-6 py-3"
-              )}
-              size={deviceInfo?.type === 'mobile' ? 'lg' : 'default'}
-            >
-              Next
-              <ArrowRight className={cn(
-                "ml-1",
-                deviceInfo?.type === 'mobile' ? "h-5 w-5" : "h-4 w-4"
-              )} />
-            </Button>
-          </div>
-        </div>
-      </div>
+          ) : undefined
+        }
+      />
     </div>
   )
 } 

@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useState } from 'react'
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle } from 'lucide-react'
+import { CheckCircle2, Circle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses, getDefaultChoices } from '../utils'
 import { cn } from '@/lib/utils'
+import { SectionNavigationBar } from '../SectionNavigationBar'
 
 export function MultipleChoiceSection({
   section,
@@ -25,66 +26,35 @@ export function MultipleChoiceSection({
   // Cast config to access additional properties
   const configData = config as any
   const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
-  
-  // Get the actual content from config
-  const headline = configData.content || configData.question || title || 'Choose an option'
-  const subheading = configData.subheading || description
-  
-  // Transform choices to ensure consistent structure
-  const normalizedChoices = choices.map((choice, index) => {
-    // Handle different possible structures
-    const rawChoice = choice as any
-    return {
-      id: rawChoice.id || rawChoice.option_id || `choice-${index}`,
-      label: rawChoice.label || rawChoice.text || rawChoice.option_text || `Option ${index + 1}`,
-      value: rawChoice.value || rawChoice.option_value || rawChoice.id || rawChoice.option_id || `option-${index}`
-    }
-  })
+  const question = configData.content || configData.question || title || 'Please select an option'
+  const helpText = configData.helpText || description
 
-  const handleSelect = (value: string) => {
+  const handleChoiceSelect = (value: string) => {
     setSelectedValue(value)
+    
+    // Report selection to parent component
     onResponseUpdate(section.id, 'choice', value, {
       inputType: 'multiple_choice',
-      isRequired: isRequired
+      isRequired: isRequired,
+      selectedOption: value
     })
   }
 
-  const handleSubmit = () => {
-    if (isRequired && !selectedValue) return
-    
-    const submissionData = {
-      [section.id]: selectedValue,
-      choice: selectedValue
+  const handleContinue = () => {
+    if (isRequired && !selectedValue) {
+      return
     }
 
-    console.log('🔘 MULTIPLE CHOICE SUBMISSION:')
-    console.log('  Section ID:', section.id)
-    console.log('  Section Title:', section.title)
-    console.log('  Selected Value:', selectedValue)
-    console.log('  Submission Data:', submissionData)
-    console.log('  Section Index:', index)
-    console.log('  Available Choices:', normalizedChoices)
-
-    onSectionComplete(index, submissionData)
+    onSectionComplete(index, {
+      [section.id]: selectedValue,
+      selected_choice: selectedValue
+    })
   }
 
-  const isValid = !isRequired || selectedValue
+  const canContinue = !isRequired || selectedValue !== ''
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <div className="flex-shrink-0 p-6 border-b border-border">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <button
-            onClick={onPrevious}
-            className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ChevronLeft className="h-5 w-5 mr-1" />
-            <span className="hidden sm:inline">Previous</span>
-          </button>
-          <span className="text-sm text-muted-foreground">Question {index + 1}</span>
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-background flex flex-col pb-20">
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           <div className="text-center space-y-4">
@@ -92,72 +62,78 @@ export function MultipleChoiceSection({
               "font-bold text-foreground",
               deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
             )}>
-              {headline}
+              {question}
+              {isRequired && <span className="text-red-500 ml-1">*</span>}
             </h1>
             
-            {subheading && (
+            {helpText && (
               <p className={cn(
                 "text-muted-foreground",
                 deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
               )}>
-                {subheading}
+                {helpText}
               </p>
             )}
           </div>
 
-          <div className="space-y-4">
-            {normalizedChoices.map((choice, choiceIndex) => {
-              const isSelected = selectedValue === choice.value
-              
+          <div className="space-y-3">
+            {choices.map((choice: any, idx: number) => {
+              const choiceValue = typeof choice === 'string' ? choice : choice.value || choice.text
+              const choiceLabel = typeof choice === 'string' ? choice : choice.label || choice.text || choice.value
+              const isSelected = selectedValue === choiceValue
+
               return (
                 <button
-                  key={`${choice.id}-${choiceIndex}`}
-                  onClick={() => handleSelect(choice.value)}
+                  key={idx}
+                  onClick={() => handleChoiceSelect(choiceValue)}
                   className={cn(
-                    "w-full p-4 border-2 rounded-xl text-left transition-all duration-200",
-                    "flex items-center space-x-3 shadow-sm hover:shadow-md",
-                    getMobileClasses("", deviceInfo?.type),
+                    "w-full p-4 rounded-lg border text-left transition-all duration-200",
+                    "flex items-center space-x-3 hover:shadow-md",
                     isSelected
-                      ? "border-blue-500 bg-blue-50 text-blue-900 shadow-blue-100"
-                      : "border-gray-200 hover:border-blue-300 hover:bg-gray-50 bg-white"
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border hover:border-primary/50 hover:bg-muted/50",
+                    getMobileClasses("", deviceInfo?.type)
                   )}
                 >
-                  {isSelected ? (
-                    <CheckCircle2 className="h-6 w-6 text-blue-600 flex-shrink-0" />
-                  ) : (
-                    <Circle className="h-6 w-6 text-gray-400 flex-shrink-0" />
-                  )}
+                  <div className="flex-shrink-0">
+                    {isSelected ? (
+                      <CheckCircle2 className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Circle className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
                   <span className={cn(
-                    "flex-1 font-medium",
-                    deviceInfo?.type === 'mobile' ? "text-base" : "text-lg",
-                    isSelected ? "text-blue-900" : "text-gray-900"
+                    "text-left",
+                    isSelected ? "text-foreground font-medium" : "text-foreground"
                   )}>
-                    {choice.label}
+                    {choiceLabel}
                   </span>
                 </button>
               )
             })}
           </div>
 
-          <div className="flex justify-end">
-            <button
-              onClick={handleSubmit}
-              disabled={!isValid}
-              className={cn(
-                "px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                "flex items-center space-x-2",
-                getMobileClasses("", deviceInfo?.type),
-                isValid
-                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              )}
-            >
-              <span>{buttonLabel}</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+          {/* Required field indicator */}
+          {isRequired && !selectedValue && (
+            <div className="text-center text-sm text-muted-foreground">
+              Please select an option to continue
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Shared Navigation Bar */}
+      <SectionNavigationBar
+        onPrevious={onPrevious}
+        icon={<CheckCircle2 className="h-5 w-5 text-primary" />}
+        label={`Choice ${index + 1}`}
+        actionButton={{
+          label: buttonLabel,
+          onClick: handleContinue,
+          disabled: !canContinue
+        }}
+        deviceInfo={deviceInfo}
+      />
     </div>
   )
 } 
