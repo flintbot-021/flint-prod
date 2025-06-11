@@ -138,12 +138,50 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
 
 
+  // Generate or recover session ID with persistence
+  const getOrCreateSessionId = (): string => {
+    if (typeof window === 'undefined') return crypto.randomUUID()
+    
+    const storageKey = `flint_session_${slug}`
+    const stored = localStorage.getItem(storageKey)
+    
+    if (stored) {
+      try {
+        const { sessionId, timestamp } = JSON.parse(stored)
+        const age = Date.now() - timestamp
+        const maxAge = 24 * 60 * 60 * 1000 // 24 hours
+        
+        // Use existing session if less than 24 hours old
+        if (age < maxAge) {
+          console.log('🔄 Recovered existing session:', sessionId)
+          return sessionId
+        } else {
+          console.log('⏰ Session expired, creating new one')
+          localStorage.removeItem(storageKey)
+        }
+      } catch (err) {
+        console.warn('Failed to parse stored session, creating new one')
+        localStorage.removeItem(storageKey)
+      }
+    }
+    
+    // Create new session
+    const newSessionId = crypto.randomUUID()
+    localStorage.setItem(storageKey, JSON.stringify({
+      sessionId: newSessionId,
+      timestamp: Date.now()
+    }))
+    
+    console.log('✨ Created new session:', newSessionId)
+    return newSessionId
+  }
+
   const [campaignState, setCampaignState] = useState<CampaignState>({
     currentSection: 0,
     userInputs: {},
     completedSections: new Set(),
     startTime: new Date(),
-    sessionId: crypto.randomUUID()
+    sessionId: getOrCreateSessionId()
   })
 
 
@@ -158,6 +196,9 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       ...prev,
       currentSection: sectionIndex
     }))
+
+    // Update session progress in database with the new section index
+    updateSessionProgress(sectionIndex)
 
     // Reset transition state after animation
     setTimeout(() => setIsTransitioning(false), 300)
@@ -416,9 +457,18 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   useEffect(() => {
     const initializeSession = async () => {
       if (campaign && !isSessionRecovered) {
-        // Create lead record immediately for RLS policy compliance
-        await createInitialLead()
-        await recoverSession()
+        console.log('🚀 [INIT] Starting session initialization')
+        
+        // Try to recover existing session first
+        const recovered = await recoverSession()
+        
+        // Only create a new lead if we didn't recover an existing session with a lead ID
+        if (!recovered || !campaignState.leadId) {
+          console.log('💾 [INIT] Creating initial lead (no existing session or lead)')
+          await createInitialLead()
+        } else {
+          console.log('✅ [INIT] Using recovered lead ID:', campaignState.leadId)
+        }
       }
     }
     
@@ -428,14 +478,20 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // Auto-save on unmount and visibility change
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (pendingUpdates.size > 0) {
+      if (pendingUpdates.size > 0 && campaign) {
+        console.log('📤 [BEFOREUNLOAD] Flushing pending updates before page unload')
         flushPendingUpdates()
+      } else if (pendingUpdates.size > 0) {
+        console.warn('⚠️ [BEFOREUNLOAD] Campaign not loaded, skipping flush before unload')
       }
     }
 
     const handleVisibilityChange = () => {
-      if (document.hidden && pendingUpdates.size > 0) {
+      if (document.hidden && pendingUpdates.size > 0 && campaign) {
+        console.log('👁️ [VISIBILITY] Flushing pending updates on page hide')
         flushPendingUpdates()
+      } else if (document.hidden && pendingUpdates.size > 0) {
+        console.warn('⚠️ [VISIBILITY] Campaign not loaded, skipping flush on page hide')
       }
     }
 
@@ -443,7 +499,13 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      handleBeforeUnload()
+      // Only flush if campaign is still loaded during cleanup
+      if (pendingUpdates.size > 0 && campaign) {
+        console.log('🧹 [CLEANUP] Flushing pending updates during component cleanup')
+        handleBeforeUnload()
+      } else if (pendingUpdates.size > 0) {
+        console.warn('⚠️ [CLEANUP] Campaign not loaded during cleanup, skipping flush')
+      }
       window.removeEventListener('beforeunload', handleBeforeUnload)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
@@ -567,9 +629,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [campaign, campaignState.currentSection])
 
-  // Parse URL section parameter on load
+  // Parse URL section parameter on load (only if no session recovery happened)
   useEffect(() => {
-    if (sections.length === 0) return
+    if (sections.length === 0 || isSessionRecovered) return
+    
+    console.log('🔗 [URL] Checking URL section parameter')
     
     const urlParams = new URLSearchParams(window.location.search)
     const sectionParam = urlParams.get('section')
@@ -577,13 +641,16 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     if (sectionParam) {
       const sectionIndex = parseInt(sectionParam) - 1
       if (sectionIndex >= 0 && sectionIndex < sections.length) {
+        console.log(`🔗 [URL] Setting section from URL: ${sectionIndex}`)
         setCampaignState(prev => ({
           ...prev,
           currentSection: sectionIndex
         }))
       }
+    } else {
+      console.log('🔗 [URL] No section parameter found, staying at section 0')
     }
-  }, [sections.length])
+  }, [sections.length, isSessionRecovered])
 
   // =============================================================================
   // VARIABLE ENGINE INITIALIZATION
@@ -664,7 +731,26 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // Real-time response collection with auto-save
   const collectResponse = async (sectionId: string, fieldId: string, value: any, metadata: any = {}) => {
     try {
-      console.log('📝 Collecting response:', { sectionId, fieldId, value, hasLeadId: !!campaignState.leadId })
+      // Guard against race conditions - don't allow responses until campaign is loaded
+      if (!campaign) {
+        console.warn('⚠️ Campaign not loaded yet, deferring response collection')
+        return
+      }
+      
+      // Refresh session timestamp on activity
+      if (typeof window !== 'undefined') {
+        const storageKey = `flint_session_${slug}`
+        const stored = localStorage.getItem(storageKey)
+        if (stored) {
+          try {
+            const sessionData = JSON.parse(stored)
+            sessionData.timestamp = Date.now()
+            localStorage.setItem(storageKey, JSON.stringify(sessionData))
+          } catch (err) {
+            // Ignore storage errors
+          }
+        }
+      }
       
       // Update local state immediately
       setCampaignState(prev => ({
@@ -732,6 +818,13 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const flushPendingUpdates = async () => {
     if (pendingUpdates.size === 0) return
 
+    // Guard against flushing when campaign is not loaded (e.g., during unmount)
+    if (!campaign) {
+      console.warn('⚠️ [FLUSH] Campaign not loaded during flush, clearing pending updates to prevent memory leaks')
+      setPendingUpdates(new Map()) // Clear to prevent memory leaks
+      return
+    }
+
     try {
       const updates = Array.from(pendingUpdates.values())
       await saveBatchResponses(updates)
@@ -758,6 +851,13 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         // If still no lead ID, skip saving responses
         if (!currentLeadId) {
           console.error('❌ Failed to create lead, skipping response save')
+          console.error('❌ Campaign details:', { 
+            campaignExists: !!campaign, 
+            campaignId: campaign?.id, 
+            campaignStatus: campaign?.status,
+            sessionId: campaignState.sessionId,
+            existingLeadId: campaignState.leadId 
+          })
           return
         }
       }
@@ -803,15 +903,16 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   }
 
   // Update session progress tracking
-  const updateSessionProgress = async () => {
+  const updateSessionProgress = async (overrideSectionIndex?: number) => {
     try {
       const supabase = await getSupabaseClient()
+
+      const currentSectionIndex = overrideSectionIndex !== undefined ? overrideSectionIndex : campaignState.currentSection
 
       const progressData = {
         session_id: campaignState.sessionId,
         campaign_id: campaign?.id,
-        last_section_index: campaignState.currentSection,
-        completion_percentage: Math.round((campaignState.completedSections.size / sections.length) * 100),
+        last_section_index: currentSectionIndex,
         total_sections: sections.length,
         completed_sections: campaignState.completedSections.size,
         last_activity: new Date().toISOString(),
@@ -828,6 +929,12 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         throw error
       }
 
+      console.log('📍 Session progress updated:', { 
+        section: currentSectionIndex, 
+        completedSections: campaignState.completedSections.size,
+        totalSections: sections.length
+      })
+
     } catch (err) {
       console.error('Error updating session progress:', err)
     }
@@ -838,6 +945,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     if (isSessionRecovered) return true
 
     try {
+      console.log('🔄 [RECOVERY] Starting session recovery for:', {
+        sessionId: campaignState.sessionId,
+        campaignId: campaign?.id
+      })
+
       const supabase = await getSupabaseClient()
       
       // Try to find existing session
@@ -851,7 +963,18 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         .eq('campaign_id', campaign?.id)
         .single()
 
+      console.log('🔍 [RECOVERY] Session query result:', {
+        found: !!existingSession,
+        error: error?.message,
+        sessionData: existingSession ? {
+          lastSectionIndex: existingSession.last_section_index,
+          leadId: existingSession.lead_id,
+          responseCount: existingSession.lead_responses?.length || 0
+        } : null
+      })
+
       if (error || !existingSession) {
+        console.log('📝 [RECOVERY] No existing session found, creating new one')
         // No existing session, create new one
         await createSession()
         setIsSessionRecovered(true)
@@ -862,31 +985,52 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       const recoveredInputs: Record<string, any> = {}
       const completedSections = new Set<number>()
 
+      console.log('📊 [RECOVERY] Processing responses:', existingSession.lead_responses?.length || 0)
+
       if (existingSession.lead_responses) {
-        existingSession.lead_responses.forEach((response: any) => {
+        existingSession.lead_responses.forEach((response: any, index: number) => {
+          console.log(`📝 [RECOVERY] Response ${index + 1}:`, {
+            sectionId: response.section_id,
+            value: response.response_value,
+            responseData: response.response_data
+          })
+          
           // Use section_id as key since field_id doesn't exist in lead_responses table
           recoveredInputs[response.section_id] = response.response_value
+          
           // Get section_index from response_data if available
-          const sectionIndex = response.response_data?.sectionIndex || 0
-          completedSections.add(sectionIndex)
+          const sectionIndex = response.response_data?.sectionIndex
+          if (typeof sectionIndex === 'number') {
+            completedSections.add(sectionIndex)
+            console.log(`✅ [RECOVERY] Marked section ${sectionIndex} as completed`)
+          }
         })
       }
+
+      const targetSection = existingSession.last_section_index || 0
+      
+      console.log('🎯 [RECOVERY] Restoring state:', {
+        targetSection,
+        inputsCount: Object.keys(recoveredInputs).length,
+        completedSectionsArray: Array.from(completedSections),
+        leadId: existingSession.lead_id
+      })
 
       setCampaignState(prev => ({
         ...prev,
         userInputs: recoveredInputs,
         completedSections,
-        currentSection: existingSession.last_section_index || 0,
-        leadId: existingSession.lead_id || undefined // Ensure lead_id is properly set
+        currentSection: targetSection,
+        leadId: existingSession.lead_id || undefined
       }))
 
       setIsSessionRecovered(true)
-      logger.info('Session recovered successfully')
+      console.log('✅ [RECOVERY] Session recovered successfully')
 
       return true
 
     } catch (err) {
-      console.error('Error recovering session:', err)
+      console.error('❌ [RECOVERY] Error recovering session:', err)
       setIsSessionRecovered(true) // Prevent retry loops
       return false
     }
@@ -1416,11 +1560,16 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const handlePrevious = () => {
     if (isTransitioning || campaignState.currentSection <= 0) return
 
+    const newSectionIndex = Math.max(0, campaignState.currentSection - 1)
+
     setIsTransitioning(true)
     setCampaignState(prev => ({
       ...prev,
-      currentSection: Math.max(0, prev.currentSection - 1)
+      currentSection: newSectionIndex
     }))
+
+    // Update session progress in database with the new section index
+    updateSessionProgress(newSectionIndex)
 
     // Reset transition state after animation
     setTimeout(() => setIsTransitioning(false), 300)
@@ -1429,11 +1578,16 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const handleNext = () => {
     if (isTransitioning || campaignState.currentSection >= sections.length - 1) return
 
+    const newSectionIndex = Math.min(sections.length - 1, campaignState.currentSection + 1)
+
     setIsTransitioning(true)
     setCampaignState(prev => ({
       ...prev,
-      currentSection: Math.min(sections.length - 1, prev.currentSection + 1)
+      currentSection: newSectionIndex
     }))
+
+    // Update session progress in database with the new section index
+    updateSessionProgress(newSectionIndex)
 
     // Reset transition state after animation
     setTimeout(() => setIsTransitioning(false), 300)
@@ -1628,7 +1782,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // RENDER STATES
   // =============================================================================
 
-  if (isLoading) {
+  // Enhanced loading guard - prevent interaction until campaign and sections are ready
+  if (isLoading || !campaign || sections.length === 0) {
     return (
       <div className="min-h-screen bg-muted flex items-center justify-center">
         <div className="text-center">
@@ -1800,17 +1955,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     )
   }
 
-  if (!campaign || sections.length === 0) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <div className="text-center">
-          <Globe className="h-8 w-8 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-foreground mb-2">No Content</h3>
-          <p className="text-muted-foreground">This campaign doesn't have any content to display.</p>
-        </div>
-      </div>
-    )
-  }
+
 
   // =============================================================================
   // MAIN RENDER

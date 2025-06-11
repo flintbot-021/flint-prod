@@ -63,8 +63,7 @@ export function TextQuestionSection({
     if (validationError) {
       setError(validationError)
     }
-
-    // Report to parent component for real-time updates
+    
     onResponseUpdate(section.id, 'text_response', value, {
       inputType: 'text',
       isValid: !validationError,
