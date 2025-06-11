@@ -410,7 +410,7 @@ export default function CampaignsPage() {
           {/* Analytics Dashboard */}
           {!loadingCampaigns && campaigns.length > 0 && (
             <div className="mb-8">
-              <h2 className="text-lg font-semibold text-foreground mb-4">Campaign Analytics</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-4">Campaign Overview</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {/* Total Campaigns */}
                 <Card>

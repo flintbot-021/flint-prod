@@ -29,9 +29,7 @@ export {
   applyPagination,
   DataAccessError,
   type PaginationParams,
-  type ApiResponse,
-  type DatabaseResult,
-  type ValidationError
+
 } from './base';
 
 // =============================================================================
@@ -64,10 +62,7 @@ export {
   deleteSection,
   reorderSections,
 
-  // Section Options CRUD
-  createSectionOption,
-  updateSectionOption,
-  deleteSectionOption
+  // Section options removed - now stored in section.configuration JSONB field
 } from './campaigns';
 
 // =============================================================================
@@ -127,76 +122,64 @@ export {
 // TYPE RE-EXPORTS
 // =============================================================================
 export type {
-  // Database Types
+  // Core entities
+  Profile,
   Campaign,
   Section,
-  SectionOption,
   Lead,
   LeadResponse,
-  Profile,
   CampaignVariable,
   LeadVariableValue,
-  CampaignAnalytics,
 
-  // Create Types
+
+  // Configuration types
+  UserPreferences,
+  CampaignSettings,
+  SectionConfiguration,
+  VariableConfiguration,
+
+  // Create types (for inserts)
+  CreateProfile,
   CreateCampaign,
   CreateSection,
-  CreateSectionOption,
   CreateLead,
   CreateLeadResponse,
-  CreateProfile,
   CreateCampaignVariable,
   CreateLeadVariableValue,
-  CreateCampaignAnalytics,
 
-  // Update Types
+
+  // Update types (for updates)
+  UpdateProfile,
   UpdateCampaign,
   UpdateSection,
-  UpdateSectionOption,
   UpdateLead,
   UpdateLeadResponse,
-  UpdateProfile,
   UpdateCampaignVariable,
   UpdateLeadVariableValue,
-  UpdateCampaignAnalytics,
 
-  // Extended Types
+
+  // Extended types with relationships
   CampaignWithRelations,
   SectionWithOptions,
   LeadWithRelations,
   LeadResponseWithRelations,
   ProfileWithUsage,
 
-  // Configuration Types
-  SectionConfiguration,
-  TextQuestionConfiguration,
-  MultipleChoiceConfiguration,
-  SliderConfiguration,
-  InfoConfiguration,
-  CaptureConfiguration,
-  LogicConfiguration,
-  OutputConfiguration,
-  VariableConfiguration,
-  CampaignSettings,
-  UserPreferences,
-
-  // Response Types
+  // Utility types
+  ApiResponse,
   PaginatedResponse,
+  DatabaseResult,
+  ValidationError,
 
-  // Enum Types
+  // Enums
   CampaignStatus,
   SectionType,
   ResponseType,
   VariableType,
   VariableSource,
   SubscriptionPlan,
-  SubscriptionStatus,
-
-  // Utility Types
-  UUID,
-  Timestamp,
-  JSONValue
-} from '../types/database';
+  SubscriptionStatus
+} from '@/lib/types/database';
 
 // =============================================================================
 // CONVENIENCE FUNCTIONS

@@ -98,16 +98,7 @@ export function extractResponseValue(response: any, section: SectionWithOptions)
   
   // For multiple choice sections, resolve option IDs to actual values
   if (section.type === 'multiple_choice' && typeof value === 'string') {
-    // First, try to find options in section.options (from section_options table)
-    if (section.options && section.options.length > 0) {
-      const matchedOption = section.options.find((opt: any) => opt.value === value)
-      if (matchedOption) {
-        // Return the human-readable label from section_options table
-        return matchedOption.label
-      }
-    }
-    
-    // If not found, try the section configuration (campaign builder stores options here)
+    // Options are now stored in section.configuration.options
     if (section.configuration) {
       const config = section.configuration as any
       if (config.options && Array.isArray(config.options)) {
@@ -141,7 +132,12 @@ export function buildVariablesFromInputs(
   const variables: Record<string, any> = {}
   
   console.log('🔍 Building variables from inputs...')
-  console.log('📋 Sections:', sections.map(s => ({ id: s.id, title: s.title, type: s.type, optionsCount: s.options?.length || 0 })))
+  console.log('📋 Sections:', sections.map(s => ({ 
+    id: s.id, 
+    title: s.title, 
+    type: s.type, 
+    hasOptions: !!(s.configuration as any)?.options?.length 
+  })))
   console.log('📝 User inputs:', userInputs)
   
   sections.forEach(section => {
@@ -155,8 +151,11 @@ export function buildVariablesFromInputs(
         variables[variableName] = resolvedValue
         
         console.log(`✅ Variable "${variableName}": ${userResponse} → ${resolvedValue}`)
-        if (section.options && section.type === 'multiple_choice') {
-          console.log(`   Options available:`, section.options.map((opt: any) => `${opt.value}="${opt.label}"`))
+        if (section.type === 'multiple_choice' && section.configuration) {
+          const config = section.configuration as any
+          if (config.options && Array.isArray(config.options)) {
+            console.log(`   Options available:`, config.options.map((opt: any) => `${opt.id}="${opt.text}"`))
+          }
         }
       } else {
         console.log(`⚠️ No response found for section ${section.id} (${section.title})`)

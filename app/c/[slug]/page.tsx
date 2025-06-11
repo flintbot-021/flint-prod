@@ -1339,10 +1339,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       // Load real campaign sections from database
       const { data: sectionsData, error: sectionsError } = await supabase
         .from('sections')
-        .select(`
-          *,
-          section_options (*)
-        `)
+        .select('*')
         .eq('campaign_id', campaign.id)
         .order('order_index', { ascending: true })
 

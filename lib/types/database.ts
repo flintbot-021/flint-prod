@@ -116,17 +116,7 @@ export interface Section {
   updated_at: Timestamp;
 }
 
-/**
- * Section options table - Options for multiple choice and configurable sections
- */
-export interface SectionOption {
-  id: UUID;
-  section_id: UUID;
-  label: string;
-  value: string;
-  order_index: number;
-  configuration: Record<string, JSONValue>;
-}
+
 
 /**
  * Leads table - Captured lead information
@@ -189,20 +179,7 @@ export interface LeadVariableValue {
   computed_at: Timestamp;
 }
 
-/**
- * Campaign analytics table - Daily performance metrics
- */
-export interface CampaignAnalytics {
-  id: UUID;
-  campaign_id: UUID;
-  date: string; // YYYY-MM-DD format
-  views: number;
-  starts: number;
-  completions: number;
-  conversion_rate: number;
-  average_completion_time: number | null;
-  metadata: Record<string, JSONValue>;
-}
+
 
 // =============================================================================
 // CONFIGURATION TYPES
@@ -461,12 +438,12 @@ export interface VariableConfiguration {
 export type CreateProfile = Omit<Profile, 'created_at' | 'updated_at'>;
 export type CreateCampaign = Omit<Campaign, 'id' | 'created_at' | 'updated_at'>;
 export type CreateSection = Omit<Section, 'id' | 'created_at' | 'updated_at'>;
-export type CreateSectionOption = Omit<SectionOption, 'id'>;
+
 export type CreateLead = Omit<Lead, 'id' | 'created_at'>;
 export type CreateLeadResponse = Omit<LeadResponse, 'id' | 'created_at'>;
 export type CreateCampaignVariable = Omit<CampaignVariable, 'id' | 'created_at'>;
 export type CreateLeadVariableValue = Omit<LeadVariableValue, 'id' | 'computed_at'>;
-export type CreateCampaignAnalytics = Omit<CampaignAnalytics, 'id'>;
+
 
 /**
  * Types for updating records (all fields optional except id)
@@ -474,12 +451,12 @@ export type CreateCampaignAnalytics = Omit<CampaignAnalytics, 'id'>;
 export type UpdateProfile = Partial<Omit<Profile, 'id' | 'created_at'>> & { id: UUID };
 export type UpdateCampaign = Partial<Omit<Campaign, 'id' | 'user_id' | 'created_at'>> & { id: UUID };
 export type UpdateSection = Partial<Omit<Section, 'id' | 'campaign_id' | 'created_at'>> & { id: UUID };
-export type UpdateSectionOption = Partial<Omit<SectionOption, 'id' | 'section_id'>> & { id: UUID };
+
 export type UpdateLead = Partial<Omit<Lead, 'id' | 'campaign_id' | 'created_at'>> & { id: UUID };
 export type UpdateLeadResponse = Partial<Omit<LeadResponse, 'id' | 'lead_id' | 'section_id' | 'created_at'>> & { id: UUID };
 export type UpdateCampaignVariable = Partial<Omit<CampaignVariable, 'id' | 'campaign_id' | 'created_at'>> & { id: UUID };
 export type UpdateLeadVariableValue = Partial<Omit<LeadVariableValue, 'id' | 'lead_id' | 'variable_id'>> & { id: UUID };
-export type UpdateCampaignAnalytics = Partial<Omit<CampaignAnalytics, 'id' | 'campaign_id' | 'date'>> & { id: UUID };
+
 
 // =============================================================================
 // EXTENDED TYPES WITH RELATIONSHIPS
@@ -491,17 +468,16 @@ export type UpdateCampaignAnalytics = Partial<Omit<CampaignAnalytics, 'id' | 'ca
 export interface CampaignWithRelations extends Campaign {
   sections?: SectionWithOptions[];
   variables?: CampaignVariable[];
-  analytics?: CampaignAnalytics[];
   lead_count?: number;
   completion_rate?: number;
   profile?: Profile; // Campaign owner's profile
 }
 
 /**
- * Section with its options included
+ * Section with options (options now stored in configuration field)
  */
 export interface SectionWithOptions extends Section {
-  options?: SectionOption[];
+  // Options are now stored in the configuration field as JSONB
 }
 
 /**
@@ -617,11 +593,7 @@ export interface Database {
         Insert: CreateSection;
         Update: UpdateSection;
       };
-      section_options: {
-        Row: SectionOption;
-        Insert: CreateSectionOption;
-        Update: UpdateSectionOption;
-      };
+
       leads: {
         Row: Lead;
         Insert: CreateLead;
@@ -642,11 +614,7 @@ export interface Database {
         Insert: CreateLeadVariableValue;
         Update: UpdateLeadVariableValue;
       };
-      campaign_analytics: {
-        Row: CampaignAnalytics;
-        Insert: CreateCampaignAnalytics;
-        Update: UpdateCampaignAnalytics;
-      };
+
     };
     Views: {
       // Add views here if any
