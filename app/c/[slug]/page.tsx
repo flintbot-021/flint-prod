@@ -48,6 +48,19 @@ import {
   useVariableEngine 
 } from '@/hooks'
 
+// Import NEW session data access functions
+import {
+  createSession,
+  getSession,
+  updateSession,
+  addResponse,
+  createLead,
+  getLeadBySession,
+  getResponseForSection,
+  isSectionCompleted,
+  generateSessionId
+} from '@/lib/data-access/sessions'
+
 // =============================================================================
 // TYPE DEFINITIONS
 // =============================================================================
@@ -60,13 +73,12 @@ interface CampaignState {
   completedSections: Set<number>
   startTime: Date
   sessionId: string
-  leadId?: string
+  leadId?: string // Lead ID if user has converted
 }
 
 interface VariableContext {
-  leadData: Record<string, any>
-  campaignData: Record<string, any>
   sessionData: Record<string, any>
+  campaignData: Record<string, any>
 }
 
 // Enhanced Error Types
@@ -136,11 +148,9 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // Temporary compatibility bridge for legacy error handling
   const [errorState, setErrorState] = useState<ErrorState | null>(null)
 
-
-
   // Generate or recover session ID with persistence
   const getOrCreateSessionId = (): string => {
-    if (typeof window === 'undefined') return crypto.randomUUID()
+    if (typeof window === 'undefined') return generateSessionId()
     
     const storageKey = `flint_session_${slug}`
     const stored = localStorage.getItem(storageKey)
@@ -166,7 +176,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
     
     // Create new session
-    const newSessionId = crypto.randomUUID()
+    const newSessionId = generateSessionId()
     localStorage.setItem(storageKey, JSON.stringify({
       sessionId: newSessionId,
       timestamp: Date.now()
@@ -184,10 +194,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     sessionId: getOrCreateSessionId()
   })
 
-
-
   // Simplified navigation 
-  const navigateToSection = (sectionIndex: number) => {
+  const navigateToSection = async (sectionIndex: number) => {
     if (isTransitioning || sectionIndex === campaignState.currentSection) return
     if (sectionIndex < 0 || sectionIndex >= sections.length) return
 
@@ -197,8 +205,16 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       currentSection: sectionIndex
     }))
 
-    // Update session progress in database with the new section index
-    updateSessionProgress(sectionIndex)
+    // Update session progress in database
+    try {
+      if (campaign) {
+        await updateSession(campaignState.sessionId, {
+          current_section_index: sectionIndex
+        })
+      }
+    } catch (err) {
+      console.error('Error updating session progress:', err)
+    }
 
     // Reset transition state after animation
     setTimeout(() => setIsTransitioning(false), 300)
@@ -240,8 +256,6 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       )
     }
   }
-
-
 
   // Enhanced loading states for AI processing
   const [aiProcessingState, setAiProcessingState] = useState<{
@@ -462,12 +476,12 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         // Try to recover existing session first
         const recovered = await recoverSession()
         
-        // Only create a new lead if we didn't recover an existing session with a lead ID
-        if (!recovered || !campaignState.leadId) {
-          console.log('💾 [INIT] Creating initial lead (no existing session or lead)')
-          await createInitialLead()
+        // Only create initial session if we didn't recover an existing session
+        if (!recovered) {
+          console.log('💾 [INIT] Creating new session (no existing session found)')
+          await createInitialSession()
         } else {
-          console.log('✅ [INIT] Using recovered lead ID:', campaignState.leadId)
+          console.log('✅ [INIT] Using recovered session:', campaignState.sessionId)
         }
       }
     }
@@ -728,7 +742,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
   }
 
-  // Real-time response collection with auto-save
+  // Real-time response collection with auto-save using new session-based approach
   const collectResponse = async (sectionId: string, fieldId: string, value: any, metadata: any = {}) => {
     try {
       // Guard against race conditions - don't allow responses until campaign is loaded
@@ -762,7 +776,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         }
       }))
 
-      // Add to pending updates queue
+      // Add to pending updates queue for batch saving
       const updateKey = `${sectionId}_${fieldId}`
       const updateData = {
         sectionId,
@@ -780,7 +794,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       setPendingUpdates(prev => new Map(prev.set(updateKey, updateData)))
 
-      // Debounced auto-save
+      // Debounced auto-save using new session data access
       if (autoSaveTimeout) {
         clearTimeout(autoSaveTimeout)
       }
@@ -814,7 +828,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
   }
 
-  // Batch flush pending updates to database
+  // Batch flush pending updates to database using new session approach
   const flushPendingUpdates = async () => {
     if (pendingUpdates.size === 0) return
 
@@ -827,10 +841,10 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
     try {
       const updates = Array.from(pendingUpdates.values())
-      await saveBatchResponses(updates)
+      await saveBatchResponsesToSession(updates)
       setPendingUpdates(new Map())
       
-      logger.info('Batch responses saved successfully')
+      logger.info('Batch responses saved to session successfully')
 
     } catch (err) {
       console.error('Error flushing pending updates:', err)
@@ -838,66 +852,49 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
   }
 
-  // Enhanced batch response saving
-  const saveBatchResponses = async (responses: any[]) => {
+  // Simple session-based response saving (no more fake leads!)
+  const saveBatchResponsesToSession = async (responses: any[]) => {
     try {
-      // Ensure we have a lead ID before saving responses
-      let currentLeadId = campaignState.leadId
+      if (!campaign) {
+        console.error('❌ Campaign not loaded, cannot save responses')
+        return
+      }
+
+      // Build responses object for JSONB field
+      const responseUpdates: Record<string, any> = {}
       
-      if (!currentLeadId) {
-        console.log('⚠️ No lead ID available, creating lead first...')
-        currentLeadId = await createInitialLead()
-        
-        // If still no lead ID, skip saving responses
-        if (!currentLeadId) {
-          console.error('❌ Failed to create lead, skipping response save')
-          console.error('❌ Campaign details:', { 
-            campaignExists: !!campaign, 
-            campaignId: campaign?.id, 
-            campaignStatus: campaign?.status,
-            sessionId: campaignState.sessionId,
-            existingLeadId: campaignState.leadId 
-          })
-          return
-        }
-      }
-
-      const supabase = await getSupabaseClient()
-
-      // Prepare batch data - map to correct lead_responses schema
-      const responseRecords = responses.map(response => ({
-        lead_id: currentLeadId, // Required for lead_responses table
-        section_id: response.sectionId,
-        response_value: String(response.value),
-        response_type: typeof response.value === 'number' ? 'number' : 
-                       typeof response.value === 'boolean' ? 'boolean' : 'text',
-        response_data: {
-          originalValue: response.value,
-          fieldId: response.fieldId, // Store field_id in response_data instead
+      responses.forEach(response => {
+        // Use sectionId_fieldId as key for unique identification
+        const responseKey = `${response.sectionId}_${response.fieldId}`
+        responseUpdates[responseKey] = {
+          value: response.value,
+          sectionId: response.sectionId,
+          fieldId: response.fieldId,
           metadata: response.metadata,
-          sectionIndex: response.metadata.sectionIndex,
-          sessionId: response.metadata.sessionId
+          timestamp: response.metadata.timestamp
         }
-      }))
+      })
 
-      console.log('💾 Saving responses with lead_id:', currentLeadId)
+      console.log('💾 Saving responses to session JSONB:', Object.keys(responseUpdates).length, 'responses')
 
-      // Batch upsert responses
-      const { error: responsesError } = await supabase
-        .from('lead_responses')
-        .upsert(responseRecords, {
-          onConflict: 'lead_id,section_id'
-        })
+      // Update session responses using new data access layer
+      const result = await updateSession(campaignState.sessionId, {
+        responses: {
+          ...campaignState.userInputs, // Keep existing responses
+          ...responseUpdates // Add new responses
+        },
+        current_section_index: campaignState.currentSection,
+        completed_sections: Array.from(campaignState.completedSections)
+      })
 
-      if (responsesError) {
-        throw responsesError
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update session')
       }
 
-      // Update session progress
-      await updateSessionProgress()
+      console.log('✅ Session responses saved successfully')
 
     } catch (err) {
-      console.error('Error saving batch responses:', err)
+      console.error('Error saving responses to session:', err)
       throw err
     }
   }
@@ -905,28 +902,22 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // Update session progress tracking
   const updateSessionProgress = async (overrideSectionIndex?: number) => {
     try {
-      const supabase = await getSupabaseClient()
+      if (!campaign) {
+        console.warn('⚠️ Campaign not loaded, cannot update session progress')
+        return
+      }
 
       const currentSectionIndex = overrideSectionIndex !== undefined ? overrideSectionIndex : campaignState.currentSection
 
-      const progressData = {
-        session_id: campaignState.sessionId,
-        campaign_id: campaign?.id,
-        last_section_index: currentSectionIndex,
-        total_sections: sections.length,
-        completed_sections: campaignState.completedSections.size,
-        last_activity: new Date().toISOString(),
+      // Use new session data access layer
+      const result = await updateSession(campaignState.sessionId, {
+        current_section_index: currentSectionIndex,
+        completed_sections: Array.from(campaignState.completedSections),
         is_completed: campaignState.completedSections.size >= sections.length
-      }
+      })
 
-      const { error } = await supabase
-        .from('campaign_sessions')
-        .upsert(progressData, {
-          onConflict: 'session_id,campaign_id'
-        })
-
-      if (error) {
-        throw error
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update session progress')
       }
 
       console.log('📍 Session progress updated:', { 
@@ -940,7 +931,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
   }
 
-  // Session recovery from database
+  // Session recovery using new session-based approach
   const recoverSession = async (): Promise<boolean> => {
     if (isSessionRecovered) return true
 
@@ -950,78 +941,58 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         campaignId: campaign?.id
       })
 
-      const supabase = await getSupabaseClient()
-      
-      // Try to find existing session
-      const { data: existingSession, error } = await supabase
-        .from('campaign_sessions')
-        .select(`
-          *,
-          lead_responses (*)
-        `)
-        .eq('session_id', campaignState.sessionId)
-        .eq('campaign_id', campaign?.id)
-        .single()
+      if (!campaign) {
+        console.log('📝 [RECOVERY] Campaign not loaded yet, skipping recovery')
+        return false
+      }
 
-      console.log('🔍 [RECOVERY] Session query result:', {
-        found: !!existingSession,
-        error: error?.message,
-        sessionData: existingSession ? {
-          lastSectionIndex: existingSession.last_section_index,
-          leadId: existingSession.lead_id,
-          responseCount: existingSession.lead_responses?.length || 0
-        } : null
-      })
+      // Try to get existing session using new data access layer
+      const sessionResult = await getSession(campaignState.sessionId)
 
-      if (error || !existingSession) {
+      if (!sessionResult.success || !sessionResult.data || sessionResult.data.campaign_id !== campaign.id) {
         console.log('📝 [RECOVERY] No existing session found, creating new one')
-        // No existing session, create new one
-        await createSession()
+        // Create new session using new data access layer
+        await createSession({
+          session_id: campaignState.sessionId,
+          campaign_id: campaign.id,
+          current_section_index: 0,
+          completed_sections: [],
+          start_time: campaignState.startTime.toISOString(),
+          last_activity: new Date().toISOString(),
+          is_completed: false,
+          responses: {},
+          metadata: {
+            initial_referrer: typeof document !== 'undefined' ? document.referrer : null,
+            user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+            screen_resolution: typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : null
+          }
+        })
         setIsSessionRecovered(true)
         return false
       }
 
-      // Restore session state
-      const recoveredInputs: Record<string, any> = {}
-      const completedSections = new Set<number>()
+      const existingSession = sessionResult.data
 
-      console.log('📊 [RECOVERY] Processing responses:', existingSession.lead_responses?.length || 0)
+      // Restore session state from JSONB responses (much simpler!)
+      const recoveredInputs: Record<string, any> = existingSession.responses || {}
+      const completedSections = new Set<number>(existingSession.completed_sections || [])
 
-      if (existingSession.lead_responses) {
-        existingSession.lead_responses.forEach((response: any, index: number) => {
-          console.log(`📝 [RECOVERY] Response ${index + 1}:`, {
-            sectionId: response.section_id,
-            value: response.response_value,
-            responseData: response.response_data
-          })
-          
-          // Use section_id as key since field_id doesn't exist in lead_responses table
-          recoveredInputs[response.section_id] = response.response_value
-          
-          // Get section_index from response_data if available
-          const sectionIndex = response.response_data?.sectionIndex
-          if (typeof sectionIndex === 'number') {
-            completedSections.add(sectionIndex)
-            console.log(`✅ [RECOVERY] Marked section ${sectionIndex} as completed`)
-          }
-        })
-      }
-
-      const targetSection = existingSession.last_section_index || 0
-      
-      console.log('🎯 [RECOVERY] Restoring state:', {
-        targetSection,
+      console.log('🎯 [RECOVERY] Restoring state from session:', {
+        currentSection: existingSession.current_section_index,
         inputsCount: Object.keys(recoveredInputs).length,
         completedSectionsArray: Array.from(completedSections),
-        leadId: existingSession.lead_id
+        isCompleted: existingSession.is_completed
       })
+
+      // Check if user has a real lead (converted)
+      const leadResult = await getLeadBySession(campaignState.sessionId)
 
       setCampaignState(prev => ({
         ...prev,
         userInputs: recoveredInputs,
         completedSections,
-        currentSection: targetSection,
-        leadId: existingSession.lead_id || undefined
+        currentSection: existingSession.current_section_index || 0,
+        leadId: leadResult.success && leadResult.data ? leadResult.data.id : undefined
       }))
 
       setIsSessionRecovered(true)
@@ -1036,157 +1007,53 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
   }
 
-  // Create initial lead record for RLS policy compliance
-  const createInitialLead = async (): Promise<string | undefined> => {
+  // Create initial session using new clean approach (NO MORE FAKE EMAILS!)
+  const createInitialSession = async (): Promise<void> => {
     try {
-      if (!campaign || campaignState.leadId) return campaignState.leadId // Return existing lead ID
+      if (!campaign) {
+        console.warn('⚠️ Campaign not loaded, cannot create session')
+        return
+      }
       
-      console.log('🔍 Creating initial lead for campaign:', { 
+      console.log('🔍 Creating initial session for campaign:', { 
         campaignId: campaign.id, 
-        status: campaign.status,
         sessionId: campaignState.sessionId 
       })
       
-      const supabase = await getSupabaseClient()
-      
-      // Generate a more unique email to avoid duplicates
-      const timestamp = Date.now()
-      const randomSuffix = Math.random().toString(36).substring(2, 8)
-      const uniqueEmail = `anonymous_${campaignState.sessionId}_${timestamp}_${randomSuffix}@temp.local`
-      
-      // Create anonymous lead record with minimal data
-      const leadData = {
-        campaign_id: campaign.id,
-        email: uniqueEmail,
-        name: null,
-        phone: null,
-        ip_address: null,
-        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-        metadata: {
-          session_id: campaignState.sessionId,
-          start_time: campaignState.startTime.toISOString(),
-          is_anonymous: true,
-          initial_referrer: typeof document !== 'undefined' ? document.referrer : null
-        }
-      }
-
-      console.log('💾 Inserting lead data:', leadData)
-
-      const { data: lead, error } = await supabase
-        .from('leads')
-        .insert(leadData)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('❌ Lead insertion failed:', error)
-        
-        // Check if it's a unique constraint violation
-        if (error.code === '23505' && error.message.includes('leads_campaign_id_email_key')) {
-          console.log('🔄 Duplicate email detected, trying to find existing lead...')
-          
-          // Try to find existing lead with this session ID
-          const { data: existingLead } = await supabase
-            .from('leads')
-            .select('id')
-            .eq('campaign_id', campaign.id)
-            .contains('metadata', { session_id: campaignState.sessionId })
-            .limit(1)
-            .single()
-          
-          if (existingLead) {
-            console.log('✅ Found existing lead for session:', existingLead.id)
-            setCampaignState(prev => ({
-              ...prev,
-              leadId: existingLead.id
-            }))
-            return existingLead.id
-          } else {
-            // Generate an even more unique email and retry once
-            const retryEmail = `anonymous_${campaignState.sessionId}_${Date.now()}_${crypto.randomUUID().substring(0, 8)}@temp.local`
-            const retryData = { ...leadData, email: retryEmail }
-            
-            console.log('🔄 Retrying with more unique email:', retryEmail)
-            const { data: retryLead, error: retryError } = await supabase
-              .from('leads')
-              .insert(retryData)
-              .select()
-              .single()
-            
-            if (retryError) {
-              throw retryError
-            }
-            
-            setCampaignState(prev => ({
-              ...prev,
-              leadId: retryLead.id
-            }))
-            
-            console.log('✅ Lead created on retry:', retryLead.id)
-            return retryLead.id
-          }
-        } else {
-          throw error
-        }
-      }
-
-      // Store lead ID for future use
-      setCampaignState(prev => ({
-        ...prev,
-        leadId: lead.id
-      }))
-
-      console.log('✅ Initial lead created:', lead.id)
-      return lead.id
-
-    } catch (err: any) {
-      console.error('❌ Error creating initial lead:', {
-        error: err,
-        message: err?.message,
-        details: err?.details,
-        hint: err?.hint,
-        code: err?.code
-      })
-      // Don't throw - allow campaign to continue even if lead creation fails
-      return undefined
-    }
-  }
-
-  // Create new session record
-  const createSession = async () => {
-    try {
-      const supabase = await getSupabaseClient()
-      
-      const sessionData = {
+      // Create session using new data access layer
+      const result = await createSession({
         session_id: campaignState.sessionId,
-        campaign_id: campaign?.id,
-        lead_id: campaignState.leadId, // Link to lead if available
+        campaign_id: campaign.id,
+        current_section_index: 0,
+        completed_sections: [],
         start_time: campaignState.startTime.toISOString(),
-        last_section_index: campaignState.currentSection,
-        device_info: getDeviceInfo(),
+        last_activity: new Date().toISOString(),
+        is_completed: false,
+        responses: {},
         metadata: {
           initial_referrer: typeof document !== 'undefined' ? document.referrer : null,
           user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
           screen_resolution: typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : null
         }
+      })
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create session')
       }
 
-      const { error } = await supabase
-        .from('campaign_sessions')
-        .upsert(sessionData, {
-          onConflict: 'session_id,campaign_id'
-        })
+      console.log('✅ Initial session created successfully')
 
-      if (error) {
-        throw error
-      }
-
-      logger.info('New session created')
-
-    } catch (err) {
-      console.error('Error creating session:', err)
+    } catch (err: any) {
+      console.error('❌ Error creating initial session:', {
+        error: err,
+        message: err?.message
+      })
+      // Don't throw - allow campaign to continue
     }
   }
+
+  // Legacy createSession function has been removed
+  // All session creation now goes through createInitialSession()
 
   // =============================================================================
   // HELPER FUNCTIONS
@@ -1445,16 +1312,14 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       const supabase = await getSupabaseClient()
 
       if (campaignState.leadId) {
-        // Update existing lead record (created during initialization)
+        // Update existing lead record
         const updateData = {
           name: data.name || data.full_name || null,
           email: data.email,
           phone: data.phone || null,
           metadata: {
             session_id: campaignState.sessionId,
-            completed_sections: Array.from(campaignState.completedSections),
-            start_time: campaignState.startTime.toISOString(),
-            is_anonymous: false, // No longer anonymous since they provided real data
+            converted_at: new Date().toISOString(),
             capture_time: new Date().toISOString()
           }
         }
@@ -1470,38 +1335,34 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
         console.log('✅ Lead data updated for existing lead:', campaignState.leadId)
       } else {
-        // Fallback: create new lead if none exists
-      const leadData = {
-        campaign_id: campaign.id,
-        name: data.name || data.full_name || null,
-        email: data.email,
-        phone: data.phone || null,
-          ip_address: null,
-        user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-        metadata: {
+        // Create new real lead (no more fake emails!)
+        const leadData = {
           session_id: campaignState.sessionId,
-          completed_sections: Array.from(campaignState.completedSections),
-            start_time: campaignState.startTime.toISOString(),
-            is_anonymous: false
+          campaign_id: campaign.id,
+          name: data.name || data.full_name || null,
+          email: data.email,
+          phone: data.phone || null,
+          converted_at: new Date().toISOString(),
+          conversion_section_id: null, // Could be set if we know which section captured them
+          metadata: {
+            session_id: campaignState.sessionId,
+            capture_time: new Date().toISOString()
+          }
         }
-      }
 
-      const { data: lead, error } = await supabase
-        .from('leads')
-          .insert(leadData)
-        .select()
-        .single()
+        // Use new data access layer to create lead
+        const result = await createLead(leadData)
 
-      if (error) {
-        throw error
-      }
+        if (!result.success || !result.data) {
+          throw new Error(result.error || 'Failed to create lead')
+        }
 
-      setCampaignState(prev => ({
-        ...prev,
-        leadId: lead.id
-      }))
+        setCampaignState(prev => ({
+          ...prev,
+          leadId: result.data!.id
+        }))
 
-        console.log('✅ New lead created:', lead.id)
+        console.log('✅ New real lead created:', result.data!.id)
       }
 
     } catch (err) {
@@ -1512,44 +1373,15 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
   const saveResponse = async (sectionId: string, responseData: any) => {
     try {
-      if (!campaignState.leadId) return
+      // Responses are now saved automatically via collectResponse -> session JSONB
+      // This function is kept for compatibility but responses go through the session system
+      console.log('📝 Response saved to session for section:', sectionId)
 
-      const supabase = await getSupabaseClient()
-
-      // Determine response type and value
-      let responseType: string
-      let responseValue: string
-      let additionalData = {}
-
-      if (typeof responseData === 'object') {
-        // Multiple fields or complex data
-        responseType = 'multiple_choice'
-        responseValue = JSON.stringify(responseData)
-        additionalData = responseData
-      } else {
-        // Single value
-        responseType = typeof responseData === 'number' ? 'number' : 'text'
-        responseValue = String(responseData)
-      }
-
-      const { error } = await supabase
-        .from('lead_responses')
-        .upsert({
-          lead_id: campaignState.leadId,
-          section_id: sectionId,
-          response_type: responseType,
-          response_value: responseValue,
-          response_data: additionalData
-        }, {
-          onConflict: 'lead_id,section_id'
-        })
-
-      if (error) {
-        throw error
-      }
+      // Use the new session-based response collection
+      await addResponse(campaignState.sessionId, sectionId, responseData)
 
     } catch (err) {
-      console.error('Error saving response:', err)
+      console.error('Error saving response to session:', err)
       // Don't throw - allow campaign to continue
     }
   }
@@ -1602,16 +1434,6 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // =============================================================================
 
   // These functions have been replaced by SharedSectionRenderer components
-
-
-
-
-
-
-
-
-
-
 
   // =============================================================================
   // ENHANCED ERROR HANDLING SYSTEM
@@ -1951,8 +1773,6 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       </div>
     )
   }
-
-
 
   // =============================================================================
   // MAIN RENDER

@@ -116,42 +116,45 @@ export interface Section {
   updated_at: Timestamp;
 }
 
-
+/**
+ * Campaign sessions table - Primary data store for user interactions
+ */
+export interface CampaignSession {
+  id: UUID;
+  session_id: string;
+  campaign_id: UUID;
+  current_section_index: number;
+  completed_sections: number[];
+  start_time: string;
+  last_activity: string;
+  is_completed: boolean;
+  responses: Record<string, JSONValue>;
+  metadata: Record<string, JSONValue>;
+  created_at: string;
+  updated_at: string;
+}
 
 /**
- * Leads table - Captured lead information
+ * Leads table - Only real conversions with actual contact info
  */
 export interface Lead {
   id: UUID;
+  session_id: string;
   campaign_id: UUID;
-  name: string | null;
   email: string;
+  name: string | null;
   phone: string | null;
-  ip_address: string | null;
-  user_agent: string | null;
-  referrer: string | null;
-  utm_source: string | null;
-  utm_medium: string | null;
-  utm_campaign: string | null;
-  utm_term: string | null;
-  utm_content: string | null;
+  converted_at: string;
+  conversion_section_id: UUID | null;
   metadata: Record<string, JSONValue>;
-  completed_at: Timestamp | null;
-  created_at: Timestamp;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
  * Lead responses table - Individual responses from leads
  */
-export interface LeadResponse {
-  id: UUID;
-  lead_id: UUID;
-  section_id: UUID;
-  response_type: ResponseType;
-  response_value: string;
-  response_data: Record<string, JSONValue>;
-  created_at: Timestamp;
-}
+// LeadResponse interface removed - responses now stored in CampaignSession.responses JSONB
 
 /**
  * Campaign variables table - Variables for logic and output sections
@@ -439,8 +442,9 @@ export type CreateProfile = Omit<Profile, 'created_at' | 'updated_at'>;
 export type CreateCampaign = Omit<Campaign, 'id' | 'created_at' | 'updated_at'>;
 export type CreateSection = Omit<Section, 'id' | 'created_at' | 'updated_at'>;
 
-export type CreateLead = Omit<Lead, 'id' | 'created_at'>;
-export type CreateLeadResponse = Omit<LeadResponse, 'id' | 'created_at'>;
+export type CreateCampaignSession = Omit<CampaignSession, 'id' | 'created_at' | 'updated_at'>;
+export type CreateLead = Omit<Lead, 'id' | 'created_at' | 'updated_at'>;
+// CreateLeadResponse removed - responses stored in sessions table
 export type CreateCampaignVariable = Omit<CampaignVariable, 'id' | 'created_at'>;
 export type CreateLeadVariableValue = Omit<LeadVariableValue, 'id' | 'computed_at'>;
 
@@ -452,8 +456,9 @@ export type UpdateProfile = Partial<Omit<Profile, 'id' | 'created_at'>> & { id: 
 export type UpdateCampaign = Partial<Omit<Campaign, 'id' | 'user_id' | 'created_at'>> & { id: UUID };
 export type UpdateSection = Partial<Omit<Section, 'id' | 'campaign_id' | 'created_at'>> & { id: UUID };
 
-export type UpdateLead = Partial<Omit<Lead, 'id' | 'campaign_id' | 'created_at'>> & { id: UUID };
-export type UpdateLeadResponse = Partial<Omit<LeadResponse, 'id' | 'lead_id' | 'section_id' | 'created_at'>> & { id: UUID };
+export type UpdateCampaignSession = Partial<Omit<CampaignSession, 'id' | 'session_id' | 'campaign_id' | 'created_at'>> & { id: UUID };
+export type UpdateLead = Partial<Omit<Lead, 'id' | 'session_id' | 'campaign_id' | 'created_at'>> & { id: UUID };
+// UpdateLeadResponse removed - responses stored in sessions table
 export type UpdateCampaignVariable = Partial<Omit<CampaignVariable, 'id' | 'campaign_id' | 'created_at'>> & { id: UUID };
 export type UpdateLeadVariableValue = Partial<Omit<LeadVariableValue, 'id' | 'lead_id' | 'variable_id'>> & { id: UUID };
 
@@ -484,18 +489,12 @@ export interface SectionWithOptions extends Section {
  * Lead with responses and variable values
  */
 export interface LeadWithRelations extends Lead {
-  responses?: LeadResponse[];
+  // responses removed - now stored in campaign_sessions table
   variable_values?: LeadVariableValue[];
   campaign?: Campaign;
 }
 
-/**
- * Response with section and lead context
- */
-export interface LeadResponseWithRelations extends LeadResponse {
-  section?: Section;
-  lead?: Lead;
-}
+// LeadResponseWithRelations removed - responses stored in sessions table
 
 /**
  * Profile with usage statistics
@@ -594,16 +593,17 @@ export interface Database {
         Update: UpdateSection;
       };
 
+      campaign_sessions: {
+        Row: CampaignSession;
+        Insert: CreateCampaignSession;
+        Update: UpdateCampaignSession;
+      };
       leads: {
         Row: Lead;
         Insert: CreateLead;
         Update: UpdateLead;
       };
-      lead_responses: {
-        Row: LeadResponse;
-        Insert: CreateLeadResponse;
-        Update: UpdateLeadResponse;
-      };
+      // lead_responses table removed - responses stored in campaign_sessions
       campaign_variables: {
         Row: CampaignVariable;
         Insert: CreateCampaignVariable;

@@ -40,14 +40,14 @@ export {
   createCampaign,
   getCampaignById,
   getCampaigns,
-  getCampaignsWithRelations,
   updateCampaign,
   deleteCampaign,
   publishCampaign,
   unpublishCampaign,
-  generateCampaignSlug,
-  validateCampaignForPublishing,
-  checkUrlAvailability,
+  getSectionById,
+  createSection,
+  updateSection,
+  deleteSection,
 
   // Campaign Activation Controls
   activateCampaign,
@@ -55,40 +55,13 @@ export {
   getCampaignActivationStatus,
 
   // Section CRUD
-  createSection,
-  getSectionById,
-  getCampaignSections,
-  updateSection,
-  deleteSection,
   reorderSections,
 
   // Section options removed - now stored in section.configuration JSONB field
 } from './campaigns';
 
-// =============================================================================
-// LEAD OPERATIONS
-// =============================================================================
-export {
-  // Lead CRUD
-  createLead,
-  getLeadById,
-  getLeads,
-  getCampaignLeads,
-  updateLead,
-  completeLead,
-  deleteLead,
-
-  // Lead Response CRUD
-  createLeadResponse,
-  upsertLeadResponse,
-  getLeadResponses,
-  getSectionResponses,
-  deleteLeadResponse,
-
-  // Lead Analytics
-  getCampaignLeadStats,
-  searchLeads
-} from './leads';
+// OLD LEAD OPERATIONS REMOVED - Now using simplified session-based approach
+// See ./sessions.ts for new lead management functions
 
 // =============================================================================
 // PROFILE OPERATIONS
@@ -127,10 +100,9 @@ export type {
   Campaign,
   Section,
   Lead,
-  LeadResponse,
+  CampaignSession,
   CampaignVariable,
   LeadVariableValue,
-
 
   // Configuration types
   UserPreferences,
@@ -143,26 +115,23 @@ export type {
   CreateCampaign,
   CreateSection,
   CreateLead,
-  CreateLeadResponse,
+  CreateCampaignSession,
   CreateCampaignVariable,
   CreateLeadVariableValue,
-
 
   // Update types (for updates)
   UpdateProfile,
   UpdateCampaign,
   UpdateSection,
   UpdateLead,
-  UpdateLeadResponse,
+  UpdateCampaignSession,
   UpdateCampaignVariable,
   UpdateLeadVariableValue,
-
 
   // Extended types with relationships
   CampaignWithRelations,
   SectionWithOptions,
   LeadWithRelations,
-  LeadResponseWithRelations,
   ProfileWithUsage,
 
   // Utility types
@@ -220,39 +189,7 @@ export async function createCampaignWithDefaults(
   return createCampaign(campaignData);
 }
 
-/**
- * Create a lead and increment usage counter
- */
-export async function createLeadWithUsageTracking(
-  leadData: CreateLead
-): Promise<DatabaseResult<Lead>> {
-  const { createLead } = await import('./leads');
-  const { incrementLeadsUsage, canCaptureLeads } = await import('./profiles');
-
-  // Check if user can capture more leads
-  const canCapture = await canCaptureLeads(1);
-  if (!canCapture.success) {
-    return canCapture as any;
-  }
-
-  if (!canCapture.data) {
-    return {
-      success: false,
-      error: 'Monthly leads limit reached'
-    };
-  }
-
-  // Create the lead
-  const leadResult = await createLead(leadData);
-  if (!leadResult.success) {
-    return leadResult;
-  }
-
-  // Increment usage counter
-  await incrementLeadsUsage(1);
-
-  return leadResult;
-}
+// createLeadWithUsageTracking removed - functionality moved to createLeadFromCapture
 
 /**
  * Publish a campaign and increment usage counter
@@ -310,9 +247,10 @@ export async function createCampaignWithUsageTracking(
 }
 
 /**
- * Create a lead from capture form data
+ * Create a lead from capture form data (updated for new schema)
  */
 export async function createLeadFromCapture(
+  sessionId: string,
   campaignId: string,
   captureData: {
     name?: string;
@@ -321,6 +259,7 @@ export async function createLeadFromCapture(
     gdprConsent?: boolean;
     marketingConsent?: boolean;
   },
+  conversionSectionId?: string,
   metadata?: {
     ip_address?: string;
     user_agent?: string;
@@ -346,29 +285,73 @@ export async function createLeadFromCapture(
     };
   }
 
-  // Prepare lead data
+  // Prepare lead data for new schema
   const leadData: CreateLead = {
+    session_id: sessionId,
     campaign_id: campaignId,
     name: captureData.name || null,
     email: captureData.email,
     phone: captureData.phone || null,
-    ip_address: metadata?.ip_address || null,
-    user_agent: metadata?.user_agent || null,
-    referrer: metadata?.referrer || null,
-    utm_source: metadata?.utm_source || null,
-    utm_medium: metadata?.utm_medium || null,
-    utm_campaign: metadata?.utm_campaign || null,
-    utm_term: metadata?.utm_term || null,
-    utm_content: metadata?.utm_content || null,
+    converted_at: new Date().toISOString(),
+    conversion_section_id: conversionSectionId || null,
     metadata: {
       capture_form: true,
       gdpr_consent: captureData.gdprConsent || false,
       marketing_consent: captureData.marketingConsent || false,
-      capture_timestamp: new Date().toISOString()
-    },
-    completed_at: null // Will be set when the full campaign is completed
+      capture_timestamp: new Date().toISOString(),
+      // Store tracking metadata in the metadata field
+      tracking: {
+        ip_address: metadata?.ip_address || null,
+        user_agent: metadata?.user_agent || null,
+        referrer: metadata?.referrer || null,
+        utm_source: metadata?.utm_source || null,
+        utm_medium: metadata?.utm_medium || null,
+        utm_campaign: metadata?.utm_campaign || null,
+        utm_term: metadata?.utm_term || null,
+        utm_content: metadata?.utm_content || null
+      }
+    }
   };
 
-  // Create lead with usage tracking
-  return createLeadWithUsageTracking(leadData);
-} 
+  // Use the new createLead from sessions.ts (not the old one)
+  const { createLead } = await import('./sessions');
+  const { incrementLeadsUsage, canCaptureLeads } = await import('./profiles');
+
+  // Check if user can capture more leads
+  const canCapture = await canCaptureLeads(1);
+  if (!canCapture.success) {
+    return canCapture as any;
+  }
+
+  if (!canCapture.data) {
+    return {
+      success: false,
+      error: 'Monthly leads limit reached'
+    };
+  }
+
+  // Create the lead
+  const leadResult = await createLead(leadData);
+  if (!leadResult.success) {
+    return leadResult;
+  }
+
+  // Increment usage counter
+  await incrementLeadsUsage(1);
+
+  return leadResult;
+}
+
+// Session & Lead Management (new simplified approach)
+export {
+  createSession,
+  getSession,
+  updateSession,
+  addResponse,
+  createLead,
+  getLeadBySession,
+  getSessionWithLead,
+  getResponseForSection,
+  isSectionCompleted,
+  generateSessionId
+} from './sessions'; 
