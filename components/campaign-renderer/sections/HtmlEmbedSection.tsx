@@ -61,8 +61,6 @@ export function HtmlEmbedSection({
     console.log('🔍 =================================')
     console.log('📋 Total sections received:', sections.length)
     console.log('📝 Total user inputs received:', Object.keys(userInputs).length)
-    console.log('🔍 Raw sections:', sections.map(s => ({ id: s.id, title: s.title, type: s.type })))
-    console.log('🔍 Raw userInputs:', userInputs)
 
     // Build variables from all campaign data
     const inputVariables = buildVariablesFromInputs(sections, userInputs)
@@ -79,59 +77,24 @@ export function HtmlEmbedSection({
     console.log('🚀 Final data for variable replacement:', allData)
     console.log('📊 Available variable keys:', Object.keys(allData))
 
-    // Process HTML content to replace variables
+    // Simple @variable replacement - just like AI prompts!
     let processedContent = settings.htmlContent
-
-    // Method 1: Replace elements with variable-name attributes
-    // We'll use a temporary DOM parser to find and replace elements
-    const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = processedContent
     
-    // Find all elements with variable-name attributes
-    const variableElements = tempDiv.querySelectorAll('[variable-name]')
-    console.log('🔍 Found elements with variable-name attributes:', variableElements.length)
-    
-    variableElements.forEach(element => {
-      const variableName = element.getAttribute('variable-name')
-      if (variableName && allData.hasOwnProperty(variableName)) {
-        const value = allData[variableName]
-        console.log(`✅ Replacing variable-name="${variableName}" with value: "${value}"`)
-        element.textContent = String(value)
-      } else {
-        console.log(`❌ No data found for variable-name="${variableName}"`)
-      }
-    })
-
-    // Also support legacy data-variable attributes for backwards compatibility
-    const legacyElements = tempDiv.querySelectorAll('[data-variable]')
-    console.log('🔍 Found elements with data-variable attributes:', legacyElements.length)
-    
-    legacyElements.forEach(element => {
-      const variableName = element.getAttribute('data-variable')
-      if (variableName && allData.hasOwnProperty(variableName)) {
-        const value = allData[variableName]
-        console.log(`✅ Replacing data-variable="${variableName}" with value: "${value}"`)
-        element.textContent = String(value)
-      } else {
-        console.log(`❌ No data found for data-variable="${variableName}"`)
-      }
-    })
-
-    // Method 2: Replace @variable syntax in text content
-    let finalContent = tempDiv.innerHTML
     Object.entries(allData).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
+        // Replace @variable with the actual value
         const regex = new RegExp(`@${key}\\b`, 'g')
-        const replaced = finalContent.replace(regex, String(value))
-        if (replaced !== finalContent) {
-          console.log(`✅ Replaced @${key} with value: "${value}"`)
-          finalContent = replaced
+        const oldContent = processedContent
+        processedContent = processedContent.replace(regex, String(value))
+        
+        if (processedContent !== oldContent) {
+          console.log(`✅ Replaced @${key} with: "${value}"`)
         }
       }
     })
 
     console.log('✅ HTML processing complete')
-    return finalContent
+    return processedContent
 
   }, [settings.htmlContent, sections, userInputs])
 
@@ -168,7 +131,8 @@ export function HtmlEmbedSection({
               {JSON.stringify({
                 hasContent: !!settings.htmlContent,
                 contentLength: settings.htmlContent.length,
-                variableCount: Object.keys(buildVariablesFromInputs(sections, userInputs)).length
+                variableCount: Object.keys(buildVariablesFromInputs(sections, userInputs)).length,
+                availableVariables: Object.keys(buildVariablesFromInputs(sections, userInputs)).concat(Object.keys(getAITestResults() || {}))
               }, null, 2)}
             </pre>
           </details>

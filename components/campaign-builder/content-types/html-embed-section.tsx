@@ -57,43 +57,50 @@ export function HtmlEmbedSection({
 Available Variables:
 ${variableList || '- No variables available yet (add question sections or AI logic to generate variables)'}
 
-Variable Usage Options:
-1. Direct replacement: Use @variablename anywhere in your HTML and it will be replaced with the actual value
-   Example: <h1>Hello @name!</h1> → <h1>Hello John!</h1>
-
-2. Element attributes: Use variable-name="variablename" on elements for dynamic content
-   Example: <h1 variable-name="name">Default Name</h1>
-   Example: <span variable-name="score">0</span>
-
-3. Advanced features (optional):
-   - Formatters: @price | currency, @name | uppercase, @description | truncate:100
-   - Conditionals: {if @score > 80}Excellent job!{/if}
-   - Nested variables: @user.profile.name (if using nested data)
+Variable Usage:
+Simply use @variablename anywhere in your HTML and it will be replaced with the actual value.
+Examples:
+- <h1>Hello @name!</h1> → <h1>Hello John!</h1>
+- <p>Your score is @score out of 100</p> → <p>Your score is 85 out of 100</p>
+- <div class="result-@status">@message</div> → <div class="result-success">Great job!</div>
 
 Instructions:
 - Create a complete HTML snippet with embedded <style> and <script> tags
 - DO NOT include <html>, <body>, <head>, or <!DOCTYPE> tags - this will be injected into an existing page
 - Start with a main container div and include all CSS in <style> tags and JS in <script> tags within the snippet
 - Make it visually appealing and mobile-responsive
-- Include fallback text for elements in case variables aren't available
 - Style it to look professional and modern
-- You can use either @variable replacement OR variable-name attributes (or both)
+- Use @variable anywhere you want dynamic content
 
 Example structure:
 <div class="results-container">
   <style>
-    .results-container { /* your styles */ }
+    .results-container { 
+      max-width: 800px; 
+      margin: 0 auto; 
+      padding: 2rem;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    /* Add your styles here */
   </style>
   
-  <h1>Hello @name!</h1>
-  <p variable-name="score">Default score</p>
+  <div class="header">
+    <h1>Hello @name!</h1>
+    <p>Your score: @score</p>
+  </div>
+  
+  <div class="content">
+    <p>@recommendation</p>
+  </div>
   
   <script>
     // Any JavaScript logic here
+    console.log('Results page loaded for @name');
   </script>
 </div>
 
-The final HTML should be ready to paste directly into our system and will automatically populate with the user's actual data using our advanced variable interpolation system.`
+The final HTML should be ready to paste directly into our system and will automatically populate with the user's actual data.`
 
     return prompt
   }
@@ -115,7 +122,7 @@ The final HTML should be ready to paste directly into our system and will automa
     }
   }
 
-  // Process HTML content with AI test data using the established variable interpolation system
+  // Process HTML content with AI test data using simple @variable replacement
   const processHtmlWithTestData = (htmlContent: string) => {
     const testData = getAITestResults()
     
@@ -123,46 +130,15 @@ The final HTML should be ready to paste directly into our system and will automa
       return htmlContent // No test data available
     }
 
-    // Step 1: Use the established variable interpolation system for @variable references
-    const interpolationResult = interpolateVariables(htmlContent, testData, {
-      enableConditionalContent: true,
-      enableFormatting: true,
-      enableNestedAccess: true,
-      missingVariablePlaceholder: '[variable not found]'
+    // Simple @variable replacement - same as the renderer
+    let processedHtml = htmlContent
+    
+    Object.entries(testData).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        const regex = new RegExp(`@${key}\\b`, 'g')
+        processedHtml = processedHtml.replace(regex, String(value))
+      }
     })
-
-    let processedHtml = interpolationResult.content
-
-    // Step 2: Add JavaScript to populate elements with variable-name attributes
-    const scriptToInject = `
-      <script>
-        (function() {
-          const testData = ${JSON.stringify(testData)};
-          
-          // Find all elements with variable-name attributes
-          document.querySelectorAll('[variable-name]').forEach(element => {
-            const variableName = element.getAttribute('variable-name');
-            if (testData[variableName] !== undefined) {
-              // Replace the content with test data
-              if (element.tagName === 'INPUT') {
-                element.value = testData[variableName];
-              } else {
-                element.textContent = testData[variableName];
-              }
-            }
-          });
-        })();
-      </script>
-    `
-
-    // Inject the script at the end of the HTML
-    if (processedHtml.includes('</body>')) {
-      processedHtml = processedHtml.replace('</body>', scriptToInject + '</body>')
-    } else if (processedHtml.includes('</html>')) {
-      processedHtml = processedHtml.replace('</html>', scriptToInject + '</html>')
-    } else {
-      processedHtml = processedHtml + scriptToInject
-    }
 
     return processedHtml
   }
@@ -317,8 +293,6 @@ The final HTML should be ready to paste directly into our system and will automa
           )}
         </CardContent>
       </Card>
-
-
 
       {/* Preview Modal */}
       {showPreviewModal && (
