@@ -53,6 +53,9 @@ export function MultipleChoiceSection({
 
   const canContinue = !isRequired || selectedValue !== ''
 
+  // Generate validation text for bottom bar
+  const validationText = isRequired && !selectedValue ? 'Please select an option to continue' : undefined
+
   return (
     <div className="h-full bg-background flex flex-col pb-20">
       <div className="flex-1 flex items-center justify-center px-6 py-12">
@@ -113,12 +116,7 @@ export function MultipleChoiceSection({
             })}
           </div>
 
-          {/* Required field indicator */}
-          {isRequired && !selectedValue && (
-            <div className="text-center text-sm text-muted-foreground">
-              Please select an option to continue
-            </div>
-          )}
+
         </div>
       </div>
 
@@ -127,6 +125,7 @@ export function MultipleChoiceSection({
         onPrevious={onPrevious}
         icon={<CheckCircle2 className="h-5 w-5 text-primary" />}
         label={`Choice ${index + 1}`}
+        validationText={validationText}
         actionButton={{
           label: buttonLabel,
           onClick: handleContinue,

@@ -94,6 +94,13 @@ export function TextQuestionSection({
 
   const canContinue = !isRequired || (inputValue.trim().length >= minLength && inputValue.length <= maxLength)
 
+  // Generate validation text for bottom bar
+  const validationText = isRequired ? (
+    minLength > 1 ? 
+      `Minimum ${minLength} characters required` : 
+      'This field is required'
+  ) : undefined
+
   return (
     <div className="h-full bg-background flex flex-col pb-20">
       <div className="flex-1 flex items-center justify-center px-6 py-12">
@@ -157,16 +164,7 @@ export function TextQuestionSection({
               </span>
             </div>
 
-            {/* Validation Requirements */}
-            {isRequired && (
-              <div className="text-xs text-muted-foreground">
-                {minLength > 1 ? (
-                  `Minimum ${minLength} characters required`
-                ) : (
-                  'This field is required'
-                )}
-              </div>
-            )}
+
           </div>
         </div>
       </div>
@@ -176,6 +174,7 @@ export function TextQuestionSection({
         onPrevious={onPrevious}
         icon={<MessageSquare className="h-5 w-5 text-primary" />}
         label={`Question ${index + 1}`}
+        validationText={validationText}
         actionButton={{
           label: buttonLabel,
           onClick: handleContinue,

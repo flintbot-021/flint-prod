@@ -15,6 +15,7 @@ interface SectionNavigationBarProps {
   // Simple center content (for basic usage)
   icon?: React.ReactNode
   label?: string
+  validationText?: string
   
   // Advanced center content (for public page usage)
   centerContent?: React.ReactNode
@@ -91,6 +92,7 @@ export function SectionNavigationBar({
   canGoNext = true,
   icon,
   label,
+  validationText,
   centerContent,
   progress,
   status,
@@ -224,10 +226,14 @@ export function SectionNavigationBar({
                 )}
                 
                 {/* Simple icon + label for basic variant */}
-                {!isFull && (icon || label) && (
+                {!isFull && (icon || label || validationText) && (
                   <div className="flex items-center">
                     {icon && <div className="mr-2">{icon}</div>}
-                    {label && <span className="text-sm text-muted-foreground">{label}</span>}
+                    <span className="text-sm text-muted-foreground">
+                      {label}
+                      {label && validationText && ' | '}
+                      {validationText}
+                    </span>
                   </div>
                 )}
               </>

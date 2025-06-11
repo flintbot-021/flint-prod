@@ -182,7 +182,6 @@ export function UploadSection({
 
   const handleContinue = () => {
     if (isRequired && uploadedFiles.length === 0) {
-      setErrorMessage('Please upload at least one file to continue')
       return
     }
 
@@ -211,6 +210,9 @@ export function UploadSection({
     .join(',')
 
   const canContinue = !isRequired || uploadedFiles.length > 0
+
+  // Generate validation text for bottom bar
+  const validationText = isRequired && uploadedFiles.length === 0 ? 'Please upload at least one file to continue' : undefined
 
   return (
     <div className="h-full bg-background flex flex-col pb-20">
@@ -341,6 +343,7 @@ export function UploadSection({
         onPrevious={onPrevious}
         icon={<Upload className="h-5 w-5 text-primary" />}
         label={`Upload ${index + 1}`}
+        validationText={validationText}
         actionButton={{
           label: buttonLabel,
           onClick: handleContinue,
