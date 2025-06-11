@@ -46,6 +46,7 @@ export {
   unpublishCampaign,
   getSectionById,
   createSection,
+  getCampaignSections,
   updateSection,
   deleteSection,
 

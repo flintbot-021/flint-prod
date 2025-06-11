@@ -87,9 +87,9 @@ function LogicSectionComponent({
           id: section.id,
           title: section.title,
           type: section.type,
-          hasOptions: !!section.options,
-          optionsCount: section.options?.length || 0,
-          options: section.options?.map(opt => ({ value: opt.value, label: opt.label })) || []
+          hasOptions: !!(section as any).options,
+          optionsCount: (section as any).options?.length || 0,
+          options: (section as any).options?.map((opt: any) => ({ value: opt.value, label: opt.label })) || []
         })
       })
       
@@ -159,21 +159,37 @@ function LogicSectionComponent({
           // Files are stored under the section ID and may be in different formats
           let uploadedFiles: any[] = []
           
+          console.log(`🔍 Looking for files for variable: ${fileVariable.name}`)
+          console.log(`🔍 Section ID: ${fileVariable.section.id}`)
+          console.log(`🔍 All userInputs keys:`, Object.keys(userInputs))
+          console.log(`🔍 Full userInputs structure:`, JSON.stringify(userInputs, null, 2))
+          
           // Check different possible keys where files might be stored
           const possibleKeys = [
             fileVariable.section.id,                    // Direct section ID
             `${fileVariable.section.id}_files`,         // Section ID + _files
             fileVariable.name,                          // Variable name
-            `${fileVariable.section.id}_${fileVariable.name}` // Combined
+            `${fileVariable.section.id}_${fileVariable.name}`, // Combined
+            `${fileVariable.section.id}_file_upload`,   // Section ID + file_upload
+            'file_upload',                              // Just file_upload
+            'files'                                     // Just files
           ]
+          
+          console.log(`🔍 Checking possible keys:`, possibleKeys)
           
           for (const key of possibleKeys) {
             const value = userInputs[key]
+            console.log(`🔍 Checking key "${key}":`, value)
+            
             if (Array.isArray(value) && value.length > 0) {
-              // Check if these look like uploaded file objects
-              if (value.some(item => item && typeof item === 'object' && item.url && item.name)) {
+              // Check if these are uploaded file objects (with URL) or raw File objects
+              const hasUploadedFileObjects = value.some(item => item && typeof item === 'object' && item.url && item.name)
+              const hasRawFileObjects = value.some(item => item instanceof File)
+              
+              if (hasUploadedFileObjects || hasRawFileObjects) {
                 uploadedFiles = value
                 console.log(`📄 Found files for ${fileVariable.name} under key "${key}":`, uploadedFiles)
+                console.log(`📄 File type: ${hasUploadedFileObjects ? 'uploaded file objects' : 'raw File objects'}`)
                 break
               }
             }
@@ -181,11 +197,35 @@ function LogicSectionComponent({
           
           // If no files found, also check the submission data from onSectionComplete
           if (uploadedFiles.length === 0) {
-            // Check for files in the submission format
+            console.log(`🔍 No files found in direct keys, checking nested structures...`)
+            
+            // Check for files in nested objects
+            Object.entries(userInputs).forEach(([key, value]) => {
+              console.log(`🔍 Nested check - key: ${key}, type: ${typeof value}`)
+              
+              if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                console.log(`🔍 Nested object contents for ${key}:`, value)
+                
+                // Check if this object has arrays that might be files
+                Object.entries(value as any).forEach(([nestedKey, nestedValue]) => {
+                  if (Array.isArray(nestedValue) && nestedValue.length > 0) {
+                    console.log(`🔍 Found array in ${key}.${nestedKey}:`, nestedValue)
+                    if (nestedValue.some(item => item && typeof item === 'object' && item.url && item.name)) {
+                      console.log(`📄 Found file-like objects in ${key}.${nestedKey}!`)
+                      if (uploadedFiles.length === 0) { // Only use first match
+                        uploadedFiles = nestedValue
+                      }
+                    }
+                  }
+                })
+              }
+            })
+            
+            // Also check the older submission format
             const submissionData = Object.entries(userInputs).find(([key, value]) => {
               if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                return Array.isArray(value[fileVariable.section.id]) || 
-                       Array.isArray(value.files)
+                return Array.isArray((value as any)[fileVariable.section.id]) || 
+                       Array.isArray((value as any).files)
               }
               return false
             })
@@ -199,21 +239,29 @@ function LogicSectionComponent({
           
           if (uploadedFiles.length > 0) {
             // Get the first file (could handle multiple files later)
-            const uploadedFileInfo = uploadedFiles[0]
-            if (uploadedFileInfo && uploadedFileInfo.url) {
+            const fileItem = uploadedFiles[0]
+            
+            if (fileItem instanceof File) {
+              // Handle raw File objects directly
+              console.log(`📁 Using raw File object: ${fileItem.name} (${fileItem.size} bytes)`)
+              formData.append(`file_${fileVariable.name}`, fileItem)
+              console.log(`✅ Successfully prepared raw file ${fileItem.name} for OpenAI processing`)
+              
+            } else if (fileItem && fileItem.url) {
+              // Handle uploaded file info objects (fetch from storage)
               try {
-                console.log(`⬇️ Downloading file ${uploadedFileInfo.name} from ${uploadedFileInfo.url}`)
+                console.log(`⬇️ Downloading file ${fileItem.name} from ${fileItem.url}`)
                 
                 // Fetch the file content from Supabase storage for direct OpenAI upload
-                const fileResponse = await fetch(uploadedFileInfo.url)
+                const fileResponse = await fetch(fileItem.url)
                 if (fileResponse.ok) {
                   const fileBlob = await fileResponse.blob()
-                  const file = new File([fileBlob], uploadedFileInfo.name, { 
-                    type: uploadedFileInfo.type 
+                  const file = new File([fileBlob], fileItem.name, { 
+                    type: fileItem.type 
                   })
                   
                   formData.append(`file_${fileVariable.name}`, file)
-                  console.log(`✅ Successfully prepared file ${uploadedFileInfo.name} (${file.size} bytes) for OpenAI processing`)
+                  console.log(`✅ Successfully prepared file ${fileItem.name} (${file.size} bytes) for OpenAI processing`)
                 } else {
                   console.warn(`⚠️ Failed to fetch file for ${fileVariable.name}: HTTP ${fileResponse.status}`)
                 }
@@ -221,7 +269,7 @@ function LogicSectionComponent({
                 console.error(`❌ Error fetching file for ${fileVariable.name}:`, fileError)
               }
             } else {
-              console.warn(`⚠️ File info missing URL for ${fileVariable.name}:`, uploadedFileInfo)
+              console.warn(`⚠️ Unknown file format for ${fileVariable.name}:`, fileItem)
             }
           } else {
             console.log(`⚠️ No uploaded files found for variable ${fileVariable.name}`)
