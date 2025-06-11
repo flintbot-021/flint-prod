@@ -13,16 +13,12 @@ import {
   ArrowLeft, 
   ArrowRight, 
   Brain, 
-  Target, 
-  MessageSquare, 
   RefreshCw, 
   Wifi, 
   WifiOff, 
   Smartphone,
   Monitor,
   Tablet,
-  Zap,
-  Clock,
   AlertCircle,
   Loader2,
   AlertTriangle,
@@ -43,7 +39,7 @@ import {
 } from '@/lib/variable-system'
 
 // Import NEW shared components and hooks
-import { SectionRenderer as SharedSectionRenderer, SectionNavigationBar } from '@/components/campaign-renderer'
+import { SectionRenderer as SharedSectionRenderer } from '@/components/campaign-renderer'
 import { 
   useCampaignRenderer, 
   useDeviceInfo, 
@@ -140,9 +136,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // Temporary compatibility bridge for legacy error handling
   const [errorState, setErrorState] = useState<ErrorState | null>(null)
 
-  // Completion celebration state
-  const [showCompletionCelebration, setShowCompletionCelebration] = useState(false)
-  const [celebrationMessage, setCelebrationMessage] = useState('')
+
 
   const [campaignState, setCampaignState] = useState<CampaignState>({
     currentSection: 0,
@@ -152,137 +146,21 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     sessionId: crypto.randomUUID()
   })
 
-  // =============================================================================
-  // ENHANCED PROGRESS TRACKING AND COMPLETION FLOW SYSTEM
-  // =============================================================================
 
-  // Progress calculation state
-  const [progressMetrics, setProgressMetrics] = useState({
-    totalProgress: 0,
-    weightedProgress: 0,
-    captureProgress: 0,
-    timeEstimate: 0,
-    completionForecast: '',
-    milestones: [] as string[]
-  })
 
-  // Section weights for progress calculation
-  const getSectionWeight = (section: SectionWithOptions): number => {
-    const weights = {
-      'capture': 3,      // High weight - critical for completion
-      'text_question': 2, // Medium weight - important data
-      'multiple_choice': 2, // Medium weight - important data
-      'slider': 2,       // Medium weight - important data
-      'logic': 1,        // Low weight - automated processing
-      'info': 1,         // Low weight - informational
-      'output': 4        // Highest weight - final result
-    }
-    return weights[section.type as keyof typeof weights] || 1
-  }
+  // Simplified navigation 
+  const navigateToSection = (sectionIndex: number) => {
+    if (isTransitioning || sectionIndex === campaignState.currentSection) return
+    if (sectionIndex < 0 || sectionIndex >= sections.length) return
 
-  // Calculate comprehensive progress metrics
-  const calculateProgressMetrics = (): typeof progressMetrics => {
-    if (sections.length === 0) {
-      return {
-        totalProgress: 0,
-        weightedProgress: 0,
-        captureProgress: 0,
-        timeEstimate: 0,
-        completionForecast: '',
-        milestones: []
-      }
-    }
+    setIsTransitioning(true)
+    setCampaignState(prev => ({
+      ...prev,
+      currentSection: sectionIndex
+    }))
 
-    // Calculate section-based progress
-    const totalSections = sections.length
-    const completedCount = campaignState.completedSections.size
-    const totalProgress = Math.round((completedCount / totalSections) * 100)
-
-    // Calculate weighted progress
-    const totalWeight = sections.reduce((sum, section) => sum + getSectionWeight(section), 0)
-    const completedWeight = sections
-      .filter((_, index) => campaignState.completedSections.has(index))
-      .reduce((sum, section) => sum + getSectionWeight(section), 0)
-    const weightedProgress = Math.round((completedWeight / totalWeight) * 100)
-
-    // Calculate capture section progress
-    const captureSections = sections.filter(s => s.type === 'capture')
-    const completedCaptureSections = captureSections.filter((_, originalIndex) => {
-      const sectionIndex = sections.findIndex(s => s.id === captureSections[originalIndex].id)
-      return campaignState.completedSections.has(sectionIndex)
-    })
-    const captureProgress = captureSections.length > 0 
-      ? Math.round((completedCaptureSections.length / captureSections.length) * 100)
-      : 100
-
-    // Time estimation (average 45 seconds per section)
-    const remainingSections = totalSections - completedCount
-    const timeEstimate = remainingSections * 45 // seconds
-
-    // Completion forecast
-    const now = new Date()
-    const forecastTime = new Date(now.getTime() + (timeEstimate * 1000))
-    const completionForecast = forecastTime.toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    })
-
-    // Milestones
-    const milestones: string[] = []
-    if (captureProgress === 100) milestones.push('Contact info collected')
-    if (totalProgress >= 25) milestones.push('Getting started')
-    if (totalProgress >= 50) milestones.push('Halfway there')
-    if (totalProgress >= 75) milestones.push('Almost finished')
-    if (totalProgress === 100) milestones.push('Campaign complete!')
-
-    return {
-      totalProgress,
-      weightedProgress,
-      captureProgress,
-      timeEstimate,
-      completionForecast,
-      milestones
-    }
-  }
-
-  // Update progress metrics when sections change
-  useEffect(() => {
-    const metrics = calculateProgressMetrics()
-    setProgressMetrics(metrics)
-  }, [campaignState.completedSections, sections.length, campaignState.currentSection])
-
-  // Completion flow validation
-  const canAccessSection = (sectionIndex: number): { canAccess: boolean; reason?: string } => {
-    const section = sections[sectionIndex]
-    if (!section) return { canAccess: false, reason: 'Section not found' }
-
-    // Check if this is an output/result section that requires capture completion
-    if (section.type === 'output') {
-      const hasCompletedCapture = progressMetrics.captureProgress === 100
-      if (!hasCompletedCapture) {
-        return { 
-          canAccess: false, 
-          reason: 'Please complete the contact information section first' 
-        }
-      }
-    }
-
-    return { canAccess: true }
-  }
-
-  // Enhanced navigation with completion validation
-  const navigateToSectionWithValidation = (sectionIndex: number): boolean => {
-    const validation = canAccessSection(sectionIndex)
-    
-    if (!validation.canAccess) {
-      // Show user-friendly error message
-      errorHandler.handleError(validation.reason || 'Cannot access this section yet', 'section_navigation')
-      
-      return false
-    }
-
-    navigateToSection(sectionIndex)
-    return true
+    // Reset transition state after animation
+    setTimeout(() => setIsTransitioning(false), 300)
   }
 
   // AI Content Generation for Output Sections
@@ -322,34 +200,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
   }
 
-  // Trigger completion celebration
-  const triggerCompletionCelebration = async () => {
-    if (progressMetrics.totalProgress === 100 && !showCompletionCelebration) {
-      const totalTime = Math.round((new Date().getTime() - campaignState.startTime.getTime()) / 1000)
-      const minutes = Math.floor(totalTime / 60)
-      const seconds = totalTime % 60
-      
-      const message = `🎉 Congratulations! You completed this campaign in ${minutes}m ${seconds}s. Thank you for your participation!`
-      
-      setCelebrationMessage(message)
-      setShowCompletionCelebration(true)
 
-      // Auto-hide after 5 seconds
-      setTimeout(() => {
-        setShowCompletionCelebration(false)
-      }, 5000)
-
-      // Update session with completion status
-      await updateSessionProgress()
-    }
-  }
-
-  // Monitor for completion
-  useEffect(() => {
-    if (progressMetrics.totalProgress === 100) {
-      triggerCompletionCelebration()
-    }
-  }, [progressMetrics.totalProgress])
 
   // Enhanced loading states for AI processing
   const [aiProcessingState, setAiProcessingState] = useState<{
@@ -1516,20 +1367,6 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     setTimeout(() => setIsTransitioning(false), 300)
   }
 
-  const navigateToSection = (sectionIndex: number) => {
-    if (isTransitioning || sectionIndex === campaignState.currentSection) return
-    if (sectionIndex < 0 || sectionIndex >= sections.length) return
-
-    setIsTransitioning(true)
-    setCampaignState(prev => ({
-      ...prev,
-      currentSection: sectionIndex
-    }))
-
-    // Reset transition state after animation
-    setTimeout(() => setIsTransitioning(false), 300)
-  }
-
   // =============================================================================
   // SECTION RENDERING - Now handled by SharedSectionRenderer
   // =============================================================================
@@ -1909,132 +1746,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
   return (
     <div className="min-h-screen bg-muted">
-      {/* Completion Celebration Modal */}
-      {showCompletionCelebration && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-background rounded-lg p-8 max-w-md mx-4 text-center">
-            <div className="text-6xl mb-4">🎉</div>
-            <h2 className="text-2xl font-bold text-foreground mb-4">Campaign Complete!</h2>
-            <p className="text-muted-foreground mb-6">{celebrationMessage}</p>
-            <div className="flex justify-center space-x-2 mb-4">
-              {progressMetrics.milestones.map((milestone, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
-                  {milestone}
-                </Badge>
-              ))}
-            </div>
-            <Button 
-              onClick={() => setShowCompletionCelebration(false)}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              Continue
-            </Button>
-          </div>
-        </div>
-      )}
 
-      {/* Campaign Info Header with Enhanced Progress */}
-      <div className="bg-background border-b">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Globe className="h-5 w-5 text-blue-600 mr-2" />
-              <h2 className="text-lg font-semibold text-foreground">{campaign.name}</h2>
-            </div>
-            
-            {/* Enhanced Progress Indicator */}
-            <div className="flex items-center space-x-4">
-              {/* Real-time Save Status */}
-              {pendingUpdates.size > 0 && (
-                <div className="flex items-center text-sm text-amber-600">
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                  <span>Saving...</span>
-                </div>
-              )}
-              
-              {pendingUpdates.size === 0 && isSessionRecovered && campaignState.userInputs && Object.keys(campaignState.userInputs).length > 0 && (
-                <div className="flex items-center text-sm text-green-600">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  <span>Saved</span>
-                </div>
-              )}
-              
-              {/* Progress Details */}
-              <div className="flex flex-col items-end">
-                <div className="flex items-center space-x-2 mb-1">
-                  <span className="text-sm text-muted-foreground">
-                    {campaignState.currentSection + 1} of {sections.length}
-                  </span>
-                  <span className="text-sm font-medium text-blue-600">
-                    {progressMetrics.weightedProgress}%
-                  </span>
-                </div>
-                
-                {/* Time Estimate */}
-                {progressMetrics.timeEstimate > 0 && (
-                  <div className="text-xs text-muted-foreground">
-                    ~{Math.ceil(progressMetrics.timeEstimate / 60)}min remaining • Est. {progressMetrics.completionForecast}
-                  </div>
-                )}
-                
-                {/* Progress Bar */}
-                <div className="w-32 h-1 bg-gray-200 rounded-full mt-1">
-                  <div 
-                    className="h-1 bg-blue-600 rounded-full transition-all duration-300"
-                    style={{ width: `${progressMetrics.weightedProgress}%` }}
-                  />
-                </div>
-              </div>
-              
-              {/* Section Dots */}
-              <div className="flex space-x-1">
-                {sections.map((section, index) => {
-                  const canAccess = canAccessSection(index).canAccess
-                  return (
-                    <div
-                      key={index}
-                      className={cn(
-                        "w-2 h-2 rounded-full transition-colors cursor-pointer",
-                        index === campaignState.currentSection
-                          ? "bg-blue-600 ring-2 ring-blue-200"
-                          : campaignState.completedSections.has(index)
-                          ? "bg-green-500"
-                          : canAccess
-                          ? "bg-gray-300 hover:bg-gray-400"
-                          : "bg-gray-200"
-                      )}
-                      onClick={() => {
-                        if (canAccess && index !== campaignState.currentSection) {
-                          navigateToSectionWithValidation(index)
-                        }
-                      }}
-                      title={`${section.title || `Section ${index + 1}`}${
-                        !canAccess ? ' (Locked)' : ''
-                      }`}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-          
-          {/* Milestones Banner */}
-          {progressMetrics.milestones.length > 0 && (
-            <div className="mt-3 flex items-center justify-center">
-              <div className="flex items-center space-x-2">
-                <Target className="h-4 w-4 text-green-600" />
-                <div className="flex space-x-1">
-                  {progressMetrics.milestones.slice(-2).map((milestone, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs bg-green-50 text-green-700">
-                      {milestone}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* Section Content */}
       <div className="py-12 px-6">
@@ -2064,58 +1776,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         </div>
       </div>
 
-      {/* Navigation */}
-      <SectionNavigationBar
-        variant="full"
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        canGoPrevious={!isTransitioning && campaignState.currentSection > 0}
-        canGoNext={!isTransitioning && campaignState.currentSection < sections.length - 1}
-        progress={{
-          current: campaignState.currentSection + 1,
-          total: sections.length,
-          percentage: progressMetrics.weightedProgress,
-          timeEstimate: progressMetrics.timeEstimate,
-          completionForecast: progressMetrics.completionForecast
-        }}
-        status={{
-          isSaving: pendingUpdates.size > 0,
-          isSaved: pendingUpdates.size === 0 && isSessionRecovered && campaignState.userInputs && Object.keys(campaignState.userInputs).length > 0,
-          isOffline: !networkState.isOnline
-        }}
-        navigationHints={{
-          text: deviceInfo?.touchCapable 
-            ? "Swipe left/right or use buttons to navigate"
-            : "Use arrow keys or buttons to navigate",
-          isTouchDevice: deviceInfo?.touchCapable
-        }}
-                 sectionDots={{
-           sections: sections.map((section, index) => {
-             const canAccess = canAccessSection(index).canAccess
-             return {
-               index,
-               title: section.title || undefined,
-               isCompleted: campaignState.completedSections.has(index),
-               canAccess
-             }
-           }),
-          currentIndex: campaignState.currentSection,
-          onSectionClick: (index) => {
-            if (!isTransitioning) {
-              navigateToSectionWithValidation(index)
-            }
-          }
-        }}
-        deviceInfo={deviceInfo}
-        centerContent={
-          isTransitioning ? (
-            <div className="flex items-center">
-              <Loader2 className="h-3 w-3 animate-spin text-blue-600 mr-1" />
-              <span className="text-xs text-blue-600">Transitioning...</span>
-            </div>
-          ) : undefined
-        }
-      />
+      
     </div>
   )
 } 
