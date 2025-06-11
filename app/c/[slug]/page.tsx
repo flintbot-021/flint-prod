@@ -467,27 +467,70 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
   }, [campaign, sections])
 
-  // Session recovery and initialization
+  // Simplified session initialization - just get or create session
   useEffect(() => {
     const initializeSession = async () => {
-      if (campaign && !isSessionRecovered) {
-        console.log('🚀 [INIT] Starting session initialization')
-        
-        // Try to recover existing session first
-        const recovered = await recoverSession()
-        
-        // Only create initial session if we didn't recover an existing session
-        if (!recovered) {
-          console.log('💾 [INIT] Creating new session (no existing session found)')
-          await createInitialSession()
+      if (!campaign || isSessionRecovered) return
+
+      console.log('🚀 [SESSION] Initializing session for campaign:', campaign.id)
+
+      try {
+        // Try to get existing session first
+        const sessionResult = await getSession(campaignState.sessionId)
+
+        if (sessionResult.success && sessionResult.data && sessionResult.data.campaign_id === campaign.id) {
+          // Found existing session - restore state
+          const session = sessionResult.data
+          console.log('✅ [SESSION] Found existing session, restoring state')
+
+          setCampaignState(prev => ({
+            ...prev,
+            userInputs: session.responses || {},
+            completedSections: new Set(session.completed_sections || []),
+            currentSection: session.current_section_index || 0,
+            leadId: undefined // Will be set by lead check below
+          }))
+
+          // Check for associated lead
+          const leadResult = await getLeadBySession(campaignState.sessionId)
+          if (leadResult.success && leadResult.data) {
+            setCampaignState(prev => ({ ...prev, leadId: leadResult.data!.id }))
+          }
         } else {
-          console.log('✅ [INIT] Using recovered session:', campaignState.sessionId)
+          // No existing session found - create new one
+          console.log('💾 [SESSION] Creating new session')
+          
+          const createResult = await createSession({
+            session_id: campaignState.sessionId,
+            campaign_id: campaign.id,
+            current_section_index: 0,
+            completed_sections: [],
+            start_time: campaignState.startTime.toISOString(),
+            last_activity: new Date().toISOString(),
+            is_completed: false,
+            responses: {},
+            metadata: {
+              initial_referrer: typeof document !== 'undefined' ? document.referrer : null,
+              user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null
+            }
+          })
+
+          if (!createResult.success) {
+            console.error('❌ [SESSION] Failed to create session:', createResult.error)
+            return
+          }
+
+          console.log('✅ [SESSION] New session created successfully')
         }
+
+        setIsSessionRecovered(true)
+      } catch (error) {
+        console.error('❌ [SESSION] Error initializing session:', error)
       }
     }
-    
+
     initializeSession()
-  }, [campaign, isSessionRecovered])
+  }, [campaign?.id, isSessionRecovered]) // Only run when campaign loads and not yet recovered
 
   // Auto-save on unmount and visibility change
   useEffect(() => {
@@ -931,129 +974,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
   }
 
-  // Session recovery using new session-based approach
-  const recoverSession = async (): Promise<boolean> => {
-    if (isSessionRecovered) return true
-
-    try {
-      console.log('🔄 [RECOVERY] Starting session recovery for:', {
-        sessionId: campaignState.sessionId,
-        campaignId: campaign?.id
-      })
-
-      if (!campaign) {
-        console.log('📝 [RECOVERY] Campaign not loaded yet, skipping recovery')
-        return false
-      }
-
-      // Try to get existing session using new data access layer
-      const sessionResult = await getSession(campaignState.sessionId)
-
-      if (!sessionResult.success || !sessionResult.data || sessionResult.data.campaign_id !== campaign.id) {
-        console.log('📝 [RECOVERY] No existing session found, creating new one')
-        // Create new session using new data access layer
-        await createSession({
-          session_id: campaignState.sessionId,
-          campaign_id: campaign.id,
-          current_section_index: 0,
-          completed_sections: [],
-          start_time: campaignState.startTime.toISOString(),
-          last_activity: new Date().toISOString(),
-          is_completed: false,
-          responses: {},
-          metadata: {
-            initial_referrer: typeof document !== 'undefined' ? document.referrer : null,
-            user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-            screen_resolution: typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : null
-          }
-        })
-        setIsSessionRecovered(true)
-        return false
-      }
-
-      const existingSession = sessionResult.data
-
-      // Restore session state from JSONB responses (much simpler!)
-      const recoveredInputs: Record<string, any> = existingSession.responses || {}
-      const completedSections = new Set<number>(existingSession.completed_sections || [])
-
-      console.log('🎯 [RECOVERY] Restoring state from session:', {
-        currentSection: existingSession.current_section_index,
-        inputsCount: Object.keys(recoveredInputs).length,
-        completedSectionsArray: Array.from(completedSections),
-        isCompleted: existingSession.is_completed
-      })
-
-      // Check if user has a real lead (converted)
-      const leadResult = await getLeadBySession(campaignState.sessionId)
-
-      setCampaignState(prev => ({
-        ...prev,
-        userInputs: recoveredInputs,
-        completedSections,
-        currentSection: existingSession.current_section_index || 0,
-        leadId: leadResult.success && leadResult.data ? leadResult.data.id : undefined
-      }))
-
-      setIsSessionRecovered(true)
-      console.log('✅ [RECOVERY] Session recovered successfully')
-
-      return true
-
-    } catch (err) {
-      console.error('❌ [RECOVERY] Error recovering session:', err)
-      setIsSessionRecovered(true) // Prevent retry loops
-      return false
-    }
-  }
-
-  // Create initial session using new clean approach (NO MORE FAKE EMAILS!)
-  const createInitialSession = async (): Promise<void> => {
-    try {
-      if (!campaign) {
-        console.warn('⚠️ Campaign not loaded, cannot create session')
-        return
-      }
-      
-      console.log('🔍 Creating initial session for campaign:', { 
-        campaignId: campaign.id, 
-        sessionId: campaignState.sessionId 
-      })
-      
-      // Create session using new data access layer
-      const result = await createSession({
-        session_id: campaignState.sessionId,
-        campaign_id: campaign.id,
-        current_section_index: 0,
-        completed_sections: [],
-        start_time: campaignState.startTime.toISOString(),
-        last_activity: new Date().toISOString(),
-        is_completed: false,
-        responses: {},
-        metadata: {
-          initial_referrer: typeof document !== 'undefined' ? document.referrer : null,
-          user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-          screen_resolution: typeof window !== 'undefined' ? `${window.screen.width}x${window.screen.height}` : null
-        }
-      })
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create session')
-      }
-
-      console.log('✅ Initial session created successfully')
-
-    } catch (err: any) {
-      console.error('❌ Error creating initial session:', {
-        error: err,
-        message: err?.message
-      })
-      // Don't throw - allow campaign to continue
-    }
-  }
-
-  // Legacy createSession function has been removed
-  // All session creation now goes through createInitialSession()
+  // Session management functions removed - now handled directly in useEffect above
 
   // =============================================================================
   // HELPER FUNCTIONS

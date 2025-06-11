@@ -21,6 +21,12 @@ export async function createSession(
   const supabase = createClient();
 
   try {
+    console.log('🔧 [CREATE_SESSION] Attempting to create session:', {
+      session_id: sessionData.session_id,
+      campaign_id: sessionData.campaign_id,
+      dataKeys: Object.keys(sessionData)
+    });
+
     const { data, error } = await supabase
       .from('campaign_sessions')
       .insert(sessionData)
@@ -28,19 +34,39 @@ export async function createSession(
       .single();
 
     if (error) {
-      console.error('Error creating session:', error);
+      console.error('❌ [CREATE_SESSION] Database error:', {
+        error,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
+      
+      // Handle specific error cases
+      if (error.code === '23505') {
+        return {
+          success: false,
+          error: 'Session already exists'
+        };
+      }
+
       return {
         success: false,
         error: error.message
       };
     }
 
+    console.log('✅ [CREATE_SESSION] Session created successfully:', {
+      id: data.id,
+      session_id: data.session_id
+    });
+
     return {
       success: true,
       data
     };
   } catch (error) {
-    console.error('Unexpected error creating session:', error);
+    console.error('💥 [CREATE_SESSION] Unexpected error:', error);
     return {
       success: false,
       error: 'Failed to create session'
@@ -55,32 +81,42 @@ export async function getSession(sessionId: string): Promise<DatabaseResult<Camp
   const supabase = createClient();
 
   try {
+    console.log('🔍 [GET_SESSION] Querying session:', sessionId);
+    
     const { data, error } = await supabase
       .from('campaign_sessions')
       .select('*')
       .eq('session_id', sessionId)
-      .single();
+      .maybeSingle(); // Use maybeSingle instead of single to avoid "multiple rows" error
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return {
-          success: false,
-          error: 'Session not found'
-        };
-      }
-      console.error('Error fetching session:', error);
+      console.error('❌ [GET_SESSION] Query error:', error);
       return {
         success: false,
         error: error.message
       };
     }
 
+    if (!data) {
+      console.log('📝 [GET_SESSION] No session found for:', sessionId);
+      return {
+        success: false,
+        error: 'Session not found'
+      };
+    }
+
+    console.log('✅ [GET_SESSION] Session found:', {
+      sessionId: data.session_id,
+      campaignId: data.campaign_id,
+      currentSection: data.current_section_index
+    });
+
     return {
       success: true,
       data
     };
   } catch (error) {
-    console.error('Unexpected error fetching session:', error);
+    console.error('💥 [GET_SESSION] Unexpected error:', error);
     return {
       success: false,
       error: 'Failed to fetch session'
@@ -112,7 +148,7 @@ export async function updateSession(
       })
       .eq('session_id', sessionId)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating session:', error);
