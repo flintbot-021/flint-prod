@@ -6,11 +6,7 @@ import {
   publishCampaign, 
   unpublishCampaign, 
   checkUrlAvailability,
-  validateCampaignForPublishing,
-  generateCampaignSlug,
-  activateCampaign,
-  deactivateCampaign,
-  getCampaignActivationStatus
+  validateCampaignForPublishing
 } from '@/lib/data-access'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -60,7 +56,7 @@ function Modal({ isOpen, onClose, children }: { isOpen: boolean; onClose: () => 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/80" onClick={onClose} />
       <div className="relative bg-background rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         {children}
       </div>
@@ -97,22 +93,8 @@ export function PublishModal({
   const [useCustomUrl, setUseCustomUrl] = useState(false)
   const [customUrl, setCustomUrl] = useState('')
   const [validationErrors, setValidationErrors] = useState<string[]>([])
-  const [activeTab, setActiveTab] = useState<'url' | 'settings' | 'activation'>('url')
-  
-  // Activation state
-  const [activationStatus, setActivationStatus] = useState<{
-    isPublished: boolean
-    isActive: boolean
-    canActivate: boolean
-  }>({
-    isPublished: false,
-    isActive: false,
-    canActivate: false
-  })
-  const [isTogglingActivation, setIsTogglingActivation] = useState(false)
   
   // UI state
-  const [keepUrlOnUnpublish, setKeepUrlOnUnpublish] = useState(true)
   const [urlCheck, setUrlCheck] = useState<UrlCheck>({
     available: true,
     checking: false
@@ -123,7 +105,6 @@ export function PublishModal({
     if (isOpen && campaign) {
       setCustomUrl('')
       setUseCustomUrl(false)
-      setKeepUrlOnUnpublish(true)
       setValidationErrors([])
       setUrlCheck({ available: true, checking: false })
       
@@ -162,23 +143,7 @@ export function PublishModal({
     validateCampaign()
   }, [isOpen, campaign])
 
-  // Load activation status when modal opens
-  useEffect(() => {
-    const loadActivationStatus = async () => {
-      if (!isOpen || !campaign) return
-      
-      try {
-        const result = await getCampaignActivationStatus(campaign.id)
-        if (result.success && result.data) {
-          setActivationStatus(result.data)
-        }
-      } catch (error) {
-        console.error('Error loading activation status:', error)
-      }
-    }
 
-    loadActivationStatus()
-  }, [isOpen, campaign])
 
   // Check URL availability when custom URL changes
   useEffect(() => {
@@ -275,8 +240,6 @@ export function PublishModal({
         description: `Your campaign is now live at ${result.data.published_url}`,
         duration: 5000
       })
-      
-      onClose()
     } catch (error) {
       console.error('Error publishing campaign:', error)
       const message = error instanceof Error ? error.message : 'Failed to publish campaign'
@@ -296,7 +259,7 @@ export function PublishModal({
     try {
       setIsPublishing(true)
       
-      const result = await unpublishCampaign(campaign.id, keepUrlOnUnpublish)
+      const result = await unpublishCampaign(campaign.id, true)
       
       if (!result.success || !result.data) {
         throw new Error(result.error || 'Failed to unpublish campaign')
@@ -306,9 +269,7 @@ export function PublishModal({
       
       toast({
         title: 'Campaign unpublished',
-        description: keepUrlOnUnpublish 
-          ? 'Campaign unpublished (URL preserved)' 
-          : 'Campaign unpublished and URL cleared',
+        description: 'Campaign unpublished (URL preserved)',
         duration: 5000
       })
       
@@ -326,49 +287,7 @@ export function PublishModal({
     }
   }
 
-  const handleToggleActivation = async () => {
-    if (!campaign || !activationStatus.isPublished) return
 
-    try {
-      setIsTogglingActivation(true)
-      
-      const result = activationStatus.isActive 
-        ? await deactivateCampaign(campaign.id)
-        : await activateCampaign(campaign.id)
-      
-      if (!result.success || !result.data) {
-        throw new Error(result.error || 'Failed to toggle campaign activation')
-      }
-
-      // Update activation status
-      setActivationStatus(prev => ({
-        ...prev,
-        isActive: !prev.isActive
-      }))
-
-      // Update the campaign object if needed
-      onPublishSuccess(result.data)
-      
-      toast({
-        title: activationStatus.isActive ? 'Campaign deactivated' : 'Campaign activated',
-        description: activationStatus.isActive 
-          ? 'Your campaign is no longer publicly accessible'
-          : 'Your campaign is now live and accessible to visitors',
-        duration: 5000
-      })
-      
-    } catch (error) {
-      console.error('Error toggling activation:', error)
-      const message = error instanceof Error ? error.message : 'Failed to toggle activation'
-      toast({
-        title: 'Activation toggle failed',
-        description: message,
-        variant: 'destructive'
-      })
-    } finally {
-      setIsTogglingActivation(false)
-    }
-  }
 
   const copyUrlToClipboard = async () => {
     if (!fullUrl) return
@@ -482,15 +401,19 @@ export function PublishModal({
               <Label htmlFor="custom-url-toggle" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
                 Custom URL
+                {isPublished && (
+                  <span className="text-xs text-muted-foreground">(unpublish to edit)</span>
+                )}
               </Label>
               <Switch
                 id="custom-url-toggle"
                 checked={useCustomUrl}
                 onCheckedChange={setUseCustomUrl}
+                disabled={isPublished}
               />
             </div>
 
-            {useCustomUrl ? (
+            {useCustomUrl && (
               <div className="space-y-3">
                 <div className="space-y-2">
                   <Label htmlFor="custom-url">Campaign URL</Label>
@@ -504,6 +427,7 @@ export function PublishModal({
                       onChange={(e) => setCustomUrl(e.target.value)}
                       placeholder="my-campaign"
                       className="rounded-l-none"
+                      disabled={isPublished}
                     />
                   </div>
                   {urlCheck.checking && (
@@ -546,16 +470,6 @@ export function PublishModal({
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="space-y-2">
-                <Label>Suggested URL</Label>
-                <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
-                  <Globe className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-mono">
-                    {typeof window !== 'undefined' ? window.location.origin : ''}/c/{suggestedUrl || 'campaign'}
-                  </span>
-                </div>
-              </div>
             )}
 
             {/* Final URL Preview */}
@@ -592,107 +506,7 @@ export function PublishModal({
             )}
           </div>
 
-          {/* Unpublish Options */}
-          {isPublished && (
-            <>
-              <Separator />
-              <div className="space-y-3">
-                <Label className="text-base font-medium">Unpublish Options</Label>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label htmlFor="keep-url" className="text-sm">Keep URL reserved</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Preserve your URL when unpublishing so you can republish later
-                    </p>
-                  </div>
-                  <Switch
-                    id="keep-url"
-                    checked={keepUrlOnUnpublish}
-                    onCheckedChange={setKeepUrlOnUnpublish}
-                  />
-                </div>
-              </div>
-            </>
-          )}
 
-          {/* Campaign Activation Controls */}
-          {isPublished && activationStatus.canActivate && (
-            <>
-              <Separator />
-              <div className="space-y-4">
-                <Label className="text-base font-medium">Campaign Activation</Label>
-                
-                {/* Activation Status Display */}
-                <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                      {activationStatus.isActive ? (
-                        <div className="flex items-center gap-2 text-green-600">
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                          <span className="font-medium">Active</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 text-orange-600">
-                          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                          <span className="font-medium">Inactive</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {activationStatus.isActive 
-                        ? 'Your campaign is publicly accessible'
-                        : 'Your campaign is not accessible to visitors'
-                      }
-                    </div>
-                  </div>
-                  
-                  <Button
-                    variant={activationStatus.isActive ? "outline" : "default"}
-                    size="sm"
-                    onClick={handleToggleActivation}
-                    disabled={isTogglingActivation}
-                    className={cn(
-                      "flex items-center gap-2",
-                      activationStatus.isActive 
-                        ? "text-orange-600 border-orange-300 hover:bg-orange-50" 
-                        : "bg-green-600 hover:bg-green-700 text-white"
-                    )}
-                  >
-                    {isTogglingActivation && <Loader2 className="h-3 w-3 animate-spin" />}
-                    {activationStatus.isActive ? (
-                      <>
-                        <Lock className="h-3 w-3" />
-                        Deactivate
-                      </>
-                    ) : (
-                      <>
-                        <Unlock className="h-3 w-3" />
-                        Activate
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Activation Info */}
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex gap-3">
-                    <div className="flex-shrink-0 mt-0.5">
-                      <AlertCircle className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div className="space-y-2 text-sm text-blue-800">
-                      <p className="font-medium">About Campaign Activation:</p>
-                      <ul className="space-y-1 text-xs">
-                        <li>• <strong>Active:</strong> Campaign is publicly accessible via its URL</li>
-                        <li>• <strong>Inactive:</strong> Campaign URL returns "not available" message</li>
-                        <li>• Deactivating preserves your URL and all campaign data</li>
-                        <li>• You can reactivate anytime without losing settings</li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
         </div>
 
         {/* Footer */}

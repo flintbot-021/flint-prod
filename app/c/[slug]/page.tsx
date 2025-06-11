@@ -13,16 +13,12 @@ import {
   ArrowLeft, 
   ArrowRight, 
   Brain, 
-  Target, 
-  MessageSquare, 
   RefreshCw, 
   Wifi, 
   WifiOff, 
   Smartphone,
   Monitor,
   Tablet,
-  Zap,
-  Clock,
   AlertCircle,
   Loader2,
   AlertTriangle,
@@ -43,7 +39,7 @@ import {
 } from '@/lib/variable-system'
 
 // Import NEW shared components and hooks
-import { SectionRenderer as SharedSectionRenderer, SectionNavigationBar } from '@/components/campaign-renderer'
+import { SectionRenderer as SharedSectionRenderer } from '@/components/campaign-renderer'
 import { 
   useCampaignRenderer, 
   useDeviceInfo, 
@@ -140,149 +136,72 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // Temporary compatibility bridge for legacy error handling
   const [errorState, setErrorState] = useState<ErrorState | null>(null)
 
-  // Completion celebration state
-  const [showCompletionCelebration, setShowCompletionCelebration] = useState(false)
-  const [celebrationMessage, setCelebrationMessage] = useState('')
+
+
+  // Generate or recover session ID with persistence
+  const getOrCreateSessionId = (): string => {
+    if (typeof window === 'undefined') return crypto.randomUUID()
+    
+    const storageKey = `flint_session_${slug}`
+    const stored = localStorage.getItem(storageKey)
+    
+    if (stored) {
+      try {
+        const { sessionId, timestamp } = JSON.parse(stored)
+        const age = Date.now() - timestamp
+        const maxAge = 24 * 60 * 60 * 1000 // 24 hours
+        
+        // Use existing session if less than 24 hours old
+        if (age < maxAge) {
+          console.log('🔄 Recovered existing session:', sessionId)
+          return sessionId
+        } else {
+          console.log('⏰ Session expired, creating new one')
+          localStorage.removeItem(storageKey)
+        }
+      } catch (err) {
+        console.warn('Failed to parse stored session, creating new one')
+        localStorage.removeItem(storageKey)
+      }
+    }
+    
+    // Create new session
+    const newSessionId = crypto.randomUUID()
+    localStorage.setItem(storageKey, JSON.stringify({
+      sessionId: newSessionId,
+      timestamp: Date.now()
+    }))
+    
+    console.log('✨ Created new session:', newSessionId)
+    return newSessionId
+  }
 
   const [campaignState, setCampaignState] = useState<CampaignState>({
     currentSection: 0,
     userInputs: {},
     completedSections: new Set(),
     startTime: new Date(),
-    sessionId: crypto.randomUUID()
+    sessionId: getOrCreateSessionId()
   })
 
-  // =============================================================================
-  // ENHANCED PROGRESS TRACKING AND COMPLETION FLOW SYSTEM
-  // =============================================================================
 
-  // Progress calculation state
-  const [progressMetrics, setProgressMetrics] = useState({
-    totalProgress: 0,
-    weightedProgress: 0,
-    captureProgress: 0,
-    timeEstimate: 0,
-    completionForecast: '',
-    milestones: [] as string[]
-  })
 
-  // Section weights for progress calculation
-  const getSectionWeight = (section: SectionWithOptions): number => {
-    const weights = {
-      'capture': 3,      // High weight - critical for completion
-      'text_question': 2, // Medium weight - important data
-      'multiple_choice': 2, // Medium weight - important data
-      'slider': 2,       // Medium weight - important data
-      'logic': 1,        // Low weight - automated processing
-      'info': 1,         // Low weight - informational
-      'output': 4        // Highest weight - final result
-    }
-    return weights[section.type as keyof typeof weights] || 1
-  }
+  // Simplified navigation 
+  const navigateToSection = (sectionIndex: number) => {
+    if (isTransitioning || sectionIndex === campaignState.currentSection) return
+    if (sectionIndex < 0 || sectionIndex >= sections.length) return
 
-  // Calculate comprehensive progress metrics
-  const calculateProgressMetrics = (): typeof progressMetrics => {
-    if (sections.length === 0) {
-      return {
-        totalProgress: 0,
-        weightedProgress: 0,
-        captureProgress: 0,
-        timeEstimate: 0,
-        completionForecast: '',
-        milestones: []
-      }
-    }
+    setIsTransitioning(true)
+    setCampaignState(prev => ({
+      ...prev,
+      currentSection: sectionIndex
+    }))
 
-    // Calculate section-based progress
-    const totalSections = sections.length
-    const completedCount = campaignState.completedSections.size
-    const totalProgress = Math.round((completedCount / totalSections) * 100)
+    // Update session progress in database with the new section index
+    updateSessionProgress(sectionIndex)
 
-    // Calculate weighted progress
-    const totalWeight = sections.reduce((sum, section) => sum + getSectionWeight(section), 0)
-    const completedWeight = sections
-      .filter((_, index) => campaignState.completedSections.has(index))
-      .reduce((sum, section) => sum + getSectionWeight(section), 0)
-    const weightedProgress = Math.round((completedWeight / totalWeight) * 100)
-
-    // Calculate capture section progress
-    const captureSections = sections.filter(s => s.type === 'capture')
-    const completedCaptureSections = captureSections.filter((_, originalIndex) => {
-      const sectionIndex = sections.findIndex(s => s.id === captureSections[originalIndex].id)
-      return campaignState.completedSections.has(sectionIndex)
-    })
-    const captureProgress = captureSections.length > 0 
-      ? Math.round((completedCaptureSections.length / captureSections.length) * 100)
-      : 100
-
-    // Time estimation (average 45 seconds per section)
-    const remainingSections = totalSections - completedCount
-    const timeEstimate = remainingSections * 45 // seconds
-
-    // Completion forecast
-    const now = new Date()
-    const forecastTime = new Date(now.getTime() + (timeEstimate * 1000))
-    const completionForecast = forecastTime.toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    })
-
-    // Milestones
-    const milestones: string[] = []
-    if (captureProgress === 100) milestones.push('Contact info collected')
-    if (totalProgress >= 25) milestones.push('Getting started')
-    if (totalProgress >= 50) milestones.push('Halfway there')
-    if (totalProgress >= 75) milestones.push('Almost finished')
-    if (totalProgress === 100) milestones.push('Campaign complete!')
-
-    return {
-      totalProgress,
-      weightedProgress,
-      captureProgress,
-      timeEstimate,
-      completionForecast,
-      milestones
-    }
-  }
-
-  // Update progress metrics when sections change
-  useEffect(() => {
-    const metrics = calculateProgressMetrics()
-    setProgressMetrics(metrics)
-  }, [campaignState.completedSections, sections.length, campaignState.currentSection])
-
-  // Completion flow validation
-  const canAccessSection = (sectionIndex: number): { canAccess: boolean; reason?: string } => {
-    const section = sections[sectionIndex]
-    if (!section) return { canAccess: false, reason: 'Section not found' }
-
-    // Check if this is an output/result section that requires capture completion
-    if (section.type === 'output') {
-      const hasCompletedCapture = progressMetrics.captureProgress === 100
-      if (!hasCompletedCapture) {
-        return { 
-          canAccess: false, 
-          reason: 'Please complete the contact information section first' 
-        }
-      }
-    }
-
-    return { canAccess: true }
-  }
-
-  // Enhanced navigation with completion validation
-  const navigateToSectionWithValidation = (sectionIndex: number): boolean => {
-    const validation = canAccessSection(sectionIndex)
-    
-    if (!validation.canAccess) {
-      // Show user-friendly error message
-      errorHandler.handleError(validation.reason || 'Cannot access this section yet', 'section_navigation')
-      
-      return false
-    }
-
-    navigateToSection(sectionIndex)
-    return true
+    // Reset transition state after animation
+    setTimeout(() => setIsTransitioning(false), 300)
   }
 
   // AI Content Generation for Output Sections
@@ -322,34 +241,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
   }
 
-  // Trigger completion celebration
-  const triggerCompletionCelebration = async () => {
-    if (progressMetrics.totalProgress === 100 && !showCompletionCelebration) {
-      const totalTime = Math.round((new Date().getTime() - campaignState.startTime.getTime()) / 1000)
-      const minutes = Math.floor(totalTime / 60)
-      const seconds = totalTime % 60
-      
-      const message = `🎉 Congratulations! You completed this campaign in ${minutes}m ${seconds}s. Thank you for your participation!`
-      
-      setCelebrationMessage(message)
-      setShowCompletionCelebration(true)
 
-      // Auto-hide after 5 seconds
-      setTimeout(() => {
-        setShowCompletionCelebration(false)
-      }, 5000)
-
-      // Update session with completion status
-      await updateSessionProgress()
-    }
-  }
-
-  // Monitor for completion
-  useEffect(() => {
-    if (progressMetrics.totalProgress === 100) {
-      triggerCompletionCelebration()
-    }
-  }, [progressMetrics.totalProgress])
 
   // Enhanced loading states for AI processing
   const [aiProcessingState, setAiProcessingState] = useState<{
@@ -565,9 +457,18 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   useEffect(() => {
     const initializeSession = async () => {
       if (campaign && !isSessionRecovered) {
-        // Create lead record immediately for RLS policy compliance
-        await createInitialLead()
-        await recoverSession()
+        console.log('🚀 [INIT] Starting session initialization')
+        
+        // Try to recover existing session first
+        const recovered = await recoverSession()
+        
+        // Only create a new lead if we didn't recover an existing session with a lead ID
+        if (!recovered || !campaignState.leadId) {
+          console.log('💾 [INIT] Creating initial lead (no existing session or lead)')
+          await createInitialLead()
+        } else {
+          console.log('✅ [INIT] Using recovered lead ID:', campaignState.leadId)
+        }
       }
     }
     
@@ -577,14 +478,20 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // Auto-save on unmount and visibility change
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (pendingUpdates.size > 0) {
+      if (pendingUpdates.size > 0 && campaign) {
+        console.log('📤 [BEFOREUNLOAD] Flushing pending updates before page unload')
         flushPendingUpdates()
+      } else if (pendingUpdates.size > 0) {
+        console.warn('⚠️ [BEFOREUNLOAD] Campaign not loaded, skipping flush before unload')
       }
     }
 
     const handleVisibilityChange = () => {
-      if (document.hidden && pendingUpdates.size > 0) {
+      if (document.hidden && pendingUpdates.size > 0 && campaign) {
+        console.log('👁️ [VISIBILITY] Flushing pending updates on page hide')
         flushPendingUpdates()
+      } else if (document.hidden && pendingUpdates.size > 0) {
+        console.warn('⚠️ [VISIBILITY] Campaign not loaded, skipping flush on page hide')
       }
     }
 
@@ -592,7 +499,13 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      handleBeforeUnload()
+      // Only flush if campaign is still loaded during cleanup
+      if (pendingUpdates.size > 0 && campaign) {
+        console.log('🧹 [CLEANUP] Flushing pending updates during component cleanup')
+        handleBeforeUnload()
+      } else if (pendingUpdates.size > 0) {
+        console.warn('⚠️ [CLEANUP] Campaign not loaded during cleanup, skipping flush')
+      }
       window.removeEventListener('beforeunload', handleBeforeUnload)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
@@ -716,9 +629,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [campaign, campaignState.currentSection])
 
-  // Parse URL section parameter on load
+  // Parse URL section parameter on load (only if no session recovery happened)
   useEffect(() => {
-    if (sections.length === 0) return
+    if (sections.length === 0 || isSessionRecovered) return
+    
+    console.log('🔗 [URL] Checking URL section parameter')
     
     const urlParams = new URLSearchParams(window.location.search)
     const sectionParam = urlParams.get('section')
@@ -726,13 +641,16 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     if (sectionParam) {
       const sectionIndex = parseInt(sectionParam) - 1
       if (sectionIndex >= 0 && sectionIndex < sections.length) {
+        console.log(`🔗 [URL] Setting section from URL: ${sectionIndex}`)
         setCampaignState(prev => ({
           ...prev,
           currentSection: sectionIndex
         }))
       }
+    } else {
+      console.log('🔗 [URL] No section parameter found, staying at section 0')
     }
-  }, [sections.length])
+  }, [sections.length, isSessionRecovered])
 
   // =============================================================================
   // VARIABLE ENGINE INITIALIZATION
@@ -813,6 +731,27 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // Real-time response collection with auto-save
   const collectResponse = async (sectionId: string, fieldId: string, value: any, metadata: any = {}) => {
     try {
+      // Guard against race conditions - don't allow responses until campaign is loaded
+      if (!campaign) {
+        console.warn('⚠️ Campaign not loaded yet, deferring response collection')
+        return
+      }
+      
+      // Refresh session timestamp on activity
+      if (typeof window !== 'undefined') {
+        const storageKey = `flint_session_${slug}`
+        const stored = localStorage.getItem(storageKey)
+        if (stored) {
+          try {
+            const sessionData = JSON.parse(stored)
+            sessionData.timestamp = Date.now()
+            localStorage.setItem(storageKey, JSON.stringify(sessionData))
+          } catch (err) {
+            // Ignore storage errors
+          }
+        }
+      }
+      
       // Update local state immediately
       setCampaignState(prev => ({
         ...prev,
@@ -879,6 +818,13 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const flushPendingUpdates = async () => {
     if (pendingUpdates.size === 0) return
 
+    // Guard against flushing when campaign is not loaded (e.g., during unmount)
+    if (!campaign) {
+      console.warn('⚠️ [FLUSH] Campaign not loaded during flush, clearing pending updates to prevent memory leaks')
+      setPendingUpdates(new Map()) // Clear to prevent memory leaks
+      return
+    }
+
     try {
       const updates = Array.from(pendingUpdates.values())
       await saveBatchResponses(updates)
@@ -896,16 +842,22 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const saveBatchResponses = async (responses: any[]) => {
     try {
       // Ensure we have a lead ID before saving responses
-      if (!campaignState.leadId) {
+      let currentLeadId = campaignState.leadId
+      
+      if (!currentLeadId) {
         console.log('⚠️ No lead ID available, creating lead first...')
-        await createInitialLead()
-        
-        // Wait for state to update, then check again
-        await new Promise(resolve => setTimeout(resolve, 100))
+        currentLeadId = await createInitialLead()
         
         // If still no lead ID, skip saving responses
-        if (!campaignState.leadId) {
+        if (!currentLeadId) {
           console.error('❌ Failed to create lead, skipping response save')
+          console.error('❌ Campaign details:', { 
+            campaignExists: !!campaign, 
+            campaignId: campaign?.id, 
+            campaignStatus: campaign?.status,
+            sessionId: campaignState.sessionId,
+            existingLeadId: campaignState.leadId 
+          })
           return
         }
       }
@@ -914,7 +866,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       // Prepare batch data - map to correct lead_responses schema
       const responseRecords = responses.map(response => ({
-        lead_id: campaignState.leadId, // Required for lead_responses table
+        lead_id: currentLeadId, // Required for lead_responses table
         section_id: response.sectionId,
         response_value: String(response.value),
         response_type: typeof response.value === 'number' ? 'number' : 
@@ -928,7 +880,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         }
       }))
 
-      console.log('💾 Saving responses with lead_id:', campaignState.leadId)
+      console.log('💾 Saving responses with lead_id:', currentLeadId)
 
       // Batch upsert responses
       const { error: responsesError } = await supabase
@@ -951,15 +903,16 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   }
 
   // Update session progress tracking
-  const updateSessionProgress = async () => {
+  const updateSessionProgress = async (overrideSectionIndex?: number) => {
     try {
       const supabase = await getSupabaseClient()
+
+      const currentSectionIndex = overrideSectionIndex !== undefined ? overrideSectionIndex : campaignState.currentSection
 
       const progressData = {
         session_id: campaignState.sessionId,
         campaign_id: campaign?.id,
-        last_section_index: campaignState.currentSection,
-        completion_percentage: Math.round((campaignState.completedSections.size / sections.length) * 100),
+        last_section_index: currentSectionIndex,
         total_sections: sections.length,
         completed_sections: campaignState.completedSections.size,
         last_activity: new Date().toISOString(),
@@ -976,6 +929,12 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         throw error
       }
 
+      console.log('📍 Session progress updated:', { 
+        section: currentSectionIndex, 
+        completedSections: campaignState.completedSections.size,
+        totalSections: sections.length
+      })
+
     } catch (err) {
       console.error('Error updating session progress:', err)
     }
@@ -986,6 +945,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     if (isSessionRecovered) return true
 
     try {
+      console.log('🔄 [RECOVERY] Starting session recovery for:', {
+        sessionId: campaignState.sessionId,
+        campaignId: campaign?.id
+      })
+
       const supabase = await getSupabaseClient()
       
       // Try to find existing session
@@ -999,7 +963,18 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         .eq('campaign_id', campaign?.id)
         .single()
 
+      console.log('🔍 [RECOVERY] Session query result:', {
+        found: !!existingSession,
+        error: error?.message,
+        sessionData: existingSession ? {
+          lastSectionIndex: existingSession.last_section_index,
+          leadId: existingSession.lead_id,
+          responseCount: existingSession.lead_responses?.length || 0
+        } : null
+      })
+
       if (error || !existingSession) {
+        console.log('📝 [RECOVERY] No existing session found, creating new one')
         // No existing session, create new one
         await createSession()
         setIsSessionRecovered(true)
@@ -1010,47 +985,79 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       const recoveredInputs: Record<string, any> = {}
       const completedSections = new Set<number>()
 
+      console.log('📊 [RECOVERY] Processing responses:', existingSession.lead_responses?.length || 0)
+
       if (existingSession.lead_responses) {
-        existingSession.lead_responses.forEach((response: any) => {
+        existingSession.lead_responses.forEach((response: any, index: number) => {
+          console.log(`📝 [RECOVERY] Response ${index + 1}:`, {
+            sectionId: response.section_id,
+            value: response.response_value,
+            responseData: response.response_data
+          })
+          
           // Use section_id as key since field_id doesn't exist in lead_responses table
           recoveredInputs[response.section_id] = response.response_value
+          
           // Get section_index from response_data if available
-          const sectionIndex = response.response_data?.sectionIndex || 0
-          completedSections.add(sectionIndex)
+          const sectionIndex = response.response_data?.sectionIndex
+          if (typeof sectionIndex === 'number') {
+            completedSections.add(sectionIndex)
+            console.log(`✅ [RECOVERY] Marked section ${sectionIndex} as completed`)
+          }
         })
       }
+
+      const targetSection = existingSession.last_section_index || 0
+      
+      console.log('🎯 [RECOVERY] Restoring state:', {
+        targetSection,
+        inputsCount: Object.keys(recoveredInputs).length,
+        completedSectionsArray: Array.from(completedSections),
+        leadId: existingSession.lead_id
+      })
 
       setCampaignState(prev => ({
         ...prev,
         userInputs: recoveredInputs,
         completedSections,
-        currentSection: existingSession.last_section_index || 0,
-        leadId: existingSession.lead_id
+        currentSection: targetSection,
+        leadId: existingSession.lead_id || undefined
       }))
 
       setIsSessionRecovered(true)
-      logger.info('Session recovered successfully')
+      console.log('✅ [RECOVERY] Session recovered successfully')
 
       return true
 
     } catch (err) {
-      console.error('Error recovering session:', err)
+      console.error('❌ [RECOVERY] Error recovering session:', err)
       setIsSessionRecovered(true) // Prevent retry loops
       return false
     }
   }
 
   // Create initial lead record for RLS policy compliance
-  const createInitialLead = async () => {
+  const createInitialLead = async (): Promise<string | undefined> => {
     try {
-      if (!campaign || campaignState.leadId) return // Already has a lead
+      if (!campaign || campaignState.leadId) return campaignState.leadId // Return existing lead ID
+      
+      console.log('🔍 Creating initial lead for campaign:', { 
+        campaignId: campaign.id, 
+        status: campaign.status,
+        sessionId: campaignState.sessionId 
+      })
       
       const supabase = await getSupabaseClient()
+      
+      // Generate a more unique email to avoid duplicates
+      const timestamp = Date.now()
+      const randomSuffix = Math.random().toString(36).substring(2, 8)
+      const uniqueEmail = `anonymous_${campaignState.sessionId}_${timestamp}_${randomSuffix}@temp.local`
       
       // Create anonymous lead record with minimal data
       const leadData = {
         campaign_id: campaign.id,
-        email: `anonymous_${campaignState.sessionId}@temp.local`, // Temporary email
+        email: uniqueEmail,
         name: null,
         phone: null,
         ip_address: null,
@@ -1063,6 +1070,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         }
       }
 
+      console.log('💾 Inserting lead data:', leadData)
+
       const { data: lead, error } = await supabase
         .from('leads')
         .insert(leadData)
@@ -1070,7 +1079,55 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         .single()
 
       if (error) {
-        throw error
+        console.error('❌ Lead insertion failed:', error)
+        
+        // Check if it's a unique constraint violation
+        if (error.code === '23505' && error.message.includes('leads_campaign_id_email_key')) {
+          console.log('🔄 Duplicate email detected, trying to find existing lead...')
+          
+          // Try to find existing lead with this session ID
+          const { data: existingLead } = await supabase
+            .from('leads')
+            .select('id')
+            .eq('campaign_id', campaign.id)
+            .contains('metadata', { session_id: campaignState.sessionId })
+            .limit(1)
+            .single()
+          
+          if (existingLead) {
+            console.log('✅ Found existing lead for session:', existingLead.id)
+            setCampaignState(prev => ({
+              ...prev,
+              leadId: existingLead.id
+            }))
+            return existingLead.id
+          } else {
+            // Generate an even more unique email and retry once
+            const retryEmail = `anonymous_${campaignState.sessionId}_${Date.now()}_${crypto.randomUUID().substring(0, 8)}@temp.local`
+            const retryData = { ...leadData, email: retryEmail }
+            
+            console.log('🔄 Retrying with more unique email:', retryEmail)
+            const { data: retryLead, error: retryError } = await supabase
+              .from('leads')
+              .insert(retryData)
+              .select()
+              .single()
+            
+            if (retryError) {
+              throw retryError
+            }
+            
+            setCampaignState(prev => ({
+              ...prev,
+              leadId: retryLead.id
+            }))
+            
+            console.log('✅ Lead created on retry:', retryLead.id)
+            return retryLead.id
+          }
+        } else {
+          throw error
+        }
       }
 
       // Store lead ID for future use
@@ -1080,10 +1137,18 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       }))
 
       console.log('✅ Initial lead created:', lead.id)
+      return lead.id
 
-    } catch (err) {
-      console.error('Error creating initial lead:', err)
+    } catch (err: any) {
+      console.error('❌ Error creating initial lead:', {
+        error: err,
+        message: err?.message,
+        details: err?.details,
+        hint: err?.hint,
+        code: err?.code
+      })
       // Don't throw - allow campaign to continue even if lead creation fails
+      return undefined
     }
   }
 
@@ -1108,7 +1173,9 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       const { error } = await supabase
         .from('campaign_sessions')
-        .upsert(sessionData)
+        .upsert(sessionData, {
+          onConflict: 'session_id,campaign_id'
+        })
 
       if (error) {
         throw error
@@ -1299,11 +1366,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       setSections(sectionsData)
       
-      // Initialize campaign state
+      // Initialize campaign state (keep existing sessionId)
       setCampaignState(prev => ({
         ...prev,
-        startTime: new Date(),
-        sessionId: crypto.randomUUID()
+        startTime: new Date()
+        // sessionId already set in initial state, don't regenerate
       }))
 
       console.log('✅ Campaign loaded successfully with', sectionsData.length, 'sections')
@@ -1493,11 +1560,16 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const handlePrevious = () => {
     if (isTransitioning || campaignState.currentSection <= 0) return
 
+    const newSectionIndex = Math.max(0, campaignState.currentSection - 1)
+
     setIsTransitioning(true)
     setCampaignState(prev => ({
       ...prev,
-      currentSection: Math.max(0, prev.currentSection - 1)
+      currentSection: newSectionIndex
     }))
+
+    // Update session progress in database with the new section index
+    updateSessionProgress(newSectionIndex)
 
     // Reset transition state after animation
     setTimeout(() => setIsTransitioning(false), 300)
@@ -1506,25 +1578,16 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const handleNext = () => {
     if (isTransitioning || campaignState.currentSection >= sections.length - 1) return
 
-    setIsTransitioning(true)
-    setCampaignState(prev => ({
-      ...prev,
-      currentSection: Math.min(sections.length - 1, prev.currentSection + 1)
-    }))
-
-    // Reset transition state after animation
-    setTimeout(() => setIsTransitioning(false), 300)
-  }
-
-  const navigateToSection = (sectionIndex: number) => {
-    if (isTransitioning || sectionIndex === campaignState.currentSection) return
-    if (sectionIndex < 0 || sectionIndex >= sections.length) return
+    const newSectionIndex = Math.min(sections.length - 1, campaignState.currentSection + 1)
 
     setIsTransitioning(true)
     setCampaignState(prev => ({
       ...prev,
-      currentSection: sectionIndex
+      currentSection: newSectionIndex
     }))
+
+    // Update session progress in database with the new section index
+    updateSessionProgress(newSectionIndex)
 
     // Reset transition state after animation
     setTimeout(() => setIsTransitioning(false), 300)
@@ -1719,7 +1782,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // RENDER STATES
   // =============================================================================
 
-  if (isLoading) {
+  // Enhanced loading guard - prevent interaction until campaign and sections are ready
+  if (isLoading || !campaign || sections.length === 0) {
     return (
       <div className="min-h-screen bg-muted flex items-center justify-center">
         <div className="text-center">
@@ -1891,231 +1955,37 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     )
   }
 
-  if (!campaign || sections.length === 0) {
-    return (
-      <div className="min-h-screen bg-muted flex items-center justify-center">
-        <div className="text-center">
-          <Globe className="h-8 w-8 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-foreground mb-2">No Content</h3>
-          <p className="text-muted-foreground">This campaign doesn't have any content to display.</p>
-        </div>
-      </div>
-    )
-  }
+
 
   // =============================================================================
   // MAIN RENDER
   // =============================================================================
 
   return (
-    <div className="min-h-screen bg-muted">
-      {/* Completion Celebration Modal */}
-      {showCompletionCelebration && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-background rounded-lg p-8 max-w-md mx-4 text-center">
-            <div className="text-6xl mb-4">🎉</div>
-            <h2 className="text-2xl font-bold text-foreground mb-4">Campaign Complete!</h2>
-            <p className="text-muted-foreground mb-6">{celebrationMessage}</p>
-            <div className="flex justify-center space-x-2 mb-4">
-              {progressMetrics.milestones.map((milestone, index) => (
-                <Badge key={index} variant="secondary" className="text-xs">
-                  {milestone}
-                </Badge>
-              ))}
-            </div>
-            <Button 
-              onClick={() => setShowCompletionCelebration(false)}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              Continue
-            </Button>
-          </div>
+    <div className="h-screen bg-muted">
+      {/* Section Content */}
+      {campaignState.currentSection < sections.length && (
+        <div key={campaignState.currentSection} className={cn(
+          "h-full transition-all duration-300 ease-in-out",
+          isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0"
+        )}>
+          {/* Use SharedSectionRenderer for consistent experience */}
+          <SharedSectionRenderer
+            section={sections[campaignState.currentSection]}
+            index={campaignState.currentSection}
+            isActive={true}
+            isPreview={false}
+            campaignId={campaign?.id}
+            userInputs={campaignState.userInputs}
+            sections={sections}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+            onNavigateToSection={navigateToSection}
+            onSectionComplete={handleSectionComplete}
+            onResponseUpdate={collectResponse}
+          />
         </div>
       )}
-
-      {/* Campaign Info Header with Enhanced Progress */}
-      <div className="bg-background border-b">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Globe className="h-5 w-5 text-blue-600 mr-2" />
-              <h2 className="text-lg font-semibold text-foreground">{campaign.name}</h2>
-            </div>
-            
-            {/* Enhanced Progress Indicator */}
-            <div className="flex items-center space-x-4">
-              {/* Real-time Save Status */}
-              {pendingUpdates.size > 0 && (
-                <div className="flex items-center text-sm text-amber-600">
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                  <span>Saving...</span>
-                </div>
-              )}
-              
-              {pendingUpdates.size === 0 && isSessionRecovered && campaignState.userInputs && Object.keys(campaignState.userInputs).length > 0 && (
-                <div className="flex items-center text-sm text-green-600">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  <span>Saved</span>
-                </div>
-              )}
-              
-              {/* Progress Details */}
-              <div className="flex flex-col items-end">
-                <div className="flex items-center space-x-2 mb-1">
-                  <span className="text-sm text-muted-foreground">
-                    {campaignState.currentSection + 1} of {sections.length}
-                  </span>
-                  <span className="text-sm font-medium text-blue-600">
-                    {progressMetrics.weightedProgress}%
-                  </span>
-                </div>
-                
-                {/* Time Estimate */}
-                {progressMetrics.timeEstimate > 0 && (
-                  <div className="text-xs text-muted-foreground">
-                    ~{Math.ceil(progressMetrics.timeEstimate / 60)}min remaining • Est. {progressMetrics.completionForecast}
-                  </div>
-                )}
-                
-                {/* Progress Bar */}
-                <div className="w-32 h-1 bg-gray-200 rounded-full mt-1">
-                  <div 
-                    className="h-1 bg-blue-600 rounded-full transition-all duration-300"
-                    style={{ width: `${progressMetrics.weightedProgress}%` }}
-                  />
-                </div>
-              </div>
-              
-              {/* Section Dots */}
-              <div className="flex space-x-1">
-                {sections.map((section, index) => {
-                  const canAccess = canAccessSection(index).canAccess
-                  return (
-                    <div
-                      key={index}
-                      className={cn(
-                        "w-2 h-2 rounded-full transition-colors cursor-pointer",
-                        index === campaignState.currentSection
-                          ? "bg-blue-600 ring-2 ring-blue-200"
-                          : campaignState.completedSections.has(index)
-                          ? "bg-green-500"
-                          : canAccess
-                          ? "bg-gray-300 hover:bg-gray-400"
-                          : "bg-gray-200"
-                      )}
-                      onClick={() => {
-                        if (canAccess && index !== campaignState.currentSection) {
-                          navigateToSectionWithValidation(index)
-                        }
-                      }}
-                      title={`${section.title || `Section ${index + 1}`}${
-                        !canAccess ? ' (Locked)' : ''
-                      }`}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-          
-          {/* Milestones Banner */}
-          {progressMetrics.milestones.length > 0 && (
-            <div className="mt-3 flex items-center justify-center">
-              <div className="flex items-center space-x-2">
-                <Target className="h-4 w-4 text-green-600" />
-                <div className="flex space-x-1">
-                  {progressMetrics.milestones.slice(-2).map((milestone, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs bg-green-50 text-green-700">
-                      {milestone}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Section Content */}
-      <div className="py-12 px-6">
-        <div className="max-w-4xl mx-auto">
-          {campaignState.currentSection < sections.length && (
-            <div key={campaignState.currentSection} className={cn(
-              "transition-all duration-300 ease-in-out",
-              isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0"
-            )}>
-              {/* Use SharedSectionRenderer for consistent experience */}
-              <SharedSectionRenderer
-                section={sections[campaignState.currentSection]}
-                index={campaignState.currentSection}
-                isActive={true}
-                isPreview={false}
-                campaignId={campaign?.id}
-                userInputs={campaignState.userInputs}
-                sections={sections}
-                onNext={handleNext}
-                onPrevious={handlePrevious}
-                onNavigateToSection={navigateToSection}
-                onSectionComplete={handleSectionComplete}
-                onResponseUpdate={collectResponse}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <SectionNavigationBar
-        variant="full"
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        canGoPrevious={!isTransitioning && campaignState.currentSection > 0}
-        canGoNext={!isTransitioning && campaignState.currentSection < sections.length - 1}
-        progress={{
-          current: campaignState.currentSection + 1,
-          total: sections.length,
-          percentage: progressMetrics.weightedProgress,
-          timeEstimate: progressMetrics.timeEstimate,
-          completionForecast: progressMetrics.completionForecast
-        }}
-        status={{
-          isSaving: pendingUpdates.size > 0,
-          isSaved: pendingUpdates.size === 0 && isSessionRecovered && campaignState.userInputs && Object.keys(campaignState.userInputs).length > 0,
-          isOffline: !networkState.isOnline
-        }}
-        navigationHints={{
-          text: deviceInfo?.touchCapable 
-            ? "Swipe left/right or use buttons to navigate"
-            : "Use arrow keys or buttons to navigate",
-          isTouchDevice: deviceInfo?.touchCapable
-        }}
-                 sectionDots={{
-           sections: sections.map((section, index) => {
-             const canAccess = canAccessSection(index).canAccess
-             return {
-               index,
-               title: section.title || undefined,
-               isCompleted: campaignState.completedSections.has(index),
-               canAccess
-             }
-           }),
-          currentIndex: campaignState.currentSection,
-          onSectionClick: (index) => {
-            if (!isTransitioning) {
-              navigateToSectionWithValidation(index)
-            }
-          }
-        }}
-        deviceInfo={deviceInfo}
-        centerContent={
-          isTransitioning ? (
-            <div className="flex items-center">
-              <Loader2 className="h-3 w-3 animate-spin text-blue-600 mr-1" />
-              <span className="text-xs text-blue-600">Transitioning...</span>
-            </div>
-          ) : undefined
-        }
-      />
     </div>
   )
 } 

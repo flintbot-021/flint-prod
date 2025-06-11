@@ -169,13 +169,7 @@ export function SectionsMenu({ className }: SectionsMenuProps) {
         )}
       </div>
 
-      {/* Footer Help */}
-      <div className="p-4 border-t border-border bg-muted">
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p>💡 <strong>Tip:</strong> Drag sections to the canvas to add them</p>
-          <p>🔍 Use search to quickly find specific section types</p>
-        </div>
-      </div>
+
     </div>
   )
 } 

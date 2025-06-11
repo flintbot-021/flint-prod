@@ -1,7 +1,10 @@
 'use client'
 
 import React, { useState, useRef } from 'react'
-import { Upload, FileText, AlertCircle, X, CheckCircle } from 'lucide-react'
+import { Upload, FileText, AlertCircle, X, CheckCircle, File } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses } from '../utils'
 import { cn } from '@/lib/utils'
@@ -93,7 +96,7 @@ export function UploadSection({
         errors.push(`${file.name}: File type not supported`)
         return
       }
-
+      
       if (!isFileSizeValid(file)) {
         const sizeMB = (maxFileSize / (1024 * 1024)).toFixed(1)
         errors.push(`${file.name}: File size exceeds ${sizeMB}MB limit`)
@@ -215,21 +218,22 @@ export function UploadSection({
   const validationText = isRequired && uploadedFiles.length === 0 ? 'Please upload at least one file to continue' : undefined
 
   return (
-    <div className="h-full bg-background flex flex-col pb-20">
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
+    <div className="h-full bg-background flex flex-col">
+      <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-2xl mx-auto space-y-8">
+          {/* Header */}
           <div className="text-center space-y-4">
             <h1 className={cn(
               "font-bold text-foreground",
-              deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
+              deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl lg:text-4xl"
             )}>
               {headline}
-              {isRequired && <span className="text-red-500 ml-1">*</span>}
+              {isRequired && <span className="text-destructive ml-1">*</span>}
             </h1>
             
             {subheading && (
               <p className={cn(
-                "text-muted-foreground",
+                "text-muted-foreground max-w-lg mx-auto",
                 deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
               )}>
                 {subheading}
@@ -237,112 +241,167 @@ export function UploadSection({
             )}
           </div>
 
-          {/* Upload Area */}
-          <div
-            className={cn(
-              "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
-              isDragging 
-                ? "border-blue-500 bg-blue-50" 
-                : uploadStatus === 'success'
-                ? "border-green-500 bg-green-50"
-                : uploadStatus === 'error'
-                ? "border-red-500 bg-red-50"
-                : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
-            )}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            onClick={openFileDialog}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              accept={acceptedTypes}
-              multiple={allowMultiple}
-              onChange={handleFileInputChange}
-            />
+          {/* Upload Card */}
+          <Card className="border-2 border-dashed transition-all duration-200 hover:border-primary/50">
+            <CardContent className="p-8">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept={acceptedTypes}
+                multiple={allowMultiple}
+                onChange={handleFileInputChange}
+              />
 
-            <div className="space-y-4">
-              <div className="mx-auto w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-                {uploadStatus === 'success' ? (
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                ) : uploadStatus === 'error' ? (
-                  <AlertCircle className="h-6 w-6 text-red-600" />
-                ) : (
-                  <Upload className="h-6 w-6 text-gray-400" />
+              <div
+                className={cn(
+                  "text-center space-y-6 cursor-pointer transition-all duration-200",
+                  isDragging && "scale-105"
                 )}
-              </div>
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onClick={openFileDialog}
+              >
+                {/* Upload Icon */}
+                <div className={cn(
+                  "mx-auto w-16 h-16 rounded-full flex items-center justify-center transition-colors",
+                  uploadStatus === 'success' 
+                    ? "bg-green-100 dark:bg-green-900/20" 
+                    : uploadStatus === 'error'
+                    ? "bg-destructive/10"
+                    : isDragging
+                    ? "bg-primary/10"
+                    : "bg-muted"
+                )}>
+                  {uploadStatus === 'success' ? (
+                    <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+                  ) : uploadStatus === 'error' ? (
+                    <AlertCircle className="h-8 w-8 text-destructive" />
+                  ) : (
+                    <Upload className={cn(
+                      "h-8 w-8 transition-colors",
+                      isDragging ? "text-primary" : "text-muted-foreground"
+                    )} />
+                  )}
+                </div>
 
-              <div>
-                <p className="text-lg font-medium text-gray-900">
-                  {uploadStatus === 'success' 
-                    ? `${uploadedFiles.length} file${uploadedFiles.length !== 1 ? 's' : ''} uploaded`
-                    : isDragging 
-                    ? "Drop your files here"
-                    : "Drag and drop your files here, or click to browse"
-                  }
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  {allowedTypes.map((type: SupportedFileType) => type.description).join(', ')} up to {(maxFileSize / (1024 * 1024)).toFixed(1)}MB
-                </p>
-                {allowMultiple && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Maximum {maxFiles} files
+                {/* Upload Text */}
+                <div className="space-y-2">
+                  <p className={cn(
+                    "text-lg font-medium transition-colors",
+                    uploadStatus === 'success' 
+                      ? "text-green-600 dark:text-green-400"
+                      : isDragging 
+                      ? "text-primary"
+                      : "text-foreground"
+                  )}>
+                    {uploadStatus === 'success' 
+                      ? `${uploadedFiles.length} file${uploadedFiles.length !== 1 ? 's' : ''} uploaded successfully`
+                      : isDragging 
+                      ? "Drop your files here"
+                      : "Drag and drop your files here"
+                    }
                   </p>
-                )}
+                  
+                  {uploadStatus !== 'success' && (
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground">or</p>
+                      <Button variant="outline" className="pointer-events-none">
+                        <File className="h-4 w-4 mr-2" />
+                        Browse Files
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                {/* File Requirements */}
+                                  <div className="space-y-2">
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {allowedTypes.map((type: SupportedFileType, index: number) => (
+                        <Badge key={index} variant="secondary" className="text-xs">
+                          {type.description}
+                        </Badge>
+                      ))}
+                    <Badge variant="outline" className="text-xs">
+                      Max {(maxFileSize / (1024 * 1024)).toFixed(0)}MB
+                    </Badge>
+                  </div>
+                  
+                  {allowMultiple && (
+                    <p className="text-xs text-muted-foreground">
+                      Upload up to {maxFiles} files
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Uploaded Files List */}
           {uploadedFiles.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="font-medium text-gray-900">Uploaded Files:</h3>
-              {uploadedFiles.map((file, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border"
-                >
-                  <div className="flex items-center space-x-3">
-                    <FileText className="h-5 w-5 text-gray-400" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                      <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-4">
+                  Uploaded Files ({uploadedFiles.length})
+                </h3>
+                <div className="space-y-3">
+                  {uploadedFiles.map((file, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 transition-colors hover:bg-muted"
+                    >
+                      <div className="flex items-center space-x-3 min-w-0 flex-1">
+                        <div className="flex-shrink-0">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatFileSize(file.size)}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeFile(index)
+                        }}
+                        className="flex-shrink-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeFile(index)
-                    }}
-                    className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Error Message */}
           {errorMessage && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                <p className="text-sm text-red-800">{errorMessage}</p>
-              </div>
-            </div>
+            <Card className="border-destructive bg-destructive/5">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-2">
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  <p className="text-sm text-destructive">{errorMessage}</p>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
 
-      {/* Shared Navigation Bar */}
+      {/* Navigation Bar */}
       <SectionNavigationBar
         onPrevious={onPrevious}
-        icon={<Upload className="h-5 w-5 text-primary" />}
-        label={`Upload ${index + 1}`}
+        icon={<Upload className="h-5 w-5" />}
+        label={`Upload`}
         validationText={validationText}
         actionButton={{
           label: buttonLabel,

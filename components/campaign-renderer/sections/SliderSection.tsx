@@ -92,15 +92,15 @@ export function SliderSection({
                 {sliderValue}
               </div>
             </div>
-
+            
             {/* Slider Container */}
             <div className="space-y-4">
               <div className="relative">
-                <input
-                  type="range"
-                  min={minValue}
-                  max={maxValue}
-                  step={step}
+              <input
+                type="range"
+                min={minValue}
+                max={maxValue}
+                step={step}
                   value={sliderValue}
                   onChange={handleSliderChange}
                   className={cn(
@@ -117,8 +117,8 @@ export function SliderSection({
                       ((sliderValue - minValue) / (maxValue - minValue)) * 100
                     }%, #e5e7eb 100%)`
                   }}
-                />
-
+              />
+              
                 {/* Tick marks */}
                 <div className="flex justify-between mt-2">
                   {ticks.map((tick) => (
@@ -148,7 +148,7 @@ export function SliderSection({
             {/* Additional context */}
             <div className="text-center text-sm text-muted-foreground">
               Move the slider to select your rating from {minValue} to {maxValue}
-            </div>
+          </div>
           </div>
         </div>
       </div>
