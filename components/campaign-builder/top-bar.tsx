@@ -4,11 +4,11 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import { 
   ArrowLeft, 
   Eye, 
   Globe, 
-  Save, 
   Edit3,
   Check,
   X,
@@ -23,7 +23,6 @@ interface CampaignBuilderTopBarProps {
   isSaving?: boolean
   canPublish?: boolean
   onCampaignNameChange?: (name: string) => void
-  onSave?: () => void
   onPreview?: () => void
   onPublish?: () => void
   className?: string
@@ -36,7 +35,6 @@ export function CampaignBuilderTopBar({
   isSaving = false,
   canPublish = true,
   onCampaignNameChange,
-  onSave,
   onPreview,
   onPublish,
   className
@@ -102,45 +100,14 @@ export function CampaignBuilderTopBar({
     router.push('/dashboard/campaigns')
   }
 
-  const getStatusColor = () => {
-    switch (campaignStatus) {
-      case 'published':
-        return 'bg-green-100 text-green-800 border-green-200'
-      case 'draft':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'archived':
-        return 'bg-muted text-muted-foreground border-border'
-      default:
-        return 'bg-muted text-muted-foreground border-border'
-    }
-  }
-
-  const getStatusText = () => {
-    switch (campaignStatus) {
-      case 'published':
-        return 'Published'
-      case 'draft':
-        return 'Draft'
-      case 'archived':
-        return 'Archived'
-      default:
-        return 'Unknown'
-    }
-  }
-
   return (
     <div
       ref={topBarRef}
       className={cn(
-        'bg-background border-b border-border transition-all duration-200',
+        'bg-background border-b sticky top-0 z-50 transition-all duration-200',
         isSticky && 'shadow-md',
         className
       )}
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50
-      }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -206,39 +173,20 @@ export function CampaignBuilderTopBar({
             </div>
 
             {/* Status Badge */}
-            <div className={cn(
-              'px-2 py-1 rounded-full text-xs font-medium border',
-              getStatusColor()
-            )}>
-              {getStatusText()}
-            </div>
+            <Badge 
+              variant={isPublished ? 'default' : 'secondary'}
+              className={cn(
+                isPublished 
+                  ? 'bg-green-100 text-green-800 border-green-200' 
+                  : 'bg-yellow-100 text-yellow-800 border-yellow-200'
+              )}
+            >
+              {isPublished ? 'Published' : 'Draft'}
+            </Badge>
           </div>
 
           {/* Right Section - Actions */}
           <div className="flex items-center space-x-3">
-            {/* Save Button */}
-            {onSave && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onSave}
-                disabled={isSaving}
-                className="text-muted-foreground border-border hover:text-foreground hover:border-input"
-              >
-                {isSaving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save
-                  </>
-                )}
-              </Button>
-            )}
-
             {/* Preview Button */}
             {onPreview && (
               <Button
@@ -252,20 +200,21 @@ export function CampaignBuilderTopBar({
               </Button>
             )}
 
-            {/* Publish/Unpublish Button */}
+            {/* Publish/Published Button */}
             {onPublish && (
               <Button
                 size="sm"
                 onClick={onPublish}
                 disabled={!canPublish || isSaving}
+                variant={isPublished ? 'secondary' : 'default'}
                 className={cn(
                   isPublished 
-                    ? 'bg-orange-600 hover:bg-orange-700 text-white' 
+                    ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200' 
                     : 'bg-green-600 hover:bg-green-700 text-white'
                 )}
               >
                 <Globe className="h-4 w-4 mr-2" />
-                {isPublished ? 'Unpublish' : 'Publish'}
+                {isPublished ? 'Published' : 'Publish'}
               </Button>
             )}
           </div>
@@ -275,7 +224,7 @@ export function CampaignBuilderTopBar({
       {/* Progress/Loading Bar */}
       {isSaving && (
         <div className="h-1 bg-muted">
-          <div className="h-full bg-blue-600 animate-pulse" style={{ width: '100%' }} />
+          <div className="h-full bg-primary animate-pulse" style={{ width: '100%' }} />
         </div>
       )}
     </div>

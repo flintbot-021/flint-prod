@@ -5,7 +5,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { SectionBlock } from './section-block'
 import { cn } from '@/lib/utils'
-import { Plus, Layout, MousePointer } from 'lucide-react'
+import { Plus, Layout } from 'lucide-react'
 
 interface EnhancedSortableCanvasProps {
   sections: CampaignSection[]
@@ -129,26 +129,7 @@ export function EnhancedSortableCanvas({
             </div>
           )}
           
-          {/* Enhanced Instructions */}
-          {sections.length > 0 && !isOver && (
-            <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-              <div className="flex items-start space-x-3">
-                <MousePointer className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-blue-700">
-                  <p className="font-medium mb-2">Advanced Canvas Controls:</p>
-                  <ul className="space-y-1 text-xs">
-                    <li>• <strong>Click section names</strong> to edit inline with auto-save</li>
-                    <li>• <strong>Switch section types</strong> using the dropdown in each section</li>
-                    <li>• <strong>Toggle Preview mode</strong> to see how sections look to users</li>
-                    <li>• <strong>Collapse sections</strong> to focus on specific areas</li>
-                    <li>• <strong>Set questions as required</strong> using the bottom bar toggle</li>
-                    <li>• <strong>Customize button labels</strong> for each section</li>
-                    <li>• <strong>Drag sections</strong> by the grip handle to reorder</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
+
         </div>
       )}
     </div>

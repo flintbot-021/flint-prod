@@ -175,34 +175,7 @@ export default function CampaignBuilderPage() {
     }
   }
 
-  // Manual refresh function for debugging
-  const refreshSections = async () => {
-    if (!params.id || typeof params.id !== 'string') return
-    
-    try {
-      setIsSaving(true)
-      const sectionsResult = await getCampaignSections(params.id)
-      if (sectionsResult.success && sectionsResult.data) {
-        const campaignSections = sectionsResult.data.map(convertDatabaseSectionToCampaignSection)
-        console.log('Refreshed sections from database:', campaignSections.map(s => ({ 
-          id: s.id, 
-          title: s.title, 
-          order: s.order, 
-          order_index: sectionsResult.data?.find(ds => ds.id === s.id)?.order_index 
-        })))
-        setSections(campaignSections)
-        toast({
-          title: 'Sections refreshed',
-          description: 'Section order has been reloaded from database',
-          duration: 2000
-        })
-      }
-    } catch (err) {
-      console.error('Error refreshing sections:', err)
-    } finally {
-      setIsSaving(false)
-    }
-  }
+
 
   const handleCampaignNameChange = async (newName: string) => {
     if (!campaign) return
@@ -671,7 +644,6 @@ export default function CampaignBuilderPage() {
             isSaving={isSaving}
             canPublish={true}
             onCampaignNameChange={handleCampaignNameChange}
-            onSave={handleSave}
             onPreview={handlePreview}
             onPublish={handlePublish}
           />
@@ -720,22 +692,7 @@ export default function CampaignBuilderPage() {
                             Drag sections from the sidebar to build your campaign. Use the enhanced controls for inline editing, preview mode, and section management.
                           </CardDescription>
                         </div>
-                        <div className="flex items-center space-x-4">
-                          {sections.length > 0 && (
-                            <div className="text-sm text-muted-foreground">
-                              {sections.length} section{sections.length !== 1 ? 's' : ''} • {sections.filter(s => s.isVisible).length} visible
-                            </div>
-                          )}
-                          {/* Debug refresh button */}
-                          <button
-                            onClick={refreshSections}
-                            disabled={isSaving}
-                            className="px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded border disabled:opacity-50"
-                            title="Refresh sections from database"
-                          >
-                            {isSaving ? 'Refreshing...' : '🔄 Refresh'}
-                          </button>
-                        </div>
+
                       </div>
                     </CardHeader>
                     <CardContent className="h-[calc(100%-140px)]">
