@@ -29,7 +29,9 @@ export function TextQuestionSection({
   // Get configuration
   const configData = config as any
   const question = configData.content || configData.question || title || 'Please enter your response'
-  const placeholder = configData.placeholder || description || 'Type your answer here...'
+  const subheading = configData.subheading || description || ''
+  const fieldLabel = configData.label || configData.fieldLabel || ''
+  const placeholder = configData.placeholder || 'Type your answer here...'
   const isRequired = configData.required ?? true
   const minLength = configData.minLength || 1
   const maxLength = configData.maxLength || 500
@@ -104,9 +106,23 @@ export function TextQuestionSection({
               {question}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </h1>
+            
+            {subheading && (
+              <p className={cn(
+                "text-muted-foreground",
+                deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+              )}>
+                {subheading}
+              </p>
+            )}
           </div>
 
           <div className="space-y-4">
+            {fieldLabel && (
+              <label className="block text-sm font-medium text-foreground">
+                {fieldLabel}
+              </label>
+            )}
             <textarea
               value={inputValue}
               onChange={handleInputChange}
@@ -149,7 +165,6 @@ export function TextQuestionSection({
                 ) : (
                   'This field is required'
                 )}
-                {deviceInfo?.type === 'desktop' && ' • Press Ctrl+Enter to continue'}
               </div>
             )}
           </div>

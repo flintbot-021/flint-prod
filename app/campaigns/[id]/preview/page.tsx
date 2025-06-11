@@ -269,15 +269,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
           <div className="flex items-center justify-between h-16">
             {/* Left: Campaign Info */}
             <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.history.back()}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
+  
               
               <div className="flex items-center">
                 <Eye className="h-5 w-5 text-primary mr-3" />
