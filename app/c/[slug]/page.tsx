@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { notFound } from 'next/navigation'
 import { Campaign, Section, SectionWithOptions } from '@/lib/types/database'
@@ -141,7 +141,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null)
   
   // Enhanced response collection state
-  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null)
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [pendingUpdates, setPendingUpdates] = useState<Map<string, any>>(new Map())
   const [isSessionRecovered, setIsSessionRecovered] = useState(false)
 
@@ -195,6 +195,9 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const navigateToSection = async (sectionIndex: number) => {
     if (isTransitioning || sectionIndex === campaignState.currentSection) return
     if (sectionIndex < 0 || sectionIndex >= sections.length) return
+
+    // Save immediately before navigation
+    await saveImmediately()
 
     setIsTransitioning(true)
     setCampaignState(prev => ({
@@ -522,41 +525,57 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     initializeSession()
   }, [campaign?.id, isSessionRecovered]) // Only run when campaign loads and not yet recovered
 
-  // Auto-save on unmount and visibility change
+  // Use refs to avoid stale closure issues
+  const campaignRef = useRef(campaign)
+  const pendingUpdatesRef = useRef(pendingUpdates)
+  
+  // Update refs when values change
+  useEffect(() => {
+    campaignRef.current = campaign
+  }, [campaign])
+  
+  useEffect(() => {
+    pendingUpdatesRef.current = pendingUpdates
+  }, [pendingUpdates])
+
+  // Auto-save on unmount, visibility change, and input blur - set up once
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (pendingUpdates.size > 0 && campaign) {
-        console.log('📤 [BEFOREUNLOAD] Flushing pending updates before page unload')
+      if (pendingUpdatesRef.current.size > 0) {
         flushPendingUpdates()
-      } else if (pendingUpdates.size > 0) {
-        console.warn('⚠️ [BEFOREUNLOAD] Campaign not loaded, skipping flush before unload')
       }
     }
 
     const handleVisibilityChange = () => {
-      if (document.hidden && pendingUpdates.size > 0 && campaign) {
-        console.log('👁️ [VISIBILITY] Flushing pending updates on page hide')
+      if (document.hidden && pendingUpdatesRef.current.size > 0) {
         flushPendingUpdates()
-      } else if (document.hidden && pendingUpdates.size > 0) {
-        console.warn('⚠️ [VISIBILITY] Campaign not loaded, skipping flush on page hide')
+      }
+    }
+
+    // Save immediately when user blurs from any input
+    const handleInputBlur = (event: FocusEvent) => {
+      const target = event.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        if (pendingUpdatesRef.current.size > 0) {
+          saveImmediately()
+        }
       }
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     document.addEventListener('visibilitychange', handleVisibilityChange)
+    document.addEventListener('focusout', handleInputBlur, true) // Use capture phase
 
     return () => {
-      // Only flush if campaign is still loaded during cleanup
-      if (pendingUpdates.size > 0 && campaign) {
-        console.log('🧹 [CLEANUP] Flushing pending updates during component cleanup')
+      // Save any pending updates on cleanup
+      if (pendingUpdatesRef.current.size > 0) {
         handleBeforeUnload()
-      } else if (pendingUpdates.size > 0) {
-        console.warn('⚠️ [CLEANUP] Campaign not loaded during cleanup, skipping flush')
       }
       window.removeEventListener('beforeunload', handleBeforeUnload)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      document.removeEventListener('focusout', handleInputBlur, true)
     }
-  }, [pendingUpdates])
+  }, []) // Empty dependency array - set up once only
 
   // Update session progress when section changes
   useEffect(() => {
@@ -570,10 +589,19 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isTransitioning) return
       
+      // Don't handle keyboard navigation if user is typing in an input field
+      const target = event.target as HTMLElement
+      const isInputField = target.tagName === 'INPUT' || 
+                          target.tagName === 'TEXTAREA' || 
+                          target.tagName === 'SELECT' ||
+                          target.contentEditable === 'true'
+      
+      if (isInputField) return
+      
       switch (event.key) {
         case 'ArrowRight':
         case 'ArrowDown':
-        case ' ': // Spacebar
+        case ' ': // Spacebar - only when not in input fields
           event.preventDefault()
           handleNext()
           break
@@ -827,16 +855,14 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       setPendingUpdates(prev => new Map(prev.set(updateKey, updateData)))
 
-      // Debounced auto-save using new session data access
-      if (autoSaveTimeout) {
-        clearTimeout(autoSaveTimeout)
+      // Debounced auto-save - wait 3 seconds after user stops typing
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
       }
 
-      const newTimeout = setTimeout(() => {
+      autoSaveTimeoutRef.current = setTimeout(() => {
         flushPendingUpdates()
-      }, 1000) // Save after 1 second of inactivity
-
-      setAutoSaveTimeout(newTimeout)
+      }, 3000) // Save after 3 seconds of inactivity
 
       // Update variable system in real-time
       if (updateSystem) {
@@ -861,14 +887,28 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
   }
 
+  // Manual save function for immediate save (on blur, navigation, etc.)
+  const saveImmediately = async () => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+      autoSaveTimeoutRef.current = null
+    }
+    await flushPendingUpdates()
+  }
+
   // Batch flush pending updates to database using new session approach
   const flushPendingUpdates = async () => {
     if (pendingUpdates.size === 0) return
 
-    // Guard against flushing when campaign is not loaded (e.g., during unmount)
+    // Don't clear updates just because campaign is temporarily unavailable
+    // Instead, wait a bit and retry if needed
     if (!campaign) {
-      console.warn('⚠️ [FLUSH] Campaign not loaded during flush, clearing pending updates to prevent memory leaks')
-      setPendingUpdates(new Map()) // Clear to prevent memory leaks
+      console.warn('⚠️ [FLUSH] Campaign temporarily unavailable, retrying in 100ms')
+      setTimeout(() => {
+        if (campaign && pendingUpdates.size > 0) {
+          flushPendingUpdates()
+        }
+      }, 100)
       return
     }
 
