@@ -149,7 +149,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const [errorState, setErrorState] = useState<ErrorState | null>(null)
 
   // Generate or recover session ID with persistence
-  const getOrCreateSessionId = (): string => {
+  // Initialize session ID only once
+  const [sessionId] = useState<string>(() => {
     if (typeof window === 'undefined') return generateSessionId()
     
     const storageKey = `flint_session_${slug}`
@@ -163,14 +164,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         
         // Use existing session if less than 24 hours old
         if (age < maxAge) {
-          console.log('🔄 Recovered existing session:', sessionId)
           return sessionId
         } else {
-          console.log('⏰ Session expired, creating new one')
           localStorage.removeItem(storageKey)
         }
       } catch (err) {
-        console.warn('Failed to parse stored session, creating new one')
         localStorage.removeItem(storageKey)
       }
     }
@@ -182,16 +180,15 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       timestamp: Date.now()
     }))
     
-    console.log('✨ Created new session:', newSessionId)
     return newSessionId
-  }
+  })
 
   const [campaignState, setCampaignState] = useState<CampaignState>({
     currentSection: 0,
     userInputs: {},
     completedSections: new Set(),
     startTime: new Date(),
-    sessionId: getOrCreateSessionId()
+    sessionId
   })
 
   // Simplified navigation 
@@ -472,8 +469,6 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     const initializeSession = async () => {
       if (!campaign || isSessionRecovered) return
 
-      console.log('🚀 [SESSION] Initializing session for campaign:', campaign.id)
-
       try {
         // Try to get existing session first
         const sessionResult = await getSession(campaignState.sessionId)
@@ -481,7 +476,6 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         if (sessionResult.success && sessionResult.data && sessionResult.data.campaign_id === campaign.id) {
           // Found existing session - restore state
           const session = sessionResult.data
-          console.log('✅ [SESSION] Found existing session, restoring state')
 
           setCampaignState(prev => ({
             ...prev,
@@ -498,8 +492,6 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
           }
         } else {
           // No existing session found - create new one
-          console.log('💾 [SESSION] Creating new session')
-          
           const createResult = await createSession({
             session_id: campaignState.sessionId,
             campaign_id: campaign.id,
@@ -519,8 +511,6 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
             console.error('❌ [SESSION] Failed to create session:', createResult.error)
             return
           }
-
-          console.log('✅ [SESSION] New session created successfully')
         }
 
         setIsSessionRecovered(true)
