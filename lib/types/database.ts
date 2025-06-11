@@ -117,51 +117,44 @@ export interface Section {
 }
 
 /**
- * Section options table - Options for multiple choice and configurable sections
+ * Campaign sessions table - Primary data store for user interactions
  */
-export interface SectionOption {
+export interface CampaignSession {
   id: UUID;
-  section_id: UUID;
-  label: string;
-  value: string;
-  order_index: number;
-  configuration: Record<string, JSONValue>;
+  session_id: string;
+  campaign_id: UUID;
+  current_section_index: number;
+  completed_sections: number[];
+  start_time: string;
+  last_activity: string;
+  is_completed: boolean;
+  responses: Record<string, JSONValue>;
+  metadata: Record<string, JSONValue>;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
- * Leads table - Captured lead information
+ * Leads table - Only real conversions with actual contact info
  */
 export interface Lead {
   id: UUID;
+  session_id: string;
   campaign_id: UUID;
-  name: string | null;
   email: string;
+  name: string | null;
   phone: string | null;
-  ip_address: string | null;
-  user_agent: string | null;
-  referrer: string | null;
-  utm_source: string | null;
-  utm_medium: string | null;
-  utm_campaign: string | null;
-  utm_term: string | null;
-  utm_content: string | null;
+  converted_at: string;
+  conversion_section_id: UUID | null;
   metadata: Record<string, JSONValue>;
-  completed_at: Timestamp | null;
-  created_at: Timestamp;
+  created_at: string;
+  updated_at: string;
 }
 
 /**
  * Lead responses table - Individual responses from leads
  */
-export interface LeadResponse {
-  id: UUID;
-  lead_id: UUID;
-  section_id: UUID;
-  response_type: ResponseType;
-  response_value: string;
-  response_data: Record<string, JSONValue>;
-  created_at: Timestamp;
-}
+// LeadResponse interface removed - responses now stored in CampaignSession.responses JSONB
 
 /**
  * Campaign variables table - Variables for logic and output sections
@@ -189,20 +182,7 @@ export interface LeadVariableValue {
   computed_at: Timestamp;
 }
 
-/**
- * Campaign analytics table - Daily performance metrics
- */
-export interface CampaignAnalytics {
-  id: UUID;
-  campaign_id: UUID;
-  date: string; // YYYY-MM-DD format
-  views: number;
-  starts: number;
-  completions: number;
-  conversion_rate: number;
-  average_completion_time: number | null;
-  metadata: Record<string, JSONValue>;
-}
+
 
 // =============================================================================
 // CONFIGURATION TYPES
@@ -461,12 +441,13 @@ export interface VariableConfiguration {
 export type CreateProfile = Omit<Profile, 'created_at' | 'updated_at'>;
 export type CreateCampaign = Omit<Campaign, 'id' | 'created_at' | 'updated_at'>;
 export type CreateSection = Omit<Section, 'id' | 'created_at' | 'updated_at'>;
-export type CreateSectionOption = Omit<SectionOption, 'id'>;
-export type CreateLead = Omit<Lead, 'id' | 'created_at'>;
-export type CreateLeadResponse = Omit<LeadResponse, 'id' | 'created_at'>;
+
+export type CreateCampaignSession = Omit<CampaignSession, 'id' | 'created_at' | 'updated_at'>;
+export type CreateLead = Omit<Lead, 'id' | 'created_at' | 'updated_at'>;
+// CreateLeadResponse removed - responses stored in sessions table
 export type CreateCampaignVariable = Omit<CampaignVariable, 'id' | 'created_at'>;
 export type CreateLeadVariableValue = Omit<LeadVariableValue, 'id' | 'computed_at'>;
-export type CreateCampaignAnalytics = Omit<CampaignAnalytics, 'id'>;
+
 
 /**
  * Types for updating records (all fields optional except id)
@@ -474,12 +455,13 @@ export type CreateCampaignAnalytics = Omit<CampaignAnalytics, 'id'>;
 export type UpdateProfile = Partial<Omit<Profile, 'id' | 'created_at'>> & { id: UUID };
 export type UpdateCampaign = Partial<Omit<Campaign, 'id' | 'user_id' | 'created_at'>> & { id: UUID };
 export type UpdateSection = Partial<Omit<Section, 'id' | 'campaign_id' | 'created_at'>> & { id: UUID };
-export type UpdateSectionOption = Partial<Omit<SectionOption, 'id' | 'section_id'>> & { id: UUID };
-export type UpdateLead = Partial<Omit<Lead, 'id' | 'campaign_id' | 'created_at'>> & { id: UUID };
-export type UpdateLeadResponse = Partial<Omit<LeadResponse, 'id' | 'lead_id' | 'section_id' | 'created_at'>> & { id: UUID };
+
+export type UpdateCampaignSession = Partial<Omit<CampaignSession, 'id' | 'session_id' | 'campaign_id' | 'created_at'>> & { id: UUID };
+export type UpdateLead = Partial<Omit<Lead, 'id' | 'session_id' | 'campaign_id' | 'created_at'>> & { id: UUID };
+// UpdateLeadResponse removed - responses stored in sessions table
 export type UpdateCampaignVariable = Partial<Omit<CampaignVariable, 'id' | 'campaign_id' | 'created_at'>> & { id: UUID };
 export type UpdateLeadVariableValue = Partial<Omit<LeadVariableValue, 'id' | 'lead_id' | 'variable_id'>> & { id: UUID };
-export type UpdateCampaignAnalytics = Partial<Omit<CampaignAnalytics, 'id' | 'campaign_id' | 'date'>> & { id: UUID };
+
 
 // =============================================================================
 // EXTENDED TYPES WITH RELATIONSHIPS
@@ -491,35 +473,28 @@ export type UpdateCampaignAnalytics = Partial<Omit<CampaignAnalytics, 'id' | 'ca
 export interface CampaignWithRelations extends Campaign {
   sections?: SectionWithOptions[];
   variables?: CampaignVariable[];
-  analytics?: CampaignAnalytics[];
   lead_count?: number;
   completion_rate?: number;
   profile?: Profile; // Campaign owner's profile
 }
 
 /**
- * Section with its options included
+ * Section with options (options now stored in configuration field)
  */
 export interface SectionWithOptions extends Section {
-  options?: SectionOption[];
+  // Options are now stored in the configuration field as JSONB
 }
 
 /**
  * Lead with responses and variable values
  */
 export interface LeadWithRelations extends Lead {
-  responses?: LeadResponse[];
+  // responses removed - now stored in campaign_sessions table
   variable_values?: LeadVariableValue[];
   campaign?: Campaign;
 }
 
-/**
- * Response with section and lead context
- */
-export interface LeadResponseWithRelations extends LeadResponse {
-  section?: Section;
-  lead?: Lead;
-}
+// LeadResponseWithRelations removed - responses stored in sessions table
 
 /**
  * Profile with usage statistics
@@ -617,21 +592,18 @@ export interface Database {
         Insert: CreateSection;
         Update: UpdateSection;
       };
-      section_options: {
-        Row: SectionOption;
-        Insert: CreateSectionOption;
-        Update: UpdateSectionOption;
+
+      campaign_sessions: {
+        Row: CampaignSession;
+        Insert: CreateCampaignSession;
+        Update: UpdateCampaignSession;
       };
       leads: {
         Row: Lead;
         Insert: CreateLead;
         Update: UpdateLead;
       };
-      lead_responses: {
-        Row: LeadResponse;
-        Insert: CreateLeadResponse;
-        Update: UpdateLeadResponse;
-      };
+      // lead_responses table removed - responses stored in campaign_sessions
       campaign_variables: {
         Row: CampaignVariable;
         Insert: CreateCampaignVariable;
@@ -642,11 +614,7 @@ export interface Database {
         Insert: CreateLeadVariableValue;
         Update: UpdateLeadVariableValue;
       };
-      campaign_analytics: {
-        Row: CampaignAnalytics;
-        Insert: CreateCampaignAnalytics;
-        Update: UpdateCampaignAnalytics;
-      };
+
     };
     Views: {
       // Add views here if any

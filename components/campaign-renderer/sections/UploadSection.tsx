@@ -63,7 +63,7 @@ export function UploadSection({
   
   // File type configuration
   const allowedTypes = configData.allowedTypes || DEFAULT_FILE_TYPES
-  const maxFileSize = configData.maxFileSize || 10 * 1024 * 1024 // 10MB default
+  const maxFileSize = Math.max(configData.maxFileSize || 10 * 1024 * 1024, 1024 * 1024) // Minimum 1MB, default 10MB
 
   // Validation functions
   const isFileTypeAllowed = (file: File): boolean => {

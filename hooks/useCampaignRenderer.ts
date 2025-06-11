@@ -15,6 +15,7 @@ import { useVariableEngine } from './useVariableEngine'
 interface CampaignRendererOptions {
   sections: SectionWithOptions[]
   initialSection?: number
+  campaignId?: string
   onLeadCreate?: (leadData: any) => Promise<string | undefined>
   onProgressUpdate?: (progress: number, sectionIndex: number) => void
   campaignData?: Record<string, any>
@@ -23,6 +24,7 @@ interface CampaignRendererOptions {
 export function useCampaignRenderer({
   sections,
   initialSection = 0,
+  campaignId,
   onLeadCreate,
   onProgressUpdate,
   campaignData = {}
@@ -90,8 +92,11 @@ export function useCampaignRenderer({
     metadata?: any
   ) => {
     try {
-      // Update campaign state
-      campaignState.updateResponse(sectionId, fieldId, value, metadata)
+      // Update campaign state with campaignId in metadata for file uploads
+      campaignState.updateResponse(sectionId, fieldId, value, {
+        ...metadata,
+        campaignId
+      })
       
       // Update variable context immediately for real-time interpolation
       const updatedData = {
@@ -109,7 +114,7 @@ export function useCampaignRenderer({
     } catch (error) {
       errorHandler.handleError(error as Error, `response_update_${sectionId}_${fieldId}`)
     }
-  }, [campaignState.updateResponse, campaignState.userInputs, variableEngine, errorHandler.handleError])
+  }, [campaignState.updateResponse, campaignState.userInputs, variableEngine, errorHandler.handleError, campaignId])
 
   // Get current section with processed content
   const getCurrentSection = useCallback(async () => {

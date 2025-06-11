@@ -41,9 +41,14 @@ export function useCampaignState(
   onProgressUpdate?: (progress: number, sectionIndex: number) => void
 ): CampaignStateHookReturn {
   
-  // Generate session ID once
+  // Generate session ID once using proper UUID format
   const sessionIdRef = useRef<string>(
-    `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    // Generate a proper UUID v4 format for database compatibility
+    'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    })
   )
 
   // Core state
@@ -81,22 +86,51 @@ export function useCampaignState(
   }), [currentSection, sections.length])
 
   // Stable data management functions
-  const updateResponse = useCallback((
+  const updateResponse = useCallback(async (
     sectionId: string, 
     fieldId: string, 
     value: any, 
     metadata?: any
   ) => {
+    // Handle file uploads to Supabase storage
+    let processedValue = value
+    if (Array.isArray(value) && value.length > 0 && value[0] instanceof File) {
+      console.log('📁 File upload detected in useCampaignState, uploading to Supabase storage...')
+      try {
+        // Import upload function dynamically
+        const { uploadFiles } = await import('@/lib/supabase/storage')
+        
+        // Get campaignId from metadata or default for preview mode  
+        const campaignId = metadata?.campaignId || 'preview-campaign'
+        
+        // Upload files to storage
+        const uploadedFileInfos = await uploadFiles(
+          value as File[],
+          campaignId,
+          sectionId,
+          sessionIdRef.current // Use session ID as lead ID for now
+        )
+        
+        processedValue = uploadedFileInfos
+        console.log('✅ Files uploaded successfully:', uploadedFileInfos.length, 'files')
+        
+      } catch (error) {
+        console.error('❌ File upload failed:', error)
+        // Fall back to raw files if upload fails
+        processedValue = value
+      }
+    }
+    
     setUserInputs(prev => {
       // Prevent unnecessary updates if value hasn't changed
       const currentValue = prev[sectionId]?.[fieldId]
-      if (currentValue === value) return prev
+      if (currentValue === processedValue) return prev
       
       return {
         ...prev,
         [sectionId]: {
           ...prev[sectionId],
-          [fieldId]: value,
+          [fieldId]: processedValue,
           [`${fieldId}_metadata`]: metadata
         }
       }

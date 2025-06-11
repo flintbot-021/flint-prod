@@ -7,13 +7,10 @@
 import type {
   Campaign,
   Section,
-  SectionOption,
   CreateCampaign,
   CreateSection,
-  CreateSectionOption,
   UpdateCampaign,
   UpdateSection,
-  UpdateSectionOption,
   CampaignWithRelations,
   SectionWithOptions,
   DatabaseResult,
@@ -88,12 +85,9 @@ export async function getCampaignById(
       .from('campaigns')
       .select(includeRelations ? `
         *,
-        sections (
-          *,
-          section_options (*)
-        ),
+        sections (*),
         campaign_variables (*),
-        campaign_analytics (*)
+
       ` : '*')
       .eq('id', campaignId);
 
@@ -205,10 +199,7 @@ export async function getCampaignsWithRelations(
         // Get sections with options
         const { data: sections } = await supabase
           .from('sections')
-          .select(`
-            *,
-            section_options (*)
-          `)
+          .select('*')
           .eq('campaign_id', campaign.id)
           .order('order_index');
 
@@ -218,18 +209,10 @@ export async function getCampaignsWithRelations(
           .select('*')
           .eq('campaign_id', campaign.id);
 
-        // Get analytics
-        const { data: analytics } = await supabase
-          .from('campaign_analytics')
-          .select('*')
-          .eq('campaign_id', campaign.id)
-          .order('date', { ascending: false });
-
         return {
           ...campaign,
           sections: sections || [],
-          variables: variables || [],
-          analytics: analytics || []
+          variables: variables || []
         };
       })
     );
@@ -815,10 +798,7 @@ export async function getSectionById(
   return withErrorHandling(async () => {
     return await supabase
       .from('sections')
-      .select(`
-        *,
-        section_options (*)
-      `)
+      .select('*')
       .eq('id', sectionId)
       .single();
   });
@@ -843,10 +823,7 @@ export async function getCampaignSections(
   return withErrorHandling(async () => {
     return await supabase
       .from('sections')
-      .select(`
-        *,
-        section_options (*)
-      `)
+      .select('*')
       .eq('campaign_id', campaignId)
       .order('order_index', { ascending: true });
   });
@@ -974,96 +951,5 @@ export async function reorderSections(
   });
 }
 
-// =============================================================================
-// SECTION OPTIONS CRUD OPERATIONS
-// =============================================================================
-
-/**
- * Create section option
- */
-export async function createSectionOption(
-  optionData: CreateSectionOption
-): Promise<DatabaseResult<SectionOption>> {
-  const validationErrors = validateRequiredFields(optionData, [
-    'section_id',
-    'label',
-    'value',
-    'order_index'
-  ]);
-  if (validationErrors.length > 0) {
-    return {
-      success: false,
-      error: 'Validation failed',
-      validation_errors: validationErrors
-    };
-  }
-
-  if (!isValidUUID(optionData.section_id)) {
-    return {
-      success: false,
-      error: 'Invalid section ID format'
-    };
-  }
-
-  await requireAuth();
-  const supabase = await getSupabaseClient();
-
-  return withErrorHandling(async () => {
-    return await supabase
-      .from('section_options')
-      .insert(optionData)
-      .select()
-      .single();
-  });
-}
-
-/**
- * Update section option
- */
-export async function updateSectionOption(
-  optionId: string,
-  updates: Partial<UpdateSectionOption>
-): Promise<DatabaseResult<SectionOption>> {
-  if (!isValidUUID(optionId)) {
-    return {
-      success: false,
-      error: 'Invalid option ID format'
-    };
-  }
-
-  await requireAuth();
-  const supabase = await getSupabaseClient();
-
-  return withErrorHandling(async () => {
-    return await supabase
-      .from('section_options')
-      .update(updates)
-      .eq('id', optionId)
-      .select()
-      .single();
-  });
-}
-
-/**
- * Delete section option
- */
-export async function deleteSectionOption(optionId: string): Promise<DatabaseResult<boolean>> {
-  if (!isValidUUID(optionId)) {
-    return {
-      success: false,
-      error: 'Invalid option ID format'
-    };
-  }
-
-  await requireAuth();
-  const supabase = await getSupabaseClient();
-
-  return withErrorHandling(async () => {
-    const { error } = await supabase
-      .from('section_options')
-      .delete()
-      .eq('id', optionId);
-
-    return { data: !error, error };
-  });
-} 
+// Note: Section options are now stored in the section.configuration JSONB field
+// instead of a separate section_options table for better performance and flexibility 
