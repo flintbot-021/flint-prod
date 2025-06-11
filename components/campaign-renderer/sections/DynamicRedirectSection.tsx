@@ -233,7 +233,7 @@ export function DynamicRedirectSection({
 
   if (error) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="h-full bg-background flex flex-col">
         <div className="flex-1 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-lg mx-auto text-center space-y-6">
             <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
@@ -258,7 +258,7 @@ export function DynamicRedirectSection({
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-full bg-background flex flex-col">
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-lg mx-auto text-center space-y-8">
           

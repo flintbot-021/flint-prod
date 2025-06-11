@@ -184,7 +184,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
     const config = DEVICE_CONFIGS[currentDevice]
 
     if (currentDevice === 'desktop') {
-      return <div className="w-full h-full">{content}</div>
+      return <div className="w-full h-full overflow-auto">{content}</div>
     }
 
     const frameStyles = {
@@ -204,7 +204,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
           style={frameStyles}
         >
           <div className={cn(
-            "bg-background rounded-[1.5rem] w-full h-full overflow-hidden relative",
+            "bg-background rounded-[1.5rem] w-full h-full overflow-auto relative",
             currentDevice === 'mobile' && "rounded-[2rem]",
             currentDevice === 'tablet' && "rounded-[1rem]"
             )}>
@@ -262,7 +262,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
   const canGoNext = currentSectionIndex < sectionsData.length - 1
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen bg-background overflow-hidden">
       {/* Consolidated Header */}
       <div className="bg-card border-b border-border sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -348,9 +348,9 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
       </div>
 
       {/* Preview Content */}
-      <div className="flex-1 pt-0">
+      <div className="h-[calc(100vh-4rem)] overflow-hidden">
         {renderDeviceFrame(
-          <div className="min-h-full bg-background">
+          <div className="h-full bg-background">
             {/* Show current section using shared renderer */}
             {sectionsData.length > 0 && currentSectionIndex < sectionsData.length && (
               <SharedSectionRenderer

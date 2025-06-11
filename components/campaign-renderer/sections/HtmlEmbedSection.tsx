@@ -34,7 +34,7 @@ export function HtmlEmbedSection({
   const processedHtml = useMemo(() => {
     if (!settings.htmlContent) {
       return `
-        <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
+        <div class="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
           <div class="text-center">
             <div style="width: 4rem; height: 4rem; margin: 0 auto 1rem; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
               <svg width="32" height="32" fill="white" viewBox="0 0 24 24">
@@ -109,7 +109,7 @@ export function HtmlEmbedSection({
 
   // Render the processed HTML
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-full bg-background">
       <div 
         className="w-full"
         dangerouslySetInnerHTML={{ __html: processedHtml }}

@@ -93,7 +93,7 @@ export function TextQuestionSection({
   const canContinue = !isRequired || (inputValue.trim().length >= minLength && inputValue.length <= maxLength)
 
   return (
-    <div className="min-h-screen bg-background flex flex-col pb-20">
+    <div className="h-full bg-background flex flex-col pb-20">
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           <div className="text-center space-y-4">
