@@ -274,6 +274,18 @@ export const SECTION_TYPES: SectionType[] = [
       customAttributes: true,
       scriptTemplate: ''
     }
+  },
+  {
+    id: 'output-html-embed',
+    name: 'HTML Embed',
+    description: 'Custom HTML/CSS/JS with dynamic variable replacement',
+    icon: 'Code2',
+    category: 'output',
+    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    defaultSettings: {
+      htmlContent: '',
+      previewTitle: 'Custom Results Page'
+    }
   }
 ]
 

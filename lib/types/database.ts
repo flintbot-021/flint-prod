@@ -23,7 +23,8 @@ export type SectionType =
   | 'capture'
   | 'logic'
   | 'output'
-  | 'dynamic_redirect';
+  | 'dynamic_redirect'
+  | 'html_embed';
 
 export type ResponseType = 
   | 'text'
@@ -406,6 +407,14 @@ export interface DynamicRedirectConfiguration extends BaseSectionConfiguration {
 }
 
 /**
+ * HTML embed section configuration
+ */
+export interface HtmlEmbedConfiguration extends BaseSectionConfiguration {
+  htmlContent: string; // Custom HTML/CSS/JS content
+  previewTitle?: string; // Title for preview display
+}
+
+/**
  * Union type for all section configurations
  */
 export type SectionConfiguration = 
@@ -416,7 +425,8 @@ export type SectionConfiguration =
   | CaptureConfiguration
   | LogicConfiguration
   | OutputConfiguration
-  | DynamicRedirectConfiguration;
+  | DynamicRedirectConfiguration
+  | HtmlEmbedConfiguration;
 
 /**
  * Variable configuration for different variable types

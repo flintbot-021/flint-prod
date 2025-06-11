@@ -56,7 +56,8 @@ const mapCampaignBuilderTypeToDatabase = (builderType: string): string => {
     'output-results': 'output',
     'output-download': 'output',
     'output-redirect': 'output',
-    'output-dynamic-redirect': 'dynamic_redirect'
+    'output-dynamic-redirect': 'dynamic_redirect',
+    'output-html-embed': 'html_embed'
   }
   
   return typeMap[builderType] || 'info' // Default fallback
@@ -71,7 +72,8 @@ const mapDatabaseTypeToCampaignBuilder = (dbType: string): string => {
     'capture': 'capture-details',
     'logic': 'logic-ai',
     'output': 'output-results',
-    'dynamic_redirect': 'output-dynamic-redirect'
+    'dynamic_redirect': 'output-dynamic-redirect',
+    'html_embed': 'output-html-embed'
   }
   
   return typeMap[dbType] || dbType // Return original if no mapping found
