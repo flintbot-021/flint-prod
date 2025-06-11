@@ -664,6 +664,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // Real-time response collection with auto-save
   const collectResponse = async (sectionId: string, fieldId: string, value: any, metadata: any = {}) => {
     try {
+      console.log('📝 Collecting response:', { sectionId, fieldId, value, hasLeadId: !!campaignState.leadId })
+      
       // Update local state immediately
       setCampaignState(prev => ({
         ...prev,
@@ -747,15 +749,14 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const saveBatchResponses = async (responses: any[]) => {
     try {
       // Ensure we have a lead ID before saving responses
-      if (!campaignState.leadId) {
+      let currentLeadId = campaignState.leadId
+      
+      if (!currentLeadId) {
         console.log('⚠️ No lead ID available, creating lead first...')
-        await createInitialLead()
-        
-        // Wait for state to update, then check again
-        await new Promise(resolve => setTimeout(resolve, 100))
+        currentLeadId = await createInitialLead()
         
         // If still no lead ID, skip saving responses
-        if (!campaignState.leadId) {
+        if (!currentLeadId) {
           console.error('❌ Failed to create lead, skipping response save')
           return
         }
@@ -765,7 +766,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       // Prepare batch data - map to correct lead_responses schema
       const responseRecords = responses.map(response => ({
-        lead_id: campaignState.leadId, // Required for lead_responses table
+        lead_id: currentLeadId, // Required for lead_responses table
         section_id: response.sectionId,
         response_value: String(response.value),
         response_type: typeof response.value === 'number' ? 'number' : 
@@ -779,7 +780,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         }
       }))
 
-      console.log('💾 Saving responses with lead_id:', campaignState.leadId)
+      console.log('💾 Saving responses with lead_id:', currentLeadId)
 
       // Batch upsert responses
       const { error: responsesError } = await supabase
@@ -876,7 +877,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         userInputs: recoveredInputs,
         completedSections,
         currentSection: existingSession.last_section_index || 0,
-        leadId: existingSession.lead_id
+        leadId: existingSession.lead_id || undefined // Ensure lead_id is properly set
       }))
 
       setIsSessionRecovered(true)
@@ -892,16 +893,27 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   }
 
   // Create initial lead record for RLS policy compliance
-  const createInitialLead = async () => {
+  const createInitialLead = async (): Promise<string | undefined> => {
     try {
-      if (!campaign || campaignState.leadId) return // Already has a lead
+      if (!campaign || campaignState.leadId) return campaignState.leadId // Return existing lead ID
+      
+      console.log('🔍 Creating initial lead for campaign:', { 
+        campaignId: campaign.id, 
+        status: campaign.status,
+        sessionId: campaignState.sessionId 
+      })
       
       const supabase = await getSupabaseClient()
+      
+      // Generate a more unique email to avoid duplicates
+      const timestamp = Date.now()
+      const randomSuffix = Math.random().toString(36).substring(2, 8)
+      const uniqueEmail = `anonymous_${campaignState.sessionId}_${timestamp}_${randomSuffix}@temp.local`
       
       // Create anonymous lead record with minimal data
       const leadData = {
         campaign_id: campaign.id,
-        email: `anonymous_${campaignState.sessionId}@temp.local`, // Temporary email
+        email: uniqueEmail,
         name: null,
         phone: null,
         ip_address: null,
@@ -914,6 +926,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         }
       }
 
+      console.log('💾 Inserting lead data:', leadData)
+
       const { data: lead, error } = await supabase
         .from('leads')
         .insert(leadData)
@@ -921,7 +935,55 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         .single()
 
       if (error) {
-        throw error
+        console.error('❌ Lead insertion failed:', error)
+        
+        // Check if it's a unique constraint violation
+        if (error.code === '23505' && error.message.includes('leads_campaign_id_email_key')) {
+          console.log('🔄 Duplicate email detected, trying to find existing lead...')
+          
+          // Try to find existing lead with this session ID
+          const { data: existingLead } = await supabase
+            .from('leads')
+            .select('id')
+            .eq('campaign_id', campaign.id)
+            .contains('metadata', { session_id: campaignState.sessionId })
+            .limit(1)
+            .single()
+          
+          if (existingLead) {
+            console.log('✅ Found existing lead for session:', existingLead.id)
+            setCampaignState(prev => ({
+              ...prev,
+              leadId: existingLead.id
+            }))
+            return existingLead.id
+          } else {
+            // Generate an even more unique email and retry once
+            const retryEmail = `anonymous_${campaignState.sessionId}_${Date.now()}_${crypto.randomUUID().substring(0, 8)}@temp.local`
+            const retryData = { ...leadData, email: retryEmail }
+            
+            console.log('🔄 Retrying with more unique email:', retryEmail)
+            const { data: retryLead, error: retryError } = await supabase
+              .from('leads')
+              .insert(retryData)
+              .select()
+              .single()
+            
+            if (retryError) {
+              throw retryError
+            }
+            
+            setCampaignState(prev => ({
+              ...prev,
+              leadId: retryLead.id
+            }))
+            
+            console.log('✅ Lead created on retry:', retryLead.id)
+            return retryLead.id
+          }
+        } else {
+          throw error
+        }
       }
 
       // Store lead ID for future use
@@ -931,10 +993,18 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       }))
 
       console.log('✅ Initial lead created:', lead.id)
+      return lead.id
 
-    } catch (err) {
-      console.error('Error creating initial lead:', err)
+    } catch (err: any) {
+      console.error('❌ Error creating initial lead:', {
+        error: err,
+        message: err?.message,
+        details: err?.details,
+        hint: err?.hint,
+        code: err?.code
+      })
       // Don't throw - allow campaign to continue even if lead creation fails
+      return undefined
     }
   }
 
@@ -959,7 +1029,9 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       const { error } = await supabase
         .from('campaign_sessions')
-        .upsert(sessionData)
+        .upsert(sessionData, {
+          onConflict: 'session_id,campaign_id'
+        })
 
       if (error) {
         throw error
@@ -1150,11 +1222,11 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       setSections(sectionsData)
       
-      // Initialize campaign state
+      // Initialize campaign state (keep existing sessionId)
       setCampaignState(prev => ({
         ...prev,
-        startTime: new Date(),
-        sessionId: crypto.randomUUID()
+        startTime: new Date()
+        // sessionId already set in initial state, don't regenerate
       }))
 
       console.log('✅ Campaign loaded successfully with', sectionsData.length, 'sections')
@@ -1745,38 +1817,30 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // =============================================================================
 
   return (
-    <div className="min-h-screen bg-muted">
-
-
+    <div className="h-screen bg-muted">
       {/* Section Content */}
-      <div className="py-12 px-6">
-        <div className="max-w-4xl mx-auto">
-          {campaignState.currentSection < sections.length && (
-            <div key={campaignState.currentSection} className={cn(
-              "transition-all duration-300 ease-in-out",
-              isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0"
-            )}>
-              {/* Use SharedSectionRenderer for consistent experience */}
-              <SharedSectionRenderer
-                section={sections[campaignState.currentSection]}
-                index={campaignState.currentSection}
-                isActive={true}
-                isPreview={false}
-                campaignId={campaign?.id}
-                userInputs={campaignState.userInputs}
-                sections={sections}
-                onNext={handleNext}
-                onPrevious={handlePrevious}
-                onNavigateToSection={navigateToSection}
-                onSectionComplete={handleSectionComplete}
-                onResponseUpdate={collectResponse}
-              />
-            </div>
-          )}
+      {campaignState.currentSection < sections.length && (
+        <div key={campaignState.currentSection} className={cn(
+          "h-full transition-all duration-300 ease-in-out",
+          isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0"
+        )}>
+          {/* Use SharedSectionRenderer for consistent experience */}
+          <SharedSectionRenderer
+            section={sections[campaignState.currentSection]}
+            index={campaignState.currentSection}
+            isActive={true}
+            isPreview={false}
+            campaignId={campaign?.id}
+            userInputs={campaignState.userInputs}
+            sections={sections}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+            onNavigateToSection={navigateToSection}
+            onSectionComplete={handleSectionComplete}
+            onResponseUpdate={collectResponse}
+          />
         </div>
-      </div>
-
-      
+      )}
     </div>
   )
 } 

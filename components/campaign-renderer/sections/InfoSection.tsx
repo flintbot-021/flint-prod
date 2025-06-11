@@ -83,7 +83,7 @@ export function InfoSection({
                   )}
                 </>
               )}
-            </div>
+          </div>
           )}
         </div>
       </div>

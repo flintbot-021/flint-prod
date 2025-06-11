@@ -84,7 +84,7 @@ export function MultipleChoiceSection({
               const choiceValue = typeof choice === 'string' ? choice : choice.value || choice.text
               const choiceLabel = typeof choice === 'string' ? choice : choice.label || choice.text || choice.value
               const isSelected = selectedValue === choiceValue
-
+              
               return (
                 <button
                   key={idx}
@@ -99,11 +99,11 @@ export function MultipleChoiceSection({
                   )}
                 >
                   <div className="flex-shrink-0">
-                    {isSelected ? (
+                  {isSelected ? (
                       <CheckCircle2 className="h-5 w-5 text-primary" />
-                    ) : (
+                  ) : (
                       <Circle className="h-5 w-5 text-muted-foreground" />
-                    )}
+                  )}
                   </div>
                   <span className={cn(
                     "text-left",

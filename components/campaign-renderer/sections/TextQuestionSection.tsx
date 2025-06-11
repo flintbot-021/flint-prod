@@ -25,7 +25,7 @@ export function TextQuestionSection({
 }: SectionRendererProps) {
   const [inputValue, setInputValue] = useState('')
   const [error, setError] = useState<string | null>(null)
-
+  
   // Get configuration
   const configData = config as any
   const question = configData.content || configData.question || title || 'Please enter your response'
@@ -36,7 +36,7 @@ export function TextQuestionSection({
   const minLength = configData.minLength || 1
   const maxLength = configData.maxLength || 500
   const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
-
+  
   const validateInput = (value: string): string | null => {
     if (isRequired && value.trim().length === 0) {
       return 'This field is required'
@@ -130,14 +130,14 @@ export function TextQuestionSection({
                 {fieldLabel}
               </label>
             )}
-            <textarea
+              <textarea
               value={inputValue}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
-              placeholder={placeholder}
-              rows={6}
+                placeholder={placeholder}
+                rows={6}
               maxLength={maxLength}
-              className={cn(
+                className={cn(
                 "w-full p-4 border rounded-lg resize-none",
                 "focus:ring-2 focus:ring-blue-500 focus:border-transparent",
                 "transition-all duration-200",
@@ -145,8 +145,8 @@ export function TextQuestionSection({
                   ? "border-red-500 focus:ring-red-500" 
                   : "border-gray-300",
                 getMobileClasses("text-base", deviceInfo?.type)
-              )}
-            />
+                )}
+              />
 
             {/* Character Counter */}
             <div className="flex justify-between items-center text-sm">
@@ -162,7 +162,7 @@ export function TextQuestionSection({
               )}>
                 {inputValue.length}/{maxLength}
               </span>
-            </div>
+          </div>
 
 
           </div>
