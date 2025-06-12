@@ -207,18 +207,6 @@ export function OutputSection({
             )}
           </div>
 
-          {/* Debug Info (only in development) */}
-          {process.env.NODE_ENV === 'development' && (
-            <details className="bg-gray-100 border border-gray-300 rounded-lg p-4">
-              <summary className="cursor-pointer font-medium text-gray-700 mb-2">
-                🔍 Debug: Available Variables
-              </summary>
-              <pre className="text-xs text-gray-600 bg-white p-2 rounded border overflow-auto">
-                {JSON.stringify(variableMap, null, 2)}
-              </pre>
-            </details>
-          )}
-
           {/* Action Buttons */}
           <div className="flex justify-center space-x-3 pt-8">
             <button
