@@ -31,6 +31,17 @@ export function HeroContentSection({
     showButton: heroConfig.showButton ?? true
   }
 
+  // Debug logging
+  console.log('🦸 HERO SECTION DEBUG:', {
+    sectionType: section.type,
+    sectionId: section.id,
+    sectionTitle: section.title,
+    heroConfig,
+    settings,
+    hasBackgroundImage: !!settings.backgroundImage,
+    configKeys: Object.keys(heroConfig || {})
+  })
+
   const handleContinue = () => {
     onSectionComplete(index, {
       [section.id]: 'viewed',
