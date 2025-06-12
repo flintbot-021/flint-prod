@@ -515,7 +515,7 @@ export async function getCampaignLeadStats(
   campaignId: string
 ): Promise<DatabaseResult<{
   total: number;
-  completed: number;
+  converted: number;
   conversion_rate: number;
   recent_leads: Lead[];
 }>> {
@@ -536,12 +536,12 @@ export async function getCampaignLeadStats(
       .select('*', { count: 'exact', head: true })
       .eq('campaign_id', campaignId);
 
-    // Get completed leads count
-    const { count: completedCount } = await supabase
+    // Get converted leads count
+    const { count: convertedCount } = await supabase
       .from('leads')
       .select('*', { count: 'exact', head: true })
       .eq('campaign_id', campaignId)
-      .not('completed_at', 'is', null);
+      .not('converted_at', 'is', null);
 
     // Get recent leads
     const { data: recentLeads } = await supabase
@@ -552,13 +552,13 @@ export async function getCampaignLeadStats(
       .limit(10);
 
     const total = totalCount || 0;
-    const completed = completedCount || 0;
-    const conversion_rate = total > 0 ? (completed / total) * 100 : 0;
+    const converted = convertedCount || 0;
+    const conversion_rate = total > 0 ? (converted / total) * 100 : 0;
 
     return {
       data: {
         total,
-        completed,
+        converted,
         conversion_rate: Math.round(conversion_rate * 100) / 100, // Round to 2 decimal places
         recent_leads: recentLeads || []
       },
@@ -646,9 +646,9 @@ export async function getLeads(
 
     if (completed !== undefined) {
       if (completed) {
-        query = query.not('completed_at', 'is', null);
+        query = query.not('converted_at', 'is', null);
       } else {
-        query = query.is('completed_at', null);
+        query = query.is('converted_at', null);
       }
     }
 

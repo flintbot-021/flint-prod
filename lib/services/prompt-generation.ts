@@ -141,10 +141,10 @@ export class PromptGenerationService {
             order: section.order
           }
 
-          // Extract options for multiple choice
-          if (section.type === 'question-multiple-choice' && settings?.options) {
-            context.options = settings.options.map((opt: any) => opt.text || opt.label || opt)
-          }
+        // Extract options for multiple choice
+        if (section.type === 'question-multiple-choice' && settings?.options) {
+          context.options = settings.options.map((opt: any) => opt.text || opt.label || opt)
+        }
 
           contexts.push(context)
         }
@@ -158,7 +158,7 @@ export class PromptGenerationService {
         })
       }
     })
-    
+
     return contexts
   }
 

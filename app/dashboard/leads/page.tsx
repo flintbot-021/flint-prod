@@ -40,7 +40,7 @@ interface LeadWithCampaign extends Lead {
   campaign: Campaign | null
 }
 
-type SortField = 'created_at' | 'email' | 'phone' | 'campaign_name'
+type SortField = 'created_at' | 'email' | 'phone' | 'campaign_name' | 'converted_at'
 type SortDirection = 'asc' | 'desc'
 
 export default function LeadsPage() {
@@ -107,9 +107,21 @@ export default function LeadsPage() {
       }
 
       // Prepare pagination params
-      const paginationParams: PaginationParams = {
+      const paginationParams: PaginationParams & {
+        campaign_id?: string;
+        search?: string;
+      } = {
         page: currentPage,
         per_page: leadsPerPage
+      }
+
+      // Add filters
+      if (selectedCampaign !== 'all') {
+        paginationParams.campaign_id = selectedCampaign
+      }
+
+      if (searchTerm) {
+        paginationParams.search = searchTerm
       }
 
       // Load leads
@@ -126,25 +138,8 @@ export default function LeadsPage() {
           return { ...lead, campaign }
         }) || []
 
-        // Apply client-side filtering and sorting
-        let filteredLeads = enrichedLeads
-
-        // Filter by search term
-        if (searchTerm) {
-          filteredLeads = filteredLeads.filter(lead =>
-            lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            lead.phone?.includes(searchTerm) ||
-            lead.campaign?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-          )
-        }
-
-        // Filter by campaign
-        if (selectedCampaign !== 'all') {
-          filteredLeads = filteredLeads.filter(lead => lead.campaign_id === selectedCampaign)
-        }
-
-        // Sort leads
-        filteredLeads.sort((a, b) => {
+        // Apply client-side sorting (since server-side filtering is now handled)
+        enrichedLeads.sort((a, b) => {
           let aValue: string | number | Date
           let bValue: string | number | Date
 
@@ -152,6 +147,10 @@ export default function LeadsPage() {
             case 'created_at':
               aValue = new Date(a.created_at)
               bValue = new Date(b.created_at)
+              break
+            case 'converted_at':
+              aValue = a.converted_at ? new Date(a.converted_at) : new Date(0)
+              bValue = b.converted_at ? new Date(b.converted_at) : new Date(0)
               break
             case 'email':
               aValue = a.email || ''
@@ -175,7 +174,7 @@ export default function LeadsPage() {
           return 0
         })
 
-        setLeads(filteredLeads)
+        setLeads(enrichedLeads)
         setTotalLeads(leadsResult.data.meta?.total || 0)
         setTotalPages(Math.ceil((leadsResult.data.meta?.total || 0) / leadsPerPage))
       }
@@ -348,7 +347,7 @@ export default function LeadsPage() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Search leads by email, phone, or campaign..."
+                      placeholder="Search leads by email, phone, or name..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
@@ -446,15 +445,15 @@ export default function LeadsPage() {
                               <ArrowUpDown className="ml-2 h-4 w-4" />
                             </Button>
                           </th>
-                          <th className="text-left py-3 px-4">Source</th>
+                          <th className="text-left py-3 px-4">Lead Details</th>
                           <th className="text-left py-3 px-4">
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleSort('created_at')}
+                              onClick={() => handleSort('converted_at')}
                               className="hover:bg-accent font-medium"
                             >
-                              Created
+                              Converted
                               <ArrowUpDown className="ml-2 h-4 w-4" />
                             </Button>
                           </th>
@@ -483,6 +482,11 @@ export default function LeadsPage() {
                                   )}
                                   {getContactBadge(lead)}
                                 </div>
+                                {lead.name && (
+                                  <div className="text-sm text-muted-foreground">
+                                    {lead.name}
+                                  </div>
+                                )}
                               </div>
                             </td>
                             <td className="py-4 px-4">
@@ -490,10 +494,10 @@ export default function LeadsPage() {
                             </td>
                             <td className="py-4 px-4">
                               <div className="text-sm">
-                                <div className="text-foreground">{lead.utm_source || 'Direct'}</div>
-                                {lead.utm_source && (
+                                <div className="text-foreground">Session: {lead.session_id.slice(0, 8)}...</div>
+                                {lead.conversion_section_id && (
                                   <div className="text-muted-foreground">
-                                    {lead.utm_source || 'Unknown'}
+                                    Section: {lead.conversion_section_id.slice(0, 8)}...
                                   </div>
                                 )}
                               </div>
@@ -501,7 +505,12 @@ export default function LeadsPage() {
                             <td className="py-4 px-4">
                               <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                                 <Calendar className="h-4 w-4" />
-                                <span>{new Date(lead.created_at).toLocaleDateString()}</span>
+                                <span>
+                                  {lead.converted_at 
+                                    ? new Date(lead.converted_at).toLocaleDateString()
+                                    : new Date(lead.created_at).toLocaleDateString()
+                                  }
+                                </span>
                               </div>
                             </td>
                             <td className="py-4 px-4 text-right">

@@ -17,7 +17,7 @@ interface LeadWithCampaign extends Lead {
 interface LeadsExportParams {
   searchTerm?: string
   selectedCampaign?: string
-  sortField?: 'created_at' | 'email' | 'phone' | 'campaign_name'
+  sortField?: 'created_at' | 'email' | 'phone' | 'campaign_name' | 'converted_at'
   sortDirection?: 'asc' | 'desc'
   includeCompleted?: boolean
   maxRecords?: number
@@ -103,6 +103,7 @@ export const getLeadsExportData = async (
       filteredLeads = filteredLeads.filter(lead =>
         lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.phone?.includes(searchTerm) ||
+        lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.campaign?.name?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
@@ -114,29 +115,26 @@ export const getLeadsExportData = async (
       name: lead.name || '',
       campaignName: lead.campaign?.name || 'Unknown Campaign',
       campaignStatus: lead.campaign?.status || 'unknown',
-      leadSource: lead.utm_source || 'Direct',
-      utmSource: lead.utm_source || '',
-      utmMedium: lead.utm_medium || '',
-      utmCampaign: lead.utm_campaign || '',
-      utmContent: lead.utm_content || '',
-      utmTerm: lead.utm_term || '',
+      sessionId: lead.session_id || '',
+      conversionSectionId: lead.conversion_section_id || '',
+      metadata: JSON.stringify(lead.metadata || {}),
       createdAt: lead.created_at,
-      completedAt: lead.completed_at || '',
-      isCompleted: !!lead.completed_at,
+      convertedAt: lead.converted_at || '',
+      isConverted: !!lead.converted_at,
       leadId: lead.id,
       campaignId: lead.campaign_id
     }))
 
     // Calculate summary statistics
     const totalLeads = filteredLeads.length
-    const completedLeads = filteredLeads.filter(lead => lead.completed_at).length
-    const completionRate = totalLeads > 0 ? (completedLeads / totalLeads) * 100 : 0
+    const convertedLeads = filteredLeads.filter(lead => lead.converted_at).length
+    const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0
 
     // Group by campaign for analytics
     const campaignStats = new Map<string, {
       name: string
       leads: number
-      completed: number
+      converted: number
       conversionRate: number
     }>()
 
@@ -148,38 +146,26 @@ export const getLeadsExportData = async (
         campaignStats.set(campaignId, {
           name: campaignName,
           leads: 0,
-          completed: 0,
+          converted: 0,
           conversionRate: 0
         })
       }
 
       const stats = campaignStats.get(campaignId)!
       stats.leads += 1
-      if (lead.completed_at) {
-        stats.completed += 1
+      if (lead.converted_at) {
+        stats.converted += 1
       }
-      stats.conversionRate = stats.leads > 0 ? (stats.completed / stats.leads) * 100 : 0
-    })
-
-    // Group by lead source
-    const sourceStats = new Map<string, number>()
-    filteredLeads.forEach(lead => {
-      const source = lead.utm_source || 'Direct'
-      sourceStats.set(source, (sourceStats.get(source) || 0) + 1)
+      stats.conversionRate = stats.leads > 0 ? (stats.converted / stats.leads) * 100 : 0
     })
 
     // Create metadata
     const metadata = {
       analytics: {
         totalLeads,
-        completedLeads,
-        completionRate: Math.round(completionRate * 100) / 100,
-        campaignBreakdown: Array.from(campaignStats.values()),
-        sourceBreakdown: Array.from(sourceStats.entries()).map(([source, count]) => ({
-          source,
-          count,
-          percentage: Math.round((count / totalLeads) * 100 * 100) / 100
-        }))
+        convertedLeads,
+        conversionRate: Math.round(conversionRate * 100) / 100,
+        campaignBreakdown: Array.from(campaignStats.values())
       },
       filters: {
         searchTerm: searchTerm || null,
