@@ -107,13 +107,30 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
   onClose: () => void 
 }) {
   const [sessionData, setSessionData] = useState<any>(null)
+  const [sections, setSections] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
 
   const loadSessionData = async () => {
     setLoading(true)
     try {
-      // In a real implementation, you'd fetch session data here
-      // For now, we'll show the available lead data
+      // Fetch the actual session data from the database
+      const sessionResult = await fetch(`/api/sessions/${lead.session_id}`)
+      if (sessionResult.ok) {
+        const session = await sessionResult.json()
+        setSessionData(session)
+      }
+
+      // Fetch the campaign sections to get question titles
+      if (campaign?.id) {
+        const sectionsResult = await fetch(`/api/campaigns/${campaign.id}/sections`)
+        if (sectionsResult.ok) {
+          const campaignSections = await sectionsResult.json()
+          setSections(campaignSections)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading session data:', error)
+      // Fallback to lead metadata if API calls fail
       setSessionData({
         session_id: lead.session_id,
         responses: lead.metadata || {},
@@ -121,8 +138,6 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
         converted_at: lead.converted_at,
         created_at: lead.created_at
       })
-    } catch (error) {
-      console.error('Error loading session data:', error)
     } finally {
       setLoading(false)
     }
@@ -154,11 +169,33 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
     }
   }
 
+  const formatAnswer = (value: any) => {
+    if (value === null || value === undefined) return 'No answer provided'
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+    if (typeof value === 'object') {
+      if (Array.isArray(value)) {
+        return value.length > 0 ? value.join(', ') : 'No selection'
+      }
+      return JSON.stringify(value, null, 2)
+    }
+    return String(value)
+  }
+
+  const getQuestionTitle = (sectionId: string) => {
+    const section = sections.find(s => s.id === sectionId)
+    return section?.title || section?.configuration?.title || 'Question'
+  }
+
+  const getQuestionType = (sectionId: string) => {
+    const section = sections.find(s => s.id === sectionId)
+    return section?.type || 'unknown'
+  }
+
   const conversionTime = calculateConversionTime(lead.created_at, lead.converted_at)
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
-      <div className="p-6">
+      <div className="p-6 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -221,6 +258,54 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Questions & Answers Card */}
+            {sessionData?.responses && Object.keys(sessionData.responses).length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center text-lg">
+                    <MessageSquare className="h-5 w-5 mr-2" />
+                    Questions & Answers
+                  </CardTitle>
+                  <CardDescription>
+                    User responses to campaign questions
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {Object.entries(sessionData.responses).map(([sectionId, response], index) => {
+                      const questionTitle = getQuestionTitle(sectionId)
+                      const questionType = getQuestionType(sectionId)
+                      
+                      return (
+                        <div key={sectionId} className="border-l-4 border-blue-200 pl-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h4 className="font-medium text-foreground">
+                                {questionTitle}
+                              </h4>
+                              <p className="text-xs text-muted-foreground capitalize mt-1">
+                                {questionType} question
+                              </p>
+                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              Q{index + 1}
+                            </Badge>
+                          </div>
+                          <div className="mt-3">
+                            <div className="bg-muted/50 rounded-lg p-3">
+                              <p className="text-sm text-foreground whitespace-pre-wrap">
+                                {formatAnswer(response)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Session Information Card */}
             <Card>
@@ -342,42 +427,44 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
               </Card>
             )}
 
-            {/* Session Responses & Metadata Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center text-lg">
-                  <MessageSquare className="h-5 w-5 mr-2" />
-                  Session Responses & Data
-                </CardTitle>
-                <CardDescription>
-                  All data captured during the user's session
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {sessionData?.responses && Object.keys(sessionData.responses).length > 0 ? (
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground mb-2 block">
-                        Session Metadata
-                      </label>
-                      <div className="bg-muted rounded-lg p-4 overflow-x-auto">
-                        <pre className="text-sm whitespace-pre-wrap font-mono">
-                          {formatMetadata(sessionData.responses)}
-                        </pre>
+            {/* Raw Session Data Card (Fallback) */}
+            {sessionData?.responses && Object.keys(sessionData.responses).length === 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center text-lg">
+                    <MessageSquare className="h-5 w-5 mr-2" />
+                    Session Data
+                  </CardTitle>
+                  <CardDescription>
+                    Raw session metadata and responses
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {lead.metadata && Object.keys(lead.metadata).length > 0 ? (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                          Lead Metadata
+                        </label>
+                        <div className="bg-muted rounded-lg p-4 overflow-x-auto">
+                          <pre className="text-sm whitespace-pre-wrap font-mono">
+                            {formatMetadata(lead.metadata)}
+                          </pre>
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">No session responses available</p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        This lead may have been captured without additional form data
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    ) : (
+                      <div className="text-center py-8">
+                        <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">No session responses available</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          This lead may have been captured without additional form data
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
 
