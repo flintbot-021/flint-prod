@@ -14,9 +14,7 @@ import {
   getCampaignLeadStats,
   updateCampaign,
   publishCampaign,
-  deleteCampaign,
-  activateCampaign,
-  deactivateCampaign
+  deleteCampaign
 } from '@/lib/data-access'
 import { Campaign, Profile, CampaignStatus } from '@/lib/types/database'
 import { ExportButton } from '@/components/export'
@@ -42,8 +40,6 @@ import {
   Trash2,
   ExternalLink,
   Hammer,
-  Lock,
-  Unlock,
   MoreVertical,
   Archive,
   Globe,
@@ -271,37 +267,7 @@ export default function Dashboard() {
     }
   }
 
-  const handleActivateCampaign = async (campaignId: string) => {
-    try {
-      setError(null)
-      
-      const result = await activateCampaign(campaignId)
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to activate campaign')
-      }
 
-      await loadDashboardData()
-    } catch (err) {
-      console.error('Error activating campaign:', err)
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    }
-  }
-
-  const handleDeactivateCampaign = async (campaignId: string) => {
-    try {
-      setError(null)
-      
-      const result = await deactivateCampaign(campaignId)
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to deactivate campaign')
-      }
-
-      await loadDashboardData()
-    } catch (err) {
-      console.error('Error deactivating campaign:', err)
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    }
-  }
 
   const getStatusColor = (status: CampaignStatus): string => {
     switch (status) {
@@ -346,22 +312,6 @@ export default function Dashboard() {
         variant: 'secondary' as const
       })
     } else if (campaign.status === 'published') {
-      if (campaign.is_active) {
-        actions.push({
-          label: 'Deactivate Campaign',
-          icon: Lock,
-          action: () => handleDeactivateCampaign(campaign.id),
-          variant: 'secondary' as const
-        })
-      } else {
-        actions.push({
-          label: 'Activate Campaign',
-          icon: Unlock,
-          action: () => handleActivateCampaign(campaign.id),
-          variant: 'default' as const
-        })
-      }
-      
       actions.push({
         label: 'Unpublish (Draft)',
         icon: FileText,
@@ -620,121 +570,113 @@ export default function Dashboard() {
 
               {/* Campaigns Grid */}
               {!loadingStats && campaigns.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {campaigns.map((campaign) => (
-                    <Card key={campaign.id} className="hover:shadow-md transition-shadow cursor-pointer">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
+                    <Card key={campaign.id} className="group hover:shadow-lg transition-all duration-200 border-border/50 hover:border-border">
+                      <CardHeader className="pb-4">
+                        <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <CardTitle className="text-lg truncate">
+                            <CardTitle className="text-lg font-semibold truncate mb-1 group-hover:text-primary transition-colors">
                               {campaign.name}
                             </CardTitle>
-                            <CardDescription className="line-clamp-2">
+                            <CardDescription className="text-sm line-clamp-2">
                               {campaign.description || 'No description provided'}
                             </CardDescription>
                           </div>
-                          <div className="ml-2 flex flex-col items-end space-y-1">
-                            <Badge 
-                              variant="secondary" 
-                              className={`flex items-center space-x-1 ${getStatusColor(campaign.status)}`}
-                            >
-                              {getStatusIcon(campaign.status)}
-                              <span className="capitalize">{campaign.status}</span>
-                            </Badge>
-                            
-                            {/* Activation Status Indicator for Published Campaigns */}
-                            {campaign.status === 'published' && (
-                              <div className="flex items-center space-x-1">
-                                {campaign.is_active ? (
-                                  <div className="flex items-center space-x-1 text-xs">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    <span className="text-green-600 font-medium">Live</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center space-x-1 text-xs">
-                                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                                    <span className="text-orange-600 font-medium">Inactive</span>
-                                  </div>
-                                )}
-                              </div>
+                          <div className="flex flex-col items-end gap-2">
+                            {campaign.status === 'published' ? (
+                              <Badge 
+                                variant="default"
+                                className={`text-xs font-medium ${
+                                  campaign.is_active
+                                    ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' 
+                                    : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
+                                }`}
+                              >
+                                <div className={`w-2 h-2 rounded-full mr-1.5 ${campaign.is_active ? 'bg-green-500' : 'bg-orange-500'}`} />
+                                <span>{campaign.is_active ? 'Live' : 'Inactive'}</span>
+                              </Badge>
+                            ) : (
+                              <Badge 
+                                variant="secondary"
+                                className="text-xs font-medium bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                              >
+                                {getStatusIcon(campaign.status)}
+                                <span className="ml-1 capitalize">{campaign.status}</span>
+                              </Badge>
                             )}
                           </div>
                         </div>
                       </CardHeader>
+
                       <CardContent className="space-y-4">
-                        {/* Campaign Stats */}
-                        <div className="grid grid-cols-3 gap-3 text-center">
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-center">
-                              <Eye className="h-4 w-4 text-blue-600" />
-                            </div>
-                            <p className="text-2xl font-bold text-foreground">{campaign.viewCount}</p>
-                            <p className="text-xs text-muted-foreground">Views</p>
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="text-center p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors">
+                            <Eye className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
+                            <p className="text-lg font-bold text-foreground">{campaign.viewCount}</p>
+                            <p className="text-xs text-muted-foreground font-medium">Views</p>
                           </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-center">
-                              <Users className="h-4 w-4 text-green-600" />
-                            </div>
-                            <p className="text-2xl font-bold text-foreground">{campaign.leadCount}</p>
-                            <p className="text-xs text-muted-foreground">Leads</p>
+                          <div className="text-center p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors">
+                            <Users className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
+                            <p className="text-lg font-bold text-foreground">{campaign.leadCount}</p>
+                            <p className="text-xs text-muted-foreground font-medium">Leads</p>
                           </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-center">
-                              <TrendingUp className="h-4 w-4 text-purple-600" />
-                            </div>
-                            <p className="text-2xl font-bold text-foreground">
+                          <div className="text-center p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors">
+                            <TrendingUp className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
+                            <p className="text-lg font-bold text-foreground">
                               {campaign.completionRate.toFixed(0)}%
                             </p>
-                            <p className="text-xs text-muted-foreground">Rate</p>
+                            <p className="text-xs text-muted-foreground font-medium">Rate</p>
                           </div>
                         </div>
 
-                        {/* Last Activity */}
-                        <div className="flex items-center justify-between text-sm text-muted-foreground">
-                          <div className="flex items-center space-x-1">
-                            <Calendar className="h-3 w-3" />
-                            <span>Updated {formatDate(campaign.updated_at)}</span>
-                          </div>
+                        {/* Last Updated */}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 rounded-md px-3 py-2">
+                          <Calendar className="h-4 w-4" />
+                          <span>Updated {formatDate(campaign.updated_at)}</span>
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                          <div className="flex items-center space-x-2">
+                        <div className="flex items-center justify-between pt-2">
+                          <div className="flex items-center gap-1">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 router.push(`/dashboard/campaigns/${campaign.id}/edit`)
                               }}
+                              className="h-8 px-3"
                             >
-                              <Edit className="h-3 w-3" />
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit
                             </Button>
-
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 router.push(`/dashboard/campaigns/${campaign.id}/builder`)
                               }}
-                              className="text-blue-600 hover:text-blue-700"
+                              className="h-8 px-3"
                             >
-                              <Hammer className="h-3 w-3" />
+                              <Hammer className="h-3 w-3 mr-1" />
+                              Build
                             </Button>
                             
-                            {/* Status Management Dropdown */}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
-                                  variant="ghost"
+                                  variant="outline"
                                   size="sm"
                                   onClick={(e) => e.stopPropagation()}
+                                  className="h-8 w-8 p-0"
                                 >
                                   <MoreVertical className="h-3 w-3" />
                                 </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="start" className="w-48">
+                              <DropdownMenuContent align="end" className="w-44">
                                 {getStatusActions(campaign).map((action, index) => (
                                   <DropdownMenuItem
                                     key={index}
@@ -742,7 +684,7 @@ export default function Dashboard() {
                                       e.stopPropagation()
                                       action.action()
                                     }}
-                                    className="flex items-center space-x-2"
+                                    className="flex items-center gap-2 text-sm"
                                   >
                                     <action.icon className="h-4 w-4" />
                                     <span>{action.label}</span>
@@ -754,7 +696,7 @@ export default function Dashboard() {
                                     e.stopPropagation()
                                     handleDeleteCampaign(campaign.id, campaign.name)
                                   }}
-                                  className="flex items-center space-x-2 text-red-600 focus:text-red-600"
+                                  className="flex items-center gap-2 text-sm text-red-600 focus:text-red-600"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                   <span>Delete Campaign</span>
@@ -765,12 +707,12 @@ export default function Dashboard() {
                           
                           {campaign.status === 'published' && campaign.published_url && (
                             <Button
-                              variant="outline"
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 window.open(campaign.published_url!, '_blank')
                               }}
+                              className="h-8 px-3"
                             >
                               <ExternalLink className="h-3 w-3 mr-1" />
                               View Live
@@ -785,6 +727,7 @@ export default function Dashboard() {
                                 e.stopPropagation()
                                 router.push(`/dashboard/campaigns/${campaign.id}`)
                               }}
+                              className="h-8 px-3"
                             >
                               <BarChart3 className="h-3 w-3 mr-1" />
                               Details
