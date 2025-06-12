@@ -61,16 +61,7 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     [section.configuration]
   )
 
-  // Debug logging to see what we're actually receiving
-  console.log('SectionRenderer DEBUG:', {
-    sectionType: section.type,
-    sectionId: section.id,
-    sectionTitle: section.title,
-    sectionConfiguration: section.configuration,
-    hasBackgroundImage: !!(section.configuration as any)?.backgroundImage,
-    hasButtonText: !!(section.configuration as any)?.buttonText,
-    hasOverlayColor: !!(section.configuration as any)?.overlayColor
-  })
+
 
   // Basic device info detection (can be enhanced by pages if needed) - memoized
   const deviceInfo = useMemo(() => {
@@ -176,7 +167,6 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
       )
       
       if (isHeroSection) {
-        console.log('Detected legacy hero section, routing to HeroContentSection')
         return <HeroContentSection {...enhancedProps} />
       }
       
@@ -189,12 +179,10 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
       )
       
       if (isBasicSection) {
-        console.log('Detected legacy basic section, routing to BasicContentSection')
         return <BasicContentSection {...enhancedProps} />
       }
       
       // Default to generic info section
-      console.log('Using generic InfoSection')
       return <InfoSection {...enhancedProps} />
     
     case 'logic':
