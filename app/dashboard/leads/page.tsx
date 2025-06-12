@@ -117,6 +117,8 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
       const sessionResult = await fetch(`/api/sessions/${lead.session_id}`)
       if (sessionResult.ok) {
         const session = await sessionResult.json()
+        console.log('Session data:', session)
+        console.log('Session responses:', session.responses)
         setSessionData(session)
       }
 
@@ -125,6 +127,7 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
         const sectionsResult = await fetch(`/api/campaigns/${campaign.id}/sections`)
         if (sectionsResult.ok) {
           const campaignSections = await sectionsResult.json()
+          console.log('Campaign sections:', campaignSections)
           setSections(campaignSections)
         }
       }
@@ -169,21 +172,141 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
     }
   }
 
-  const formatAnswer = (value: any) => {
+  const formatUserAnswer = (value: any) => {
+    console.log('Formatting user answer:', value)
+    
     if (value === null || value === undefined) return 'No answer provided'
     if (typeof value === 'boolean') return value ? 'Yes' : 'No'
     if (typeof value === 'object') {
       if (Array.isArray(value)) {
         return value.length > 0 ? value.join(', ') : 'No selection'
       }
-      return JSON.stringify(value, null, 2)
+      
+      // Handle complex response objects - extract the actual user input
+      if (value.value !== undefined) {
+        console.log('Found value field:', value.value)
+        // If there's a direct value field, use that
+        if (typeof value.value === 'object' && value.value.response !== undefined) {
+          console.log('Using value.response:', value.value.response)
+          return String(value.value.response)
+        }
+        if (typeof value.value === 'string' || typeof value.value === 'number') {
+          console.log('Using direct value:', value.value)
+          return String(value.value)
+        }
+        // For complex value objects, try to extract user input
+        if (typeof value.value === 'object') {
+          // Look for common user input fields
+          for (const key of ['input', 'answer', 'response', 'text', 'selection']) {
+            if (value.value[key] !== undefined) {
+              console.log(`Using value.${key}:`, value.value[key])
+              return String(value.value[key])
+            }
+          }
+        }
+      }
+      
+      // Handle direct response objects
+      if (value.response !== undefined) {
+        console.log('Using direct response:', value.response)
+        return String(value.response)
+      }
+      
+      // Handle processed boolean values
+      if (value.processed !== undefined) {
+        console.log('Using processed value:', value.processed)
+        return value.processed ? 'Yes' : 'No'
+      }
+      
+      // Fallback for unknown object structures - try to find any meaningful user input
+      const keys = Object.keys(value)
+      for (const key of ['input', 'answer', 'text', 'content', 'selection', 'choice']) {
+        if (value[key] !== undefined && typeof value[key] !== 'object') {
+          console.log(`Using fallback ${key}:`, value[key])
+          return String(value[key])
+        }
+      }
+      
+      // If all else fails, show a simplified representation
+      console.log('Falling back to complex response for:', value)
+      return 'Complex response'
     }
     return String(value)
   }
 
+  const formatAIResponse = (value: any) => {
+    if (value === null || value === undefined) return null
+    if (typeof value === 'object') {
+      // Extract AI outputs/summary
+      if (value.value && value.value.outputs) {
+        if (value.value.outputs.summary) {
+          return String(value.value.outputs.summary)
+        }
+        if (value.value.outputs.approve !== undefined) {
+          return `AI Assessment: ${value.value.outputs.approve === 'yes' ? 'Approved' : 'Not Approved'}`
+        }
+      }
+      
+      if (value.outputs) {
+        if (value.outputs.summary) {
+          return String(value.outputs.summary)
+        }
+        if (value.outputs.approve !== undefined) {
+          return `AI Assessment: ${value.outputs.approve === 'yes' ? 'Approved' : 'Not Approved'}`
+        }
+      }
+    }
+    return null
+  }
+
+  const isUserResponse = (sectionId: string, response: any) => {
+    const section = sections.find(s => s.id === sectionId)
+    // Filter out AI-only sections or responses that are purely AI-generated
+    if (!section) return true // Include unknown sections by default
+    
+    // Check if this is a user input section (not AI-only)
+    const sectionType = section.type?.toLowerCase()
+    const aiOnlyTypes = ['ai', 'analysis', 'summary', 'processing']
+    
+    // Exclude AI-only section types
+    if (aiOnlyTypes.includes(sectionType)) return false
+    
+    // Include if it has user input data
+    if (response && typeof response === 'object') {
+      // Check if there's actual user input (not just AI outputs)
+      if (response.value !== undefined || response.response !== undefined) {
+        return true
+      }
+      // If it only has outputs/summary without user input, it's likely AI-only
+      if (response.outputs && !response.value && !response.response) {
+        return false
+      }
+    }
+    
+    return true // Include by default unless explicitly AI-only
+  }
+
   const getQuestionTitle = (sectionId: string) => {
     const section = sections.find(s => s.id === sectionId)
-    return section?.title || section?.configuration?.title || 'Question'
+    console.log(`Getting title for section ${sectionId}:`, section)
+    
+    if (!section) {
+      console.log(`No section found for ID: ${sectionId}`)
+      return 'Question'
+    }
+    
+    // Try multiple possible field names for the question title
+    const title = section.title || 
+           section.configuration?.title || 
+           section.configuration?.question || 
+           section.configuration?.text || 
+           section.configuration?.label ||
+           section.name ||
+           `${section.type} Section` ||
+           'Question'
+           
+    console.log(`Title for section ${sectionId}:`, title)
+    return title
   }
 
   const getQuestionType = (sectionId: string) => {
@@ -273,35 +396,51 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {Object.entries(sessionData.responses).map(([sectionId, response], index) => {
-                      const questionTitle = getQuestionTitle(sectionId)
-                      const questionType = getQuestionType(sectionId)
-                      
-                      return (
-                        <div key={sectionId} className="border-l-4 border-blue-200 pl-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <div>
-                              <h4 className="font-medium text-foreground">
-                                {questionTitle}
-                              </h4>
-                              <p className="text-xs text-muted-foreground capitalize mt-1">
-                                {questionType} question
-                              </p>
+                    {Object.entries(sessionData.responses)
+                      .filter(([sectionId, response]) => isUserResponse(sectionId, response))
+                      .map(([sectionId, response], index) => {
+                        const questionTitle = getQuestionTitle(sectionId)
+                        const questionType = getQuestionType(sectionId)
+                        const userAnswer = formatUserAnswer(response)
+                        const aiResponse = formatAIResponse(response)
+                        
+                        return (
+                          <div key={sectionId} className="border-l-4 border-blue-200 pl-4">
+                            <div className="flex items-start justify-between mb-2">
+                              <div>
+                                <h4 className="font-medium text-foreground">
+                                  {questionTitle}
+                                </h4>
+                                <p className="text-xs text-muted-foreground capitalize mt-1">
+                                  {questionType} question
+                                </p>
+                              </div>
+                              <Badge variant="outline" className="text-xs">
+                                Q{index + 1}
+                              </Badge>
                             </div>
-                            <Badge variant="outline" className="text-xs">
-                              Q{index + 1}
-                            </Badge>
-                          </div>
-                          <div className="mt-3">
-                            <div className="bg-muted/50 rounded-lg p-3">
-                              <p className="text-sm text-foreground whitespace-pre-wrap">
-                                {formatAnswer(response)}
-                              </p>
+                            <div className="mt-3 space-y-3">
+                              {/* User Answer */}
+                              <div className="bg-muted/50 rounded-lg p-3">
+                                <p className="text-xs text-muted-foreground mb-1">User Response:</p>
+                                <p className="text-sm text-foreground whitespace-pre-wrap">
+                                  {userAnswer}
+                                </p>
+                              </div>
+                              
+                              {/* AI Response (if available) */}
+                              {aiResponse && (
+                                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                                  <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">AI Analysis:</p>
+                                  <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap">
+                                    {aiResponse}
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </div>
-                      )
-                    })}
+                        )
+                      })}
                   </div>
                 </CardContent>
               </Card>
