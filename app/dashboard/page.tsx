@@ -247,6 +247,7 @@ export default function Dashboard() {
   }
 
   const handleDeleteCampaign = async (campaignId: string, campaignName: string) => {
+    // TODO: Replace with ConfirmationDialog component for better UX
     if (!confirm(`Are you sure you want to delete "${campaignName}"? This action cannot be undone.`)) {
       return
     }
