@@ -5,6 +5,7 @@ import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { getMobileClasses } from '../utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 
 interface SliderConfig {
   id: string
@@ -40,19 +41,23 @@ export function MultipleSlidersSection({
 }: SectionRendererProps) {
   const [values, setValues] = useState<Record<string, number>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [expandedSliders, setExpandedSliders] = useState<Record<string, boolean>>({})
   
   const configData = config as unknown as MultipleSlidersSettings
   const sliders = configData.sliders || []
   const headline = configData.headline || title || 'Rate the following'
   const subheading = configData.subheading || description || ''
   
-  // Initialize default values
+  // Initialize default values and expansion state
   useEffect(() => {
     const defaultValues: Record<string, number> = {}
+    const defaultExpanded: Record<string, boolean> = {}
     sliders.forEach(slider => {
       defaultValues[slider.id] = slider.defaultValue
+      defaultExpanded[slider.id] = true // Start with all sliders expanded
     })
     setValues(defaultValues)
+    setExpandedSliders(defaultExpanded)
   }, [sliders])
 
   const handleSliderChange = (sliderId: string, value: number) => {
@@ -79,6 +84,13 @@ export function MultipleSlidersSection({
     }
   }
 
+  const toggleSliderExpansion = (sliderId: string) => {
+    setExpandedSliders(prev => ({
+      ...prev,
+      [sliderId]: !prev[sliderId]
+    }))
+  }
+
   const validateResponses = (): Record<string, string> => {
     const validationErrors: Record<string, string> = {}
     
@@ -99,6 +111,14 @@ export function MultipleSlidersSection({
     
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
+      
+      // Auto-expand any sliders with errors
+      const expandUpdates: Record<string, boolean> = {}
+      Object.keys(validationErrors).forEach(sliderId => {
+        expandUpdates[sliderId] = true
+      })
+      setExpandedSliders(prev => ({ ...prev, ...expandUpdates }))
+      
       return
     }
 
@@ -164,74 +184,123 @@ export function MultipleSlidersSection({
               </p>
             </div>
           ) : (
-            sliders.map((slider, sliderIndex) => (
-            <div key={slider.id} className="space-y-6">
+            sliders.map((slider, sliderIndex) => {
+              const isExpanded = expandedSliders[slider.id]
+              const hasError = !!errors[slider.id]
+              const currentValue = values[slider.id] || slider.defaultValue
               
-              {/* Slider Label */}
-              <div className="text-left">
-                <h3 className={cn(
-                  'font-medium text-white',
-                  deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl'
-                )}>
-                  {slider.label}
-                  {slider.required && <span className="text-red-400 ml-1">*</span>}
-                </h3>
-              </div>
-
-              {/* Slider Interface */}
-              <div className="space-y-4">
-                
-                {/* Labels */}
-                <div className="flex justify-between text-sm text-gray-400">
-                  <span>{slider.minLabel}</span>
-                  <span>{slider.maxLabel}</span>
-                </div>
-                
-                {/* Slider */}
-                <div className="relative px-2">
-                  <input
-                    type="range"
-                    min={slider.minValue}
-                    max={slider.maxValue}
-                    step={slider.step}
-                    value={values[slider.id] || slider.defaultValue}
-                    onChange={(e) => handleSliderChange(slider.id, parseInt(e.target.value))}
+              return (
+                <div key={slider.id} className="space-y-4">
+                  
+                  {/* Clickable Slider Label */}
+                  <div 
                     className={cn(
-                      'w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider',
-                      'focus:outline-none focus:ring-2 focus:ring-blue-500',
-                      errors[slider.id] && 'ring-2 ring-red-500'
+                      'cursor-pointer select-none',
+                      'flex items-center justify-between',
+                      'p-3 rounded-lg transition-colors duration-200',
+                      'hover:bg-gray-800/50',
+                      hasError && 'ring-1 ring-red-500/50 bg-red-900/10'
                     )}
-                  />
+                    onClick={() => toggleSliderExpansion(slider.id)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      {/* Expansion Icon */}
+                      {isExpanded ? (
+                        <ChevronDown className="w-5 h-5 text-gray-400 transition-transform duration-200" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-gray-400 transition-transform duration-200" />
+                      )}
+                      
+                      {/* Label */}
+                      <h3 className={cn(
+                        'font-medium text-white',
+                        deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl'
+                      )}>
+                        {slider.label}
+                        {slider.required && <span className="text-red-400 ml-1">*</span>}
+                      </h3>
+                    </div>
+                    
+                    {/* Current Value Display */}
+                    <div className="flex items-center space-x-2">
+                      {hasError && (
+                        <span className="text-red-400 text-sm">
+                          Required
+                        </span>
+                      )}
+                      <span className={cn(
+                        'font-medium text-gray-300',
+                        deviceInfo?.type === 'mobile' ? 'text-base' : 'text-lg',
+                        hasError && 'text-red-400'
+                      )}>
+                        {currentValue}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Collapsible Slider Interface */}
+                  <div className={cn(
+                    'overflow-hidden transition-all duration-300 ease-in-out',
+                    isExpanded 
+                      ? 'max-h-[300px] opacity-100' 
+                      : 'max-h-0 opacity-0'
+                  )}>
+                    <div className="space-y-4 px-3 pb-2">
+                      
+                      {/* Labels */}
+                      <div className="flex justify-between text-sm text-gray-400">
+                        <span>{slider.minLabel}</span>
+                        <span>{slider.maxLabel}</span>
+                      </div>
+                      
+                      {/* Slider */}
+                      <div className="relative px-2">
+                        <input
+                          type="range"
+                          min={slider.minValue}
+                          max={slider.maxValue}
+                          step={slider.step}
+                          value={currentValue}
+                          onChange={(e) => handleSliderChange(slider.id, parseInt(e.target.value))}
+                          className={cn(
+                            'w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider',
+                            'focus:outline-none focus:ring-2 focus:ring-blue-500',
+                            hasError && 'ring-2 ring-red-500'
+                          )}
+                        />
+                      </div>
+                      
+                      {/* Value Display */}
+                      {slider.showValue && (
+                        <div className="text-center">
+                          <span className={cn(
+                            'font-bold text-white',
+                            deviceInfo?.type === 'mobile' ? 'text-xl' : 'text-2xl'
+                          )}>
+                            {currentValue}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Error Message */}
+                      {hasError && (
+                        <div className="text-center">
+                          <span className="text-red-400 text-sm">
+                            {errors[slider.id]}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Separator between sliders */}
+                  {sliderIndex < sliders.length - 1 && (
+                    <div className="border-t border-gray-700" />
+                  )}
                 </div>
-                
-                {/* Value Display */}
-                {slider.showValue && (
-                  <div className="text-center">
-                    <span className={cn(
-                      'font-bold text-white',
-                      deviceInfo?.type === 'mobile' ? 'text-xl' : 'text-2xl'
-                    )}>
-                      {values[slider.id] || slider.defaultValue}
-                    </span>
-                  </div>
-                )}
-                
-                {/* Error Message */}
-                {errors[slider.id] && (
-                  <div className="text-center">
-                    <span className="text-red-400 text-sm">
-                      {errors[slider.id]}
-                    </span>
-                  </div>
-                )}
-              </div>
-              
-              {/* Separator between sliders */}
-              {sliderIndex < sliders.length - 1 && (
-                <div className="border-t border-gray-700 pt-8" />
-              )}
-            </div>
-          )))}
+              )
+            })
+          )}
         </div>
       </div>
 
