@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 
 // Import NEW shared components
-import { SectionRenderer as SharedSectionRenderer } from '@/components/campaign-renderer'
+import { SectionRenderer as SharedSectionRenderer, CampaignHeader } from '@/components/campaign-renderer'
 import { useCampaignRenderer } from '@/hooks'
 
 // =============================================================================
@@ -342,30 +342,35 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
       {/* Preview Content */}
       <div className="h-[calc(100vh-4rem)] overflow-hidden">
         {renderDeviceFrame(
-          <div className="h-full bg-background">
+          <div className="h-full bg-background flex flex-col">
+            {/* Campaign Header with Logo for Preview */}
+            <CampaignHeader campaign={campaign} showPoweredBy={false} />
+            
             {/* Show current section using shared renderer */}
             {sectionsData.length > 0 && currentSectionIndex < sectionsData.length && (
-              <SharedSectionRenderer
-                section={currentSection}
-                index={currentSectionIndex}
-                isActive={true}
-                isPreview={true}
-                campaignId={campaignId}
-                userInputs={campaignRenderer.userInputs}
-                sections={sectionsData}
-                onNext={handleNext}
-                onPrevious={handlePrevious}
-                onNavigateToSection={(index: number) => {
-                  if (sectionsData.length > 0) {
-                    campaignRenderer.goToSection(index)
-                  }
-                }}
-                onSectionComplete={handleSectionComplete}
-                onResponseUpdate={(sectionId: string, fieldId: string, value: any, metadata?: any) => {
-                  // Store response in campaignRenderer for AI processing
-                  campaignRenderer.handleResponseUpdate(sectionId, fieldId, value, metadata)
-                }}
-              />
+              <div className="flex-1">
+                <SharedSectionRenderer
+                  section={currentSection}
+                  index={currentSectionIndex}
+                  isActive={true}
+                  isPreview={true}
+                  campaignId={campaignId}
+                  userInputs={campaignRenderer.userInputs}
+                  sections={sectionsData}
+                  onNext={handleNext}
+                  onPrevious={handlePrevious}
+                  onNavigateToSection={(index: number) => {
+                    if (sectionsData.length > 0) {
+                      campaignRenderer.goToSection(index)
+                    }
+                  }}
+                  onSectionComplete={handleSectionComplete}
+                  onResponseUpdate={(sectionId: string, fieldId: string, value: any, metadata?: any) => {
+                    // Store response in campaignRenderer for AI processing
+                    campaignRenderer.handleResponseUpdate(sectionId, fieldId, value, metadata)
+                  }}
+                />
+              </div>
             )}
           </div>
         )}

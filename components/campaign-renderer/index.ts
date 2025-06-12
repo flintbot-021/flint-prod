@@ -4,6 +4,7 @@
 
 // Main components
 export { SectionRenderer } from './SectionRenderer'
+export { CampaignHeader } from './CampaignHeader'
 
 // Individual section components
 export {
