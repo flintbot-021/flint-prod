@@ -138,12 +138,6 @@ export function useCampaignState(
   }, [])
 
   const completeSection = useCallback(async (sectionIndex: number, data: any) => {
-    console.log('🎯 COMPLETE SECTION CALLED:')
-    console.log('  Section Index:', sectionIndex)
-    console.log('  Data received:', data)
-    console.log('  Current userInputs before update:', userInputs)
-    console.log('  Section already completed?', completedSections.has(sectionIndex))
-    
     // Prevent duplicate completion
     if (completedSections.has(sectionIndex)) {
       console.log(`Section ${sectionIndex} already completed, skipping`)
@@ -151,16 +145,13 @@ export function useCampaignState(
     }
     
     // Update user inputs with section data
-    setUserInputs(prev => {
-      const newUserInputs = { ...prev, ...data }
-      console.log('  UserInputs updated to:', newUserInputs)
-      return newUserInputs
-    })
+    const updatedInputs = { ...userInputs, ...data }
+    setUserInputs(updatedInputs)
     
-    // Mark section as completed using array update
-    setCompletedSectionsArray(prev => 
-      prev.includes(sectionIndex) ? prev : [...prev, sectionIndex]
-    )
+    // Mark section as completed
+    const newCompletedSections = new Set(completedSections)
+    newCompletedSections.add(sectionIndex)
+    setCompletedSectionsArray(Array.from(newCompletedSections))
     
     // Handle lead creation for capture sections
     if (sections[sectionIndex]?.type === 'capture' && !leadId && onLeadCreate) {
@@ -170,24 +161,18 @@ export function useCampaignState(
           setLeadId(newLeadId)
         }
       } catch (error) {
-        console.error('Failed to create lead:', error)
+        console.error('Error creating lead:', error)
       }
     }
     
-    // Calculate progress
-    const newCompletedCount = completedSections.has(sectionIndex) 
-      ? completedSections.size 
-      : completedSections.size + 1
-    const progress = Math.round((newCompletedCount / sections.length) * 100)
-    onProgressUpdate?.(progress, sectionIndex)
-    
-    // Auto-advance to next section
-    if (sectionIndex < sections.length - 1) {
-      setTimeout(() => {
-        setCurrentSection(sectionIndex + 1)
-      }, 300) // Small delay for better UX
+    // Move to next section automatically
+    if (sectionIndex === currentSection) {
+      const nextIndex = sectionIndex + 1
+      if (nextIndex < sections.length) {
+        setCurrentSection(nextIndex)
+      }
     }
-  }, [sections, leadId, onLeadCreate, onProgressUpdate, completedSections, userInputs])
+  }, [sections, userInputs, completedSections, currentSection, leadId, onLeadCreate])
 
   const resetCampaign = useCallback(() => {
     setCurrentSection(0)

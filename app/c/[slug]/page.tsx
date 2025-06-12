@@ -191,6 +191,72 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     sections: sections,
     initialSection: 0, // Start at 0 like preview page
     campaignId: campaign?.id,  // Pass campaign ID for file uploads
+    onLeadCreate: async (leadData: any) => {
+      // Create lead when capture section is completed
+      if (!campaign) {
+        console.error('❌ Cannot create lead: campaign not loaded')
+        return undefined
+      }
+
+      try {
+        // Extract email and name from the lead data
+        // leadData could be in format: { name: "John", email: "john@example.com", sectionId: { name: "John", email: "john@example.com" } }
+        let email = leadData.email
+        let name = leadData.name
+        let phone = leadData.phone || null
+
+        // If not found at top level, check if it's nested under a section ID
+        if (!email || !name) {
+          const sectionKeys = Object.keys(leadData).filter(key => key !== 'name' && key !== 'email' && key !== 'phone')
+          if (sectionKeys.length > 0) {
+            const sectionData = leadData[sectionKeys[0]]
+            if (sectionData && typeof sectionData === 'object') {
+              email = email || sectionData.email
+              name = name || sectionData.name
+              phone = phone || sectionData.phone || null
+            }
+          }
+        }
+
+        if (!email) {
+          console.error('❌ Cannot create lead: email is required')
+          return undefined
+        }
+
+        // Check if lead already exists for this session
+        const existingLeadResult = await getLeadBySession(sessionId)
+        if (existingLeadResult.success && existingLeadResult.data) {
+          console.log('✅ Lead already exists for this session')
+          return existingLeadResult.data.id
+        }
+
+        // Find the capture section ID
+        const captureSection = sections.find(section => section.type === 'capture')
+        
+        // Create the lead
+        const leadResult = await createLead({
+          session_id: sessionId,
+          campaign_id: campaign.id,
+          email: email,
+          name: name || null,
+          phone: phone,
+          converted_at: new Date().toISOString(),
+          conversion_section_id: captureSection?.id || null,
+          metadata: leadData
+        })
+
+        if (leadResult.success) {
+          console.log('✅ Lead created successfully:', leadResult.data)
+          return leadResult.data?.id
+        } else {
+          console.error('❌ Failed to create lead:', leadResult.error)
+          return undefined
+        }
+      } catch (error) {
+        console.error('❌ Error in onLeadCreate:', error)
+        return undefined
+      }
+    },
     onProgressUpdate: (progress, sectionIndex) => {
       // Update session progress in database
       if (campaign) {

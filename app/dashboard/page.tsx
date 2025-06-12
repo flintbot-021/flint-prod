@@ -143,9 +143,9 @@ export default function Dashboard() {
         campaignsData.map(async (campaign: Campaign) => {
           const statsResult = await getCampaignLeadStats(campaign.id)
           if (statsResult.success && statsResult.data) {
-            const { total, completed, conversion_rate } = statsResult.data
+            const { total, converted, conversion_rate } = statsResult.data
             totalLeads += total
-            totalCompletedLeads += completed
+            totalCompletedLeads += converted
 
             const campaignWithStats: CampaignWithStats = {
               ...campaign,
@@ -639,18 +639,6 @@ export default function Dashboard() {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                router.push(`/dashboard/campaigns/${campaign.id}/edit`)
-                              }}
-                              className="h-8 px-3"
-                            >
-                              <Edit className="h-3 w-3 mr-1" />
-                              Edit
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
                                 router.push(`/dashboard/campaigns/${campaign.id}/builder`)
                               }}
                               className="h-8 px-3"
@@ -671,6 +659,17 @@ export default function Dashboard() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-44">
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    router.push(`/dashboard/campaigns/${campaign.id}/edit`)
+                                  }}
+                                  className="flex items-center gap-2 text-sm"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                  <span>Edit Campaign</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 {getStatusActions(campaign).map((action, index) => (
                                   <DropdownMenuItem
                                     key={index}
@@ -704,7 +703,8 @@ export default function Dashboard() {
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                window.open(campaign.published_url!, '_blank')
+                                const liveUrl = `${window.location.origin}/c/${campaign.published_url}`
+                                window.open(liveUrl, '_blank')
                               }}
                               className="h-8 px-3"
                             >
