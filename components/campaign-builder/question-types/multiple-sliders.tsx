@@ -28,8 +28,6 @@ interface MultipleSlidersSettings {
   headline: string
   subheading: string
   sliders: SliderConfig[]
-  allowAddMore: boolean
-  buttonText: string
 }
 
 interface MultipleSlidersProps {
@@ -46,9 +44,7 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
   const settings = (section.settings as unknown as MultipleSlidersSettings) || { 
     headline: 'Rate the following',
     subheading: 'Please provide your ratings for each item below',
-    sliders: [], 
-    allowAddMore: true, 
-    buttonText: 'Next' 
+    sliders: []
   }
 
   const updateSettings = async (newSettings: Partial<MultipleSlidersSettings>) => {
@@ -204,43 +200,15 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
         />
       ))}
       
-      {settings.allowAddMore && (
-        <div className="flex justify-center pt-6">
-          <Button
-            onClick={addSlider}
-            variant="outline"
-            className="border-dashed border-2 h-12 px-6"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add another slider
-          </Button>
-        </div>
-      )}
-
-      {/* Global Settings */}
-      <div className="border-t border-gray-700 pt-8 space-y-6">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-400">Allow adding more sliders</span>
-          <Switch
-            checked={settings.allowAddMore}
-            onCheckedChange={(checked) => updateSettings({ allowAddMore: checked })}
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <span className="text-sm text-gray-400">Button Text</span>
-          <InlineEditableText
-            value={settings.buttonText}
-            onSave={(value) => updateSettings({ buttonText: value })}
-            variant="body"
-            placeholder="Next"
-            className="text-base text-gray-300 hover:bg-transparent rounded-none px-0 py-0"
-            inputClassName="!text-base !text-gray-300 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-            showEditIcon={false}
-            showSaveStatus={false}
-            autoSave={false}
-          />
-        </div>
+      <div className="flex justify-center pt-6">
+        <Button
+          onClick={addSlider}
+          variant="outline"
+          className="border-dashed border-2 h-12 px-6"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add another slider
+        </Button>
       </div>
     </div>
   )

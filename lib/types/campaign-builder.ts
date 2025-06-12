@@ -108,9 +108,7 @@ export const SECTION_TYPES: SectionType[] = [
           required: true,
           showValue: true
         }
-      ],
-      allowAddMore: true,
-      buttonText: 'Next'
+      ]
     }
   },
   {

@@ -51,14 +51,44 @@ function extractInputVariablesWithTypesFromBuilder(sections: CampaignSection[], 
   type: 'text' | 'file'
   section: CampaignSection
 }> {
-  return sections
-    .filter(s => s.order < currentOrder && isQuestionSection(s.type) && s.title)
-    .map(section => ({
-      name: titleToVariableName(section.title),
-      title: section.title,
-      type: isFileVariableFromBuilder(section) ? 'file' : 'text',
-      section
-    }))
+  const variables: Array<{
+    name: string
+    title: string
+    type: 'text' | 'file'
+    section: CampaignSection
+  }> = []
+  
+  sections
+    .filter(s => s.order < currentOrder && isQuestionSection(s.type) && !s.type.includes('capture'))
+    .forEach(section => {
+      if (section.type === 'question-slider-multiple') {
+        // Handle multiple sliders - each slider becomes a variable
+        // Don't create a variable for the parent section, only for individual sliders
+        const settings = section.settings as any
+        if (settings.sliders && Array.isArray(settings.sliders)) {
+          settings.sliders.forEach((slider: any) => {
+            if (slider.variableName && slider.label) {
+              variables.push({
+                name: slider.variableName,
+                title: slider.label,
+                type: 'text' as const,
+                section
+              })
+            }
+          })
+        }
+      } else if (section.title) {
+        // Handle single-input sections (existing logic)
+        variables.push({
+          name: titleToVariableName(section.title),
+          title: section.title,
+          type: isFileVariableFromBuilder(section) ? 'file' : 'text',
+          section
+        })
+      }
+    })
+    
+  return variables
 }
 
 // Check if a campaign builder section is a file variable
