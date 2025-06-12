@@ -9,8 +9,7 @@ import { SectionNavigationBar } from '../SectionNavigationBar'
 interface SliderConfig {
   id: string
   variableName: string
-  question: string
-  subheading: string
+  label: string
   minValue: number
   maxValue: number
   defaultValue: number
@@ -22,8 +21,9 @@ interface SliderConfig {
 }
 
 interface MultipleSlidersSettings {
+  headline: string
+  subheading: string
   sliders: SliderConfig[]
-  buttonText: string
 }
 
 export function MultipleSlidersSection({
@@ -43,7 +43,8 @@ export function MultipleSlidersSection({
   
   const configData = config as unknown as MultipleSlidersSettings
   const sliders = configData.sliders || []
-  const buttonLabel = configData.buttonText || 'Continue'
+  const headline = configData.headline || title || 'Rate the following'
+  const subheading = configData.subheading || description || ''
   
   // Initialize default values
   useEffect(() => {
@@ -71,7 +72,7 @@ export function MultipleSlidersSection({
     if (slider) {
       onResponseUpdate(section.id, slider.variableName, value, {
         sliderId: sliderId,
-        sliderQuestion: slider.question,
+        sliderLabel: slider.label,
         isValid: true,
         isRequired: slider.required
       })
@@ -134,26 +135,47 @@ export function MultipleSlidersSection({
       <div className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-2xl space-y-8">
           
-          {sliders.map((slider, sliderIndex) => (
+          {/* Section Header */}
+          <div className="text-center space-y-4">
+            <h1 className={cn(
+              'font-bold text-white leading-tight',
+              deviceInfo?.type === 'mobile' ? 'text-2xl' : 'text-4xl'
+            )}>
+              {headline}
+            </h1>
+            
+            {subheading && (
+              <p className={cn(
+                'text-gray-300',
+                deviceInfo?.type === 'mobile' ? 'text-base' : 'text-xl'
+              )}>
+                {subheading}
+              </p>
+            )}
+          </div>
+          
+          {sliders.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-400 text-lg">
+                No sliders configured for this section.
+              </p>
+              <p className="text-gray-500 text-sm mt-2">
+                Please configure sliders in the campaign builder.
+              </p>
+            </div>
+          ) : (
+            sliders.map((slider, sliderIndex) => (
             <div key={slider.id} className="space-y-6">
               
-              {/* Question */}
-              <div className="text-center space-y-2">
-                <h1 className={cn(
-                  'font-bold text-white leading-tight',
-                  deviceInfo?.type === 'mobile' ? 'text-2xl' : 'text-4xl'
+              {/* Slider Label */}
+              <div className="text-left">
+                <h3 className={cn(
+                  'font-medium text-white',
+                  deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl'
                 )}>
-                  {slider.question}
-                </h1>
-                
-                {slider.subheading && (
-                  <p className={cn(
-                    'text-gray-300',
-                    deviceInfo?.type === 'mobile' ? 'text-base' : 'text-xl'
-                  )}>
-                    {slider.subheading}
-                  </p>
-                )}
+                  {slider.label}
+                  {slider.required && <span className="text-red-400 ml-1">*</span>}
+                </h3>
               </div>
 
               {/* Slider Interface */}
@@ -209,7 +231,7 @@ export function MultipleSlidersSection({
                 <div className="border-t border-gray-700 pt-8" />
               )}
             </div>
-          ))}
+          )))}
         </div>
       </div>
 
@@ -219,7 +241,7 @@ export function MultipleSlidersSection({
         onNext={handleContinue}
         onPrevious={onPrevious}
         actionButton={{
-          label: buttonLabel,
+          label: 'Continue',
           onClick: handleContinue,
           disabled: !canContinue()
         }}

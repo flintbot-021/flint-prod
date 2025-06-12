@@ -6,7 +6,7 @@ import { SectionRendererProps } from '../types'
 import { getMobileClasses } from '../utils'
 import { cn } from '@/lib/utils'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
-import { titleToVariableName, isQuestionSection, extractResponseValue } from '@/lib/utils/section-variables'
+import { titleToVariableName, isQuestionSection, extractResponseValue, buildVariablesFromInputs } from '@/lib/utils/section-variables'
 
 
 
@@ -68,20 +68,10 @@ export function OutputSection({
   const variableMap = useMemo(() => {
     const map: Record<string, any> = {}
     
-    // Add input variables from question sections
-    const questionSections = sections.filter(s => 
-      isQuestionSection(s.type) && s.title
-    )
-    
-    questionSections.forEach(sec => {
-      if (sec.title) {
-        const variableName = titleToVariableName(sec.title)
-        const response = userInputs[sec.id]
-        
-        if (response) {
-          map[variableName] = extractResponseValue(response, sec)
-        }
-      }
+    // Use the same logic as buildVariablesFromInputs to handle all section types including Multiple Sliders
+    const inputVariables = buildVariablesFromInputs(sections, userInputs)
+    Object.entries(inputVariables).forEach(([key, value]) => {
+      map[key] = value
     })
     
     // Add AI output variables from stored results
@@ -91,6 +81,8 @@ export function OutputSection({
         map[key] = value
       })
     }
+    
+    console.log('🎯 OutputSection variableMap:', map)
     
     return map
   }, [sections, userInputs])
