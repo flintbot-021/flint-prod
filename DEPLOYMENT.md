@@ -22,6 +22,16 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 OPENAI_API_KEY=sk-...
 ```
 
+#### Error Reporting & Monitoring (Optional but Recommended)
+```
+NEXT_PUBLIC_SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
+```
+
+#### Performance Tracking (Optional)
+```
+NEXT_PUBLIC_ENABLE_PERFORMANCE_TRACKING=true
+```
+
 #### Node Environment
 ```
 NODE_ENV=production

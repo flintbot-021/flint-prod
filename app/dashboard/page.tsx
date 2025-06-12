@@ -1,10 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { UserProfile } from '@/components/ui/user-profile'
 import { useAuth } from '@/lib/auth-context'
 import { 
@@ -17,47 +16,26 @@ import {
   deleteCampaign
 } from '@/lib/data-access'
 import { Campaign, Profile, CampaignStatus } from '@/lib/types/database'
-import { ExportButton } from '@/components/export'
+import { LazyExportButton } from '@/components/export/lazy-export-button'
 import { ExportHistory } from '@/components/export/ExportHistory'
 import { getDashboardExportData, getDashboardExportFields } from '@/lib/export'
+import { useConfirmationDialog } from '@/components/ui/confirmation-dialog'
+import { CampaignCard } from '@/components/dashboard/campaign-card'
+import type { CampaignWithStats } from '@/components/dashboard/campaign-card'
+import { StatsCard } from '@/components/dashboard/stats-card'
 import { 
-  BarChart3, 
   Users, 
   TrendingUp, 
-  Eye,
   Target,
-  Calendar,
-  Download,
   Plus,
   ArrowUpRight,
-  ArrowDownRight,
   Activity,
   Clock,
-  CheckCircle,
   Settings,
-  Edit,
-  Trash2,
-  ExternalLink,
-  Hammer,
-  MoreVertical,
-  Archive,
   Globe,
+  Archive,
   FileText
 } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from '@/components/ui/dropdown-menu'
-
-interface CampaignWithStats extends Campaign {
-  leadCount: number
-  completionRate: number
-  viewCount: number
-  lastActivity?: string
-}
 
 interface DashboardStats {
   totalCampaigns: number
@@ -80,6 +58,7 @@ export default function Dashboard() {
   const { user, loading, signOut } = useAuth()
   const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
+  const { showConfirmation, ConfirmationDialog } = useConfirmationDialog()
   const [campaigns, setCampaigns] = useState<CampaignWithStats[]>([])
   const [stats, setStats] = useState<DashboardStats>({
     totalCampaigns: 0,
@@ -224,7 +203,7 @@ export default function Dashboard() {
   }
 
   // Campaign management functions
-  const handleStatusChange = async (campaignId: string, newStatus: CampaignStatus) => {
+  const handleStatusChange = useCallback(async (campaignId: string, newStatus: CampaignStatus) => {
     try {
       setError(null)
       
@@ -244,111 +223,35 @@ export default function Dashboard() {
       console.error('Error updating campaign status:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
     }
-  }
+  }, [])
 
-  const handleDeleteCampaign = async (campaignId: string, campaignName: string) => {
-    // TODO: Replace with ConfirmationDialog component for better UX
-    if (!confirm(`Are you sure you want to delete "${campaignName}"? This action cannot be undone.`)) {
-      return
-    }
+  const handleDeleteCampaign = useCallback(async (campaignId: string, campaignName: string) => {
+    showConfirmation({
+      title: 'Delete Campaign',
+      description: `Are you sure you want to delete "${campaignName}"? This action cannot be undone and all associated data will be permanently removed.`,
+      confirmText: 'Delete Campaign',
+      variant: 'destructive',
+      onConfirm: async () => {
+        try {
+          setError(null)
+          
+          const result = await deleteCampaign(campaignId)
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to delete campaign')
+          }
 
-    try {
-      setError(null)
-      
-      const result = await deleteCampaign(campaignId)
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to delete campaign')
+          await loadDashboardData()
+        } catch (err) {
+          console.error('Error deleting campaign:', err)
+          setError(err instanceof Error ? err.message : 'An error occurred')
+        }
       }
-
-      await loadDashboardData()
-    } catch (err) {
-      console.error('Error deleting campaign:', err)
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    }
-  }
-
-
-
-  const getStatusColor = (status: CampaignStatus): string => {
-    switch (status) {
-      case 'published':
-        return 'bg-green-100 text-green-800 border-green-200'
-      case 'draft':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'archived':
-        return 'bg-accent text-gray-800 border-border'
-      default:
-        return 'bg-accent text-gray-800 border-border'
-    }
-  }
-
-  const getStatusIcon = (status: CampaignStatus) => {
-    switch (status) {
-      case 'published':
-        return <Activity className="h-3 w-3" />
-      case 'draft':
-        return <Clock className="h-3 w-3" />
-      case 'archived':
-        return <Settings className="h-3 w-3" />
-      default:
-        return <Clock className="h-3 w-3" />
-    }
-  }
-
-  const getStatusActions = (campaign: CampaignWithStats) => {
-    const actions = []
-
-    if (campaign.status === 'draft') {
-      actions.push({
-        label: 'Publish Campaign',
-        icon: Globe,
-        action: () => handleStatusChange(campaign.id, 'published'),
-        variant: 'default' as const
-      })
-      actions.push({
-        label: 'Archive Campaign',
-        icon: Archive,
-        action: () => handleStatusChange(campaign.id, 'archived'),
-        variant: 'secondary' as const
-      })
-    } else if (campaign.status === 'published') {
-      actions.push({
-        label: 'Unpublish (Draft)',
-        icon: FileText,
-        action: () => handleStatusChange(campaign.id, 'draft'),
-        variant: 'secondary' as const
-      })
-      actions.push({
-        label: 'Archive Campaign',
-        icon: Archive,
-        action: () => handleStatusChange(campaign.id, 'archived'),
-        variant: 'secondary' as const
-      })
-    } else if (campaign.status === 'archived') {
-      actions.push({
-        label: 'Restore to Draft',
-        icon: FileText,
-        action: () => handleStatusChange(campaign.id, 'draft'),
-        variant: 'secondary' as const
-      })
-      actions.push({
-        label: 'Publish Campaign',
-        icon: Globe,
-        action: () => handleStatusChange(campaign.id, 'published'),
-        variant: 'default' as const
-      })
-    }
-
-    return actions
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
     })
-  }
+  }, [showConfirmation])
+
+
+
+
 
   const canCreateCampaign = true // Removed campaign limit enforcement
 
@@ -421,7 +324,7 @@ export default function Dashboard() {
                   ))}
             </div>
             <div className="flex items-center space-x-3">
-              <ExportButton
+              <LazyExportButton
                 data={exportData}
                 source="dashboard"
                 title="Export Dashboard Analytics"
@@ -469,63 +372,46 @@ export default function Dashboard() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            {/* Total Campaigns */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Campaigns</CardTitle>
-                <Target className="h-4 w-4 text-blue-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {loadingStats ? '...' : stats.totalCampaigns}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">
-                    {campaigns.filter(c => c.status === 'published').length} published
-                  </span>
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Total Leads */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
-                <Users className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {loadingStats ? '...' : stats.totalLeads.toLocaleString()}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">
-                    <ArrowUpRight className="h-3 w-3 inline" />
-                    12%
-                  </span> from last period
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Completion Rate */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
-                <TrendingUp className="h-4 w-4 text-purple-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {loadingStats ? '...' : `${stats.completionRate.toFixed(1)}%`}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">
-                    <ArrowUpRight className="h-3 w-3 inline" />
-                    3.2%
-                  </span> improvement
-                </p>
-              </CardContent>
-            </Card>
-
-
+            <StatsCard
+              title="Total Campaigns"
+              value={stats.totalCampaigns}
+              subtitle={
+                <span className="text-green-600">
+                  {campaigns.filter(c => c.status === 'published').length} published
+                </span>
+              }
+              icon={Target}
+              iconColor="text-blue-600"
+              loading={loadingStats}
+            />
+            
+            <StatsCard
+              title="Total Leads"
+              value={stats.totalLeads.toLocaleString()}
+              subtitle={
+                <span className="text-green-600">
+                  <ArrowUpRight className="h-3 w-3 inline" />
+                  12% from last period
+                </span>
+              }
+              icon={Users}
+              iconColor="text-green-600"
+              loading={loadingStats}
+            />
+            
+            <StatsCard
+              title="Completion Rate"
+              value={`${stats.completionRate.toFixed(1)}%`}
+              subtitle={
+                <span className="text-green-600">
+                  <ArrowUpRight className="h-3 w-3 inline" />
+                  3.2% improvement
+                </span>
+              }
+              icon={TrendingUp}
+              iconColor="text-purple-600"
+              loading={loadingStats}
+            />
           </div>
 
 
@@ -567,172 +453,14 @@ export default function Dashboard() {
               {!loadingStats && campaigns.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {campaigns.map((campaign) => (
-                    <Card key={campaign.id} className="group hover:shadow-lg transition-all duration-200 border-border/50 hover:border-border">
-                      <CardHeader className="pb-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <CardTitle className="text-lg font-semibold truncate mb-1 group-hover:text-primary transition-colors">
-                              {campaign.name}
-                            </CardTitle>
-                            <CardDescription className="text-sm line-clamp-2">
-                              {campaign.description || 'No description provided'}
-                            </CardDescription>
-                          </div>
-                          <div className="flex flex-col items-end gap-2">
-                              {campaign.status === 'published' ? (
-                              <Badge 
-                                variant="default"
-                                className={`text-xs font-medium ${
-                                  campaign.is_active
-                                    ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' 
-                                    : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
-                                }`}
-                              >
-                                <div className={`w-2 h-2 rounded-full mr-1.5 ${campaign.is_active ? 'bg-green-500' : 'bg-orange-500'}`} />
-                                <span>{campaign.is_active ? 'Live' : 'Inactive'}</span>
-                              </Badge>
-                            ) : (
-                              <Badge 
-                                variant="secondary"
-                                className="text-xs font-medium bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
-                              >
-                                {getStatusIcon(campaign.status)}
-                                <span className="ml-1 capitalize">{campaign.status}</span>
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </CardHeader>
-
-                      <CardContent className="space-y-4">
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="text-center p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors">
-                            <Eye className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
-                            <p className="text-lg font-bold text-foreground">{campaign.viewCount}</p>
-                            <p className="text-xs text-muted-foreground font-medium">Views</p>
-                    </div>
-                          <div className="text-center p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors">
-                            <Users className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
-                            <p className="text-lg font-bold text-foreground">{campaign.leadCount}</p>
-                            <p className="text-xs text-muted-foreground font-medium">Leads</p>
-                    </div>
-                          <div className="text-center p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors">
-                            <TrendingUp className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
-                            <p className="text-lg font-bold text-foreground">
-                              {campaign.completionRate.toFixed(0)}%
-                            </p>
-                            <p className="text-xs text-muted-foreground font-medium">Rate</p>
-                      </div>
-                        </div>
-
-                        {/* Last Updated */}
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 rounded-md px-3 py-2">
-                          <Calendar className="h-4 w-4" />
-                          <span>Updated {formatDate(campaign.updated_at)}</span>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex items-center justify-between pt-2">
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                router.push(`/dashboard/campaigns/${campaign.id}/builder`)
-                              }}
-                              className="h-8 px-3"
-                            >
-                              <Hammer className="h-3 w-3 mr-1" />
-                              Build
-                            </Button>
-                            
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="h-8 w-8 p-0"
-                                >
-                                  <MoreVertical className="h-3 w-3" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-44">
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    router.push(`/dashboard/campaigns/${campaign.id}/edit`)
-                                  }}
-                                  className="flex items-center gap-2 text-sm"
-                                >
-                                  <Edit className="h-4 w-4" />
-                                  <span>Edit Campaign</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                {getStatusActions(campaign).map((action, index) => (
-                                  <DropdownMenuItem
-                                    key={index}
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      action.action()
-                                    }}
-                                    className="flex items-center gap-2 text-sm"
-                                  >
-                                    <action.icon className="h-4 w-4" />
-                                    <span>{action.label}</span>
-                                  </DropdownMenuItem>
-                                ))}
-                                {getStatusActions(campaign).length > 0 && <DropdownMenuSeparator />}
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleDeleteCampaign(campaign.id, campaign.name)
-                                  }}
-                                  className="flex items-center gap-2 text-sm text-red-600 focus:text-red-600"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span>Delete Campaign</span>
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                      </div>
-                          
-                          {campaign.status === 'published' && campaign.published_url && (
-                            <Button
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                const liveUrl = `${window.location.origin}/c/${campaign.published_url}`
-                                window.open(liveUrl, '_blank')
-                              }}
-                              className="h-8 px-3"
-                            >
-                              <ExternalLink className="h-3 w-3 mr-1" />
-                              View Live
-                            </Button>
-                          )}
-                          
-                          {campaign.status !== 'published' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                router.push(`/dashboard/campaigns/${campaign.id}`)
-                              }}
-                              className="h-8 px-3"
-                            >
-                              <BarChart3 className="h-3 w-3 mr-1" />
-                              Details
-                      </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <CampaignCard
+                      key={campaign.id}
+                      campaign={campaign}
+                      onStatusChange={handleStatusChange}
+                      onDelete={handleDeleteCampaign}
+                    />
                   ))}
-                    </div>
+                </div>
               )}
 
               {/* Empty State */}
@@ -762,6 +490,9 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+      
+      {/* Confirmation Dialog */}
+      {ConfirmationDialog}
     </div>
   )
 } 
