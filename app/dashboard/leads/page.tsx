@@ -560,7 +560,7 @@ export default function LeadsPage() {
                     Leads will appear here once people start completing your campaigns.
                   </p>
                   <Button
-                    onClick={() => router.push('/dashboard/campaigns')}
+                    onClick={() => router.push('/dashboard')}
                     size="sm"
                   >
                     View Your Campaigns
