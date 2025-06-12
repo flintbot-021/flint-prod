@@ -13,6 +13,8 @@ import {
   SliderSection,
   MultipleSlidersSection,
   InfoSection,
+  BasicContentSection,
+  HeroContentSection,
   LogicSection,
   OutputSection,
   DynamicRedirectSection,
@@ -58,6 +60,8 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     (section.configuration || {}) as SectionConfiguration, 
     [section.configuration]
   )
+
+
 
   // Basic device info detection (can be enhanced by pages if needed) - memoized
   const deviceInfo = useMemo(() => {
@@ -138,11 +142,67 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     case 'question-slider-multiple':
       return <MultipleSlidersSection {...enhancedProps} />
     
+    // Direct routing for content sections - no detection needed!
+    case 'content-hero':
+      return <HeroContentSection {...enhancedProps} />
+    
+    case 'content-basic':
+      return <BasicContentSection {...enhancedProps} />
+    
     case 'info':
       // Check if this is actually a Multiple Sliders section that was incorrectly saved as 'info'
       if ((config as any).sliders && Array.isArray((config as any).sliders)) {
         return <MultipleSlidersSection {...enhancedProps} />
       }
+      
+      // Check if this is actually a Hero section (legacy sections saved as 'info')
+      const configAny = config as any
+      
+      // Hero sections are identified by having overlay properties OR being explicitly hero-like
+      const isHeroSection = !!(
+        configAny.overlayColor || 
+        configAny.overlayOpacity !== undefined || 
+        configAny.showButton !== undefined || 
+        configAny.buttonText ||
+        // Only consider image as hero indicator if it has overlay properties
+        (configAny.image && (configAny.overlayColor || configAny.overlayOpacity !== undefined))
+      )
+      
+      // Check if this is actually a Basic content section (legacy sections saved as 'info')
+      const isBasicSection = !!(
+        configAny.textAlignment || 
+        configAny.subtitle ||
+        (configAny.content && typeof configAny.content === 'string') ||
+        // Basic sections can have images but without overlay properties
+        (configAny.image && !configAny.overlayColor && configAny.overlayOpacity === undefined)
+      )
+      
+      // Debug the detection logic
+      console.log('🔍 SECTION DETECTION DEBUG:', {
+        sectionTitle: section.title,
+        sectionType: section.type,
+        hasOverlayColor: !!configAny.overlayColor,
+        hasOverlayOpacity: configAny.overlayOpacity !== undefined,
+        hasShowButton: configAny.showButton !== undefined,
+        hasButtonText: !!configAny.buttonText,
+        hasImage: !!configAny.image,
+        hasTextAlignment: !!configAny.textAlignment,
+        hasSubtitle: !!configAny.subtitle,
+        hasContent: !!(configAny.content && typeof configAny.content === 'string'),
+        isHeroSection,
+        isBasicSection,
+        routingTo: isHeroSection ? 'HERO' : isBasicSection ? 'BASIC' : 'INFO'
+      })
+      
+      if (isHeroSection) {
+        return <HeroContentSection {...enhancedProps} />
+      }
+      
+      if (isBasicSection) {
+        return <BasicContentSection {...enhancedProps} />
+      }
+      
+      // Default to generic info section
       return <InfoSection {...enhancedProps} />
     
     case 'logic':
