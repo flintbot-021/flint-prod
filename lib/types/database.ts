@@ -25,7 +25,9 @@ export type SectionType =
   | 'logic'
   | 'output'
   | 'dynamic_redirect'
-  | 'html_embed';
+  | 'html_embed'
+  | 'content-hero'
+  | 'content-basic';
 
 export type ResponseType = 
   | 'text'
@@ -396,6 +398,26 @@ export interface HtmlEmbedConfiguration extends BaseSectionConfiguration {
 }
 
 /**
+ * Hero content section configuration
+ */
+export interface HeroContentConfiguration extends BaseSectionConfiguration {
+  backgroundImage?: string;
+  overlayColor?: string;
+  overlayOpacity?: number;
+  buttonText?: string;
+  showButton?: boolean;
+}
+
+/**
+ * Basic content section configuration
+ */
+export interface BasicContentConfiguration extends BaseSectionConfiguration {
+  content?: string;
+  image?: string;
+  textAlignment?: 'left' | 'center' | 'right';
+}
+
+/**
  * Union type for all section configurations
  */
 export type SectionConfiguration = 
@@ -407,7 +429,9 @@ export type SectionConfiguration =
   | LogicConfiguration
   | OutputConfiguration
   | DynamicRedirectConfiguration
-  | HtmlEmbedConfiguration;
+  | HtmlEmbedConfiguration
+  | HeroContentConfiguration
+  | BasicContentConfiguration;
 
 /**
  * Variable configuration for different variable types

@@ -13,6 +13,8 @@ import {
   SliderSection,
   MultipleSlidersSection,
   InfoSection,
+  BasicContentSection,
+  HeroContentSection,
   LogicSection,
   OutputSection,
   DynamicRedirectSection,
@@ -58,6 +60,17 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     (section.configuration || {}) as SectionConfiguration, 
     [section.configuration]
   )
+
+  // Debug logging to see what we're actually receiving
+  console.log('SectionRenderer DEBUG:', {
+    sectionType: section.type,
+    sectionId: section.id,
+    sectionTitle: section.title,
+    sectionConfiguration: section.configuration,
+    hasBackgroundImage: !!(section.configuration as any)?.backgroundImage,
+    hasButtonText: !!(section.configuration as any)?.buttonText,
+    hasOverlayColor: !!(section.configuration as any)?.overlayColor
+  })
 
   // Basic device info detection (can be enhanced by pages if needed) - memoized
   const deviceInfo = useMemo(() => {
@@ -138,11 +151,50 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     case 'question-slider-multiple':
       return <MultipleSlidersSection {...enhancedProps} />
     
+    // Direct routing for content sections - no detection needed!
+    case 'content-hero':
+      return <HeroContentSection {...enhancedProps} />
+    
+    case 'content-basic':
+      return <BasicContentSection {...enhancedProps} />
+    
     case 'info':
       // Check if this is actually a Multiple Sliders section that was incorrectly saved as 'info'
       if ((config as any).sliders && Array.isArray((config as any).sliders)) {
         return <MultipleSlidersSection {...enhancedProps} />
       }
+      
+      // Check if this is actually a Hero section (legacy sections saved as 'info')
+      const configAny = config as any
+      const isHeroSection = !!(
+        configAny.backgroundImage || 
+        configAny.image || // Background image might be stored as 'image'
+        configAny.overlayColor || 
+        configAny.overlayOpacity !== undefined || 
+        configAny.showButton !== undefined || 
+        configAny.buttonText
+      )
+      
+      if (isHeroSection) {
+        console.log('Detected legacy hero section, routing to HeroContentSection')
+        return <HeroContentSection {...enhancedProps} />
+      }
+      
+      // Check if this is actually a Basic content section (legacy sections saved as 'info')
+      const isBasicSection = !!(
+        configAny.textAlignment || 
+        configAny.image || 
+        configAny.subtitle ||
+        (configAny.content && typeof configAny.content === 'string')
+      )
+      
+      if (isBasicSection) {
+        console.log('Detected legacy basic section, routing to BasicContentSection')
+        return <BasicContentSection {...enhancedProps} />
+      }
+      
+      // Default to generic info section
+      console.log('Using generic InfoSection')
       return <InfoSection {...enhancedProps} />
     
     case 'logic':
