@@ -15,12 +15,14 @@ import {
   ArrowLeft, 
   ArrowRight, 
   Check, 
-  Settings, 
-  Palette, 
-  Building,
   Save,
-  AlertCircle
+  AlertCircle,
+  Upload,
+  X
 } from 'lucide-react'
+
+// Import logo upload functionality
+import { uploadFiles } from '@/lib/supabase/storage'
 
 interface CampaignFormData {
   name: string
@@ -60,6 +62,9 @@ export default function CreateCampaignPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const [formData, setFormData] = useState<CampaignFormData>({
     name: '',
     description: '',
@@ -146,6 +151,77 @@ export default function CreateCampaignPage() {
     }
   }
 
+  // Logo upload handlers
+  const handleLogoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+      if (!validTypes.includes(file.type)) {
+        setError('Please select a valid image file (JPEG, PNG, GIF, or WebP)')
+        return
+      }
+
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Logo file must be less than 5MB')
+        return
+      }
+
+      setLogoFile(file)
+      
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setLogoPreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+      
+      setError(null)
+    }
+  }
+
+  const handleLogoRemove = () => {
+    setLogoFile(null)
+    setLogoPreview(null)
+    
+    // Remove logo URL from settings
+    updateSettings({
+      branding: {
+        ...formData.settings.branding,
+        logo_url: undefined
+      }
+    })
+  }
+
+  const uploadLogo = async (campaignId: string): Promise<string | null> => {
+    if (!logoFile) return null
+
+    try {
+      setIsUploadingLogo(true)
+      
+      // Upload to Supabase storage with campaign-specific path
+      const uploadedFiles = await uploadFiles(
+        [logoFile],
+        campaignId,
+        'branding', // section ID for organizing
+        undefined, // no lead ID for logos
+        undefined  // no response ID for logos
+      )
+
+      if (uploadedFiles.length > 0) {
+        return uploadedFiles[0].url
+      }
+      
+      return null
+    } catch (error) {
+      console.error('Logo upload failed:', error)
+      throw new Error('Failed to upload logo')
+    } finally {
+      setIsUploadingLogo(false)
+    }
+  }
+
   const handleSubmit = async () => {
     if (!profile) return
 
@@ -155,6 +231,7 @@ export default function CreateCampaignPage() {
       setIsSubmitting(true)
       setError(null)
 
+      // First create the campaign
       const result = await createCampaignWithUsageTracking({
         name: formData.name,
         description: formData.description,
@@ -169,8 +246,47 @@ export default function CreateCampaignPage() {
         throw new Error(result.error || 'Failed to create campaign')
       }
 
+      const campaignId = result.data?.id
+      if (!campaignId) {
+        throw new Error('Campaign created but ID not returned')
+      }
+
+      // Upload logo if one was selected
+      if (logoFile) {
+        try {
+          const logoUrl = await uploadLogo(campaignId)
+          if (logoUrl) {
+            // Update campaign settings with logo URL
+            const updatedSettings = {
+              ...formData.settings,
+              branding: {
+                ...formData.settings.branding,
+                logo_url: logoUrl
+              }
+            }
+
+            // Update the campaign with logo URL
+            const { updateCampaign } = await import('@/lib/data-access')
+            const updateResult = await updateCampaign(campaignId, {
+              settings: updatedSettings
+            })
+
+            if (!updateResult.success) {
+              console.error('Failed to save logo URL to campaign:', updateResult.error)
+              // Don't fail the entire flow, just log the error
+            } else {
+              console.log('Logo uploaded and saved successfully:', logoUrl)
+            }
+          }
+        } catch (logoError) {
+          console.error('Logo upload failed:', logoError)
+          // Don't fail the entire campaign creation for logo upload failure
+          setError('Campaign created successfully, but logo upload failed. You can add a logo later.')
+        }
+      }
+
       // Redirect to the campaign builder
-      router.push(`/dashboard/campaigns/${result.data?.id}/builder`)
+      router.push(`/dashboard/campaigns/${campaignId}/builder`)
     } catch (err) {
       console.error('Error creating campaign:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -330,6 +446,60 @@ export default function CreateCampaignPage() {
 
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Branding Options</h3>
+              
+              {/* Logo Upload Section */}
+              <div className="space-y-3">
+                <Label>Campaign Logo</Label>
+                
+                {!logoPreview ? (
+                  <div className="border-2 border-dashed border-input rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer"
+                       onClick={() => document.getElementById('logo-upload')?.click()}>
+                    <div className="flex flex-col items-center space-y-2">
+                      <Upload className="h-8 w-8 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Click to upload logo</p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG, GIF, WebP up to 5MB</p>
+                      </div>
+                    </div>
+                    <input
+                      id="logo-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      onChange={handleLogoSelect}
+                      className="hidden"
+                    />
+                  </div>
+                ) : (
+                  <div className="relative border rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-center space-x-3">
+                      <img 
+                        src={logoPreview} 
+                        alt="Logo preview" 
+                        className="w-16 h-16 object-contain bg-white border rounded"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{logoFile?.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {logoFile && (logoFile.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={handleLogoRemove}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                
+                <p className="text-xs text-muted-foreground">
+                  Your logo will appear on campaign pages. Recommended size: 200x60px or similar aspect ratio.
+                </p>
+              </div>
+
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -396,7 +566,21 @@ export default function CreateCampaignPage() {
                   <CardTitle className="text-lg">Theme Preview</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
+                    {/* Logo Preview */}
+                    {logoPreview && (
+                      <div>
+                        <span className="text-sm font-medium">Logo:</span>
+                        <div className="mt-1 p-2 bg-gray-50 border rounded flex items-center justify-center h-16">
+                          <img 
+                            src={logoPreview} 
+                            alt="Logo preview" 
+                            className="max-h-12 max-w-32 object-contain"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="flex items-center space-x-2">
                       <div 
                         className="w-6 h-6 rounded border"
@@ -425,6 +609,10 @@ export default function CreateCampaignPage() {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-1 text-sm">
+                  <li>
+                    <Check className="h-4 w-4 inline mr-2 text-green-600" />
+                    Logo: {logoFile ? `${logoFile.name} (${(logoFile.size / 1024).toFixed(1)} KB)` : 'None'}
+                  </li>
                   <li>
                     <Check className="h-4 w-4 inline mr-2 text-green-600" />
                     {formData.settings.branding?.show_powered_by ? 'Show' : 'Hide'} Flint attribution
@@ -573,13 +761,13 @@ export default function CreateCampaignPage() {
               ) : (
                 <Button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || !formData.name.trim()}
+                  disabled={isSubmitting || isUploadingLogo || !formData.name.trim()}
                   className="min-w-[120px]"
                 >
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Creating...
+                      {isUploadingLogo ? 'Uploading Logo...' : 'Creating...'}
                     </>
                   ) : (
                     <>

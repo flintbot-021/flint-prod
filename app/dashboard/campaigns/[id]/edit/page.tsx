@@ -20,8 +20,12 @@ import {
   Building,
   Save,
   AlertCircle,
-  Loader2
+  Loader2,
+  Upload,
+  X,
+  Image as ImageIcon
 } from 'lucide-react'
+import { uploadFiles, UploadedFileInfo } from '@/lib/supabase/storage'
 
 interface CampaignFormData {
   name: string
@@ -66,6 +70,9 @@ export default function EditCampaignPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const [formData, setFormData] = useState<CampaignFormData>({
     name: '',
     description: '',
@@ -141,6 +148,12 @@ export default function EditCampaignPage() {
           }
         }
       })
+
+      // Set existing logo preview if available
+      const existingLogoUrl = campaignResult.data.settings?.branding?.logo_url
+      if (existingLogoUrl) {
+        setLogoPreview(existingLogoUrl)
+      }
     } catch (err) {
       console.error('Error loading campaign:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -192,6 +205,63 @@ export default function EditCampaignPage() {
     }
   }
 
+  // Logo upload handlers
+  const handleLogoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      // Validate file type
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+      if (!validTypes.includes(file.type)) {
+        setError('Please select a valid image file (JPEG, PNG, GIF, or WebP)')
+        return
+      }
+
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Logo file must be less than 5MB')
+        return
+      }
+
+      setLogoFile(file)
+      
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setLogoPreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+      setError(null)
+    }
+  }
+
+  const handleRemoveLogo = () => {
+    setLogoFile(null)
+    setLogoPreview(null)
+    // Clear logo from form data
+    updateSettings({
+      branding: {
+        ...formData.settings.branding,
+        logo_url: undefined
+      }
+    })
+  }
+
+  const uploadLogo = async (campaignId: string): Promise<string | null> => {
+    if (!logoFile) return null
+
+    setIsUploadingLogo(true)
+    try {
+      // uploadFiles is already imported at the top
+      const uploadedFiles = await uploadFiles([logoFile], campaignId, 'logo')
+      return uploadedFiles[0]?.url || null
+    } catch (error) {
+      console.error('Logo upload failed:', error)
+      throw error
+    } finally {
+      setIsUploadingLogo(false)
+    }
+  }
+
   const handleSubmit = async () => {
     if (!campaign) return
 
@@ -199,10 +269,32 @@ export default function EditCampaignPage() {
       setIsSubmitting(true)
       setError(null)
 
+      let finalSettings = { ...formData.settings }
+
+      // Upload logo if a new one was selected
+      if (logoFile) {
+        try {
+          const logoUrl = await uploadLogo(campaign.id)
+          if (logoUrl) {
+            finalSettings = {
+              ...finalSettings,
+              branding: {
+                ...finalSettings.branding,
+                logo_url: logoUrl
+              }
+            }
+          }
+        } catch (logoError) {
+          console.error('Logo upload failed:', logoError)
+          // Don't fail the entire update for logo upload failure
+          setError('Campaign updated successfully, but logo upload failed. Please try uploading the logo again.')
+        }
+      }
+
       const result = await updateCampaign(campaign.id, {
         name: formData.name,
         description: formData.description,
-        settings: formData.settings
+        settings: finalSettings
       })
 
       if (!result.success) {
@@ -370,6 +462,78 @@ export default function EditCampaignPage() {
 
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Branding Options</h3>
+              
+              {/* Logo Upload Section */}
+              <div className="space-y-3">
+                <Label>Campaign Logo</Label>
+                {logoPreview || formData.settings.branding?.logo_url ? (
+                  <div className="space-y-3">
+                    <div className="relative inline-block">
+                      <img
+                        src={logoPreview || formData.settings.branding?.logo_url}
+                        alt="Campaign logo"
+                        className="h-20 w-auto max-w-[200px] object-contain border border-input rounded-lg"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleRemoveLogo}
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('logo-upload')?.click()}
+                      className="text-sm"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Change Logo
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-input rounded-lg p-6 text-center">
+                    <div className="space-y-3">
+                      <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center">
+                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Upload your campaign logo</p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 5MB</p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => document.getElementById('logo-upload')?.click()}
+                        disabled={isUploadingLogo}
+                      >
+                        {isUploadingLogo ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Choose File
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <input
+                  id="logo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoSelect}
+                  className="hidden"
+                />
+              </div>
+
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -500,6 +664,21 @@ export default function EditCampaignPage() {
                   <div>
                     <Label className="text-sm font-medium text-muted-foreground">Font Family</Label>
                     <p className="text-sm">{formData.settings.theme?.font_family}</p>
+                  </div>
+                  
+                  <div>
+                    <Label className="text-sm font-medium text-muted-foreground">Campaign Logo</Label>
+                    {logoPreview || formData.settings.branding?.logo_url ? (
+                      <div className="mt-1">
+                        <img
+                          src={logoPreview || formData.settings.branding?.logo_url}
+                          alt="Campaign logo"
+                          className="h-8 w-auto max-w-[100px] object-contain border border-input rounded"
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No logo uploaded</p>
+                    )}
                   </div>
                   
                   <div>
@@ -741,13 +920,13 @@ export default function EditCampaignPage() {
               ) : (
                 <Button
                   onClick={handleSubmit}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isUploadingLogo}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
+                      {isUploadingLogo ? 'Uploading logo...' : 'Saving...'}
                     </>
                   ) : (
                     <>

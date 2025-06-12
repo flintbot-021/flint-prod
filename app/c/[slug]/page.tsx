@@ -39,7 +39,7 @@ import {
 } from '@/lib/variable-system'
 
 // Import NEW shared components and hooks
-import { SectionRenderer as SharedSectionRenderer } from '@/components/campaign-renderer'
+import { SectionRenderer as SharedSectionRenderer, CampaignHeader } from '@/components/campaign-renderer'
 import { useCampaignRenderer } from '@/hooks/useCampaignRenderer'
 import { 
   useDeviceInfo, 
@@ -1416,11 +1416,14 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // =============================================================================
 
   return (
-    <div className="h-screen bg-muted">
+    <div className="h-screen bg-muted flex flex-col">
+      {/* Campaign Header with Logo */}
+      {campaign && <CampaignHeader campaign={campaign} />}
+      
       {/* Section Content */}
       {campaignRenderer.currentSection < sections.length && (
         <div key={campaignRenderer.currentSection} className={cn(
-          "h-full transition-all duration-300 ease-in-out",
+          "flex-1 transition-all duration-300 ease-in-out",
           isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0"
         )}>
           {/* Use SharedSectionRenderer for consistent experience */}
