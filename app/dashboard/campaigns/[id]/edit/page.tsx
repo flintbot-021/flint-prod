@@ -570,14 +570,14 @@ export default function EditCampaignPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-6">
               <div className="flex items-center space-x-4">
-                            <Button
-              variant="ghost"
+                <Button
+                  variant="ghost"
               onClick={() => router.push('/dashboard')}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
-            </Button>
+                </Button>
                 <h1 className="text-2xl font-bold text-foreground">Edit Campaign</h1>
               </div>
               <UserProfile variant="compact" />

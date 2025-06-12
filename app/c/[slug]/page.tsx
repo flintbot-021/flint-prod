@@ -191,6 +191,72 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     sections: sections,
     initialSection: 0, // Start at 0 like preview page
     campaignId: campaign?.id,  // Pass campaign ID for file uploads
+    onLeadCreate: async (leadData: any) => {
+      // Create lead when capture section is completed
+      if (!campaign) {
+        console.error('❌ Cannot create lead: campaign not loaded')
+        return undefined
+      }
+
+      try {
+        // Extract email and name from the lead data
+        // leadData could be in format: { name: "John", email: "john@example.com", sectionId: { name: "John", email: "john@example.com" } }
+        let email = leadData.email
+        let name = leadData.name
+        let phone = leadData.phone || null
+
+        // If not found at top level, check if it's nested under a section ID
+        if (!email || !name) {
+          const sectionKeys = Object.keys(leadData).filter(key => key !== 'name' && key !== 'email' && key !== 'phone')
+          if (sectionKeys.length > 0) {
+            const sectionData = leadData[sectionKeys[0]]
+            if (sectionData && typeof sectionData === 'object') {
+              email = email || sectionData.email
+              name = name || sectionData.name
+              phone = phone || sectionData.phone || null
+            }
+          }
+        }
+
+        if (!email) {
+          console.error('❌ Cannot create lead: email is required')
+          return undefined
+        }
+
+        // Check if lead already exists for this session
+        const existingLeadResult = await getLeadBySession(sessionId)
+        if (existingLeadResult.success && existingLeadResult.data) {
+          console.log('✅ Lead already exists for this session')
+          return existingLeadResult.data.id
+        }
+
+        // Find the capture section ID
+        const captureSection = sections.find(section => section.type === 'capture')
+        
+        // Create the lead
+        const leadResult = await createLead({
+          session_id: sessionId,
+          campaign_id: campaign.id,
+          email: email,
+          name: name || null,
+          phone: phone,
+          converted_at: new Date().toISOString(),
+          conversion_section_id: captureSection?.id || null,
+          metadata: leadData
+        })
+
+        if (leadResult.success) {
+          console.log('✅ Lead created successfully:', leadResult.data)
+          return leadResult.data?.id
+        } else {
+          console.error('❌ Failed to create lead:', leadResult.error)
+          return undefined
+        }
+      } catch (error) {
+        console.error('❌ Error in onLeadCreate:', error)
+        return undefined
+      }
+    },
     onProgressUpdate: (progress, sectionIndex) => {
       // Update session progress in database
       if (campaign) {
@@ -346,29 +412,32 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
           // Found existing session - restore state
           const session = sessionResult.data
 
-                     // Restore session state using individual updates
-           const responses = session.responses || {}
-           for (const [key, responseData] of Object.entries(responses)) {
-             // Extract sectionId and fieldId from key format "sectionId_fieldId"
-             const parts = key.split('_')
-             if (parts.length >= 2) {
-               const sectionId = parts[0]
-               const fieldId = parts.slice(1).join('_')
-               
-               // Handle both object format and direct value format
-               if (responseData && typeof responseData === 'object' && 'value' in responseData) {
-                 const data = responseData as any
-                 campaignRenderer.handleResponseUpdate(sectionId, fieldId, data.value, data.metadata)
-               } else {
-                 campaignRenderer.handleResponseUpdate(sectionId, fieldId, responseData)
-               }
-             }
-           }
+          // Restore session state using individual updates
+          const responses = session.responses || {}
+          for (const [key, responseData] of Object.entries(responses)) {
+            // Handle both object format and direct value format
+            if (responseData && typeof responseData === 'object' && 'value' in responseData) {
+              const data = responseData as any
+              // Extract sectionId and fieldId from key format "sectionId_fieldId"
+              const parts = key.split('_')
+              if (parts.length >= 2) {
+                const sectionId = parts[0]
+                const fieldId = parts.slice(1).join('_')
+                campaignRenderer.handleResponseUpdate(sectionId, fieldId, data.value, data.metadata)
+              } else {
+                // Direct key format
+                campaignRenderer.handleResponseUpdate('global', key, data.value, data.metadata)
+              }
+            } else {
+              // Direct value format - treat as global response
+              campaignRenderer.handleResponseUpdate('global', key, responseData)
+            }
+          }
            
-           // Set current section if available
-           if (session.current_section_index !== undefined) {
-             campaignRenderer.goToSection(session.current_section_index)
-           }
+          // Set current section if available
+          if (session.current_section_index !== undefined) {
+            campaignRenderer.goToSection(session.current_section_index)
+          }
         } else {
           // No existing session found - create new one
           const createResult = await createSession({
@@ -412,7 +481,73 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   
   // NOTE: pendingUpdates useEffect removed - handled by campaignRenderer hook
 
-  // NOTE: Auto-save event handlers removed - now handled by campaignRenderer hook
+  // Auto-save responses when they change
+  useEffect(() => {
+    if (!campaign || !isSessionRecovered) return
+
+    const saveResponses = async () => {
+      try {
+        // Convert userInputs to the format expected by the database
+        const responses: Record<string, any> = {}
+        
+        Object.entries(campaignRenderer.userInputs).forEach(([key, value]) => {
+          responses[key] = {
+            value: value,
+            timestamp: new Date().toISOString()
+          }
+        })
+
+        const result = await updateSession(sessionId, {
+          responses: responses,
+          current_section_index: campaignRenderer.currentSection,
+          completed_sections: Array.from(campaignRenderer.completedSections),
+          is_completed: campaignRenderer.isComplete
+        })
+
+        if (result.success) {
+          console.log('💾 Session responses auto-saved:', Object.keys(responses).length, 'responses')
+        }
+      } catch (error) {
+        console.error('❌ Error auto-saving responses:', error)
+      }
+    }
+
+    // Debounce the save operation
+    const timeoutId = setTimeout(saveResponses, 1000)
+    return () => clearTimeout(timeoutId)
+  }, [campaignRenderer.userInputs, campaignRenderer.currentSection, campaignRenderer.completedSections, campaignRenderer.isComplete, campaign, isSessionRecovered])
+
+  // Save individual response to session
+  const saveResponseToSession = async (sectionId: string, fieldId: string, value: any, metadata?: any) => {
+    try {
+      if (!campaign) return
+
+      const responseKey = `${sectionId}_${fieldId}`
+      const responseData = {
+        value: value,
+        sectionId: sectionId,
+        fieldId: fieldId,
+        metadata: metadata,
+        timestamp: new Date().toISOString()
+      }
+
+      // Get current responses and add the new one
+      const currentResponses = { ...campaignRenderer.userInputs }
+      currentResponses[responseKey] = responseData
+
+      const result = await updateSession(sessionId, {
+        responses: currentResponses,
+        current_section_index: campaignRenderer.currentSection,
+        completed_sections: Array.from(campaignRenderer.completedSections)
+      })
+
+      if (result.success) {
+        console.log('💾 Individual response saved:', responseKey)
+      }
+    } catch (error) {
+      console.error('❌ Error saving individual response:', error)
+    }
+  }
 
   // Keyboard navigation
   useEffect(() => {
@@ -662,8 +797,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       // Update session responses using new data access layer
       const result = await updateSession(sessionId, {
         responses: {
-          ...campaignRenderer.userInputs, // Keep existing responses
-          ...responseUpdates // Add new responses
+          ...responseUpdates // Use new responses format
         },
         current_section_index: campaignRenderer.currentSection,
         completed_sections: Array.from(campaignRenderer.completedSections)

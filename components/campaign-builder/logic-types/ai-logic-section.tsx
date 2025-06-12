@@ -80,10 +80,10 @@ function extractInputVariablesWithTypesFromBuilder(sections: CampaignSection[], 
       } else if (section.title) {
         // Handle single-input sections (existing logic)
         variables.push({
-          name: titleToVariableName(section.title),
-          title: section.title,
-          type: isFileVariableFromBuilder(section) ? 'file' : 'text',
-          section
+      name: titleToVariableName(section.title),
+      title: section.title,
+      type: isFileVariableFromBuilder(section) ? 'file' : 'text',
+      section
         })
       }
     })
@@ -654,17 +654,17 @@ export function AILogicSection({
                           } else {
                             // For non-slider variables, show text input
                             return (
-                              <div key={variable.name} className="flex items-center space-x-4">
-                                <Label className="text-sm font-medium text-gray-300 w-32 flex-shrink-0">
-                                  @{variable.name}:
-                                </Label>
-                                <Input
-                                  value={(settings.testInputs || {})[variable.name] || ''}
-                                  onChange={(e) => updateTestInput(variable.name, e.target.value)}
-                                  placeholder={`Example answer for ${variable.title}`}
-                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                                />
-                              </div>
+                          <div key={variable.name} className="flex items-center space-x-4">
+                            <Label className="text-sm font-medium text-gray-300 w-32 flex-shrink-0">
+                              @{variable.name}:
+                            </Label>
+                            <Input
+                              value={(settings.testInputs || {})[variable.name] || ''}
+                              onChange={(e) => updateTestInput(variable.name, e.target.value)}
+                              placeholder={`Example answer for ${variable.title}`}
+                              className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                            />
+                          </div>
                             )
                           }
                         })}

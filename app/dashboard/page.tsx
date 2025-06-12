@@ -143,9 +143,9 @@ export default function Dashboard() {
         campaignsData.map(async (campaign: Campaign) => {
           const statsResult = await getCampaignLeadStats(campaign.id)
           if (statsResult.success && statsResult.data) {
-            const { total, completed, conversion_rate } = statsResult.data
+            const { total, converted, conversion_rate } = statsResult.data
             totalLeads += total
-            totalCompletedLeads += completed
+            totalCompletedLeads += converted
 
             const campaignWithStats: CampaignWithStats = {
               ...campaign,
@@ -415,9 +415,9 @@ export default function Dashboard() {
                       : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                   }`}
                 >
-                  {option.label}
+                      {option.label}
                 </Button>
-              ))}
+                  ))}
             </div>
             <div className="flex items-center space-x-3">
               <ExportButton
@@ -532,7 +532,7 @@ export default function Dashboard() {
           {/* Main Content Grid */}
           <div>
             {/* Campaigns Grid */}
-            <div>
+                    <div>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-foreground">Your Campaigns</h2>
                 {campaigns.length > 0 && (
@@ -540,7 +540,7 @@ export default function Dashboard() {
                     {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} total
                   </p>
                 )}
-              </div>
+                    </div>
 
               {/* Loading State */}
               {loadingStats && (
@@ -550,16 +550,16 @@ export default function Dashboard() {
                       <CardHeader>
                         <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                         <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-3">
                           <div className="h-3 bg-gray-200 rounded"></div>
                           <div className="h-3 bg-gray-200 rounded w-5/6"></div>
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
-                </div>
+                      ))}
+                    </div>
               )}
 
               {/* Campaigns Grid */}
@@ -578,7 +578,7 @@ export default function Dashboard() {
                             </CardDescription>
                           </div>
                           <div className="flex flex-col items-end gap-2">
-                            {campaign.status === 'published' ? (
+                              {campaign.status === 'published' ? (
                               <Badge 
                                 variant="default"
                                 className={`text-xs font-medium ${
@@ -610,19 +610,19 @@ export default function Dashboard() {
                             <Eye className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
                             <p className="text-lg font-bold text-foreground">{campaign.viewCount}</p>
                             <p className="text-xs text-muted-foreground font-medium">Views</p>
-                          </div>
+                    </div>
                           <div className="text-center p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors">
                             <Users className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
                             <p className="text-lg font-bold text-foreground">{campaign.leadCount}</p>
                             <p className="text-xs text-muted-foreground font-medium">Leads</p>
-                          </div>
+                    </div>
                           <div className="text-center p-3 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors">
                             <TrendingUp className="h-4 w-4 text-muted-foreground mx-auto mb-1.5" />
                             <p className="text-lg font-bold text-foreground">
                               {campaign.completionRate.toFixed(0)}%
                             </p>
                             <p className="text-xs text-muted-foreground font-medium">Rate</p>
-                          </div>
+                      </div>
                         </div>
 
                         {/* Last Updated */}
@@ -634,18 +634,6 @@ export default function Dashboard() {
                         {/* Action Buttons */}
                         <div className="flex items-center justify-between pt-2">
                           <div className="flex items-center gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                router.push(`/dashboard/campaigns/${campaign.id}/edit`)
-                              }}
-                              className="h-8 px-3"
-                            >
-                              <Edit className="h-3 w-3 mr-1" />
-                              Edit
-                            </Button>
                             <Button
                               variant="outline"
                               size="sm"
@@ -671,6 +659,17 @@ export default function Dashboard() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-44">
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    router.push(`/dashboard/campaigns/${campaign.id}/edit`)
+                                  }}
+                                  className="flex items-center gap-2 text-sm"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                  <span>Edit Campaign</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 {getStatusActions(campaign).map((action, index) => (
                                   <DropdownMenuItem
                                     key={index}
@@ -697,14 +696,15 @@ export default function Dashboard() {
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                          </div>
+                      </div>
                           
                           {campaign.status === 'published' && campaign.published_url && (
                             <Button
                               size="sm"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                window.open(campaign.published_url!, '_blank')
+                                const liveUrl = `${window.location.origin}/c/${campaign.published_url}`
+                                window.open(liveUrl, '_blank')
                               }}
                               className="h-8 px-3"
                             >
@@ -714,9 +714,9 @@ export default function Dashboard() {
                           )}
                           
                           {campaign.status !== 'published' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
+                      <Button
+                        variant="outline"
+                        size="sm"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 router.push(`/dashboard/campaigns/${campaign.id}`)
@@ -725,13 +725,13 @@ export default function Dashboard() {
                             >
                               <BarChart3 className="h-3 w-3 mr-1" />
                               Details
-                            </Button>
+                      </Button>
                           )}
                         </div>
                       </CardContent>
                     </Card>
                   ))}
-                </div>
+                    </div>
               )}
 
               {/* Empty State */}
