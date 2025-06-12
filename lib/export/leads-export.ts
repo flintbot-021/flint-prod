@@ -17,7 +17,7 @@ interface LeadWithCampaign extends Lead {
 interface LeadsExportParams {
   searchTerm?: string
   selectedCampaign?: string
-  sortField?: 'created_at' | 'email' | 'phone' | 'campaign_name' | 'converted_at'
+  sortField?: 'created_at' | 'email' | 'phone' | 'campaign_name' | 'converted_at' | 'name' | 'conversion_time'
   sortDirection?: 'asc' | 'desc'
   includeCompleted?: boolean
   maxRecords?: number

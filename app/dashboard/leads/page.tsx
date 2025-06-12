@@ -16,7 +16,6 @@ import {
 } from '@/lib/data-access'
 import { Lead, Campaign, Profile } from '@/lib/types/database'
 import { ExportButton } from '@/components/export'
-import { ExportHistory } from '@/components/export/ExportHistory'
 import { getLeadsExportData, getLeadsExportFields } from '@/lib/export'
 import { 
   Download,
@@ -33,15 +32,365 @@ import {
   ExternalLink,
   MoreHorizontal,
   Eye,
-  Trash2
+  Trash2,
+  User,
+  Clock,
+  MessageSquare,
+  X,
+  Globe,
+  Hash,
+  CheckCircle,
+  Activity
 } from 'lucide-react'
 
 interface LeadWithCampaign extends Lead {
   campaign: Campaign | null
 }
 
-type SortField = 'created_at' | 'email' | 'phone' | 'campaign_name' | 'converted_at'
+type SortField = 'created_at' | 'email' | 'phone' | 'campaign_name' | 'converted_at' | 'name' | 'conversion_time'
 type SortDirection = 'asc' | 'desc'
+
+// Utility function to calculate and format conversion time
+const calculateConversionTime = (createdAt: string, convertedAt: string | null): { seconds: number; formatted: string } => {
+  if (!convertedAt) {
+    return { seconds: 0, formatted: 'Not converted' }
+  }
+  
+  const startTime = new Date(createdAt).getTime()
+  const endTime = new Date(convertedAt).getTime()
+  const diffInSeconds = Math.floor((endTime - startTime) / 1000)
+  
+  // Format the time in a human-readable way
+  const formatTime = (seconds: number): string => {
+    if (seconds < 60) {
+      return `${seconds}s`
+    } else if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60)
+      const remainingSeconds = seconds % 60
+      return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`
+    } else if (seconds < 86400) {
+      const hours = Math.floor(seconds / 3600)
+      const remainingMinutes = Math.floor((seconds % 3600) / 60)
+      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`
+    } else {
+      const days = Math.floor(seconds / 86400)
+      const remainingHours = Math.floor((seconds % 86400) / 3600)
+      return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`
+    }
+  }
+  
+  return {
+    seconds: diffInSeconds,
+    formatted: formatTime(diffInSeconds)
+  }
+}
+
+// Simple modal component
+function Modal({ isOpen, onClose, children }: { isOpen: boolean; onClose: () => void; children: React.ReactNode }) {
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/80" onClick={onClose} />
+      <div className="relative bg-background rounded-lg shadow-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// Lead Detail Modal Component
+function LeadDetailModal({ lead, campaign, isOpen, onClose }: { 
+  lead: Lead; 
+  campaign: Campaign | null; 
+  isOpen: boolean; 
+  onClose: () => void 
+}) {
+  const [sessionData, setSessionData] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+
+  const loadSessionData = async () => {
+    setLoading(true)
+    try {
+      // In a real implementation, you'd fetch session data here
+      // For now, we'll show the available lead data
+      setSessionData({
+        session_id: lead.session_id,
+        responses: lead.metadata || {},
+        conversion_section: lead.conversion_section_id,
+        converted_at: lead.converted_at,
+        created_at: lead.created_at
+      })
+    } catch (error) {
+      console.error('Error loading session data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      loadSessionData()
+    }
+  }, [isOpen])
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const formatMetadata = (metadata: any) => {
+    if (!metadata || typeof metadata !== 'object') return 'No data available'
+    
+    try {
+      return JSON.stringify(metadata, null, 2)
+    } catch {
+      return 'Invalid metadata format'
+    }
+  }
+
+  const conversionTime = calculateConversionTime(lead.created_at, lead.converted_at)
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose}>
+      <div className="p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Lead Details</h2>
+            <p className="text-muted-foreground">
+              Complete session information and responses for {lead.email}
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {loading ? (
+          <div className="flex items-center justify-center p-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* Contact Information Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg">
+                  <User className="h-5 w-5 mr-2" />
+                  Contact Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Full Name</label>
+                      <p className="mt-1 text-lg">{lead.name || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Email Address</label>
+                      <div className="mt-1 flex items-center space-x-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-lg">{lead.email}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Phone Number</label>
+                      <div className="mt-1 flex items-center space-x-2">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <p className="text-lg">{lead.phone || 'Not provided'}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Campaign</label>
+                      <div className="mt-1">
+                        <Badge variant="default" className="text-sm">
+                          {campaign?.name || 'Unknown Campaign'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Session Information Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg">
+                  <Activity className="h-5 w-5 mr-2" />
+                  Session Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Session ID</label>
+                      <div className="mt-1 flex items-center space-x-2">
+                        <Hash className="h-4 w-4 text-muted-foreground" />
+                        <p className="font-mono text-sm bg-muted px-2 py-1 rounded">
+                          {lead.session_id}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Session Started</label>
+                      <div className="mt-1 flex items-center space-x-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <p>{formatDate(lead.created_at)}</p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Time to Convert</label>
+                      <div className="mt-1 flex items-center space-x-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <p className="font-medium">
+                          {conversionTime.formatted}
+                          {conversionTime.seconds > 0 && (
+                            <span className="text-sm text-muted-foreground ml-2">
+                              ({conversionTime.seconds} seconds)
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Conversion Section</label>
+                      <div className="mt-1 flex items-center space-x-2">
+                        <Target className="h-4 w-4 text-muted-foreground" />
+                        <p className="font-mono text-sm bg-muted px-2 py-1 rounded">
+                          {lead.conversion_section_id || 'Not specified'}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Lead Captured</label>
+                      <div className="mt-1 flex items-center space-x-2">
+                        {lead.converted_at ? (
+                          <>
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <p>{formatDate(lead.converted_at)}</p>
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <p className="text-muted-foreground">Not yet captured</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Campaign Details Card */}
+            {campaign && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center text-lg">
+                    <Globe className="h-5 w-5 mr-2" />
+                    Campaign Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Campaign Name</label>
+                        <p className="mt-1 text-lg font-medium">{campaign.name}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Status</label>
+                        <div className="mt-1">
+                          <Badge 
+                            variant={campaign.status === 'published' ? 'default' : 'secondary'}
+                            className="capitalize"
+                          >
+                            {campaign.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Campaign URL</label>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {campaign.published_url || 'Not published'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Created</label>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {formatDate(campaign.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Session Responses & Metadata Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center text-lg">
+                  <MessageSquare className="h-5 w-5 mr-2" />
+                  Session Responses & Data
+                </CardTitle>
+                <CardDescription>
+                  All data captured during the user's session
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {sessionData?.responses && Object.keys(sessionData.responses).length > 0 ? (
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground mb-2 block">
+                        Session Metadata
+                      </label>
+                      <div className="bg-muted rounded-lg p-4 overflow-x-auto">
+                        <pre className="text-sm whitespace-pre-wrap font-mono">
+                          {formatMetadata(sessionData.responses)}
+                        </pre>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">No session responses available</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        This lead may have been captured without additional form data
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex justify-end mt-6 pt-4 border-t">
+          <Button onClick={onClose}>
+            Close
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
 
 export default function LeadsPage() {
   const { user, loading } = useAuth()
@@ -51,6 +400,10 @@ export default function LeadsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Modal state
+  const [selectedLead, setSelectedLead] = useState<LeadWithCampaign | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
   
   // Filters and search
   const [searchTerm, setSearchTerm] = useState('')
@@ -160,9 +513,17 @@ export default function LeadsPage() {
               aValue = a.phone || ''
               bValue = b.phone || ''
               break
+            case 'name':
+              aValue = a.name || ''
+              bValue = b.name || ''
+              break
             case 'campaign_name':
               aValue = a.campaign?.name || ''
               bValue = b.campaign?.name || ''
+              break
+            case 'conversion_time':
+              aValue = calculateConversionTime(a.created_at, a.converted_at).seconds
+              bValue = calculateConversionTime(b.created_at, b.converted_at).seconds
               break
             default:
               aValue = a.created_at
@@ -235,15 +596,14 @@ export default function LeadsPage() {
     setError(`Export failed: ${error}`)
   }
 
-  const getContactBadge = (lead: Lead) => {
-    if (lead.email && lead.phone) {
-      return <Badge variant="default">Email + Phone</Badge>
-    } else if (lead.email) {
-      return <Badge variant="secondary">Email</Badge>
-    } else if (lead.phone) {
-      return <Badge variant="outline">Phone</Badge>
-    }
-    return <Badge variant="destructive">No Contact</Badge>
+  const handleViewLeadDetails = (lead: LeadWithCampaign) => {
+    setSelectedLead(lead)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedLead(null)
   }
 
   const getCampaignBadge = (campaign: Campaign | null) => {
@@ -427,10 +787,32 @@ export default function LeadsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => handleSort('name')}
+                              className="hover:bg-accent font-medium"
+                            >
+                              Name
+                              <ArrowUpDown className="ml-2 h-4 w-4" />
+                            </Button>
+                          </th>
+                          <th className="text-left py-3 px-4">
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleSort('email')}
                               className="hover:bg-accent font-medium"
                             >
-                              Contact Info
+                              Email
+                              <ArrowUpDown className="ml-2 h-4 w-4" />
+                            </Button>
+                          </th>
+                          <th className="text-left py-3 px-4">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSort('phone')}
+                              className="hover:bg-accent font-medium"
+                            >
+                              Phone
                               <ArrowUpDown className="ml-2 h-4 w-4" />
                             </Button>
                           </th>
@@ -445,15 +827,25 @@ export default function LeadsPage() {
                               <ArrowUpDown className="ml-2 h-4 w-4" />
                             </Button>
                           </th>
-                          <th className="text-left py-3 px-4">Lead Details</th>
                           <th className="text-left py-3 px-4">
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleSort('converted_at')}
+                              onClick={() => handleSort('conversion_time')}
                               className="hover:bg-accent font-medium"
                             >
-                              Converted
+                              Time to Convert
+                              <ArrowUpDown className="ml-2 h-4 w-4" />
+                            </Button>
+                          </th>
+                          <th className="text-left py-3 px-4">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSort('created_at')}
+                              className="hover:bg-accent font-medium"
+                            >
+                              Date Captured
                               <ArrowUpDown className="ml-2 h-4 w-4" />
                             </Button>
                           </th>
@@ -461,70 +853,71 @@ export default function LeadsPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y">
-                        {leads.map((lead) => (
-                          <tr key={lead.id} className="hover:bg-muted">
-                            <td className="py-4 px-4">
-                              <div className="space-y-1">
+                        {leads.map((lead) => {
+                          const conversionTime = calculateConversionTime(lead.created_at, lead.converted_at)
+                          
+                          return (
+                            <tr key={lead.id} className="hover:bg-muted">
+                              <td className="py-4 px-4">
                                 <div className="flex items-center space-x-2">
-                                  {lead.email && (
-                                    <div className="flex items-center space-x-1">
-                                      <Mail className="h-4 w-4 text-gray-400" />
-                                      <span className="text-sm font-medium">{lead.email}</span>
-                                    </div>
-                                  )}
+                                  <User className="h-4 w-4 text-gray-400" />
+                                  <span className="font-medium">
+                                    {lead.name || 'Anonymous'}
+                                  </span>
                                 </div>
+                              </td>
+                              <td className="py-4 px-4">
                                 <div className="flex items-center space-x-2">
-                                  {lead.phone && (
-                                    <div className="flex items-center space-x-1">
-                                      <Phone className="h-4 w-4 text-gray-400" />
-                                      <span className="text-sm text-muted-foreground">{lead.phone}</span>
-                                    </div>
-                                  )}
-                                  {getContactBadge(lead)}
+                                  <Mail className="h-4 w-4 text-gray-400" />
+                                  <span className="text-sm">{lead.email}</span>
                                 </div>
-                                {lead.name && (
-                                  <div className="text-sm text-muted-foreground">
-                                    {lead.name}
+                              </td>
+                              <td className="py-4 px-4">
+                                {lead.phone ? (
+                                  <div className="flex items-center space-x-2">
+                                    <Phone className="h-4 w-4 text-gray-400" />
+                                    <span className="text-sm">{lead.phone}</span>
                                   </div>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">Not provided</span>
                                 )}
-                              </div>
-                            </td>
-                            <td className="py-4 px-4">
-                              {getCampaignBadge(lead.campaign)}
-                            </td>
-                            <td className="py-4 px-4">
-                              <div className="text-sm">
-                                <div className="text-foreground">Session: {lead.session_id.slice(0, 8)}...</div>
-                                {lead.conversion_section_id && (
-                                  <div className="text-muted-foreground">
-                                    Section: {lead.conversion_section_id.slice(0, 8)}...
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-4 px-4">
-                              <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                                <Calendar className="h-4 w-4" />
-                                <span>
-                                  {lead.converted_at 
-                                    ? new Date(lead.converted_at).toLocaleDateString()
-                                    : new Date(lead.created_at).toLocaleDateString()
-                                  }
-                                </span>
-                              </div>
-                            </td>
-                            <td className="py-4 px-4 text-right">
-                              <div className="flex items-center justify-end space-x-2">
-                                <Button variant="ghost" size="sm">
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                              <td className="py-4 px-4">
+                                {getCampaignBadge(lead.campaign)}
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="flex items-center space-x-1 text-sm">
+                                  <Clock className="h-4 w-4 text-gray-400" />
+                                  <span className={conversionTime.seconds > 0 ? 'font-medium' : 'text-muted-foreground'}>
+                                    {conversionTime.formatted}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4">
+                                <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>
+                                    {new Date(lead.created_at).toLocaleDateString()}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="py-4 px-4 text-right">
+                                <div className="flex items-center justify-end space-x-2">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => handleViewLeadDetails(lead)}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -578,18 +971,18 @@ export default function LeadsPage() {
               )}
             </CardContent>
           </Card>
-          
-          {/* Export History Section */}
-          <div className="mt-6">
-            <ExportHistory 
-              source="leads" 
-              maxEntries={10} 
-              showStats={true} 
-              compact={false} 
-            />
-          </div>
         </div>
       </main>
+
+      {/* Lead Detail Modal */}
+      {selectedLead && (
+        <LeadDetailModal
+          lead={selectedLead}
+          campaign={selectedLead.campaign}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+        />
+      )}
     </div>
   )
 } 
