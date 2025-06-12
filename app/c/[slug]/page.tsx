@@ -412,29 +412,32 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
           // Found existing session - restore state
           const session = sessionResult.data
 
-                     // Restore session state using individual updates
-           const responses = session.responses || {}
-           for (const [key, responseData] of Object.entries(responses)) {
-             // Extract sectionId and fieldId from key format "sectionId_fieldId"
-             const parts = key.split('_')
-             if (parts.length >= 2) {
-               const sectionId = parts[0]
-               const fieldId = parts.slice(1).join('_')
-               
-               // Handle both object format and direct value format
-               if (responseData && typeof responseData === 'object' && 'value' in responseData) {
-                 const data = responseData as any
-                 campaignRenderer.handleResponseUpdate(sectionId, fieldId, data.value, data.metadata)
-               } else {
-                 campaignRenderer.handleResponseUpdate(sectionId, fieldId, responseData)
-               }
-             }
-           }
+          // Restore session state using individual updates
+          const responses = session.responses || {}
+          for (const [key, responseData] of Object.entries(responses)) {
+            // Handle both object format and direct value format
+            if (responseData && typeof responseData === 'object' && 'value' in responseData) {
+              const data = responseData as any
+              // Extract sectionId and fieldId from key format "sectionId_fieldId"
+              const parts = key.split('_')
+              if (parts.length >= 2) {
+                const sectionId = parts[0]
+                const fieldId = parts.slice(1).join('_')
+                campaignRenderer.handleResponseUpdate(sectionId, fieldId, data.value, data.metadata)
+              } else {
+                // Direct key format
+                campaignRenderer.handleResponseUpdate('global', key, data.value, data.metadata)
+              }
+            } else {
+              // Direct value format - treat as global response
+              campaignRenderer.handleResponseUpdate('global', key, responseData)
+            }
+          }
            
-           // Set current section if available
-           if (session.current_section_index !== undefined) {
-             campaignRenderer.goToSection(session.current_section_index)
-           }
+          // Set current section if available
+          if (session.current_section_index !== undefined) {
+            campaignRenderer.goToSection(session.current_section_index)
+          }
         } else {
           // No existing session found - create new one
           const createResult = await createSession({
@@ -478,7 +481,73 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   
   // NOTE: pendingUpdates useEffect removed - handled by campaignRenderer hook
 
-  // NOTE: Auto-save event handlers removed - now handled by campaignRenderer hook
+  // Auto-save responses when they change
+  useEffect(() => {
+    if (!campaign || !isSessionRecovered) return
+
+    const saveResponses = async () => {
+      try {
+        // Convert userInputs to the format expected by the database
+        const responses: Record<string, any> = {}
+        
+        Object.entries(campaignRenderer.userInputs).forEach(([key, value]) => {
+          responses[key] = {
+            value: value,
+            timestamp: new Date().toISOString()
+          }
+        })
+
+        const result = await updateSession(sessionId, {
+          responses: responses,
+          current_section_index: campaignRenderer.currentSection,
+          completed_sections: Array.from(campaignRenderer.completedSections),
+          is_completed: campaignRenderer.isComplete
+        })
+
+        if (result.success) {
+          console.log('💾 Session responses auto-saved:', Object.keys(responses).length, 'responses')
+        }
+      } catch (error) {
+        console.error('❌ Error auto-saving responses:', error)
+      }
+    }
+
+    // Debounce the save operation
+    const timeoutId = setTimeout(saveResponses, 1000)
+    return () => clearTimeout(timeoutId)
+  }, [campaignRenderer.userInputs, campaignRenderer.currentSection, campaignRenderer.completedSections, campaignRenderer.isComplete, campaign, isSessionRecovered])
+
+  // Save individual response to session
+  const saveResponseToSession = async (sectionId: string, fieldId: string, value: any, metadata?: any) => {
+    try {
+      if (!campaign) return
+
+      const responseKey = `${sectionId}_${fieldId}`
+      const responseData = {
+        value: value,
+        sectionId: sectionId,
+        fieldId: fieldId,
+        metadata: metadata,
+        timestamp: new Date().toISOString()
+      }
+
+      // Get current responses and add the new one
+      const currentResponses = { ...campaignRenderer.userInputs }
+      currentResponses[responseKey] = responseData
+
+      const result = await updateSession(sessionId, {
+        responses: currentResponses,
+        current_section_index: campaignRenderer.currentSection,
+        completed_sections: Array.from(campaignRenderer.completedSections)
+      })
+
+      if (result.success) {
+        console.log('💾 Individual response saved:', responseKey)
+      }
+    } catch (error) {
+      console.error('❌ Error saving individual response:', error)
+    }
+  }
 
   // Keyboard navigation
   useEffect(() => {
@@ -728,8 +797,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       // Update session responses using new data access layer
       const result = await updateSession(sessionId, {
         responses: {
-          ...campaignRenderer.userInputs, // Keep existing responses
-          ...responseUpdates // Add new responses
+          ...responseUpdates // Use new responses format
         },
         current_section_index: campaignRenderer.currentSection,
         completed_sections: Array.from(campaignRenderer.completedSections)

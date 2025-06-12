@@ -46,7 +46,7 @@ export async function GET(
       session_id: session.session_id,
       campaign_id: session.campaign_id,
       current_section_index: session.current_section_index,
-      responses: session.user_inputs || {},
+      responses: session.responses || {},
       created_at: session.created_at,
       updated_at: session.updated_at
     })
