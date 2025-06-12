@@ -97,7 +97,7 @@ export function CampaignBuilderTopBar({
   }
 
   const handleBackToCampaigns = () => {
-    router.push('/dashboard/campaigns')
+    router.push('/dashboard')
   }
 
   return (
@@ -120,7 +120,7 @@ export function CampaignBuilderTopBar({
               className="text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Campaigns
+              Back to Dashboard
             </Button>
 
             <div className="h-6 w-px bg-border" />

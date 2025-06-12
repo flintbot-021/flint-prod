@@ -471,11 +471,11 @@ export default function CreateCampaignPage() {
             <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
-                onClick={() => router.push('/dashboard/campaigns')}
+                onClick={() => router.push('/dashboard')}
                 className="text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Campaigns
+                Back to Dashboard
               </Button>
               <h1 className="text-2xl font-bold text-foreground">
                 Create New Campaign

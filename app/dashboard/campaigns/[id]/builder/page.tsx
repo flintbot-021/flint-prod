@@ -615,7 +615,7 @@ export default function CampaignBuilderPage() {
                 <div className="text-center">
                   <p className="text-muted-foreground">Campaign not found</p>
                   <button
-                    onClick={() => router.push('/dashboard/campaigns')}
+                    onClick={() => router.push('/dashboard')}
                     className="mt-2 text-blue-600 underline hover:no-underline"
                   >
                     Back to Campaigns

@@ -4,15 +4,21 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { UserProfile } from '@/components/ui/user-profile'
 import { useAuth } from '@/lib/auth-context'
 import { 
   getCampaigns, 
   getCurrentProfile,
   getCampaignLeads,
-  getCampaignLeadStats 
+  getCampaignLeadStats,
+  updateCampaign,
+  publishCampaign,
+  deleteCampaign,
+  activateCampaign,
+  deactivateCampaign
 } from '@/lib/data-access'
-import { Campaign, Profile } from '@/lib/types/database'
+import { Campaign, Profile, CampaignStatus } from '@/lib/types/database'
 import { ExportButton } from '@/components/export'
 import { ExportHistory } from '@/components/export/ExportHistory'
 import { getDashboardExportData, getDashboardExportFields } from '@/lib/export'
@@ -30,18 +36,40 @@ import {
   Activity,
   Clock,
   CheckCircle,
-  Filter
+  Filter,
+  Settings,
+  Edit,
+  Trash2,
+  ExternalLink,
+  Hammer,
+  Lock,
+  Unlock,
+  MoreVertical,
+  Archive,
+  Globe,
+  FileText
 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu'
+
+interface CampaignWithStats extends Campaign {
+  leadCount: number
+  completionRate: number
+  viewCount: number
+  lastActivity?: string
+}
 
 interface DashboardStats {
   totalCampaigns: number
   totalLeads: number
   completionRate: number
-  recentCampaigns: Campaign[]
-  topPerformingCampaign?: Campaign & {
-    leadCount: number
-    completionRate: number
-  }
+  recentCampaigns: CampaignWithStats[]
+  topPerformingCampaign?: CampaignWithStats
 }
 
 type TimeFilter = 'today' | 'week' | 'month' | 'all'
@@ -57,6 +85,7 @@ export default function Dashboard() {
   const { user, loading, signOut } = useAuth()
   const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [campaigns, setCampaigns] = useState<CampaignWithStats[]>([])
   const [stats, setStats] = useState<DashboardStats>({
     totalCampaigns: 0,
     totalLeads: 0,
@@ -96,7 +125,7 @@ export default function Dashboard() {
       // Load profile and campaigns in parallel
       const [profileResult, campaignsResult] = await Promise.all([
         getCurrentProfile(),
-        getCampaigns({ page: 1, per_page: 10 })
+        getCampaigns({ page: 1, per_page: 20 })
       ])
 
       if (!profileResult.success) {
@@ -109,24 +138,26 @@ export default function Dashboard() {
 
       setProfile(profileResult.data || null)
 
-      const campaigns = campaignsResult.data?.data || []
+      const campaignsData = campaignsResult.data?.data || []
       let totalLeads = 0
       let totalCompletedLeads = 0
-      let topCampaign: (Campaign & { leadCount: number; completionRate: number }) | undefined
+      let topCampaign: CampaignWithStats | undefined
 
       // Get stats for each campaign
-      const campaignStats = await Promise.all(
-        campaigns.map(async (campaign) => {
+      const campaignsWithStats = await Promise.all(
+        campaignsData.map(async (campaign: Campaign) => {
           const statsResult = await getCampaignLeadStats(campaign.id)
           if (statsResult.success && statsResult.data) {
             const { total, completed, conversion_rate } = statsResult.data
             totalLeads += total
             totalCompletedLeads += completed
 
-            const campaignWithStats = {
+            const campaignWithStats: CampaignWithStats = {
               ...campaign,
               leadCount: total,
-              completionRate: conversion_rate
+              completionRate: conversion_rate,
+              viewCount: total, // For now, using total as view count
+              lastActivity: campaign.updated_at
             }
 
             if (!topCampaign || total > topCampaign.leadCount) {
@@ -135,17 +166,24 @@ export default function Dashboard() {
 
             return campaignWithStats
           }
-          return { ...campaign, leadCount: 0, completionRate: 0 }
+          return {
+            ...campaign,
+            leadCount: 0,
+            completionRate: 0,
+            viewCount: 0,
+            lastActivity: campaign.updated_at
+          } as CampaignWithStats
         })
       )
 
       const overallCompletionRate = totalLeads > 0 ? (totalCompletedLeads / totalLeads) * 100 : 0
 
+      setCampaigns(campaignsWithStats)
       setStats({
-        totalCampaigns: campaigns.length,
+        totalCampaigns: campaignsData.length,
         totalLeads,
         completionRate: Math.round(overallCompletionRate * 100) / 100,
-        recentCampaigns: campaigns.slice(0, 5),
+        recentCampaigns: campaignsWithStats.slice(0, 5),
         topPerformingCampaign: topCampaign
       })
 
@@ -189,6 +227,181 @@ export default function Dashboard() {
     console.error('Export error:', error)
     setError(`Export failed: ${error}`)
   }
+
+  // Campaign management functions
+  const handleStatusChange = async (campaignId: string, newStatus: CampaignStatus) => {
+    try {
+      setError(null)
+      
+      let result
+      if (newStatus === 'published') {
+        result = await publishCampaign(campaignId)
+      } else {
+        result = await updateCampaign(campaignId, { status: newStatus })
+      }
+
+      if (!result.success) {
+        throw new Error(result.error || `Failed to ${newStatus === 'published' ? 'publish' : 'update'} campaign`)
+      }
+
+      await loadDashboardData()
+    } catch (err) {
+      console.error('Error updating campaign status:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    }
+  }
+
+  const handleDeleteCampaign = async (campaignId: string, campaignName: string) => {
+    if (!confirm(`Are you sure you want to delete "${campaignName}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      setError(null)
+      
+      const result = await deleteCampaign(campaignId)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete campaign')
+      }
+
+      await loadDashboardData()
+    } catch (err) {
+      console.error('Error deleting campaign:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    }
+  }
+
+  const handleActivateCampaign = async (campaignId: string) => {
+    try {
+      setError(null)
+      
+      const result = await activateCampaign(campaignId)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to activate campaign')
+      }
+
+      await loadDashboardData()
+    } catch (err) {
+      console.error('Error activating campaign:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    }
+  }
+
+  const handleDeactivateCampaign = async (campaignId: string) => {
+    try {
+      setError(null)
+      
+      const result = await deactivateCampaign(campaignId)
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to deactivate campaign')
+      }
+
+      await loadDashboardData()
+    } catch (err) {
+      console.error('Error deactivating campaign:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    }
+  }
+
+  const getStatusColor = (status: CampaignStatus): string => {
+    switch (status) {
+      case 'published':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'draft':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'archived':
+        return 'bg-accent text-gray-800 border-border'
+      default:
+        return 'bg-accent text-gray-800 border-border'
+    }
+  }
+
+  const getStatusIcon = (status: CampaignStatus) => {
+    switch (status) {
+      case 'published':
+        return <Activity className="h-3 w-3" />
+      case 'draft':
+        return <Clock className="h-3 w-3" />
+      case 'archived':
+        return <Settings className="h-3 w-3" />
+      default:
+        return <Clock className="h-3 w-3" />
+    }
+  }
+
+  const getStatusActions = (campaign: CampaignWithStats) => {
+    const actions = []
+
+    if (campaign.status === 'draft') {
+      actions.push({
+        label: 'Publish Campaign',
+        icon: Globe,
+        action: () => handleStatusChange(campaign.id, 'published'),
+        variant: 'default' as const
+      })
+      actions.push({
+        label: 'Archive Campaign',
+        icon: Archive,
+        action: () => handleStatusChange(campaign.id, 'archived'),
+        variant: 'secondary' as const
+      })
+    } else if (campaign.status === 'published') {
+      if (campaign.is_active) {
+        actions.push({
+          label: 'Deactivate Campaign',
+          icon: Lock,
+          action: () => handleDeactivateCampaign(campaign.id),
+          variant: 'secondary' as const
+        })
+      } else {
+        actions.push({
+          label: 'Activate Campaign',
+          icon: Unlock,
+          action: () => handleActivateCampaign(campaign.id),
+          variant: 'default' as const
+        })
+      }
+      
+      actions.push({
+        label: 'Unpublish (Draft)',
+        icon: FileText,
+        action: () => handleStatusChange(campaign.id, 'draft'),
+        variant: 'secondary' as const
+      })
+      actions.push({
+        label: 'Archive Campaign',
+        icon: Archive,
+        action: () => handleStatusChange(campaign.id, 'archived'),
+        variant: 'secondary' as const
+      })
+    } else if (campaign.status === 'archived') {
+      actions.push({
+        label: 'Restore to Draft',
+        icon: FileText,
+        action: () => handleStatusChange(campaign.id, 'draft'),
+        variant: 'secondary' as const
+      })
+      actions.push({
+        label: 'Publish Campaign',
+        icon: Globe,
+        action: () => handleStatusChange(campaign.id, 'published'),
+        variant: 'default' as const
+      })
+    }
+
+    return actions
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  const canCreateCampaign = profile && 
+    profile.monthly_campaigns_used < profile.monthly_campaign_limit
 
   if (loading) {
     return (
@@ -265,6 +478,7 @@ export default function Dashboard() {
               />
               <Button
                 onClick={() => router.push('/dashboard/campaigns/create')}
+                disabled={!canCreateCampaign}
                 className="flex items-center space-x-2"
               >
                 <Plus className="h-4 w-4" />
@@ -306,7 +520,9 @@ export default function Dashboard() {
                   {loadingStats ? '...' : stats.totalCampaigns}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+{stats.recentCampaigns.length}</span> this period
+                  <span className="text-green-600">
+                    {campaigns.filter(c => c.status === 'published').length} published
+                  </span>
                 </p>
               </CardContent>
             </Card>
@@ -368,180 +584,268 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Recent Campaigns */}
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Recent Campaigns</CardTitle>
-                      <CardDescription>
-                        Your latest lead magnet campaigns
-                      </CardDescription>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push('/dashboard/campaigns')}
-                    >
-                      View All
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {loadingStats ? (
-                    <div className="space-y-3">
-                      {[...Array(3)].map((_, i) => (
-                        <div key={i} className="flex items-center space-x-4 p-3 border rounded-lg animate-pulse">
-                          <div className="h-8 w-8 bg-gray-200 rounded"></div>
-                          <div className="flex-1 space-y-2">
-                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                            <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : stats.recentCampaigns.length > 0 ? (
-                    <div className="space-y-3">
-                      {stats.recentCampaigns.map((campaign) => (
-                        <div 
-                          key={campaign.id}
-                          className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted cursor-pointer"
-                          onClick={() => router.push(`/dashboard/campaigns/${campaign.id}`)}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="flex-shrink-0">
-                              {campaign.status === 'published' ? (
-                                <CheckCircle className="h-5 w-5 text-green-600" />
-                              ) : campaign.status === 'draft' ? (
-                                <Clock className="h-5 w-5 text-yellow-600" />
-                              ) : (
-                                <Activity className="h-5 w-5 text-muted-foreground" />
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-medium text-sm">{campaign.name}</p>
-                              <p className="text-xs text-muted-foreground capitalize">
-                                {campaign.status} • {new Date(campaign.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                          <ArrowUpRight className="h-4 w-4 text-gray-400" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-muted-foreground mb-4">No campaigns yet</p>
-                      <Button
-                        onClick={() => router.push('/dashboard/campaigns/create')}
-                        size="sm"
-                      >
-                        Create Your First Campaign
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
 
-            {/* Right Sidebar */}
-            <div className="space-y-6">
-              {/* Top Performing Campaign */}
-              {stats.topPerformingCampaign && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Top Performer</CardTitle>
-                    <CardDescription>
-                      Your best converting campaign
-                    </CardDescription>
-                  </CardHeader>
+
+          {/* Main Content Grid */}
+          <div>
+            {/* Campaigns Grid */}
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-semibold text-foreground">Your Campaigns</h2>
+                {campaigns.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} total
+                  </p>
+                )}
+              </div>
+
+              {/* Loading State */}
+              {loadingStats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {[...Array(4)].map((_, i) => (
+                    <Card key={i} className="animate-pulse">
+                      <CardHeader>
+                        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="h-3 bg-gray-200 rounded"></div>
+                          <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {/* Campaigns Grid */}
+              {!loadingStats && campaigns.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {campaigns.map((campaign) => (
+                    <Card key={campaign.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-lg truncate">
+                              {campaign.name}
+                            </CardTitle>
+                            <CardDescription className="line-clamp-2">
+                              {campaign.description || 'No description provided'}
+                            </CardDescription>
+                          </div>
+                          <div className="ml-2 flex flex-col items-end space-y-1">
+                            <Badge 
+                              variant="secondary" 
+                              className={`flex items-center space-x-1 ${getStatusColor(campaign.status)}`}
+                            >
+                              {getStatusIcon(campaign.status)}
+                              <span className="capitalize">{campaign.status}</span>
+                            </Badge>
+                            
+                            {/* Activation Status Indicator for Published Campaigns */}
+                            {campaign.status === 'published' && (
+                              <div className="flex items-center space-x-1">
+                                {campaign.is_active ? (
+                                  <div className="flex items-center space-x-1 text-xs">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <span className="text-green-600 font-medium">Live</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center space-x-1 text-xs">
+                                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                    <span className="text-orange-600 font-medium">Inactive</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {/* Campaign Stats */}
+                        <div className="grid grid-cols-3 gap-3 text-center">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-center">
+                              <Eye className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <p className="text-2xl font-bold text-foreground">{campaign.viewCount}</p>
+                            <p className="text-xs text-muted-foreground">Views</p>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-center">
+                              <Users className="h-4 w-4 text-green-600" />
+                            </div>
+                            <p className="text-2xl font-bold text-foreground">{campaign.leadCount}</p>
+                            <p className="text-xs text-muted-foreground">Leads</p>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-center">
+                              <TrendingUp className="h-4 w-4 text-purple-600" />
+                            </div>
+                            <p className="text-2xl font-bold text-foreground">
+                              {campaign.completionRate.toFixed(0)}%
+                            </p>
+                            <p className="text-xs text-muted-foreground">Rate</p>
+                          </div>
+                        </div>
+
+                        {/* Last Activity */}
+                        <div className="flex items-center justify-between text-sm text-muted-foreground">
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>Updated {formatDate(campaign.updated_at)}</span>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/dashboard/campaigns/${campaign.id}/edit`)
+                              }}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/dashboard/campaigns/${campaign.id}/builder`)
+                              }}
+                              className="text-blue-600 hover:text-blue-700"
+                            >
+                              <Hammer className="h-3 w-3" />
+                            </Button>
+                            
+                            {/* Status Management Dropdown */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreVertical className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="w-48">
+                                {getStatusActions(campaign).map((action, index) => (
+                                  <DropdownMenuItem
+                                    key={index}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      action.action()
+                                    }}
+                                    className="flex items-center space-x-2"
+                                  >
+                                    <action.icon className="h-4 w-4" />
+                                    <span>{action.label}</span>
+                                  </DropdownMenuItem>
+                                ))}
+                                {getStatusActions(campaign).length > 0 && <DropdownMenuSeparator />}
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDeleteCampaign(campaign.id, campaign.name)
+                                  }}
+                                  className="flex items-center space-x-2 text-red-600 focus:text-red-600"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  <span>Delete Campaign</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                          
+                          {campaign.status === 'published' && campaign.published_url && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                window.open(campaign.published_url!, '_blank')
+                              }}
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              View Live
+                            </Button>
+                          )}
+                          
+                          {campaign.status !== 'published' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/dashboard/campaigns/${campaign.id}`)
+                              }}
+                            >
+                              <BarChart3 className="h-3 w-3 mr-1" />
+                              Details
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!loadingStats && campaigns.length === 0 && (
+                <Card className="text-center py-12">
                   <CardContent>
-                    <div className="space-y-3">
-                      <div>
-                        <p className="font-medium">{stats.topPerformingCampaign.name}</p>
-                        <p className="text-sm text-muted-foreground capitalize">
-                          {stats.topPerformingCampaign.status}
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 text-center">
-                        <div>
-                          <p className="text-lg font-bold text-green-600">
-                            {stats.topPerformingCampaign.leadCount}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Leads</p>
-                        </div>
-                        <div>
-                          <p className="text-lg font-bold text-purple-600">
-                            {stats.topPerformingCampaign.completionRate.toFixed(1)}%
-                          </p>
-                          <p className="text-xs text-muted-foreground">Rate</p>
-                        </div>
-                      </div>
+                    <Target className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <CardTitle className="text-xl mb-2">No campaigns yet</CardTitle>
+                    <CardDescription className="mb-6 max-w-md mx-auto">
+                      Create your first lead magnet campaign to start capturing and converting leads.
+                    </CardDescription>
+                    <Button 
+                      onClick={() => router.push('/dashboard/campaigns/create')}
+                      disabled={!canCreateCampaign}
+                      className="flex items-center space-x-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Create Your First Campaign</span>
+                    </Button>
+                    {!canCreateCampaign && profile && (
+                      <p className="text-sm text-muted-foreground mt-3">
+                        You've reached your monthly campaign limit ({profile.monthly_campaign_limit}).
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Usage Warning */}
+              {profile && profile.monthly_campaigns_used >= profile.monthly_campaign_limit && (
+                <Card className="mt-6 border-yellow-200 bg-yellow-50">
+                  <CardContent className="pt-6">
+                    <div className="text-yellow-800">
+                      <p className="font-medium">Campaign Limit Reached</p>
+                      <p className="text-sm mt-1">
+                        You've used all {profile.monthly_campaign_limit} campaigns for this month. 
+                        Upgrade your plan to create more campaigns.
+                      </p>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="w-full"
-                        onClick={() => router.push(`/dashboard/campaigns/${stats.topPerformingCampaign?.id}`)}
+                        className="mt-2"
+                        onClick={() => router.push('/dashboard/settings/billing')}
                       >
-                        View Details
+                        Upgrade Plan
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
               )}
-
-              {/* Quick Actions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Quick Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => router.push('/dashboard/campaigns')}
-                  >
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    View All Campaigns
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => router.push('/dashboard/campaigns/create')}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create New Campaign
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      // Trigger export through the ExportButton - this is a simplified approach
-                      // In a real implementation, you might want to show a dialog or use a different method
-                      handleExportStart()
-                    }}
-                    disabled={loadingExportData || exportData.length === 0}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export Analytics
-                  </Button>
-                </CardContent>
-              </Card>
-
-              {/* Profile Summary */}
-              <UserProfile variant="full" />
-              
-              {/* Export History */}
-              <ExportHistory 
-                source="dashboard" 
-                maxEntries={5} 
-                showStats={false} 
-                compact={true} 
-              />
             </div>
           </div>
         </div>
