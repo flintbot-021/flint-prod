@@ -400,8 +400,7 @@ export default function Dashboard() {
     })
   }
 
-  const canCreateCampaign = profile && 
-    profile.monthly_campaigns_used < profile.monthly_campaign_limit
+  const canCreateCampaign = true // Removed campaign limit enforcement
 
   if (loading) {
     return (
@@ -456,9 +455,9 @@ export default function Dashboard() {
               {profile && (
                 <div className="text-sm text-muted-foreground">
                   <span className="font-medium">
-                    {profile.monthly_campaigns_used} / {profile.monthly_campaign_limit}
+                    {profile.monthly_campaigns_used}
                   </span>
-                  <span className="ml-1">campaigns used this month</span>
+                  <span className="ml-1">campaigns created this month</span>
                 </div>
               )}
             </div>
@@ -574,11 +573,11 @@ export default function Dashboard() {
               <CardContent>
                 <div className="text-2xl font-bold">
                   {loadingStats || !profile ? '...' : 
-                    `${Math.round((profile.monthly_campaigns_used / profile.monthly_campaign_limit) * 100)}%`
+                    `${profile.monthly_campaigns_used}`
                   }
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {profile && `${profile.monthly_campaigns_used} of ${profile.monthly_campaign_limit} campaigns`}
+                  campaigns created this month
                 </p>
               </CardContent>
             </Card>
@@ -815,37 +814,12 @@ export default function Dashboard() {
                       <Plus className="h-4 w-4" />
                       <span>Create Your First Campaign</span>
                     </Button>
-                    {!canCreateCampaign && profile && (
-                      <p className="text-sm text-muted-foreground mt-3">
-                        You've reached your monthly campaign limit ({profile.monthly_campaign_limit}).
-                      </p>
-                    )}
+
                   </CardContent>
                 </Card>
               )}
 
-              {/* Usage Warning */}
-              {profile && profile.monthly_campaigns_used >= profile.monthly_campaign_limit && (
-                <Card className="mt-6 border-yellow-200 bg-yellow-50">
-                  <CardContent className="pt-6">
-                    <div className="text-yellow-800">
-                      <p className="font-medium">Campaign Limit Reached</p>
-                      <p className="text-sm mt-1">
-                        You've used all {profile.monthly_campaign_limit} campaigns for this month. 
-                        Upgrade your plan to create more campaigns.
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => router.push('/dashboard/settings/billing')}
-                      >
-                        Upgrade Plan
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+
             </div>
           </div>
         </div>

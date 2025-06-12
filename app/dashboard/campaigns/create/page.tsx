@@ -96,10 +96,7 @@ export default function CreateCampaignPage() {
       const result = await getCurrentProfile()
       if (result.success && result.data) {
         setProfile(result.data)
-        // Check if user can create campaigns
-        if (result.data.monthly_campaigns_used >= result.data.monthly_campaign_limit) {
-          setError('You have reached your monthly campaign limit. Please upgrade your plan to create more campaigns.')
-        }
+        // Campaign limit check removed
       }
     } catch (err) {
       console.error('Error loading profile:', err)
@@ -152,10 +149,7 @@ export default function CreateCampaignPage() {
   const handleSubmit = async () => {
     if (!profile) return
 
-    if (profile.monthly_campaigns_used >= profile.monthly_campaign_limit) {
-      setError('You have reached your monthly campaign limit.')
-      return
-    }
+    // Campaign limit check removed
 
     try {
       setIsSubmitting(true)
@@ -598,31 +592,7 @@ export default function CreateCampaignPage() {
             </div>
           </div>
 
-          {/* Usage Info */}
-          {profile && (
-            <Card className="mt-6 bg-blue-50 border-blue-200">
-              <CardContent className="pt-6">
-                <div className="text-blue-800">
-                  <p className="text-sm">
-                    <strong>Usage:</strong> {profile.monthly_campaigns_used} of {profile.monthly_campaign_limit} campaigns used this month
-                  </p>
-                  {profile.monthly_campaigns_used >= profile.monthly_campaign_limit && (
-                    <p className="text-sm mt-1">
-                      You've reached your monthly limit. 
-                      <Button
-                        variant="link"
-                        className="text-blue-800 underline p-0 ml-1"
-                        onClick={() => router.push('/dashboard/settings/billing')}
-                      >
-                        Upgrade your plan
-                      </Button>
-                      to create more campaigns.
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+
         </div>
       </main>
     </div>
