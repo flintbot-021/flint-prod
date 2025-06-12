@@ -19,6 +19,7 @@ export type SectionType =
   | 'text_question'
   | 'multiple_choice' 
   | 'slider'
+  | 'question-slider-multiple'
   | 'info'
   | 'capture'
   | 'logic'

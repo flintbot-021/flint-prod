@@ -18,7 +18,15 @@ export function titleToVariableName(title: string): string {
  */
 export function isQuestionSection(sectionType: string): boolean {
   return sectionType.includes('question-') || 
+         sectionType.includes('capture') ||
          ['text_question', 'multiple_choice', 'slider'].includes(sectionType)
+}
+
+/**
+ * Check if section type supports multiple inputs per section
+ */
+export function isMultipleInputSection(sectionType: string): boolean {
+  return sectionType.includes('-multiple')
 }
 
 /**
@@ -142,23 +150,40 @@ export function buildVariablesFromInputs(
   
   sections.forEach(section => {
     // Only process question sections
-    if (isQuestionSection(section.type) && section.title) {
-      const variableName = titleToVariableName(section.title)
-      const userResponse = userInputs[section.id]
-      
-      if (userResponse) {
-        const resolvedValue = extractResponseValue(userResponse, section)
-        variables[variableName] = resolvedValue
+    if (isQuestionSection(section.type)) {
+      if (isMultipleInputSection(section.type)) {
+        // Handle multiple-input sections
+        const settings = section.configuration as any
+        const sectionResponses = userInputs[section.id] || {}
         
-        console.log(`✅ Variable "${variableName}": ${userResponse} → ${resolvedValue}`)
-        if (section.type === 'multiple_choice' && section.configuration) {
-          const config = section.configuration as any
-          if (config.options && Array.isArray(config.options)) {
-            console.log(`   Options available:`, config.options.map((opt: any) => `${opt.id}="${opt.text}"`))
-          }
+        // For multiple sliders
+        if (section.type.includes('slider-multiple') && settings.sliders) {
+          settings.sliders.forEach((slider: any) => {
+            if (sectionResponses[slider.variableName] !== undefined) {
+              variables[slider.variableName] = sectionResponses[slider.variableName]
+              console.log(`✅ Multiple slider variable "${slider.variableName}": ${sectionResponses[slider.variableName]}`)
+            }
+          })
         }
-      } else {
-        console.log(`⚠️ No response found for section ${section.id} (${section.title})`)
+      } else if (section.title) {
+        // Handle existing single-input sections (unchanged)
+        const variableName = titleToVariableName(section.title)
+        const userResponse = userInputs[section.id]
+        
+        if (userResponse) {
+          const resolvedValue = extractResponseValue(userResponse, section)
+          variables[variableName] = resolvedValue
+          
+          console.log(`✅ Variable "${variableName}": ${userResponse} → ${resolvedValue}`)
+          if (section.type === 'multiple_choice' && section.configuration) {
+            const config = section.configuration as any
+            if (config.options && Array.isArray(config.options)) {
+              console.log(`   Options available:`, config.options.map((opt: any) => `${opt.id}="${opt.text}"`))
+            }
+          }
+        } else {
+          console.log(`⚠️ No response found for section ${section.id} (${section.title})`)
+        }
       }
     }
   })

@@ -11,6 +11,7 @@ import {
   MultipleChoiceSection,
   UploadSection,
   SliderSection,
+  MultipleSlidersSection,
   InfoSection,
   LogicSection,
   OutputSection,
@@ -133,6 +134,9 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     
     case 'slider':
       return <SliderSection {...enhancedProps} />
+    
+    case 'question-slider-multiple':
+      return <MultipleSlidersSection {...enhancedProps} />
     
     case 'info':
       return <InfoSection {...enhancedProps} />

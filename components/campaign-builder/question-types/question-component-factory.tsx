@@ -5,6 +5,7 @@ import { TextQuestion } from './text-question'
 import { MultipleChoiceQuestion } from './multiple-choice-question'
 import { RatingScaleQuestion } from './rating-scale-question'
 import { SliderQuestion } from './slider-question'
+import { MultipleSliders } from './multiple-sliders'
 import { DateTimeQuestion } from './date-time-question'
 import { UploadQuestion } from './upload-question'
 import { CaptureSection } from './capture-section'
@@ -54,6 +55,16 @@ export function QuestionComponentFactory({
           isPreview={isPreview}
           isEditing={!isPreview}
           onChange={(newSettings) => onUpdate({ settings: newSettings })}
+          className={className}
+        />
+      )
+
+    case 'question-slider-multiple':
+      return (
+        <MultipleSliders
+          section={section}
+          isPreview={isPreview}
+          onUpdate={onUpdate}
           className={className}
         />
       )
