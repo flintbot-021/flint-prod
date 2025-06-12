@@ -34,7 +34,6 @@ import {
   Activity,
   Clock,
   CheckCircle,
-  Filter,
   Settings,
   Edit,
   Trash2,
@@ -370,10 +369,26 @@ export default function Dashboard() {
       <header className="bg-background shadow border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
+            <div className="flex items-center space-x-8">
               <h1 className="text-2xl font-bold text-foreground">
-                Dashboard
+                Flint
               </h1>
+              <nav className="flex items-center space-x-6">
+                <Button
+                  variant="ghost"
+                  onClick={() => router.push('/dashboard')}
+                  className="text-sm font-medium text-primary"
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => router.push('/dashboard/leads')}
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  Leads
+                </Button>
+              </nav>
             </div>
             <div className="flex items-center space-x-4">
               <UserProfile variant="compact" />
@@ -387,29 +402,22 @@ export default function Dashboard() {
         <div className="px-4 py-6 sm:px-0">
           {/* Filter and Export Controls */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Filter className="h-4 w-4 text-muted-foreground" />
-                <select
-                  value={timeFilter}
-                  onChange={(e) => setTimeFilter(e.target.value as TimeFilter)}
-                  className="border border-input rounded-md px-3 py-1 text-sm"
+            <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg">
+              {timeFilterOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  variant={timeFilter === option.value ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setTimeFilter(option.value as TimeFilter)}
+                  className={`h-8 px-3 text-xs font-medium transition-all ${
+                    timeFilter === option.value
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                  }`}
                 >
-                  {timeFilterOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {profile && (
-                <div className="text-sm text-muted-foreground">
-                  <span className="font-medium">
-                    {profile.monthly_campaigns_used}
-                  </span>
-                  <span className="ml-1">campaigns created this month</span>
-                </div>
-              )}
+                  {option.label}
+                </Button>
+              ))}
             </div>
             <div className="flex items-center space-x-3">
               <ExportButton
@@ -424,11 +432,13 @@ export default function Dashboard() {
                 size="sm"
                 disabled={loadingExportData}
                 showDropdown={true}
+                className="h-9"
               />
               <Button
                 onClick={() => router.push('/dashboard/campaigns/create')}
                 disabled={!canCreateCampaign}
-                className="flex items-center space-x-2"
+                size="sm"
+                className="h-9 flex items-center space-x-2"
               >
                 <Plus className="h-4 w-4" />
                 <span>New Campaign</span>
@@ -457,7 +467,7 @@ export default function Dashboard() {
           )}
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {/* Total Campaigns */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -514,23 +524,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            {/* Monthly Usage */}
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Monthly Usage</CardTitle>
-                <Activity className="h-4 w-4 text-orange-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {loadingStats || !profile ? '...' : 
-                    `${profile.monthly_campaigns_used}`
-                  }
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  campaigns created this month
-                </p>
-              </CardContent>
-            </Card>
+
           </div>
 
 
