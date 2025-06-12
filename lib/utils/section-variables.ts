@@ -167,22 +167,22 @@ export function buildVariablesFromInputs(
         }
       } else if (section.title) {
         // Handle existing single-input sections (unchanged)
-        const variableName = titleToVariableName(section.title)
-        const userResponse = userInputs[section.id]
+      const variableName = titleToVariableName(section.title)
+      const userResponse = userInputs[section.id]
+      
+      if (userResponse) {
+        const resolvedValue = extractResponseValue(userResponse, section)
+        variables[variableName] = resolvedValue
         
-        if (userResponse) {
-          const resolvedValue = extractResponseValue(userResponse, section)
-          variables[variableName] = resolvedValue
-          
-          console.log(`✅ Variable "${variableName}": ${userResponse} → ${resolvedValue}`)
-          if (section.type === 'multiple_choice' && section.configuration) {
-            const config = section.configuration as any
-            if (config.options && Array.isArray(config.options)) {
-              console.log(`   Options available:`, config.options.map((opt: any) => `${opt.id}="${opt.text}"`))
-            }
+        console.log(`✅ Variable "${variableName}": ${userResponse} → ${resolvedValue}`)
+        if (section.type === 'multiple_choice' && section.configuration) {
+          const config = section.configuration as any
+          if (config.options && Array.isArray(config.options)) {
+            console.log(`   Options available:`, config.options.map((opt: any) => `${opt.id}="${opt.text}"`))
           }
-        } else {
-          console.log(`⚠️ No response found for section ${section.id} (${section.title})`)
+        }
+      } else {
+        console.log(`⚠️ No response found for section ${section.id} (${section.title})`)
         }
       }
     }

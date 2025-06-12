@@ -4,11 +4,11 @@ import { useState } from 'react'
 import { Plus, Trash2, GripVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
+import { InlineEditableText } from '@/components/ui/inline-editable-text'
 
 interface SliderConfig {
   id: string
@@ -40,6 +40,7 @@ interface MultipleSlidersProps {
 
 export function MultipleSliders({ section, isPreview = false, onUpdate, className }: MultipleSlidersProps) {
   const [isSaving, setIsSaving] = useState(false)
+  const [sliderValues, setSliderValues] = useState<Record<string, number[]>>({})
   
   const settings = (section.settings as unknown as MultipleSlidersSettings) || { 
     sliders: [], 
@@ -93,44 +94,50 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
     await updateSettings({ sliders: updatedSliders })
   }
 
+  const getSliderValue = (sliderId: string, defaultValue: number) => {
+    return sliderValues[sliderId] || [defaultValue]
+  }
+
+  const setSliderValue = (sliderId: string, value: number[]) => {
+    setSliderValues(prev => ({ ...prev, [sliderId]: value }))
+  }
+
   if (isPreview) {
     return (
-      <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-8', className)}>
+      <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-12', className)}>
         {settings.sliders.map((slider) => (
-          <div key={slider.id} className="space-y-4">
-            <div className="text-center">
-              <h3 className="text-2xl font-bold text-white">
+          <div key={slider.id} className="space-y-6">
+            <div className="text-center space-y-4">
+              <h1 className="text-4xl font-bold text-white">
                 {slider.question}
-              </h3>
+              </h1>
               {slider.subheading && (
-                <p className="text-lg text-gray-300 mt-2">
+                <p className="text-xl text-gray-300">
                   {slider.subheading}
                 </p>
               )}
             </div>
             
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm text-gray-400">
-                <span>{slider.minLabel}</span>
-                <span>{slider.maxLabel}</span>
-              </div>
-              
-              <div className="relative">
-                <input
-                  type="range"
-                  min={slider.minValue}
+            <div className="space-y-4 pt-6">
+              <div className="space-y-2">
+                <Slider
+                  value={getSliderValue(slider.id, slider.defaultValue)}
+                  onValueChange={(value) => setSliderValue(slider.id, value)}
                   max={slider.maxValue}
+                  min={slider.minValue}
                   step={slider.step}
-                  defaultValue={slider.defaultValue}
-                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-                  disabled
+                  className="w-full"
                 />
+                <div className="flex justify-between text-sm text-gray-400">
+                  <span>{slider.minLabel}</span>
+                  <span>{slider.maxLabel}</span>
+                </div>
               </div>
               
               {slider.showValue && (
                 <div className="text-center">
-                  <span className="text-lg font-semibold text-white">
-                    {slider.defaultValue}
+                  <span className="text-2xl font-bold text-blue-400">
+                    {getSliderValue(slider.id, slider.defaultValue)[0]}
                   </span>
                 </div>
               )}
@@ -142,7 +149,7 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
   }
 
   return (
-    <div className={cn('space-y-6', className)}>
+    <div className={cn('py-16 px-6 max-w-4xl mx-auto space-y-8', className)}>
       {settings.sliders.map((slider, index) => (
         <SliderConfigCard
           key={slider.id}
@@ -151,35 +158,46 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
           onUpdate={(updates) => updateSlider(index, updates)}
           onDelete={() => deleteSlider(index)}
           canDelete={settings.sliders.length > 1}
+          sliderValue={getSliderValue(slider.id, slider.defaultValue)}
+          onSliderValueChange={(value) => setSliderValue(slider.id, value)}
         />
       ))}
       
       {settings.allowAddMore && (
-        <button
-          onClick={addSlider}
-          className="w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors"
-        >
-          <Plus className="h-5 w-5 mx-auto mb-2" />
-          Add another slider
-        </button>
+        <div className="flex justify-center pt-6">
+          <Button
+            onClick={addSlider}
+            variant="outline"
+            className="border-dashed border-2 h-12 px-6"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add another slider
+          </Button>
+        </div>
       )}
 
       {/* Global Settings */}
-      <div className="border-t pt-6 space-y-4">
+      <div className="border-t border-gray-700 pt-8 space-y-6">
         <div className="flex items-center justify-between">
-          <Label>Allow adding more sliders</Label>
+          <span className="text-sm text-gray-400">Allow adding more sliders</span>
           <Switch
             checked={settings.allowAddMore}
             onCheckedChange={(checked) => updateSettings({ allowAddMore: checked })}
           />
         </div>
         
-        <div>
-          <Label>Button Text</Label>
-          <Input
+        <div className="space-y-2">
+          <span className="text-sm text-gray-400">Button Text</span>
+          <InlineEditableText
             value={settings.buttonText}
-            onChange={(e) => updateSettings({ buttonText: e.target.value })}
+            onSave={(value) => updateSettings({ buttonText: value })}
+            variant="body"
             placeholder="Next"
+            className="text-base text-gray-300 hover:bg-transparent rounded-none px-0 py-0"
+            inputClassName="!text-base !text-gray-300 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+            showEditIcon={false}
+            showSaveStatus={false}
+            autoSave={false}
           />
         </div>
       </div>
@@ -187,24 +205,34 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
   )
 }
 
-function SliderConfigCard({ slider, index, onUpdate, onDelete, canDelete }: {
+function SliderConfigCard({ 
+  slider, 
+  index, 
+  onUpdate, 
+  onDelete, 
+  canDelete,
+  sliderValue,
+  onSliderValueChange
+}: {
   slider: SliderConfig
   index: number
   onUpdate: (updates: Partial<SliderConfig>) => void
   onDelete: () => void
   canDelete: boolean
+  sliderValue: number[]
+  onSliderValueChange: (value: number[]) => void
 }) {
   return (
-    <div className="border rounded-lg p-4 space-y-4 bg-white">
+    <div className="space-y-8 p-6 border border-gray-700 rounded-lg bg-gray-900/50">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <GripVertical className="h-4 w-4 text-gray-400" />
-          <span className="font-medium">Slider {index + 1}</span>
+        <div className="flex items-center space-x-3">
+          <GripVertical className="h-4 w-4 text-gray-500" />
+          <span className="text-sm font-medium text-gray-400">Slider {index + 1}</span>
         </div>
         
-        <div className="flex items-center space-x-2">
-          <Badge variant="secondary" className="font-mono text-xs">
+        <div className="flex items-center space-x-3">
+          <Badge variant="secondary" className="font-mono text-xs bg-gray-800 text-gray-300">
             @{slider.variableName}
           </Badge>
           
@@ -213,7 +241,7 @@ function SliderConfigCard({ slider, index, onUpdate, onDelete, canDelete }: {
               variant="ghost"
               size="sm"
               onClick={onDelete}
-              className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+              className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/20"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -221,99 +249,157 @@ function SliderConfigCard({ slider, index, onUpdate, onDelete, canDelete }: {
         </div>
       </div>
 
-      {/* Question and Variable Name */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Question Text</Label>
-          <Input
-            value={slider.question}
-            onChange={(e) => onUpdate({ question: e.target.value })}
-            placeholder="Slider question"
-          />
-        </div>
+      {/* Question */}
+      <div className="text-center space-y-4">
+        <InlineEditableText
+          value={slider.question}
+          onSave={(value) => onUpdate({ question: value })}
+          variant="body"
+          placeholder="Type your question here"
+          className="text-3xl font-bold text-gray-300 text-center block w-full hover:bg-transparent rounded-none px-0 py-0"
+          inputClassName="!text-3xl !font-bold !text-gray-300 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+          showEditIcon={false}
+          showSaveStatus={false}
+          multiline={false}
+          autoSave={false}
+        />
         
-        <div>
-          <Label>Variable Name</Label>
-          <Input
-            value={slider.variableName}
-            onChange={(e) => onUpdate({ variableName: e.target.value })}
-            placeholder="variable_name"
-            className="font-mono text-sm"
-          />
-        </div>
-      </div>
-
-      {/* Subheading */}
-      <div>
-        <Label>Subheading (optional)</Label>
-        <Input
-          value={slider.subheading}
-          onChange={(e) => onUpdate({ subheading: e.target.value })}
-          placeholder="Additional context or instructions"
+        <InlineEditableText
+          value={slider.subheading || ''}
+          onSave={(value) => onUpdate({ subheading: value })}
+          variant="body"
+          placeholder="Type sub heading here"
+          className="text-lg text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0"
+          inputClassName="!text-lg !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+          showEditIcon={false}
+          showSaveStatus={false}
+          multiline={false}
+          autoSave={false}
         />
       </div>
 
-      {/* Slider Configuration */}
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <Label>Min Value</Label>
-          <Input
-            type="number"
-            value={slider.minValue}
-            onChange={(e) => onUpdate({ minValue: parseInt(e.target.value) })}
-          />
-        </div>
-        
-        <div>
-          <Label>Max Value</Label>
-          <Input
-            type="number"
-            value={slider.maxValue}
-            onChange={(e) => onUpdate({ maxValue: parseInt(e.target.value) })}
-          />
-        </div>
-        
-        <div>
-          <Label>Default Value</Label>
-          <Input
-            type="number"
-            value={slider.defaultValue}
-            onChange={(e) => onUpdate({ defaultValue: parseInt(e.target.value) })}
-            min={slider.minValue}
+      {/* Variable Name */}
+      <div className="text-center">
+        <div className="text-xs text-gray-500 mb-1">Variable Name</div>
+        <InlineEditableText
+          value={slider.variableName}
+          onSave={(value) => onUpdate({ variableName: value })}
+          variant="body"
+          placeholder="variable_name"
+          className="text-sm font-mono text-gray-400 text-center hover:bg-transparent rounded-none px-0 py-0"
+          inputClassName="!text-sm !font-mono !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+          showEditIcon={false}
+          showSaveStatus={false}
+          autoSave={false}
+        />
+      </div>
+
+      {/* Slider Preview */}
+      <div className="space-y-4 pt-6">
+        <div className="space-y-2">
+          <Slider
+            value={sliderValue}
+            onValueChange={onSliderValueChange}
             max={slider.maxValue}
+            min={slider.minValue}
+            step={slider.step}
+            className="w-full"
           />
+          <div className="flex justify-between items-center text-sm text-gray-400">
+            <div className="text-center">
+              <div className="text-xs text-gray-500 mb-1">min</div>
+              <InlineEditableText
+                value={slider.minValue.toString()}
+                onSave={(value) => onUpdate({ minValue: parseInt(value) || 0 })}
+                variant="caption"
+                placeholder="0"
+                className="text-sm text-gray-400 hover:bg-transparent rounded-none px-0 py-0"
+                inputClassName="!text-sm !text-gray-400 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+                showEditIcon={false}
+                showSaveStatus={false}
+                autoSave={false}
+              />
+            </div>
+            <div className="text-center">
+              <div className="text-xs text-gray-500 mb-1">step</div>
+              <InlineEditableText
+                value={slider.step.toString()}
+                onSave={(value) => onUpdate({ step: parseInt(value) || 1 })}
+                variant="caption"
+                placeholder="1"
+                className="text-sm text-gray-400 text-center hover:bg-transparent rounded-none px-0 py-0"
+                inputClassName="!text-sm !text-gray-400 !text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+                showEditIcon={false}
+                showSaveStatus={false}
+                autoSave={false}
+              />
+            </div>
+            <div className="text-center">
+              <div className="text-xs text-gray-500 mb-1">max</div>
+              <InlineEditableText
+                value={slider.maxValue.toString()}
+                onSave={(value) => onUpdate({ maxValue: parseInt(value) || 100 })}
+                variant="caption"
+                placeholder="100"
+                className="text-sm text-gray-400 text-right hover:bg-transparent rounded-none px-0 py-0"
+                inputClassName="!text-sm !text-gray-400 !text-right !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+                showEditIcon={false}
+                showSaveStatus={false}
+                autoSave={false}
+              />
+            </div>
+          </div>
         </div>
+        
+        {slider.showValue && (
+          <div className="text-center">
+            <span className="text-2xl font-bold text-blue-400">
+              {sliderValue[0]}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Labels */}
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label>Min Label</Label>
-          <Input
+      <div className="flex justify-between items-center text-sm">
+        <div className="text-center">
+          <div className="text-xs text-gray-500 mb-1">min label</div>
+          <InlineEditableText
             value={slider.minLabel}
-            onChange={(e) => onUpdate({ minLabel: e.target.value })}
+            onSave={(value) => onUpdate({ minLabel: value })}
+            variant="caption"
             placeholder="Low"
+            className="text-sm text-gray-400 hover:bg-transparent rounded-none px-0 py-0"
+            inputClassName="!text-sm !text-gray-400 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+            showEditIcon={false}
+            showSaveStatus={false}
+            autoSave={false}
           />
         </div>
-        
-        <div>
-          <Label>Max Label</Label>
-          <Input
+        <div className="text-center">
+          <div className="text-xs text-gray-500 mb-1">max label</div>
+          <InlineEditableText
             value={slider.maxLabel}
-            onChange={(e) => onUpdate({ maxLabel: e.target.value })}
+            onSave={(value) => onUpdate({ maxLabel: value })}
+            variant="caption"
             placeholder="High"
+            className="text-sm text-gray-400 hover:bg-transparent rounded-none px-0 py-0"
+            inputClassName="!text-sm !text-gray-400 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+            showEditIcon={false}
+            showSaveStatus={false}
+            autoSave={false}
           />
         </div>
       </div>
 
       {/* Options */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pt-4 border-t border-gray-700">
         <div className="flex items-center space-x-2">
           <Switch
             checked={slider.required}
             onCheckedChange={(checked) => onUpdate({ required: checked })}
           />
-          <Label>Required</Label>
+          <span className="text-sm text-gray-400">Required</span>
         </div>
         
         <div className="flex items-center space-x-2">
@@ -321,7 +407,7 @@ function SliderConfigCard({ slider, index, onUpdate, onDelete, canDelete }: {
             checked={slider.showValue}
             onCheckedChange={(checked) => onUpdate({ showValue: checked })}
           />
-          <Label>Show Value</Label>
+          <span className="text-sm text-gray-400">Show Value</span>
         </div>
       </div>
     </div>

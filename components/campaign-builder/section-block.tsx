@@ -191,7 +191,7 @@ export function SectionBlock({
     // Use question component factory for question types
     const questionTypes = [
       'text-input', 'multiple-choice', 'rating-scale', 'email-capture', 'contact-form',
-      'question-text', 'question-multiple-choice', 'question-slider', 'question-date-time', 'question-upload', 'capture-details', 'capture'
+      'question-text', 'question-multiple-choice', 'question-slider', 'question-slider-multiple', 'question-date-time', 'question-upload', 'capture-details', 'capture'
     ]
     if (questionTypes.includes(section.type)) {
       return (
