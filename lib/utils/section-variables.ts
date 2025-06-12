@@ -18,7 +18,15 @@ export function titleToVariableName(title: string): string {
  */
 export function isQuestionSection(sectionType: string): boolean {
   return sectionType.includes('question-') || 
+         sectionType.includes('capture') ||
          ['text_question', 'multiple_choice', 'slider'].includes(sectionType)
+}
+
+/**
+ * Check if section type supports multiple inputs per section
+ */
+export function isMultipleInputSection(sectionType: string): boolean {
+  return sectionType.includes('-multiple')
 }
 
 /**
@@ -136,29 +144,62 @@ export function buildVariablesFromInputs(
     id: s.id, 
     title: s.title, 
     type: s.type, 
-    hasOptions: !!(s.configuration as any)?.options?.length 
+    hasOptions: !!(s.configuration as any)?.options?.length,
+    hasSliders: !!(s.configuration as any)?.sliders?.length
   })))
   console.log('📝 User inputs:', userInputs)
   
   sections.forEach(section => {
-    // Only process question sections
-    if (isQuestionSection(section.type) && section.title) {
-      const variableName = titleToVariableName(section.title)
-      const userResponse = userInputs[section.id]
+    // Only process question sections OR sections with sliders (for Multiple Sliders saved as 'info')
+    if (isQuestionSection(section.type) || (section.configuration as any)?.sliders) {
       
-      if (userResponse) {
-        const resolvedValue = extractResponseValue(userResponse, section)
-        variables[variableName] = resolvedValue
+      // Check if this is a Multiple Sliders section (either by type or by having sliders config)
+      const isMultipleSliders = isMultipleInputSection(section.type) || 
+                               (section.type.includes('slider-multiple')) ||
+                               ((section.configuration as any)?.sliders?.length > 0)
+      
+      if (isMultipleSliders) {
+        // Handle multiple-input sections (Multiple Sliders)
+        const settings = section.configuration as any
+        const sectionResponses = userInputs[section.id] || {}
         
-        console.log(`✅ Variable "${variableName}": ${userResponse} → ${resolvedValue}`)
-        if (section.type === 'multiple_choice' && section.configuration) {
-          const config = section.configuration as any
-          if (config.options && Array.isArray(config.options)) {
-            console.log(`   Options available:`, config.options.map((opt: any) => `${opt.id}="${opt.text}"`))
-          }
+        console.log(`🎯 Processing Multiple Sliders section ${section.id}:`, {
+          type: section.type,
+          hasSliders: !!settings.sliders,
+          slidersCount: settings.sliders?.length || 0,
+          sectionResponses
+        })
+        
+        // For multiple sliders - check both type conditions and sliders config
+        if ((section.type.includes('slider-multiple') || settings.sliders) && settings.sliders) {
+          settings.sliders.forEach((slider: any) => {
+            if (sectionResponses[slider.variableName] !== undefined) {
+              variables[slider.variableName] = sectionResponses[slider.variableName]
+              console.log(`✅ Multiple slider variable "${slider.variableName}": ${sectionResponses[slider.variableName]}`)
+            } else {
+              console.log(`⚠️ No response found for slider variable "${slider.variableName}" in section ${section.id}`)
+            }
+          })
         }
-      } else {
-        console.log(`⚠️ No response found for section ${section.id} (${section.title})`)
+      } else if (section.title) {
+        // Handle existing single-input sections (unchanged)
+        const variableName = titleToVariableName(section.title)
+        const userResponse = userInputs[section.id]
+        
+        if (userResponse) {
+          const resolvedValue = extractResponseValue(userResponse, section)
+          variables[variableName] = resolvedValue
+          
+          console.log(`✅ Variable "${variableName}": ${userResponse} → ${resolvedValue}`)
+          if (section.type === 'multiple_choice' && section.configuration) {
+            const config = section.configuration as any
+            if (config.options && Array.isArray(config.options)) {
+              console.log(`   Options available:`, config.options.map((opt: any) => `${opt.id}="${opt.text}"`))
+            }
+          }
+        } else {
+          console.log(`⚠️ No response found for section ${section.id} (${section.title})`)
+        }
       }
     }
   })

@@ -254,21 +254,39 @@ export function extractRichContextForSection(
   precedingSections.forEach(section => {
     const settings = section.settings as any
 
+    // Skip capture sections - they're for lead generation, not AI processing
+    if (section.type.includes('capture')) {
+      return
+    }
+
     // Extract from question sections
-    if (section.type.includes('question-') || section.type.includes('capture')) {
-      const questionText = settings?.content || settings?.questionText || section.title || 'Untitled Question'
-      questionContext.push(questionText)
+    if (section.type.includes('question-')) {
+      if (section.type === 'question-slider-multiple') {
+        // Handle multiple sliders - extract each individual slider
+        if (settings.sliders && Array.isArray(settings.sliders)) {
+          settings.sliders.forEach((slider: any) => {
+            if (slider.variableName && slider.label) {
+              questionContext.push(slider.label)
+              variables.push(slider.variableName)
+            }
+          })
+        }
+      } else {
+        // Handle single-input question sections
+        const questionText = settings?.content || settings?.questionText || section.title || 'Untitled Question'
+        questionContext.push(questionText)
 
-      // Extract variable name
-      const variableName = settings?.variableName || 
-                          (typeof section.title === 'string' ? section.title.toLowerCase().replace(/\s+/g, '_') : '') || 
-                          `question_${section.order}`
-      variables.push(variableName)
+        // Extract variable name
+        const variableName = settings?.variableName || 
+                            (typeof section.title === 'string' ? section.title.toLowerCase().replace(/\s+/g, '_') : '') || 
+                            `question_${section.order}`
+        variables.push(variableName)
 
-      // Add options for multiple choice questions
-      if (section.type === 'question-multiple-choice' && settings?.options) {
-        const options = settings.options.map((opt: any) => opt.text || opt.label || opt).join(', ')
-        questionContext.push(`Options: ${options}`)
+        // Add options for multiple choice questions
+        if (section.type === 'question-multiple-choice' && settings?.options) {
+          const options = settings.options.map((opt: any) => opt.text || opt.label || opt).join(', ')
+          questionContext.push(`Options: ${options}`)
+        }
       }
     }
 

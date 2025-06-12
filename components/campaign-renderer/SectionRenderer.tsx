@@ -11,6 +11,7 @@ import {
   MultipleChoiceSection,
   UploadSection,
   SliderSection,
+  MultipleSlidersSection,
   InfoSection,
   LogicSection,
   OutputSection,
@@ -134,7 +135,14 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     case 'slider':
       return <SliderSection {...enhancedProps} />
     
+    case 'question-slider-multiple':
+      return <MultipleSlidersSection {...enhancedProps} />
+    
     case 'info':
+      // Check if this is actually a Multiple Sliders section that was incorrectly saved as 'info'
+      if ((config as any).sliders && Array.isArray((config as any).sliders)) {
+        return <MultipleSlidersSection {...enhancedProps} />
+      }
       return <InfoSection {...enhancedProps} />
     
     case 'logic':

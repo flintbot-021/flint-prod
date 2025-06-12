@@ -85,6 +85,33 @@ export const SECTION_TYPES: SectionType[] = [
     }
   },
   {
+    id: 'question-slider-multiple',
+    name: 'Multiple Sliders',
+    description: 'Multiple slider questions on one page',
+    icon: 'Sliders',
+    category: 'input',
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    defaultSettings: {
+      headline: 'Rate the following',
+      subheading: 'Please provide your ratings for each item below',
+      sliders: [
+        {
+          id: 'slider_1',
+          variableName: 'satisfaction',
+          label: 'Overall satisfaction',
+          minValue: 0,
+          maxValue: 10,
+          defaultValue: 5,
+          step: 1,
+          minLabel: 'Not at all',
+          maxLabel: 'Extremely',
+          required: true,
+          showValue: true
+        }
+      ]
+    }
+  },
+  {
     id: 'question-date-time',
     name: 'Date & Time',
     description: 'Date and time picker inputs',

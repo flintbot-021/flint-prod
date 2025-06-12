@@ -6,7 +6,7 @@ import { SectionRendererProps } from '../types'
 import { getMobileClasses } from '../utils'
 import { cn } from '@/lib/utils'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
-import { titleToVariableName, isQuestionSection, extractResponseValue } from '@/lib/utils/section-variables'
+import { titleToVariableName, isQuestionSection, extractResponseValue, buildVariablesFromInputs } from '@/lib/utils/section-variables'
 
 
 
@@ -68,20 +68,10 @@ export function OutputSection({
   const variableMap = useMemo(() => {
     const map: Record<string, any> = {}
     
-    // Add input variables from question sections
-    const questionSections = sections.filter(s => 
-      isQuestionSection(s.type) && s.title
-    )
-    
-    questionSections.forEach(sec => {
-      if (sec.title) {
-        const variableName = titleToVariableName(sec.title)
-        const response = userInputs[sec.id]
-        
-        if (response) {
-          map[variableName] = extractResponseValue(response, sec)
-        }
-      }
+    // Use the same logic as buildVariablesFromInputs to handle all section types including Multiple Sliders
+    const inputVariables = buildVariablesFromInputs(sections, userInputs)
+    Object.entries(inputVariables).forEach(([key, value]) => {
+      map[key] = value
     })
     
     // Add AI output variables from stored results
@@ -91,6 +81,8 @@ export function OutputSection({
         map[key] = value
       })
     }
+    
+    console.log('🎯 OutputSection variableMap:', map)
     
     return map
   }, [sections, userInputs])
@@ -214,18 +206,6 @@ export function OutputSection({
               </div>
             )}
           </div>
-
-          {/* Debug Info (only in development) */}
-          {process.env.NODE_ENV === 'development' && (
-            <details className="bg-gray-100 border border-gray-300 rounded-lg p-4">
-              <summary className="cursor-pointer font-medium text-gray-700 mb-2">
-                🔍 Debug: Available Variables
-              </summary>
-              <pre className="text-xs text-gray-600 bg-white p-2 rounded border overflow-auto">
-                {JSON.stringify(variableMap, null, 2)}
-              </pre>
-            </details>
-          )}
 
           {/* Action Buttons */}
           <div className="flex justify-center space-x-3 pt-8">

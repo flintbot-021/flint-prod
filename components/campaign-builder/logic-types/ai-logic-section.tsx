@@ -51,14 +51,44 @@ function extractInputVariablesWithTypesFromBuilder(sections: CampaignSection[], 
   type: 'text' | 'file'
   section: CampaignSection
 }> {
-  return sections
-    .filter(s => s.order < currentOrder && isQuestionSection(s.type) && s.title)
-    .map(section => ({
-      name: titleToVariableName(section.title),
-      title: section.title,
-      type: isFileVariableFromBuilder(section) ? 'file' : 'text',
-      section
-    }))
+  const variables: Array<{
+    name: string
+    title: string
+    type: 'text' | 'file'
+    section: CampaignSection
+  }> = []
+  
+  sections
+    .filter(s => s.order < currentOrder && isQuestionSection(s.type) && !s.type.includes('capture'))
+    .forEach(section => {
+      if (section.type === 'question-slider-multiple') {
+        // Handle multiple sliders - each slider becomes a variable
+        // Don't create a variable for the parent section, only for individual sliders
+        const settings = section.settings as any
+        if (settings.sliders && Array.isArray(settings.sliders)) {
+          settings.sliders.forEach((slider: any) => {
+            if (slider.variableName && slider.label) {
+              variables.push({
+                name: slider.variableName,
+                title: slider.label,
+                type: 'text' as const,
+                section
+              })
+            }
+          })
+        }
+      } else if (section.title) {
+        // Handle single-input sections (existing logic)
+        variables.push({
+          name: titleToVariableName(section.title),
+          title: section.title,
+          type: isFileVariableFromBuilder(section) ? 'file' : 'text',
+          section
+        })
+      }
+    })
+    
+  return variables
 }
 
 // Check if a campaign builder section is a file variable
@@ -561,19 +591,83 @@ export function AILogicSection({
                     {textVariables.length > 0 && (
                       <div className="space-y-4">
                         <h4 className="text-sm font-medium text-gray-200">Text Inputs</h4>
-                        {textVariables.map((variable) => (
-                          <div key={variable.name} className="flex items-center space-x-4">
-                            <Label className="text-sm font-medium text-gray-300 w-32 flex-shrink-0">
-                              @{variable.name}:
-                            </Label>
-                            <Input
-                              value={(settings.testInputs || {})[variable.name] || ''}
-                              onChange={(e) => updateTestInput(variable.name, e.target.value)}
-                              placeholder={`Example answer for ${variable.title}`}
-                              className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
-                          </div>
-                        ))}
+                        {textVariables.map((variable) => {
+                          // Check if this is a slider variable
+                          const isSliderVariable = variable.section.type === 'question-slider' || 
+                                                  variable.section.type === 'question-slider-multiple'
+                          
+                          if (isSliderVariable) {
+                            // For slider variables, show a slider input
+                            let sliderConfig = null
+                            
+                            if (variable.section.type === 'question-slider-multiple') {
+                              // Find the specific slider config for this variable
+                              const settings = variable.section.settings as any
+                              sliderConfig = settings.sliders?.find((s: any) => s.variableName === variable.name)
+                            } else if (variable.section.type === 'question-slider') {
+                              // For single slider, use section settings
+                              const settings = variable.section.settings as any
+                              sliderConfig = {
+                                minValue: settings.minValue || 0,
+                                maxValue: settings.maxValue || 10,
+                                defaultValue: settings.defaultValue || 5,
+                                step: settings.step || 1,
+                                minLabel: settings.minLabel || 'Low',
+                                maxLabel: settings.maxLabel || 'High'
+                              }
+                            }
+                            
+                            const currentValue = (settings.testInputs || {})[variable.name] || sliderConfig?.defaultValue || 5
+                            
+                            return (
+                              <div key={variable.name} className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-sm font-medium text-gray-300">
+                                    @{variable.name}: {variable.title}
+                                  </Label>
+                                  <span className="text-sm text-gray-400 font-mono">
+                                    {currentValue}
+                                  </span>
+                                </div>
+                                <div className="px-4">
+                                  <div className="relative">
+                                    <input
+                                      type="range"
+                                      min={sliderConfig?.minValue || 0}
+                                      max={sliderConfig?.maxValue || 10}
+                                      step={sliderConfig?.step || 1}
+                                      value={currentValue}
+                                      onChange={(e) => updateTestInput(variable.name, e.target.value)}
+                                      className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
+                                      style={{
+                                        background: `linear-gradient(to right, #f97316 0%, #f97316 ${((currentValue - (sliderConfig?.minValue || 0)) / ((sliderConfig?.maxValue || 10) - (sliderConfig?.minValue || 0))) * 100}%, #4b5563 ${((currentValue - (sliderConfig?.minValue || 0)) / ((sliderConfig?.maxValue || 10) - (sliderConfig?.minValue || 0))) * 100}%, #4b5563 100%)`
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                                    <span>{sliderConfig?.minLabel || 'Low'}</span>
+                                    <span>{sliderConfig?.maxLabel || 'High'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          } else {
+                            // For non-slider variables, show text input
+                            return (
+                              <div key={variable.name} className="flex items-center space-x-4">
+                                <Label className="text-sm font-medium text-gray-300 w-32 flex-shrink-0">
+                                  @{variable.name}:
+                                </Label>
+                                <Input
+                                  value={(settings.testInputs || {})[variable.name] || ''}
+                                  onChange={(e) => updateTestInput(variable.name, e.target.value)}
+                                  placeholder={`Example answer for ${variable.title}`}
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                />
+                              </div>
+                            )
+                          }
+                        })}
                       </div>
                     )}
                     

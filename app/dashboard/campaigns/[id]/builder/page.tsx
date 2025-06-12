@@ -39,6 +39,7 @@ const mapCampaignBuilderTypeToDatabase = (builderType: string): string => {
     'question-text': 'text_question',
     'question-multiple-choice': 'multiple_choice',
     'question-slider': 'slider',
+    'question-slider-multiple': 'question-slider-multiple',
     'question-date-time': 'text_question', // Could be a specialized type later
     'question-upload': 'text_question', // Could be a specialized type later
     
@@ -68,6 +69,7 @@ const mapDatabaseTypeToCampaignBuilder = (dbType: string): string => {
     'text_question': 'question-text',
     'multiple_choice': 'question-multiple-choice', 
     'slider': 'question-slider',
+    'question-slider-multiple': 'question-slider-multiple',
     'info': 'content-basic',
     'capture': 'capture-details',
     'logic': 'logic-ai',

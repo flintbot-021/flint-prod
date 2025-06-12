@@ -103,35 +103,63 @@ export class PromptGenerationService {
    */
   private extractRichContext(sections: CampaignSection[], currentOrder: number): SectionContext[] {
     const precedingSections = sections.filter(s => s.order < currentOrder)
+    const contexts: SectionContext[] = []
     
-    return precedingSections.map(section => {
+    precedingSections.forEach(section => {
       const settings = section.settings as any
-      const context: SectionContext = {
-        title: section.title || 'Untitled Section',
-        type: section.type,
-        order: section.order
+      
+      // Skip capture sections - they're for lead generation, not AI processing
+      if (section.type.includes('capture')) {
+        return
       }
 
-      // Extract content based on section type
+      // Handle question sections
       if (section.type.includes('question-')) {
-        context.content = settings?.content || settings?.questionText || section.title
-        context.variableName = settings?.variableName || 
-                              (typeof section.title === 'string' ? section.title.toLowerCase().replace(/\s+/g, '_') : '') ||
-                              `question_${section.order}`
+        if (section.type === 'question-slider-multiple') {
+          // Handle multiple sliders - create context for each individual slider
+          if (settings.sliders && Array.isArray(settings.sliders)) {
+            settings.sliders.forEach((slider: any) => {
+              if (slider.variableName && slider.label) {
+                contexts.push({
+                  title: slider.label,
+                  type: 'question-slider',
+                  content: slider.label,
+                  variableName: slider.variableName,
+                  order: section.order
+                })
+              }
+            })
+          }
+        } else if (section.title) {
+          // Handle single-input question sections
+          const context: SectionContext = {
+            title: section.title,
+            type: section.type,
+            content: settings?.content || settings?.questionText || section.title,
+            variableName: (typeof section.title === 'string' ? section.title.toLowerCase().replace(/\s+/g, '_') : '') ||
+                         `question_${section.order}`,
+            order: section.order
+          }
 
-        // Extract options for multiple choice
-        if (section.type === 'question-multiple-choice' && settings?.options) {
-          context.options = settings.options.map((opt: any) => opt.text || opt.label || opt)
+          // Extract options for multiple choice
+          if (section.type === 'question-multiple-choice' && settings?.options) {
+            context.options = settings.options.map((opt: any) => opt.text || opt.label || opt)
+          }
+
+          contexts.push(context)
         }
-      } else if (section.type.includes('capture')) {
-        context.content = settings?.content || section.title
-        context.variableName = settings?.variableName || 'user_details'
       } else if (section.type.includes('content-') || section.type === 'info') {
-        context.content = settings?.content || settings?.text || section.title
+        // Handle content sections (for context, but no variables)
+        contexts.push({
+          title: section.title || 'Untitled Section',
+          type: section.type,
+          content: settings?.content || settings?.text || section.title,
+          order: section.order
+        })
       }
-
-      return context
     })
+    
+    return contexts
   }
 
   /**

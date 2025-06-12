@@ -61,8 +61,29 @@ export {
   // Section options removed - now stored in section.configuration JSONB field
 } from './campaigns';
 
-// OLD LEAD OPERATIONS REMOVED - Now using simplified session-based approach
-// See ./sessions.ts for new lead management functions
+// =============================================================================
+// LEAD ANALYTICS & EXTENDED OPERATIONS
+// =============================================================================
+export {
+  // Lead Analytics (the missing function)
+  getCampaignLeadStats,
+  
+  // Additional lead operations not covered by sessions
+  searchLeads,
+  getLeads,
+  getCampaignLeads,
+  getLeadById,
+  updateLead,
+  completeLead,
+  deleteLead,
+  
+  // Lead Responses
+  createLeadResponse,
+  upsertLeadResponse,
+  getLeadResponses,
+  getSectionResponses,
+  deleteLeadResponse
+} from './leads';
 
 // =============================================================================
 // PROFILE OPERATIONS
