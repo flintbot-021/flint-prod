@@ -138,8 +138,7 @@ export class PromptGenerationService {
             title: section.title,
             type: section.type,
             content: settings?.content || settings?.questionText || section.title,
-            variableName: (typeof section.title === 'string' ? section.title.toLowerCase().replace(/\s+/g, '_') : '') ||
-                         `question_${section.order}`,
+            variableName: settings?.variableName || this.createVariableName(section.title) || `question_${section.order}`,
             order: section.order
           }
 
@@ -184,29 +183,34 @@ export class PromptGenerationService {
 `
 
     // Add question context in enhanced format with proper context
+    // Match questions with their corresponding variables
     richContext.questionContext.forEach((question, index) => {
-      const section = context[index]
-      const questionType = section?.type || 'text question'
+      const variable = richContext.variables[index]
       
-      prompt += `Question ${index + 1} (${questionType}): "${section?.title || 'Untitled'}"`
-      
-      if (section?.content && section.content !== section.title) {
-        prompt += ` - Content: ${section.content}`
+      if (question && variable) {
+        // Find the corresponding section context for additional details
+        const sectionContext = context.find(ctx => 
+          ctx.variableName === variable || 
+          ctx.title === question ||
+          ctx.content === question
+        )
+        
+        const questionType = sectionContext?.type || 'text question'
+        
+        prompt += `Question ${index + 1} (${questionType}): "${question}"`
+        
+        // Add type-specific information
+        if (questionType.includes('slider')) {
+          const rangeInfo = sectionContext?.options?.find(opt => opt.startsWith('Range:')) || 'Range: 0 to 10'
+          prompt += ` - ${rangeInfo}`
+        } else if (questionType === 'question-multiple-choice' && sectionContext?.options?.length) {
+          prompt += ` - Options: ${sectionContext.options.join(', ')}`
+        }
+        
+        // Add the variable name that will be used
+        prompt += ` - Variable: @${variable}`
+        prompt += `\n`
       }
-      
-      // Add type-specific information
-      if (questionType.includes('slider')) {
-        const rangeInfo = section?.options?.find(opt => opt.startsWith('Range:')) || 'Range: 0 to 10'
-        prompt += ` - ${rangeInfo}`
-      } else if (questionType === 'question-multiple-choice' && section?.options?.length) {
-        prompt += ` - Options: ${section.options.join(', ')}`
-      }
-      
-      // Add the variable name that will be used
-      if (section?.variableName) {
-        prompt += ` - Variable: @${section.variableName}`
-      }
-      prompt += `\n`
     })
 
     prompt += `
@@ -308,6 +312,22 @@ Make it conversational and helpful. Remember to include the @variable references
     }
 
     return data.choices[0].message.content
+  }
+
+  /**
+   * Create a valid variable name from a section title
+   */
+  private createVariableName(title: string): string {
+    if (!title) return 'untitled_variable'
+    
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .replace(/^_+|_+$/g, '') // Remove leading/trailing underscores
+      .replace(/_+/g, '_') // Replace multiple underscores with single
+      .substring(0, 50) // Limit length
+      || 'untitled_variable' // Fallback if empty
   }
 
   /**

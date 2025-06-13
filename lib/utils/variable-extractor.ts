@@ -271,21 +271,21 @@ export function extractRichContextForSection(
             }
           })
         }
-      } else {
+      } else if (section.title) {
         // Handle single-input question sections
-      const questionText = settings?.content || settings?.questionText || section.title || 'Untitled Question'
-      questionContext.push(questionText)
+        const questionText = settings?.content || settings?.questionText || section.title || 'Untitled Question'
+        questionContext.push(questionText)
 
-      // Extract variable name
-      const variableName = settings?.variableName || 
-                          (typeof section.title === 'string' ? section.title.toLowerCase().replace(/\s+/g, '_') : '') || 
-                          `question_${section.order}`
-      variables.push(variableName)
+        // Extract variable name using the same logic as createVariableName
+        const variableName = settings?.variableName || 
+                            createVariableName(section.title) || 
+                            `question_${section.order}`
+        variables.push(variableName)
 
-      // Add options for multiple choice questions
-      if (section.type === 'question-multiple-choice' && settings?.options) {
-        const options = settings.options.map((opt: any) => opt.text || opt.label || opt).join(', ')
-        questionContext.push(`Options: ${options}`)
+        // Add options for multiple choice questions
+        if (section.type === 'question-multiple-choice' && settings?.options) {
+          const options = settings.options.map((opt: any) => opt.text || opt.label || opt).join(', ')
+          questionContext.push(`Options: ${options}`)
         }
       }
     }
