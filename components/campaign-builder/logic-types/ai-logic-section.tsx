@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -125,6 +125,19 @@ export function AILogicSection({
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
   const [isGeneratingOutputs, setIsGeneratingOutputs] = useState(false)
   
+  // Local state for immediate UI updates (before debounced persistence)
+  const [localPrompt, setLocalPrompt] = useState(settings.prompt || '')
+  const [localTestInputs, setLocalTestInputs] = useState<Record<string, string>>({})
+  
+  // Update local state when settings change
+  useEffect(() => {
+    setLocalPrompt(settings.prompt || '')
+  }, [settings.prompt])
+  
+  useEffect(() => {
+    setLocalTestInputs(settings.testInputs || {})
+  }, [settings.testInputs])
+  
   // Extract actual variables from campaign sections with type information
   const extractedVariablesWithTypes = useMemo(() => {
     if (allSections.length > 0 && section?.order !== undefined) {
@@ -158,19 +171,37 @@ export function AILogicSection({
     step4: false
   })
 
-  const toggleSection = useCallback((section: keyof typeof expandedSections) => {
+  const toggleSection = useCallback((sectionKey: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({
       ...prev,
-      [section]: !prev[section]
+      [sectionKey]: !prev[sectionKey]
     }))
   }, [])
 
+  // Debounced prompt updates
+  const promptTimeout = useRef<NodeJS.Timeout>()
+  
   const handleSettingChange = useCallback((key: string, value: any) => {
     if (onChange) {
       const newSettings = { ...settings, [key]: value }
       onChange(newSettings)
     }
   }, [settings, onChange])
+  
+  const handlePromptChange = useCallback((value: string) => {
+    // Update local state immediately for responsive UI
+    setLocalPrompt(value)
+    
+    // Clear existing timeout
+    if (promptTimeout.current) {
+      clearTimeout(promptTimeout.current)
+    }
+    
+    // Debounce the settings update
+    promptTimeout.current = setTimeout(() => {
+      handleSettingChange('prompt', value)
+    }, 500) // 500ms debounce for less frequent updates
+  }, [handleSettingChange])
 
 
 
@@ -328,11 +359,24 @@ export function AILogicSection({
     handleSettingChange('outputVariables', [...settings.outputVariables, newVariable])
   }, [settings.outputVariables, handleSettingChange])
 
+  // Debounced output variable updates
+  const outputVariableTimeouts = useRef<Record<string, NodeJS.Timeout>>({})
+  
   const updateOutputVariable = useCallback((id: string, field: string, value: string) => {
-    const updatedVariables = settings.outputVariables.map(variable =>
-      variable.id === id ? { ...variable, [field]: value } : variable
-    )
-    handleSettingChange('outputVariables', updatedVariables)
+    // Clear existing timeout for this field
+    const timeoutKey = `${id}-${field}`
+    if (outputVariableTimeouts.current[timeoutKey]) {
+      clearTimeout(outputVariableTimeouts.current[timeoutKey])
+    }
+    
+    // Debounce the update
+    outputVariableTimeouts.current[timeoutKey] = setTimeout(() => {
+      const updatedVariables = settings.outputVariables.map(variable =>
+        variable.id === id ? { ...variable, [field]: value } : variable
+      )
+      handleSettingChange('outputVariables', updatedVariables)
+      delete outputVariableTimeouts.current[timeoutKey]
+    }, 300)
   }, [settings.outputVariables, handleSettingChange])
 
   const removeOutputVariable = useCallback((id: string) => {
@@ -341,14 +385,37 @@ export function AILogicSection({
   }, [settings.outputVariables, handleSettingChange])
 
   const insertVariable = useCallback((variable: string) => {
-    const currentValue = settings.prompt || ''
+    const currentValue = localPrompt || settings.prompt || ''
     const newValue = currentValue + `@${variable}`
-    handleSettingChange('prompt', newValue)
-  }, [settings.prompt, handleSettingChange])
+    handlePromptChange(newValue)
+  }, [localPrompt, settings.prompt, handlePromptChange])
 
+  // Debounced test input updates
+  const testInputTimeouts = useRef<Record<string, NodeJS.Timeout>>({})
+  
   const updateTestInput = useCallback((variableName: string, value: string) => {
-    const newTestInputs = { ...(settings.testInputs || {}), [variableName]: value }
-    handleSettingChange('testInputs', newTestInputs)
+    // Update local state immediately for responsive UI
+    setLocalTestInputs(prev => ({ ...prev, [variableName]: value }))
+    
+    // Clear existing timeout for this variable
+    if (testInputTimeouts.current[variableName]) {
+      clearTimeout(testInputTimeouts.current[variableName])
+    }
+    
+    // For sliders, update settings immediately (no debounce needed)
+    const isSliderUpdate = typeof value === 'string' && /^\d+(\.\d+)?$/.test(value)
+    
+    if (isSliderUpdate) {
+      const newTestInputs = { ...(settings.testInputs || {}), [variableName]: value }
+      handleSettingChange('testInputs', newTestInputs)
+    } else {
+      // For text inputs, debounce the settings update
+      testInputTimeouts.current[variableName] = setTimeout(() => {
+        const newTestInputs = { ...(settings.testInputs || {}), [variableName]: value }
+        handleSettingChange('testInputs', newTestInputs)
+        delete testInputTimeouts.current[variableName]
+      }, 300) // 300ms debounce
+    }
   }, [settings.testInputs, handleSettingChange])
 
   const updateTestFile = useCallback((variableName: string, file: File | null) => {
@@ -361,19 +428,20 @@ export function AILogicSection({
     handleSettingChange('testFiles', newTestFiles)
   }, [settings.testFiles, handleSettingChange])
 
-  // Generate live preview of prompt with variables substituted
+  // Generate live preview of prompt with variables substituted - optimized with local state
   const previewPrompt = useMemo(() => {
-    let preview = settings.prompt || ''
-    if (settings.testInputs) {
-      Object.entries(settings.testInputs).forEach(([variable, value]) => {
-        if (value && typeof value === 'string' && value.trim()) {
-          const regex = new RegExp(`@${variable}\\b`, 'g')
-          preview = preview.replace(regex, `**${value}**`)
-        }
-      })
-    }
+    const currentPrompt = localPrompt || settings.prompt || ''
+    let preview = currentPrompt
+    const currentInputs = { ...settings.testInputs, ...localTestInputs }
+    
+    Object.entries(currentInputs).forEach(([variable, value]) => {
+      if (value && typeof value === 'string' && value.trim()) {
+        const regex = new RegExp(`@${variable}\\b`, 'g')
+        preview = preview.replace(regex, `**${value}**`)
+      }
+    })
     return preview
-  }, [settings.prompt, settings.testInputs])
+  }, [localPrompt, settings.prompt, settings.testInputs, localTestInputs])
 
   const runTest = async () => {
     setIsTestRunning(true)
@@ -617,7 +685,15 @@ export function AILogicSection({
                               }
                             }
                             
-                            const currentValue = (settings.testInputs || {})[variable.name] || sliderConfig?.defaultValue || 5
+                            // Use local state for immediate slider response
+                            const localValue = localTestInputs[variable.name] !== undefined 
+                              ? localTestInputs[variable.name] 
+                              : (settings.testInputs || {})[variable.name] || sliderConfig?.defaultValue || 5
+                            
+                            const numericValue = Number(localValue)
+                            const minVal = sliderConfig?.minValue || 0
+                            const maxVal = sliderConfig?.maxValue || 10
+                            const progressPercent = ((numericValue - minVal) / (maxVal - minVal)) * 100
                             
                             return (
                               <div key={variable.name} className="space-y-3">
@@ -625,28 +701,65 @@ export function AILogicSection({
                                   <Label className="text-sm font-medium text-gray-300">
                                     @{variable.name}: {variable.title}
                                   </Label>
-                                  <span className="text-sm text-gray-400 font-mono">
-                                    {currentValue}
-                                  </span>
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-lg font-bold text-orange-400 font-mono min-w-[3ch] text-right">
+                                      {numericValue}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                      / {maxVal}
+                                    </span>
+                                  </div>
                                 </div>
                                 <div className="px-4">
-                                  <div className="relative">
+                                  <div className="relative group">
                                     <input
                                       type="range"
-                                      min={sliderConfig?.minValue || 0}
-                                      max={sliderConfig?.maxValue || 10}
+                                      min={minVal}
+                                      max={maxVal}
                                       step={sliderConfig?.step || 1}
-                                      value={currentValue}
+                                      value={numericValue}
                                       onChange={(e) => updateTestInput(variable.name, e.target.value)}
-                                      className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer slider"
+                                      className="w-full h-3 bg-gray-600 rounded-lg appearance-none cursor-pointer slider transition-all duration-150 hover:h-4 focus:h-4 focus:outline-none"
                                       style={{
-                                        background: `linear-gradient(to right, #f97316 0%, #f97316 ${((currentValue - (sliderConfig?.minValue || 0)) / ((sliderConfig?.maxValue || 10) - (sliderConfig?.minValue || 0))) * 100}%, #4b5563 ${((currentValue - (sliderConfig?.minValue || 0)) / ((sliderConfig?.maxValue || 10) - (sliderConfig?.minValue || 0))) * 100}%, #4b5563 100%)`
+                                        background: `linear-gradient(to right, #f97316 0%, #f97316 ${progressPercent}%, #4b5563 ${progressPercent}%, #4b5563 100%)`
                                       }}
                                     />
+                                    {/* Custom thumb styling via CSS */}
+                                    <style jsx>{`
+                                      .slider::-webkit-slider-thumb {
+                                        appearance: none;
+                                        width: 20px;
+                                        height: 20px;
+                                        border-radius: 50%;
+                                        background: #f97316;
+                                        cursor: pointer;
+                                        border: 2px solid white;
+                                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                        transition: all 0.15s ease;
+                                      }
+                                      .slider:hover::-webkit-slider-thumb {
+                                        transform: scale(1.1);
+                                        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                                      }
+                                      .slider::-moz-range-thumb {
+                                        width: 20px;
+                                        height: 20px;
+                                        border-radius: 50%;
+                                        background: #f97316;
+                                        cursor: pointer;
+                                        border: 2px solid white;
+                                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                        transition: all 0.15s ease;
+                                      }
+                                      .slider:hover::-moz-range-thumb {
+                                        transform: scale(1.1);
+                                        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                                      }
+                                    `}</style>
                                   </div>
-                                  <div className="flex justify-between text-xs text-gray-400 mt-1">
-                                    <span>{sliderConfig?.minLabel || 'Low'}</span>
-                                    <span>{sliderConfig?.maxLabel || 'High'}</span>
+                                  <div className="flex justify-between text-xs text-gray-400 mt-2">
+                                    <span className="font-medium">{sliderConfig?.minLabel || 'Low'}</span>
+                                    <span className="font-medium">{sliderConfig?.maxLabel || 'High'}</span>
                                   </div>
                                 </div>
                               </div>
@@ -659,7 +772,9 @@ export function AILogicSection({
                               @{variable.name}:
                             </Label>
                             <Input
-                              value={(settings.testInputs || {})[variable.name] || ''}
+                              value={localTestInputs[variable.name] !== undefined 
+                                ? localTestInputs[variable.name] 
+                                : (settings.testInputs || {})[variable.name] || ''}
                               onChange={(e) => updateTestInput(variable.name, e.target.value)}
                               placeholder={`Example answer for ${variable.title}`}
                               className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
@@ -791,8 +906,8 @@ export function AILogicSection({
 
                     <div>
                       <Textarea
-                        value={settings.prompt || ''}
-                        onChange={(e) => handleSettingChange('prompt', e.target.value)}
+                        value={localPrompt}
+                        onChange={(e) => handlePromptChange(e.target.value)}
                         placeholder="You are an expert fitness coach. Based on @name who trains @frequency times per week and wants to run a @distance race, provide personalized training advice..."
                         className="min-h-[200px] text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                         rows={8}

@@ -125,7 +125,9 @@ export class PromptGenerationService {
                   type: 'question-slider',
                   content: slider.label,
                   variableName: slider.variableName,
-                  order: section.order
+                  order: section.order,
+                  // Add slider-specific metadata
+                  options: [`Range: ${slider.minValue || 0} to ${slider.maxValue || 10}`, `Step: ${slider.step || 1}`]
                 })
               }
             })
@@ -136,14 +138,18 @@ export class PromptGenerationService {
             title: section.title,
             type: section.type,
             content: settings?.content || settings?.questionText || section.title,
-            variableName: (typeof section.title === 'string' ? section.title.toLowerCase().replace(/\s+/g, '_') : '') ||
-                         `question_${section.order}`,
+            variableName: settings?.variableName || this.createVariableName(section.title) || `question_${section.order}`,
             order: section.order
           }
 
         // Extract options for multiple choice
         if (section.type === 'question-multiple-choice' && settings?.options) {
           context.options = settings.options.map((opt: any) => opt.text || opt.label || opt)
+        }
+        
+        // Extract slider range for single sliders
+        if (section.type === 'question-slider') {
+          context.options = [`Range: ${settings?.minValue || 0} to ${settings?.maxValue || 10}`, `Step: ${settings?.step || 1}`]
         }
 
           contexts.push(context)
@@ -176,21 +182,35 @@ export class PromptGenerationService {
 
 `
 
-    // Add question context in simple format
+    // Add question context in enhanced format with proper context
+    // Match questions with their corresponding variables
     richContext.questionContext.forEach((question, index) => {
-      const section = context[index]
-      prompt += `Question ${index + 1}: ${section?.type || 'text question'}: section name: ${section?.title || 'Untitled'}`
-      if (section?.content && section.content !== section.title) {
-        prompt += `, content: ${section.content}`
+      const variable = richContext.variables[index]
+      
+      if (question && variable) {
+        // Find the corresponding section context for additional details
+        const sectionContext = context.find(ctx => 
+          ctx.variableName === variable || 
+          ctx.title === question ||
+          ctx.content === question
+        )
+        
+        const questionType = sectionContext?.type || 'text question'
+        
+        prompt += `Question ${index + 1} (${questionType}): "${question}"`
+        
+        // Add type-specific information
+        if (questionType.includes('slider')) {
+          const rangeInfo = sectionContext?.options?.find(opt => opt.startsWith('Range:')) || 'Range: 0 to 10'
+          prompt += ` - ${rangeInfo}`
+        } else if (questionType === 'question-multiple-choice' && sectionContext?.options?.length) {
+          prompt += ` - Options: ${sectionContext.options.join(', ')}`
+        }
+        
+        // Add the variable name that will be used
+        prompt += ` - Variable: @${variable}`
+        prompt += `\n`
       }
-      if (section?.options?.length) {
-        prompt += `, potential answers: ${section.options.join(', ')}`
-      }
-      // Add the variable name that will be used
-      if (section?.variableName) {
-        prompt += `, variable: @${section.variableName}`
-      }
-      prompt += `\n`
     })
 
     prompt += `
@@ -200,10 +220,24 @@ Based on their inputs, what do you think a suitable prompt might be?
 
 Start with: "You are an expert [whatever you think they are trying to be] - a user has..."
 
-IMPORTANT: You MUST use the @variable names in your prompt. The available variables are:
+IMPORTANT: You MUST include the question context in your prompt using this format:
+
+For TEXT questions, use this format:
+"The user was asked '[QUESTION TEXT]' and they responded with a text answer of @[variable_name]."
+
+For SLIDER questions, use this format:
+"The user was asked '[QUESTION TEXT]' and they responded with a slider answer of @[variable_name] out of [max_value]."
+
+For MULTIPLE CHOICE questions, use this format:
+"The user was asked '[QUESTION TEXT]' and they selected @[variable_name] from the available options."
+
+EXAMPLE of good prompt structure:
+"You are an expert business consultant. The user was asked 'Do we have a clear marketing strategy that supports our business goals?' and they responded with a text answer of @marketing_strategy. The user was asked 'How confident are you in your current approach?' and they responded with a slider answer of @confidence_level out of 10. Based on these responses, provide..."
+
+The available variables are:
 ${richContext.variables.map(v => `@${v}`).join(', ')}
 
-Use these variables in your prompt by referencing them as @variableName where appropriate.
+Always include the full question text before mentioning the variable to provide proper context.
 
 ${outputVars.length > 0 ? `
 The prompt should generate these outputs:
@@ -278,6 +312,22 @@ Make it conversational and helpful. Remember to include the @variable references
     }
 
     return data.choices[0].message.content
+  }
+
+  /**
+   * Create a valid variable name from a section title
+   */
+  private createVariableName(title: string): string {
+    if (!title) return 'untitled_variable'
+    
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .replace(/^_+|_+$/g, '') // Remove leading/trailing underscores
+      .replace(/_+/g, '_') // Replace multiple underscores with single
+      .substring(0, 50) // Limit length
+      || 'untitled_variable' // Fallback if empty
   }
 
   /**

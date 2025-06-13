@@ -62,10 +62,9 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
   }
 
   const addSlider = async () => {
-    const newSlider: SliderConfig = {
-      id: `slider_${Date.now()}`,
-      variableName: `slider_${settings.sliders.length + 1}`,
-      label: 'New slider label',
+    // Use the last slider as a template, or defaults if no sliders exist
+    const lastSlider = settings.sliders[settings.sliders.length - 1]
+    const template = lastSlider || {
       minValue: 0,
       maxValue: 10,
       defaultValue: 5,
@@ -74,6 +73,21 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
       maxLabel: 'High',
       required: true,
       showValue: true
+    }
+    
+    const newSlider: SliderConfig = {
+      id: `slider_${Date.now()}`,
+      variableName: `slider_${settings.sliders.length + 1}`,
+      label: 'New slider label',
+      // Inherit configuration from template
+      minValue: template.minValue,
+      maxValue: template.maxValue,
+      defaultValue: template.defaultValue,
+      step: template.step,
+      minLabel: template.minLabel,
+      maxLabel: template.maxLabel,
+      required: template.required,
+      showValue: template.showValue
     }
     
     await updateSettings({
@@ -272,14 +286,15 @@ function SliderConfigCard({
             />
           </div>
           
-          <Badge variant="secondary" className="font-mono text-xs bg-gray-800 text-gray-300 ml-4">
-            @<InlineEditableText
+          <Badge variant="secondary" className="font-mono text-xs bg-gray-800 text-gray-300 ml-4 min-w-32 flex-shrink-0 flex items-center">
+            <span className="text-gray-400">@</span>
+            <InlineEditableText
               value={slider.variableName}
               onSave={(value) => onUpdate({ variableName: value })}
               variant="body"
               placeholder="variable_name"
-              className="font-mono text-xs text-gray-300 hover:bg-transparent rounded-none px-0 py-0 inline"
-              inputClassName="!font-mono !text-xs !text-gray-300 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto min-w-[80px]"
+              className="font-mono text-xs text-gray-300 hover:bg-transparent rounded-none px-0 py-0 flex-1 min-w-0"
+              inputClassName="!font-mono !text-xs !text-gray-300 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto w-full"
               showEditIcon={false}
               showSaveStatus={false}
               autoSave={false}

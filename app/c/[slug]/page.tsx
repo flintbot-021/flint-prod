@@ -966,7 +966,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       if (!result.success || !result.data) {
         console.error('❌ Failed to load campaign:', result.error)
         throw new Error(result.error || 'Campaign not available')
-      }
+        }
 
       const { campaign, sections: sectionsData } = result.data
 
@@ -978,7 +978,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       })
       
       setCampaign(campaign)
-
+      
       console.log('📊 Sections loaded:', { 
         sectionsData: sectionsData?.map((s: any) => ({ 
           id: s.id, 
@@ -994,8 +994,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       setSections(sectionsData)
       
-      // Initialize campaign state - renderer starts with empty state by default
-      console.log('✅ Campaign renderer initialized with empty state')
+              // Initialize campaign state - renderer starts with empty state by default
+        console.log('✅ Campaign renderer initialized with empty state')
 
       console.log('✅ Campaign loaded successfully with', sectionsData.length, 'sections')
     } catch (error) {
