@@ -868,18 +868,26 @@ export default function LeadsPage() {
       <header className="bg-background shadow border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                onClick={() => router.push('/dashboard')}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <ChevronLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Button>
+            <div className="flex items-center space-x-8">
               <h1 className="text-2xl font-bold text-foreground">
-                Leads
+                Flint
               </h1>
+              <nav className="flex items-center space-x-6">
+                <Button
+                  variant="ghost"
+                  onClick={() => router.push('/dashboard')}
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => router.push('/dashboard/leads')}
+                  className="text-sm font-medium text-primary"
+                >
+                  Leads
+                </Button>
+              </nav>
             </div>
             <div className="flex items-center space-x-4">
               <UserProfile variant="compact" />
