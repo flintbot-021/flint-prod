@@ -288,17 +288,17 @@ function SliderConfigCard({
           
           <Badge variant="secondary" className="font-mono text-xs bg-gray-800 text-gray-300 ml-4 w-32 flex-shrink-0">
             <span className="truncate">
-              @<InlineEditableText
-                value={slider.variableName}
-                onSave={(value) => onUpdate({ variableName: value })}
-                variant="body"
-                placeholder="variable_name"
+            @<InlineEditableText
+              value={slider.variableName}
+              onSave={(value) => onUpdate({ variableName: value })}
+              variant="body"
+              placeholder="variable_name"
                 className="font-mono text-xs text-gray-300 hover:bg-transparent rounded-none px-0 py-0 inline truncate"
                 inputClassName="!font-mono !text-xs !text-gray-300 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto w-full"
-                showEditIcon={false}
-                showSaveStatus={false}
-                autoSave={false}
-              />
+              showEditIcon={false}
+              showSaveStatus={false}
+              autoSave={false}
+            />
             </span>
           </Badge>
         </div>
