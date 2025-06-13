@@ -1,9 +1,9 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const defaultSupabase = createClient(supabaseUrl, supabaseAnonKey)
 
 export interface UploadedFileInfo {
   id: string
@@ -39,7 +39,7 @@ async function saveFileToDatabase(
     console.log('   - Database tracking skipped for unauthenticated users')
     return
 
-    const { error } = await supabase
+    const { error } = await defaultSupabase
       .from('uploaded_files')
       .insert({
         id: fileInfo.id,
@@ -83,8 +83,10 @@ export async function uploadFile(
   sectionId: string,
   leadId?: string,
   responseId?: string,
-  onProgress?: (progress: UploadProgress) => void
+  onProgress?: (progress: UploadProgress) => void,
+  supabaseClient?: SupabaseClient
 ): Promise<UploadedFileInfo> {
+  const supabase = supabaseClient || defaultSupabase
   const fileId = crypto.randomUUID() // Generate proper UUID
   const timestamp = Date.now()
   const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
@@ -180,10 +182,11 @@ export async function uploadFiles(
   sectionId: string,
   leadId?: string,
   responseId?: string,
-  onProgress?: (progress: UploadProgress) => void
+  onProgress?: (progress: UploadProgress) => void,
+  supabaseClient?: SupabaseClient
 ): Promise<UploadedFileInfo[]> {
   const uploadPromises = files.map(file => 
-    uploadFile(file, campaignId, sectionId, leadId, responseId, onProgress)
+    uploadFile(file, campaignId, sectionId, leadId, responseId, onProgress, supabaseClient)
   )
 
   return Promise.all(uploadPromises)
@@ -194,7 +197,7 @@ export async function uploadFiles(
  */
 export async function deleteFile(fileId: string): Promise<void> {
   // Get file info from database first
-  const { data: fileRecord, error: fetchError } = await supabase
+  const { data: fileRecord, error: fetchError } = await defaultSupabase
     .from('uploaded_files')
     .select('storage_path')
     .eq('id', fileId)
@@ -205,7 +208,7 @@ export async function deleteFile(fileId: string): Promise<void> {
   }
 
   // Delete from storage
-  const { error: storageError } = await supabase.storage
+  const { error: storageError } = await defaultSupabase.storage
     .from('campaign-uploads')
     .remove([fileRecord.storage_path])
 
@@ -214,7 +217,7 @@ export async function deleteFile(fileId: string): Promise<void> {
   }
 
   // Soft delete from database
-  const { error: dbError } = await supabase
+  const { error: dbError } = await defaultSupabase
     .from('uploaded_files')
     .update({ 
       deleted_at: new Date().toISOString(),
@@ -231,7 +234,7 @@ export async function deleteFile(fileId: string): Promise<void> {
  * Get file info from database
  */
 export async function getFileInfo(fileId: string) {
-  const { data, error } = await supabase
+  const { data, error } = await defaultSupabase
     .from('uploaded_files')
     .select('*')
     .eq('id', fileId)
@@ -249,7 +252,7 @@ export async function getFileInfo(fileId: string) {
  * Get all files for a campaign
  */
 export async function getCampaignFiles(campaignId: string) {
-  const { data, error } = await supabase
+  const { data, error } = await defaultSupabase
     .from('uploaded_files')
     .select(`
       *,
@@ -271,7 +274,7 @@ export async function getCampaignFiles(campaignId: string) {
  * Get files for a specific lead response
  */
 export async function getResponseFiles(responseId: string) {
-  const { data, error } = await supabase
+  const { data, error } = await defaultSupabase
     .from('uploaded_files')
     .select('*')
     .eq('response_id', responseId)
@@ -293,7 +296,7 @@ export async function updateVirusScanStatus(
   status: 'pending' | 'clean' | 'infected' | 'error',
   scanDate?: Date
 ) {
-  const { error } = await supabase
+  const { error } = await defaultSupabase
     .from('uploaded_files')
     .update({ 
       virus_scan_status: status,
@@ -313,7 +316,7 @@ export async function ensureStorageBucket(): Promise<void> {
   try {
     console.log('🪣 Checking storage bucket...')
     
-    const { data: buckets, error: listError } = await supabase.storage.listBuckets()
+    const { data: buckets, error: listError } = await defaultSupabase.storage.listBuckets()
     
     if (listError) {
       console.log('⚠️ Cannot check buckets (likely permissions), assuming bucket exists')
@@ -329,7 +332,7 @@ export async function ensureStorageBucket(): Promise<void> {
 
     console.log('📦 Creating storage bucket...')
     
-    const { data, error: createError } = await supabase.storage.createBucket('campaign-uploads', {
+    const { data, error: createError } = await defaultSupabase.storage.createBucket('campaign-uploads', {
       public: true,
       allowedMimeTypes: [
         'image/jpeg',

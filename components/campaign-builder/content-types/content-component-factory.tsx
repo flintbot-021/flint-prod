@@ -17,6 +17,7 @@ interface ContentComponentFactoryProps {
   onUpdate: (updates: Partial<CampaignSection>) => Promise<void>
   className?: string
   allSections?: CampaignSection[]
+  campaignId: string
 }
 
 export function ContentComponentFactory({
@@ -24,7 +25,8 @@ export function ContentComponentFactory({
   isPreview = false,
   onUpdate,
   className,
-  allSections
+  allSections,
+  campaignId
 }: ContentComponentFactoryProps) {
   // Route to appropriate content component based on section type
   switch (section.type) {
@@ -36,6 +38,7 @@ export function ContentComponentFactory({
           isPreview={isPreview}
           onUpdate={onUpdate}
           className={className}
+          campaignId={campaignId}
         />
       )
 
@@ -88,6 +91,7 @@ export function ContentComponentFactory({
           className={className}
           icon={<FileText className="h-8 w-8" />}
           message="Video section component coming soon"
+          campaignId={campaignId}
         />
       )
 
@@ -105,6 +109,7 @@ export function ContentComponentFactory({
           section={section}
           onUpdate={onUpdate}
           className={className}
+          campaignId={campaignId}
         />
       )
 
@@ -124,6 +129,7 @@ export function ContentComponentFactory({
           section={section}
           onUpdate={onUpdate}
           className={className}
+          campaignId={campaignId}
         />
       )
 
@@ -138,6 +144,7 @@ export function ContentComponentFactory({
           onUpdate={onUpdate}
           className={className}
           allSections={allSections}
+          campaignId={campaignId}
         />
       )
 
@@ -149,6 +156,7 @@ export function ContentComponentFactory({
           onUpdate={onUpdate}
           className={className}
           allSections={allSections}
+          campaignId={campaignId}
         />
       )
 
@@ -160,6 +168,7 @@ export function ContentComponentFactory({
           onUpdate={onUpdate}
           className={className}
           allSections={allSections}
+          campaignId={campaignId}
         />
       )
 
@@ -173,6 +182,7 @@ export function ContentComponentFactory({
           className={className}
           icon={<FileText className="h-8 w-8" />}
           message={`Content component for "${section.type}" not implemented yet`}
+          campaignId={campaignId}
         />
       )
   }
@@ -185,7 +195,8 @@ function PlaceholderSection({
   onUpdate,
   className,
   icon,
-  message
+  message,
+  campaignId
 }: ContentComponentFactoryProps & {
   icon: React.ReactNode
   message: string
@@ -263,8 +274,9 @@ function PlaceholderSection({
 function SimpleDividerEditor({
   section,
   onUpdate,
-  className
-}: Pick<ContentComponentFactoryProps, 'section' | 'onUpdate' | 'className'>) {
+  className,
+  campaignId
+}: Pick<ContentComponentFactoryProps, 'section' | 'onUpdate' | 'className' | 'campaignId'>) {
   const style = (section.settings?.style as string) || 'solid'
   const color = (section.settings?.color as string) || '#d1d5db'
   const thickness = (section.settings?.thickness as number) || 1
@@ -351,8 +363,9 @@ function SimpleDividerEditor({
 function SimpleSpacerEditor({
   section,
   onUpdate,
-  className
-}: Pick<ContentComponentFactoryProps, 'section' | 'onUpdate' | 'className'>) {
+  className,
+  campaignId
+}: Pick<ContentComponentFactoryProps, 'section' | 'onUpdate' | 'className' | 'campaignId'>) {
   const height = (section.settings?.height as number) || 40
 
   return (

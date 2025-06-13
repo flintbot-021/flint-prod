@@ -6,9 +6,12 @@ import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
 import { Upload, X, Palette } from 'lucide-react'
 import { uploadFiles, UploadedFileInfo } from '@/lib/supabase/storage'
+import { useAuth } from '@/lib/auth-context'
+import { createClient } from '@/lib/auth'
 
 interface HeroSectionProps {
   section: CampaignSection
+  campaignId: string
   isPreview?: boolean
   onUpdate: (updates: Partial<CampaignSection>) => Promise<void>
   className?: string
@@ -24,7 +27,9 @@ interface HeroSettings {
   showButton?: boolean
 }
 
-export function HeroSection({ section, isPreview = false, onUpdate, className }: HeroSectionProps) {
+export function HeroSection({ section, campaignId, isPreview = false, onUpdate, className }: HeroSectionProps) {
+  const { user } = useAuth()
+  const supabase = createClient()
   const [isUploading, setIsUploading] = useState(false)
   
   // Get current settings with defaults
@@ -72,13 +77,14 @@ export function HeroSection({ section, isPreview = false, onUpdate, className }:
     setIsUploading(true)
     
     try {
-      // TODO: Get actual campaign ID from context
-      const campaignId = 'demo-campaign'
-      
       const uploadedFiles = await uploadFiles(
         [file],
         campaignId,
-        undefined
+        '',
+        undefined,
+        undefined,
+        undefined,
+        supabase
       )
       
       if (uploadedFiles.length > 0) {
@@ -90,7 +96,7 @@ export function HeroSection({ section, isPreview = false, onUpdate, className }:
     } finally {
       setIsUploading(false)
     }
-  }, [])
+  }, [campaignId, user])
 
   // Convert hex color with opacity to rgba
   const getOverlayStyle = () => {

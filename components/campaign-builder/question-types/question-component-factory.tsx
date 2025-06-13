@@ -18,13 +18,15 @@ interface QuestionComponentFactoryProps {
   isPreview?: boolean
   onUpdate: (updates: Partial<CampaignSection>) => Promise<void>
   className?: string
+  campaignId: string
 }
 
 export function QuestionComponentFactory({
   section,
   isPreview = false,
   onUpdate,
-  className
+  className,
+  campaignId
 }: QuestionComponentFactoryProps) {
   // Route to appropriate question component based on section type
   switch (section.type) {
@@ -86,6 +88,7 @@ export function QuestionComponentFactory({
           isPreview={isPreview}
           onUpdate={onUpdate}
           className={className}
+          campaignId={campaignId}
         />
       )
     

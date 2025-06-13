@@ -16,6 +16,7 @@ interface EnhancedSortableCanvasProps {
   onSectionTypeChange?: (sectionId: string, newType: string) => void
   className?: string
   showCollapsedSections?: boolean
+  campaignId: string
 }
 
 export function EnhancedSortableCanvas({ 
@@ -26,7 +27,8 @@ export function EnhancedSortableCanvas({
   onSectionConfigure,
   onSectionTypeChange,
   className,
-  showCollapsedSections = true
+  showCollapsedSections = true,
+  campaignId
 }: EnhancedSortableCanvasProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: 'campaign-canvas',
@@ -112,6 +114,7 @@ export function EnhancedSortableCanvas({
                   onTypeChange={onSectionTypeChange}
                   isCollapsible={showCollapsedSections}
                   allSections={sections}
+                  campaignId={campaignId}
                 />
               ))}
             </div>
