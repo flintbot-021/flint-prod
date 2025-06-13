@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { notFound } from 'next/navigation'
 import { Campaign, Section, SectionWithOptions } from '@/lib/types/database'
-import { getSupabaseClient } from '@/lib/data-access/base'
+import { getPublishedCampaignWithSections } from '@/lib/data-access/public-campaigns'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -958,59 +958,35 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       setIsLoading(true)
       errorHandler.clearError()
       
-      console.log('🌐 Getting Supabase client...')
-      const supabase = await getSupabaseClient()
+      console.log('🔍 Loading published campaign with slug:', slug)
       
-      console.log('🔍 Querying campaign with slug:', slug)
-      // Get campaign by published_url with debug info
-      const { data: campaign, error: campaignError } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('published_url', slug)
-        .eq('status', 'published')
-        .eq('is_active', true)
-        .single()
+      // Use new public data access function that doesn't require auth
+      const result = await getPublishedCampaignWithSections(slug)
 
-      console.log('📊 Campaign query result:', { campaign, error: campaignError })
-
-      if (campaignError || !campaign) {
-        console.error('❌ Campaign not found. Error:', campaignError)
-        if (campaignError?.code === 'PGRST116') {
-          throw new Error('Campaign not found')
-        }
-        throw new Error(campaignError?.message || 'Campaign not available')
+      if (!result.success || !result.data) {
+        console.error('❌ Failed to load campaign:', result.error)
+        throw new Error(result.error || 'Campaign not available')
       }
+
+      const { campaign, sections: sectionsData } = result.data
 
       console.log('✅ Campaign found:', {
         id: campaign.id,
         name: campaign.name,
         status: campaign.status,
-        slug: campaign.slug
+        published_url: campaign.published_url
       })
       
       setCampaign(campaign)
-      
-      console.log('📋 Loading sections for campaign:', campaign.id)
-      // Load real campaign sections from database
-      const { data: sectionsData, error: sectionsError } = await supabase
-        .from('sections')
-        .select('*')
-        .eq('campaign_id', campaign.id)
-        .order('order_index', { ascending: true })
 
-      console.log('📊 Sections query result:', { 
+      console.log('📊 Sections loaded:', { 
         sectionsData: sectionsData?.map((s: any) => ({ 
           id: s.id, 
           title: s.title, 
           type: s.type, 
           order_index: s.order_index 
-        })), 
-        error: sectionsError 
+        }))
       })
-
-      if (sectionsError) {
-        throw new Error(`Failed to load campaign sections: ${sectionsError.message}`)
-      }
 
       if (!sectionsData || sectionsData.length === 0) {
         throw new Error('This campaign has no content to display')
@@ -1018,8 +994,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       setSections(sectionsData)
       
-              // Initialize campaign state - renderer starts with empty state by default
-        console.log('✅ Campaign renderer initialized with empty state')
+      // Initialize campaign state - renderer starts with empty state by default
+      console.log('✅ Campaign renderer initialized with empty state')
 
       console.log('✅ Campaign loaded successfully with', sectionsData.length, 'sections')
     } catch (error) {

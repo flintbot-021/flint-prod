@@ -249,10 +249,6 @@ export default function Dashboard() {
     })
   }, [showConfirmation])
 
-
-
-
-
   const canCreateCampaign = true // Removed campaign limit enforcement
 
   if (loading) {
@@ -414,8 +410,6 @@ export default function Dashboard() {
             />
           </div>
 
-
-
           {/* Main Content Grid */}
           <div>
             {/* Campaigns Grid */}
@@ -472,15 +466,16 @@ export default function Dashboard() {
                     <CardDescription className="mb-6 max-w-md mx-auto">
                       Create your first lead magnet campaign to start capturing and converting leads.
                     </CardDescription>
-                    <Button 
-                      onClick={() => router.push('/dashboard/campaigns/create')}
-                      disabled={!canCreateCampaign}
-                      className="flex items-center space-x-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Create Your First Campaign</span>
-                    </Button>
-
+                    <div className="flex justify-center">
+                      <Button 
+                        onClick={() => router.push('/dashboard/campaigns/create')}
+                        disabled={!canCreateCampaign}
+                        className="flex items-center space-x-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Create Your First Campaign</span>
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               )}

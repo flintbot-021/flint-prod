@@ -676,38 +676,70 @@ export default function CreateCampaignPage() {
           {/* Step Indicator */}
           <div className="mb-8">
             <nav aria-label="Progress">
-              <ol className="flex items-center">
-                {steps.map((step, stepIdx) => (
-                  <li key={step.id} className={`relative ${stepIdx !== steps.length - 1 ? 'pr-8 sm:pr-20' : ''}`}>
-                    <div className="flex items-center">
-                      <div className={`
-                        flex h-8 w-8 items-center justify-center rounded-full border-2 
-                        ${getCurrentStepIndex() > stepIdx
-                          ? 'bg-blue-600 border-blue-600 text-white'
-                          : getCurrentStepIndex() === stepIdx
-                          ? 'border-blue-600 text-blue-600'
-                          : 'border-input text-gray-400'
-                        }
-                      `}>
-                        {getCurrentStepIndex() > stepIdx ? (
+              <ol className="flex items-center justify-between relative">
+                {steps.map((step, stepIdx) => {
+                  const isCompleted = getCurrentStepIndex() > stepIdx;
+                  const isActive = getCurrentStepIndex() === stepIdx;
+                  const isUpcoming = getCurrentStepIndex() < stepIdx;
+                  return (
+                    <li
+                      key={step.id}
+                      className={`relative flex-1 flex flex-col items-center min-w-0 ${stepIdx !== steps.length - 1 ? 'pr-2 sm:pr-8' : ''}`}
+                    >
+                      {/* Connector line */}
+                      {stepIdx !== 0 && (
+                        <div
+                          className="absolute left-0 top-4 h-0.5 w-full -z-1"
+                          style={{
+                            background: isCompleted ? '#2563EB' : '#E5E7EB',
+                            zIndex: 0,
+                            right: '50%',
+                          }}
+                        />
+                      )}
+                      {/* Step circle */}
+                      <div
+                        className={`flex items-center justify-center h-8 w-8 rounded-full border-2 z-10 ${
+                          isCompleted
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : isActive
+                            ? 'border-blue-600 text-blue-600 bg-background'
+                            : 'border-gray-300 text-gray-400 bg-background'
+                        }`}
+                      >
+                        {isCompleted ? (
                           <Check className="h-5 w-5" />
                         ) : (
                           <span className="text-sm font-medium">{stepIdx + 1}</span>
                         )}
                       </div>
-                      <div className="ml-3">
-                        <span className={`text-sm font-medium ${
-                          getCurrentStepIndex() >= stepIdx ? 'text-foreground' : 'text-gray-400'
+                      {/* Step text */}
+                      <div className="mt-2 text-center min-w-0">
+                        <span className={`block text-sm font-medium ${
+                          isCompleted || isActive ? 'text-foreground' : 'text-gray-500'
                         }`}>
                           {step.title}
                         </span>
+                        <span className={`block text-xs ${
+                          isCompleted || isActive ? 'text-gray-600' : 'text-gray-400'
+                        }`}>
+                          {step.description}
+                        </span>
                       </div>
-                    </div>
-                    {stepIdx !== steps.length - 1 && (
-                      <div className="absolute top-4 left-8 -ml-px h-0.5 w-full bg-gray-300" />
-                    )}
-                  </li>
-                ))}
+                      {/* Connector line to next step */}
+                      {stepIdx !== steps.length - 1 && (
+                        <div
+                          className="absolute right-0 top-4 h-0.5 w-full -z-1"
+                          style={{
+                            background: getCurrentStepIndex() > stepIdx ? '#2563EB' : '#E5E7EB',
+                            zIndex: 0,
+                            left: '50%',
+                          }}
+                        />
+                      )}
+                    </li>
+                  );
+                })}
               </ol>
             </nav>
           </div>

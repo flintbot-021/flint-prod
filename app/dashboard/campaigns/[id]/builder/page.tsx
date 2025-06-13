@@ -709,6 +709,7 @@ export default function CampaignBuilderPage() {
                         onSectionTypeChange={handleSectionTypeChange}
                         className="h-full"
                         showCollapsedSections={true}
+                        campaignId={campaign?.id}
                       />
                     </CardContent>
                   </Card>

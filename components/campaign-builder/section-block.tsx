@@ -24,6 +24,7 @@ interface SectionBlockProps {
   isCollapsible?: boolean
   initiallyCollapsed?: boolean
   allSections?: CampaignSection[]
+  campaignId: string
 }
 
 export function SectionBlock({
@@ -36,7 +37,8 @@ export function SectionBlock({
   className,
   isCollapsible = true,
   initiallyCollapsed = false,
-  allSections
+  allSections,
+  campaignId
 }: SectionBlockProps) {
   const [isPreview, setIsPreview] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(initiallyCollapsed)
@@ -199,6 +201,7 @@ export function SectionBlock({
           section={section}
           isPreview={isPreview}
           onUpdate={(updates) => onUpdate(section.id, updates)}
+          campaignId={campaignId}
         />
       )
     }
@@ -215,6 +218,7 @@ export function SectionBlock({
           isPreview={isPreview}
           onUpdate={(updates) => onUpdate(section.id, updates)}
           allSections={allSections}
+          campaignId={campaignId}
         />
       )
     }

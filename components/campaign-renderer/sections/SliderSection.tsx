@@ -51,16 +51,7 @@ export function SliderSection({
     })
   }
 
-  // Generate tick marks for visual feedback
-  const generateTicks = () => {
-    const ticks = []
-    for (let i = minValue; i <= maxValue; i += step) {
-      ticks.push(i)
-    }
-    return ticks
-  }
 
-  const ticks = generateTicks()
 
   return (
     <div className="h-full bg-background flex flex-col pb-20">
@@ -119,23 +110,7 @@ export function SliderSection({
                   }}
               />
               
-                {/* Tick marks */}
-                <div className="flex justify-between mt-2">
-                  {ticks.map((tick) => (
-                    <div key={tick} className="flex flex-col items-center">
-                      <div className={cn(
-                        "w-0.5 h-2 bg-gray-300",
-                        tick === sliderValue && "bg-primary"
-                      )} />
-                      <span className={cn(
-                        "text-xs mt-1",
-                        tick === sliderValue ? "text-primary font-medium" : "text-muted-foreground"
-                      )}>
-                        {tick}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+
               </div>
 
               {/* Labels */}

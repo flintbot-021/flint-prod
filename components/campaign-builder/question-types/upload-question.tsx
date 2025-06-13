@@ -9,9 +9,12 @@ import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
 import { Upload, File, Image, FileAudio, FileText, X, CheckCircle, AlertCircle } from 'lucide-react'
 import { uploadFiles, UploadedFileInfo, UploadProgress } from '@/lib/supabase/storage'
+import { useAuth } from '@/lib/auth-context'
+import { createClient } from '@/lib/auth'
 
 interface UploadQuestionProps {
   section: CampaignSection
+  campaignId: string
   isPreview?: boolean
   onUpdate: (updates: Partial<CampaignSection>) => Promise<void>
   className?: string
@@ -41,10 +44,13 @@ interface UploadedFile {
 
 export function UploadQuestion({ 
   section, 
+  campaignId,
   isPreview = false, 
   onUpdate, 
   className 
 }: UploadQuestionProps) {
+  const { user } = useAuth()
+  const supabase = createClient()
   const [isSaving, setIsSaving] = useState(false)
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFileInfo[]>([])
   const [uploadProgress, setUploadProgress] = useState<Record<string, UploadProgress>>({})
@@ -143,25 +149,16 @@ export function UploadQuestion({
     setIsUploading(true)
     
     try {
-      // In preview mode, we would upload to actual storage
-      // In build mode, we just simulate the upload for demo purposes
       if (isPreview) {
-        // TODO: Get actual campaign ID and lead ID from context
-        const campaignId = 'demo-campaign'
-        const leadId = 'demo-lead'
-        
         const uploadedFileInfos = await uploadFiles(
           validFiles,
           campaignId,
-          leadId,
-          (progress) => {
-            setUploadProgress(prev => ({
-              ...prev,
-              [progress.fileId]: progress
-            }))
-          }
+          '',
+          undefined,
+          undefined,
+          undefined,
+          supabase
         )
-        
         setUploadedFiles(prev => [...prev, ...uploadedFileInfos])
       } else {
         // In build mode, just show preview of what would be uploaded
@@ -183,7 +180,7 @@ export function UploadQuestion({
       setIsUploading(false)
       setUploadProgress({})
     }
-  }, [settings, isPreview, maxFileSize])
+  }, [settings, isPreview, maxFileSize, campaignId, user])
 
   // Handle drag and drop
   const handleDragOver = useCallback((e: React.DragEvent) => {
