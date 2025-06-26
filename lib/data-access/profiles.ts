@@ -285,11 +285,11 @@ export async function updateSubscription(
   const userId = await requireAuth();
   const supabase = await getSupabaseClient();
 
-  // Set limits based on plan
+  // Set limits based on plan - campaigns are now unlimited for all plans
   const planLimits = {
-    free: { campaigns: 3, leads: 100 },
-    starter: { campaigns: 10, leads: 1000 },
-    pro: { campaigns: 50, leads: 10000 },
+    free: { campaigns: -1, leads: 100 }, // -1 means unlimited
+    starter: { campaigns: -1, leads: 1000 },
+    pro: { campaigns: -1, leads: 10000 },
     enterprise: { campaigns: -1, leads: -1 } // -1 means unlimited
   };
 
@@ -352,7 +352,7 @@ export async function incrementCampaignUsage(): Promise<DatabaseResult<Profile>>
   // First get current usage
   const { data: profile, error: fetchError } = await supabase
     .from('profiles')
-    .select('monthly_campaigns_used, monthly_campaign_limit')
+    .select('monthly_campaigns_used')
     .eq('id', userId)
     .single();
 
@@ -363,24 +363,9 @@ export async function incrementCampaignUsage(): Promise<DatabaseResult<Profile>>
     };
   }
 
-  // Check if limit would be exceeded
+  // Increment usage without limit checking
   const currentUsage = profile.monthly_campaigns_used || 0;
-  const limit = profile.monthly_campaign_limit || 0;
 
-  if (limit > 0 && currentUsage >= limit) {
-    return {
-      success: false,
-      error: 'Monthly campaign limit exceeded',
-      validation_errors: [{
-        field: 'monthly_campaigns_used',
-        message: `You have reached your monthly limit of ${limit} campaigns`,
-        code: 'LIMIT_EXCEEDED',
-        value: currentUsage
-      }]
-    };
-  }
-
-  // Increment usage
   return withErrorHandling(async () => {
     return await supabase
       .from('profiles')
@@ -492,10 +477,8 @@ export async function getCurrentProfileWithUsage(): Promise<DatabaseResult<Profi
       totalLeads = leadsCount || 0;
     }
 
-    // Calculate usage percentages
-    const campaignUsagePercentage = profile.monthly_campaign_limit > 0 
-      ? Math.round((profile.monthly_campaigns_used / profile.monthly_campaign_limit) * 100)
-      : 0;
+    // Calculate usage percentages - campaigns are unlimited now
+    const campaignUsagePercentage = 0; // No campaign limits
 
     const leadsUsagePercentage = profile.monthly_leads_limit > 0 
       ? Math.round((profile.monthly_leads_captured / profile.monthly_leads_limit) * 100)
@@ -518,27 +501,14 @@ export async function getCurrentProfileWithUsage(): Promise<DatabaseResult<Profi
 }
 
 /**
- * Check if user can create a new campaign
+ * Check if user can create a new campaign - always returns true (no limits)
  */
 export async function canCreateCampaign(): Promise<DatabaseResult<boolean>> {
   const userId = await requireAuth();
-  const supabase = await getSupabaseClient();
-
+  
   return withErrorHandling(async () => {
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('monthly_campaigns_used, monthly_campaign_limit')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      return { data: null, error };
-    }
-
-    const canCreate = profile.monthly_campaign_limit <= 0 || 
-      profile.monthly_campaigns_used < profile.monthly_campaign_limit;
-
-    return { data: canCreate, error: null };
+    // Always allow campaign creation - no limits
+    return { data: true, error: null };
   });
 }
 
