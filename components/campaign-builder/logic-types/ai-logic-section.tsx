@@ -660,9 +660,14 @@ export function AILogicSection({
                       <div className="space-y-4">
                         <h4 className="text-sm font-medium text-gray-200">Text Inputs</h4>
                         {textVariables.map((variable) => {
-                          // Check if this is a slider variable
+                          // Check variable type to render appropriate input
                           const isSliderVariable = variable.section.type === 'question-slider' || 
-                                                  variable.section.type === 'question-slider-multiple'
+                                                  variable.section.type === 'question-slider-multiple' ||
+                                                  variable.section.type === 'slider'
+                          const isMultipleChoiceVariable = variable.section.type === 'question-multiple-choice' ||
+                                                          variable.section.type === 'multiple_choice'
+                          const isDateTimeVariable = variable.section.type === 'question-date-time' || 
+                                                    variable.section.type === 'date_time_question'
                           
                           if (isSliderVariable) {
                             // For slider variables, show a slider input
@@ -764,22 +769,163 @@ export function AILogicSection({
                                 </div>
                               </div>
                             )
-                          } else {
-                            // For non-slider variables, show text input
+                          } else if (isMultipleChoiceVariable) {
+                            // For multiple choice variables, show radio buttons
+                            const settings = variable.section.settings as any
+                            const options = settings.options || []
+                            const currentValue = localTestInputs[variable.name] !== undefined 
+                              ? localTestInputs[variable.name] 
+                              : (settings.testInputs || {})[variable.name] || ''
+                            
                             return (
-                          <div key={variable.name} className="flex items-center space-x-4">
-                            <Label className="text-sm font-medium text-gray-300 w-32 flex-shrink-0">
-                              @{variable.name}:
-                            </Label>
-                            <Input
-                              value={localTestInputs[variable.name] !== undefined 
-                                ? localTestInputs[variable.name] 
-                                : (settings.testInputs || {})[variable.name] || ''}
-                              onChange={(e) => updateTestInput(variable.name, e.target.value)}
-                              placeholder={`Example answer for ${variable.title}`}
-                              className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
-                            />
-                          </div>
+                              <div key={variable.name} className="flex items-start space-x-4">
+                                <Label className="text-sm font-medium text-gray-300 w-32 flex-shrink-0">
+                                  @{variable.name}:
+                                </Label>
+                                <div className="flex-1 space-y-2">
+                                  {options.map((option: any, index: number) => {
+                                    // Handle different option formats
+                                    let optionValue = ''
+                                    let optionDisplay = ''
+                                    
+                                    if (typeof option === 'string') {
+                                      // Simple string option
+                                      optionValue = option
+                                      optionDisplay = option
+                                    } else if (option && typeof option === 'object') {
+                                      // Object option with text property
+                                      optionValue = option.text || option.value || option.id || `Option ${index + 1}`
+                                      optionDisplay = optionValue
+                                    } else {
+                                      // Fallback
+                                      optionValue = `Option ${index + 1}`
+                                      optionDisplay = optionValue
+                                    }
+                                    
+                                    const isSelected = currentValue === optionValue
+                                    return (
+                                      <button
+                                        key={option.id || index}
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.preventDefault()
+                                          console.log('Clicked option:', optionValue, 'for variable:', variable.name)
+                                          updateTestInput(variable.name, optionValue)
+                                        }}
+                                        className={`w-full text-left px-3 py-2 rounded-md border transition-all duration-200 text-sm focus:outline-none flex items-center justify-between ${
+                                          isSelected 
+                                            ? 'bg-gray-600 border-gray-500 text-white' 
+                                            : 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600 hover:border-gray-500'
+                                        }`}
+                                      >
+                                        <span>{optionDisplay}</span>
+                                        {isSelected && <Check className="w-4 h-4 text-green-400 flex-shrink-0" />}
+                                      </button>
+                                    )
+                                  })}
+                                  {options.length === 0 && (
+                                    <p className="text-xs text-gray-500 italic">No options configured for this question</p>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          } else if (isDateTimeVariable) {
+                            // For date-time variables, show date and time inputs
+                            const settings = variable.section.settings as any
+                            const includeDate = settings.includeDate !== false // default true
+                            const includeTime = settings.includeTime === true
+                            
+                            const currentValue = localTestInputs[variable.name] !== undefined 
+                              ? localTestInputs[variable.name] 
+                              : (settings.testInputs || {})[variable.name] || ''
+                            
+                            // Parse existing value if it exists
+                            let dateValue = ''
+                            let timeValue = ''
+                            if (currentValue) {
+                              try {
+                                const date = new Date(currentValue)
+                                if (!isNaN(date.getTime())) {
+                                  dateValue = date.toISOString().split('T')[0]
+                                  timeValue = date.toISOString().split('T')[1]?.slice(0, 5) || ''
+                                }
+                              } catch (e) {
+                                // If parsing fails, treat as separate date/time strings
+                                if (currentValue.includes(' ')) {
+                                  const [datePart, timePart] = currentValue.split(' ')
+                                  dateValue = datePart || ''
+                                  timeValue = timePart || ''
+                                } else {
+                                  dateValue = currentValue
+                                }
+                              }
+                            }
+                            
+                            const handleDateTimeChange = (type: 'date' | 'time', value: string) => {
+                              let newValue = ''
+                              if (includeDate && includeTime) {
+                                const newDate = type === 'date' ? value : dateValue
+                                const newTime = type === 'time' ? value : timeValue
+                                if (newDate && newTime) {
+                                  newValue = `${newDate} ${newTime}`
+                                } else if (newDate) {
+                                  newValue = newDate
+                                } else if (newTime) {
+                                  newValue = newTime
+                                }
+                              } else if (includeDate) {
+                                newValue = value
+                              } else if (includeTime) {
+                                newValue = value
+                              }
+                              updateTestInput(variable.name, newValue)
+                            }
+                            
+                            return (
+                              <div key={variable.name} className="flex items-start space-x-4">
+                                <Label className="text-sm font-medium text-gray-300 w-32 flex-shrink-0">
+                                  @{variable.name}:
+                                </Label>
+                                <div className="flex-1 flex space-x-4">
+                                  {includeDate && (
+                                    <div className="flex-1">
+                                      <Input
+                                        type="date"
+                                        value={dateValue}
+                                        onChange={(e) => handleDateTimeChange('date', e.target.value)}
+                                        className="bg-gray-700 border-gray-600 text-white"
+                                      />
+                                    </div>
+                                  )}
+                                  {includeTime && (
+                                    <div className="flex-1">
+                                      <Input
+                                        type="time"
+                                        value={timeValue}
+                                        onChange={(e) => handleDateTimeChange('time', e.target.value)}
+                                        className="bg-gray-700 border-gray-600 text-white"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )
+                          } else {
+                            // For regular text variables, show text input
+                            return (
+                              <div key={variable.name} className="flex items-center space-x-4">
+                                <Label className="text-sm font-medium text-gray-300 w-32 flex-shrink-0">
+                                  @{variable.name}:
+                                </Label>
+                                <Input
+                                  value={localTestInputs[variable.name] !== undefined 
+                                    ? localTestInputs[variable.name] 
+                                    : (settings.testInputs || {})[variable.name] || ''}
+                                  onChange={(e) => updateTestInput(variable.name, e.target.value)}
+                                  placeholder={`Example answer for ${variable.title}`}
+                                  className="flex-1 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                />
+                              </div>
                             )
                           }
                         })}
