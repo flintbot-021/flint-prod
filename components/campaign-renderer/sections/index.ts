@@ -5,6 +5,7 @@
 // Individual section components
 export { CaptureSection } from './CaptureSection'
 export { TextQuestionSection } from './TextQuestionSection'
+export { DateTimeSection } from './DateTimeSection'
 export { MultipleChoiceSection } from './MultipleChoiceSection'
 export { UploadSection } from './UploadSection'
 export { SliderSection } from './SliderSection'
