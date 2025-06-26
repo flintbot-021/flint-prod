@@ -15,6 +15,7 @@ import { PublishModal } from '@/components/campaign-builder/publish-modal'
 import { CaptureProvider } from '@/contexts/capture-context'
 import { toast } from '@/components/ui/use-toast'
 import { Loader2, AlertCircle } from 'lucide-react'
+import { useSectionPersistence } from '@/hooks/use-section-persistence'
 import { 
   DndContext, 
   DragEndEvent, 
@@ -28,7 +29,7 @@ import {
 import { 
   arrayMove
 } from '@dnd-kit/sortable'
-import { DraggableSectionType } from '@/components/campaign-builder/draggable-section-type'
+
 import { EnhancedSortableCanvas } from '@/components/campaign-builder/enhanced-sortable-canvas'
 import { cn } from '@/lib/utils'
 
@@ -121,6 +122,9 @@ export default function CampaignBuilderPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeDragItem, setActiveDragItem] = useState<SectionType | CampaignSection | null>(null)
   const [showPublishModal, setShowPublishModal] = useState(false)
+
+  // Section persistence hook
+  const sectionPersistence = useSectionPersistence(params.id as string)
 
   // DnD sensors
   const sensors = useSensors(
@@ -464,9 +468,8 @@ export default function CampaignBuilderPage() {
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event
     
-    if (active.data.current?.type === 'section-type') {
-      setActiveDragItem(active.data.current.sectionType)
-    } else if (active.data.current?.type === 'campaign-section') {
+    // Only handle campaign section dragging now
+    if (active.data.current?.type === 'campaign-section') {
       setActiveDragItem(active.data.current.section)
     }
   }
@@ -477,16 +480,6 @@ export default function CampaignBuilderPage() {
     setActiveDragItem(null)
 
     if (!over) return
-
-    // Handle dropping section type onto canvas
-    if (
-      active.data.current?.type === 'section-type' &&
-      over.data.current?.type === 'canvas'
-    ) {
-      const sectionType = active.data.current.sectionType as SectionType
-      handleSectionAdd(sectionType)
-      return
-    }
 
     // Handle reordering sections within canvas
     if (
@@ -681,7 +674,7 @@ export default function CampaignBuilderPage() {
                 {/* Sidebar - Sections Menu */}
                 <div className="lg:col-span-1">
                   <Card className="h-full">
-                    <SectionsMenu />
+                    <SectionsMenu onSectionAdd={handleSectionAdd} />
                   </Card>
                 </div>
 
@@ -693,7 +686,7 @@ export default function CampaignBuilderPage() {
                         <div>
                           <CardTitle className="text-lg">Campaign Canvas</CardTitle>
                           <CardDescription>
-                            Drag sections from the sidebar to build your campaign. Use the enhanced controls for inline editing, preview mode, and section management.
+                            Click the + button next to sections in the sidebar to add them to your campaign. Use the enhanced controls for inline editing, preview mode, and section management.
                           </CardDescription>
                         </div>
 
@@ -710,6 +703,7 @@ export default function CampaignBuilderPage() {
                         className="h-full"
                         showCollapsedSections={true}
                         campaignId={campaign?.id}
+                        sectionPersistence={sectionPersistence}
                       />
                     </CardContent>
                   </Card>
@@ -721,26 +715,15 @@ export default function CampaignBuilderPage() {
           {/* Drag Overlay */}
           <DragOverlay>
             {activeDragItem && (
-              <>
-                {/* Check if it's a SectionType (has 'name' property) */}
-                {('name' in activeDragItem && 'description' in activeDragItem) ? (
-                  /* Section Type being dragged */
-                  <DraggableSectionType
-                    sectionType={activeDragItem as SectionType}
-                    className="shadow-lg rotate-3 opacity-90"
-                  />
-                ) : (
-                  /* Campaign Section being dragged */
-                  <EnhancedSectionCard
-                    section={activeDragItem as CampaignSection}
-                    onUpdate={async () => {}}
-                    onDelete={() => {}}
-                    onDuplicate={() => {}}
-                    onConfigure={() => {}}
-                    className="shadow-lg rotate-2 opacity-90"
-                  />
-                )}
-              </>
+              /* Campaign Section being dragged */
+              <EnhancedSectionCard
+                section={activeDragItem as CampaignSection}
+                onUpdate={async () => {}}
+                onDelete={() => {}}
+                onDuplicate={() => {}}
+                onConfigure={() => {}}
+                className="shadow-lg rotate-2 opacity-90"
+              />
             )}
           </DragOverlay>
 

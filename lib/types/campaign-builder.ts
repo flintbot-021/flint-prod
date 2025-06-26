@@ -326,8 +326,8 @@ export const getSectionTypesByCategory = (category: SectionType['category']): Se
 }
 
 export const SECTION_CATEGORIES = [
-  { id: 'input', name: 'Input & Questions', icon: 'HelpCircle' },
   { id: 'content', name: 'Content', icon: 'FileText' },
+  { id: 'input', name: 'Input & Questions', icon: 'HelpCircle' },
   { id: 'capture', name: 'Capture', icon: 'Users' },
   { id: 'logic', name: 'Logic', icon: 'Brain' },
   { id: 'output', name: 'Output', icon: 'Target' }

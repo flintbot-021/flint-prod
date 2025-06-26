@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { DraggableSectionType } from './draggable-section-type'
+import { SectionTypeCard } from './section-type-card'
 import { 
   SECTION_TYPES, 
   SECTION_CATEGORIES, 
@@ -16,9 +16,10 @@ import { cn } from '@/lib/utils'
 
 interface SectionsMenuProps {
   className?: string
+  onSectionAdd?: (sectionType: SectionType) => void
 }
 
-export function SectionsMenu({ className }: SectionsMenuProps) {
+export function SectionsMenu({ className, onSectionAdd }: SectionsMenuProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(['input']) // Start with input category expanded
@@ -97,9 +98,10 @@ export function SectionsMenu({ className }: SectionsMenuProps) {
           <div className="p-4 space-y-3">
             {filteredSections.length > 0 ? (
               filteredSections.map((sectionType) => (
-                <DraggableSectionType
+                <SectionTypeCard
                   key={sectionType.id}
                   sectionType={sectionType}
+                  onAdd={onSectionAdd}
                 />
               ))
             ) : (
@@ -155,9 +157,10 @@ export function SectionsMenu({ className }: SectionsMenuProps) {
                   {isExpanded && (
                     <div className="px-4 pb-4 space-y-3">
                       {getCategorySections(category.id).map((sectionType) => (
-                        <DraggableSectionType
+                        <SectionTypeCard
                           key={sectionType.id}
                           sectionType={sectionType}
+                          onAdd={onSectionAdd}
                         />
                       ))}
                     </div>
