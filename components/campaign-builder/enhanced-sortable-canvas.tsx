@@ -7,6 +7,14 @@ import { SectionBlock } from './section-block'
 import { cn } from '@/lib/utils'
 import { Plus, Layout } from 'lucide-react'
 
+interface SectionPersistence {
+  getSectionState: (sectionId: string) => { isCollapsed: boolean }
+  setSectionState: (sectionId: string, state: Partial<{ isCollapsed: boolean }>) => void
+  setSectionCollapsed: (sectionId: string, isCollapsed: boolean) => void
+  isSectionCollapsed: (sectionId: string) => boolean
+  clearStates: () => void
+}
+
 interface EnhancedSortableCanvasProps {
   sections: CampaignSection[]
   onSectionUpdate: (sectionId: string, updates: Partial<CampaignSection>) => Promise<void>
@@ -17,6 +25,7 @@ interface EnhancedSortableCanvasProps {
   className?: string
   showCollapsedSections?: boolean
   campaignId: string
+  sectionPersistence?: SectionPersistence
 }
 
 export function EnhancedSortableCanvas({ 
@@ -28,7 +37,8 @@ export function EnhancedSortableCanvas({
   onSectionTypeChange,
   className,
   showCollapsedSections = true,
-  campaignId
+  campaignId,
+  sectionPersistence
 }: EnhancedSortableCanvasProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: 'campaign-canvas',
@@ -113,6 +123,8 @@ export function EnhancedSortableCanvas({
                   onConfigure={onSectionConfigure}
                   onTypeChange={onSectionTypeChange}
                   isCollapsible={showCollapsedSections}
+                  initiallyCollapsed={sectionPersistence?.isSectionCollapsed(section.id) || false}
+                  onCollapseChange={sectionPersistence?.setSectionCollapsed}
                   allSections={sections}
                   campaignId={campaignId}
                 />

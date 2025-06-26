@@ -117,7 +117,6 @@ export function CampaignBuilderTopBar({
               variant="ghost"
               size="sm"
               onClick={handleBackToCampaigns}
-              className="text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
@@ -142,7 +141,7 @@ export function CampaignBuilderTopBar({
                     variant="ghost"
                     size="sm"
                     onClick={handleNameSave}
-                    className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                    className="h-8 w-8 p-0"
                   >
                     <Check className="h-4 w-4" />
                   </Button>
@@ -150,7 +149,7 @@ export function CampaignBuilderTopBar({
                     variant="ghost"
                     size="sm"
                     onClick={handleNameCancel}
-                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                    className="h-8 w-8 p-0"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -164,7 +163,7 @@ export function CampaignBuilderTopBar({
                     variant="ghost"
                     size="sm"
                     onClick={handleNameEdit}
-                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                    className="h-8 w-8 p-0"
                   >
                     <Edit3 className="h-3 w-3" />
                   </Button>
@@ -175,11 +174,6 @@ export function CampaignBuilderTopBar({
             {/* Status Badge */}
             <Badge 
               variant={isPublished ? 'default' : 'secondary'}
-              className={cn(
-                isPublished 
-                  ? 'bg-green-100 text-green-800 border-green-200' 
-                  : 'bg-yellow-100 text-yellow-800 border-yellow-200'
-              )}
             >
               {isPublished ? 'Published' : 'Draft'}
             </Badge>
@@ -193,7 +187,6 @@ export function CampaignBuilderTopBar({
                 variant="outline"
                 size="sm"
                 onClick={onPreview}
-                className="text-blue-600 border-blue-300 hover:text-blue-700 hover:border-blue-400"
               >
                 <Eye className="h-4 w-4 mr-2" />
                 Preview
@@ -207,11 +200,6 @@ export function CampaignBuilderTopBar({
                 onClick={onPublish}
                 disabled={!canPublish || isSaving}
                 variant={isPublished ? 'secondary' : 'default'}
-                className={cn(
-                  isPublished 
-                    ? 'bg-green-100 text-green-800 border-green-200 hover:bg-green-200' 
-                    : 'bg-green-600 hover:bg-green-700 text-white'
-                )}
               >
                 <Globe className="h-4 w-4 mr-2" />
                 {isPublished ? 'Published' : 'Publish'}

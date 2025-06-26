@@ -23,6 +23,7 @@ interface SectionBlockProps {
   className?: string
   isCollapsible?: boolean
   initiallyCollapsed?: boolean
+  onCollapseChange?: (sectionId: string, isCollapsed: boolean) => void
   allSections?: CampaignSection[]
   campaignId: string
 }
@@ -37,6 +38,7 @@ export function SectionBlock({
   className,
   isCollapsible = true,
   initiallyCollapsed = false,
+  onCollapseChange,
   allSections,
   campaignId
 }: SectionBlockProps) {
@@ -400,7 +402,13 @@ export function SectionBlock({
         onVisibilityToggle={handleVisibilityToggle}
         onDelete={handleDelete}
         onConfigure={() => onConfigure?.(section.id)}
-        onCollapseToggle={() => isCollapsible && setIsCollapsed(!isCollapsed)}
+        onCollapseToggle={() => {
+          if (isCollapsible) {
+            const newCollapsedState = !isCollapsed
+            setIsCollapsed(newCollapsedState)
+            onCollapseChange?.(section.id, newCollapsedState)
+          }
+        }}
         dragHandleProps={{ ...attributes, ...listeners }}
         allSections={allSections}
       />

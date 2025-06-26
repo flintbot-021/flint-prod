@@ -132,39 +132,43 @@ export function SectionTopBar({
 
         {/* Section Name (Editable) */}
         <div className="flex-1 min-w-0">
-          <InlineEditableText
-            value={section.title}
-            onSave={onNameChange}
-            variant="body"
-            placeholder="Section name (edit me)"
-            className="font-medium text-foreground"
-            showEditIcon={false}
-            showSaveStatus={true}
-            validation={validateName}
-            maxLength={50}
-            required={true}
-            autoSave={false}
-          />
-          
-          {/* Variable Preview Badge - Show for question sections */}
-          {isQuestionSection(section.type) && section.title && (
-            <div className="flex items-center space-x-2 mt-1">
-              <Badge 
-                variant={checkVariableNameConflict(section.title) ? "destructive" : "secondary"}
-                className={cn(
-                  "text-xs font-mono",
-                  checkVariableNameConflict(section.title) 
-                    ? "bg-red-50 text-red-700 border-red-200" 
-                    : "bg-blue-50 text-blue-700 border-blue-200"
-                )}
-              >
-                @{titleToVariableName(section.title)}
-              </Badge>
-              {checkVariableNameConflict(section.title) ? (
-                <span className="text-xs text-red-600">⚠️ Duplicate variable name</span>
-              ) : (
-                <span className="text-xs text-muted-foreground">← Variable name</span>
+          <div className="flex items-center">
+            {/* @ Symbol for question sections */}
+            {isQuestionSection(section.type) && (
+              <span className={cn(
+                "mr-1 font-mono text-sm",
+                checkVariableNameConflict(section.title) 
+                  ? "text-red-600" 
+                  : "text-blue-600"
+              )}>
+                @
+              </span>
+            )}
+            
+            <InlineEditableText
+              value={section.title}
+              onSave={onNameChange}
+              variant="body"
+              placeholder={isQuestionSection(section.type) ? "variable_name" : "Section name (edit me)"}
+              className={cn(
+                "font-medium",
+                isQuestionSection(section.type) && checkVariableNameConflict(section.title)
+                  ? "text-red-600"
+                  : "text-foreground"
               )}
+              showEditIcon={false}
+              showSaveStatus={true}
+              validation={validateName}
+              maxLength={50}
+              required={true}
+              autoSave={false}
+            />
+          </div>
+          
+          {/* Error message for duplicate variable names */}
+          {isQuestionSection(section.type) && checkVariableNameConflict(section.title) && (
+            <div className="text-xs text-red-600 mt-1">
+              ⚠️ Duplicate variable name
             </div>
           )}
         </div>
