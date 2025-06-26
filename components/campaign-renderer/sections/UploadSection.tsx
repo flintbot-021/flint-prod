@@ -242,7 +242,13 @@ export function UploadSection({
           </div>
 
           {/* Upload Card */}
-          <Card className="border-2 border-dashed transition-all duration-200 hover:border-primary/50">
+          <Card className={`mt-4 p-4 rounded-lg border-2 border-dashed transition-colors ${
+            isDragging
+              ? "border-blue-400 bg-blue-50"
+              : uploadStatus === 'success'
+              ? "bg-green-100"
+              : "border-gray-300 hover:border-gray-400"
+          }`}>
             <CardContent className="p-8">
               <input
                 ref={fileInputRef}
@@ -268,7 +274,7 @@ export function UploadSection({
                 <div className={cn(
                   "mx-auto w-16 h-16 rounded-full flex items-center justify-center transition-colors",
                   uploadStatus === 'success' 
-                    ? "bg-green-100 dark:bg-green-900/20" 
+                    ? "bg-green-100" 
                     : uploadStatus === 'error'
                     ? "bg-destructive/10"
                     : isDragging
@@ -276,7 +282,7 @@ export function UploadSection({
                     : "bg-muted"
                 )}>
                   {uploadStatus === 'success' ? (
-                    <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+                    <CheckCircle className="h-8 w-8 text-green-600" />
                   ) : uploadStatus === 'error' ? (
                     <AlertCircle className="h-8 w-8 text-destructive" />
                   ) : (
@@ -292,7 +298,7 @@ export function UploadSection({
                   <p className={cn(
                     "text-lg font-medium transition-colors",
                     uploadStatus === 'success' 
-                      ? "text-green-600 dark:text-green-400"
+                      ? "text-green-600"
                       : isDragging 
                       ? "text-primary"
                       : "text-foreground"
