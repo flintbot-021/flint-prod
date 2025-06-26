@@ -17,6 +17,7 @@ export type CampaignStatus = 'draft' | 'published' | 'archived';
 
 export type SectionType = 
   | 'text_question'
+  | 'date_time_question'
   | 'multiple_choice' 
   | 'slider'
   | 'question-slider-multiple'

@@ -8,6 +8,7 @@ import { BaseSectionProps, SectionConfiguration, SectionRendererProps, SectionWi
 import {
   CaptureSection,
   TextQuestionSection,
+  DateTimeSection,
   MultipleChoiceSection,
   UploadSection,
   SliderSection,
@@ -127,11 +128,14 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
       if (isUploadQuestion(config)) {
         return <UploadSection {...enhancedProps} />
       }
-      // Check if this is actually a date-time question (for future implementation)
-      // if (isDateTimeQuestion(config)) {
-      //   return <DateTimeSection {...enhancedProps} />
-      // }
+      // Check if this is actually a date-time question
+      if (isDateTimeQuestion(config)) {
+        return <DateTimeSection {...enhancedProps} />
+      }
       return <TextQuestionSection {...enhancedProps} />
+    
+    case 'date_time_question':
+      return <DateTimeSection {...enhancedProps} />
     
     case 'multiple_choice':
       return <MultipleChoiceSection {...enhancedProps} />

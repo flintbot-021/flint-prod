@@ -41,8 +41,8 @@ const mapCampaignBuilderTypeToDatabase = (builderType: string): string => {
     'question-multiple-choice': 'multiple_choice',
     'question-slider': 'slider',
     'question-slider-multiple': 'question-slider-multiple',
-    'question-date-time': 'text_question', // Could be a specialized type later
-    'question-upload': 'text_question', // Could be a specialized type later
+    'question-date-time': 'date_time_question',
+    'question-upload': 'upload_question',
     
     // Content - Now preserve specific types
     'content-hero': 'content-hero',
@@ -71,6 +71,8 @@ const mapDatabaseTypeToCampaignBuilder = (dbType: string): string => {
     'multiple_choice': 'question-multiple-choice', 
     'slider': 'question-slider',
     'question-slider-multiple': 'question-slider-multiple',
+    'date_time_question': 'question-date-time',
+    'upload_question': 'question-upload',
     'info': 'content-basic', // Legacy info sections become basic content
     'content-hero': 'content-hero', // Preserve hero sections
     'content-basic': 'content-basic', // Preserve basic sections

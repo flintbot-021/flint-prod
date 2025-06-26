@@ -209,12 +209,7 @@ export function CampaignBuilderTopBar({
         </div>
       </div>
 
-      {/* Progress/Loading Bar */}
-      {isSaving && (
-        <div className="h-1 bg-muted">
-          <div className="h-full bg-primary animate-pulse" style={{ width: '100%' }} />
-        </div>
-      )}
+
     </div>
   )
 } 
