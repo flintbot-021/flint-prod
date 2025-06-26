@@ -125,18 +125,23 @@ export function AILogicSection({
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
   const [isGeneratingOutputs, setIsGeneratingOutputs] = useState(false)
   
-  // Local state for immediate UI updates (before debounced persistence)
-  const [localPrompt, setLocalPrompt] = useState(settings.prompt || '')
+  // Local state for immediate UI updates (before onBlur persistence)
   const [localTestInputs, setLocalTestInputs] = useState<Record<string, string>>({})
+  const [promptValue, setPromptValue] = useState(settings.prompt || '')
+  const [localOutputVariables, setLocalOutputVariables] = useState<OutputVariable[]>(settings.outputVariables || [])
   
-  // Update local state when settings change
+  // Update local state when settings change externally
   useEffect(() => {
-    setLocalPrompt(settings.prompt || '')
+    setPromptValue(settings.prompt || '')
   }, [settings.prompt])
   
   useEffect(() => {
     setLocalTestInputs(settings.testInputs || {})
   }, [settings.testInputs])
+  
+  useEffect(() => {
+    setLocalOutputVariables(settings.outputVariables || [])
+  }, [settings.outputVariables])
   
   // Extract actual variables from campaign sections with type information
   const extractedVariablesWithTypes = useMemo(() => {
@@ -178,30 +183,22 @@ export function AILogicSection({
     }))
   }, [])
 
-  // Debounced prompt updates
-  const promptTimeout = useRef<NodeJS.Timeout>()
-  
   const handleSettingChange = useCallback((key: string, value: any) => {
     if (onChange) {
       const newSettings = { ...settings, [key]: value }
       onChange(newSettings)
     }
   }, [settings, onChange])
-  
+
   const handlePromptChange = useCallback((value: string) => {
-    // Update local state immediately for responsive UI
-    setLocalPrompt(value)
-    
-    // Clear existing timeout
-    if (promptTimeout.current) {
-      clearTimeout(promptTimeout.current)
-    }
-    
-    // Debounce the settings update
-    promptTimeout.current = setTimeout(() => {
-      handleSettingChange('prompt', value)
-    }, 500) // 500ms debounce for less frequent updates
-  }, [handleSettingChange])
+    // Update local state immediately for responsive typing
+    setPromptValue(value)
+  }, [])
+  
+  const handlePromptBlur = useCallback(() => {
+    // Save to settings only when user clicks away
+    handleSettingChange('prompt', promptValue)
+  }, [promptValue, handleSettingChange])
 
 
 
@@ -346,9 +343,9 @@ export function AILogicSection({
 
 
   const step3Complete = useMemo(() => {
-    return settings.outputVariables.length > 0 && 
-           settings.outputVariables.every(v => v.name.trim() !== '' && v.description.trim() !== '')
-  }, [settings.outputVariables])
+    return localOutputVariables.length > 0 && 
+           localOutputVariables.every(v => v.name.trim() !== '' && v.description.trim() !== '')
+  }, [localOutputVariables])
 
   const addOutputVariable = useCallback(() => {
     const newVariable: OutputVariable = {
@@ -356,39 +353,36 @@ export function AILogicSection({
       name: '',
       description: ''
     }
-    handleSettingChange('outputVariables', [...settings.outputVariables, newVariable])
-  }, [settings.outputVariables, handleSettingChange])
+    const newOutputVariables = [...localOutputVariables, newVariable]
+    setLocalOutputVariables(newOutputVariables)
+    handleSettingChange('outputVariables', newOutputVariables)
+  }, [localOutputVariables, handleSettingChange])
 
-  // Debounced output variable updates
-  const outputVariableTimeouts = useRef<Record<string, NodeJS.Timeout>>({})
-  
-  const updateOutputVariable = useCallback((id: string, field: string, value: string) => {
-    // Clear existing timeout for this field
-    const timeoutKey = `${id}-${field}`
-    if (outputVariableTimeouts.current[timeoutKey]) {
-      clearTimeout(outputVariableTimeouts.current[timeoutKey])
-    }
-    
-    // Debounce the update
-    outputVariableTimeouts.current[timeoutKey] = setTimeout(() => {
-      const updatedVariables = settings.outputVariables.map(variable =>
+  const updateOutputVariableLocal = useCallback((id: string, field: string, value: string) => {
+    // Update local state immediately for responsive typing
+    setLocalOutputVariables(prev => 
+      prev.map(variable =>
         variable.id === id ? { ...variable, [field]: value } : variable
       )
-      handleSettingChange('outputVariables', updatedVariables)
-      delete outputVariableTimeouts.current[timeoutKey]
-    }, 300)
-  }, [settings.outputVariables, handleSettingChange])
+    )
+  }, [])
+  
+  const handleOutputVariableBlur = useCallback(() => {
+    // Save to settings only when user clicks away from any output variable input
+    handleSettingChange('outputVariables', localOutputVariables)
+  }, [localOutputVariables, handleSettingChange])
 
   const removeOutputVariable = useCallback((id: string) => {
-    const filteredVariables = settings.outputVariables.filter(variable => variable.id !== id)
+    const filteredVariables = localOutputVariables.filter(variable => variable.id !== id)
+    setLocalOutputVariables(filteredVariables)
     handleSettingChange('outputVariables', filteredVariables)
-  }, [settings.outputVariables, handleSettingChange])
+  }, [localOutputVariables, handleSettingChange])
 
   const insertVariable = useCallback((variable: string) => {
-    const currentValue = localPrompt || settings.prompt || ''
+    const currentValue = promptValue || ''
     const newValue = currentValue + `@${variable}`
     handlePromptChange(newValue)
-  }, [localPrompt, settings.prompt, handlePromptChange])
+  }, [promptValue, handlePromptChange])
 
   // Debounced test input updates
   const testInputTimeouts = useRef<Record<string, NodeJS.Timeout>>({})
@@ -428,9 +422,9 @@ export function AILogicSection({
     handleSettingChange('testFiles', newTestFiles)
   }, [settings.testFiles, handleSettingChange])
 
-  // Generate live preview of prompt with variables substituted - optimized with local state
+  // Generate live preview of prompt with variables substituted
   const previewPrompt = useMemo(() => {
-    const currentPrompt = localPrompt || settings.prompt || ''
+    const currentPrompt = promptValue || ''
     let preview = currentPrompt
     const currentInputs = { ...settings.testInputs, ...localTestInputs }
     
@@ -441,7 +435,7 @@ export function AILogicSection({
       }
     })
     return preview
-  }, [localPrompt, settings.prompt, settings.testInputs, localTestInputs])
+  }, [promptValue, settings.testInputs, localTestInputs])
 
   const runTest = async () => {
     setIsTestRunning(true)
@@ -452,7 +446,7 @@ export function AILogicSection({
         return
       }
       
-      if (settings.outputVariables.length === 0) {
+      if (localOutputVariables.length === 0) {
         setTestResult('Please define at least one output variable in Step 3 before testing.')
         return
       }
@@ -652,7 +646,7 @@ export function AILogicSection({
                 ) : (
                   <div className="space-y-6">
                     <p className="text-sm text-gray-300 mb-4">
-                      Enter example answers for each question. These help you design your AI prompt.
+                      Enter example answers for each question. You will use these sample answers to test your AI prompt to ensure it's working like you expect.
                     </p>
                     
                     {/* Text Variables */}
@@ -1052,8 +1046,9 @@ export function AILogicSection({
 
                     <div>
                       <Textarea
-                        value={localPrompt}
+                        value={promptValue}
                         onChange={(e) => handlePromptChange(e.target.value)}
+                        onBlur={handlePromptBlur}
                         placeholder="You are an expert fitness coach. Based on @name who trains @frequency times per week and wants to run a @distance race, provide personalized training advice..."
                         className="min-h-[200px] text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                         rows={8}
@@ -1173,14 +1168,15 @@ export function AILogicSection({
                   </div>
 
                   <div className="space-y-4">
-                    {settings.outputVariables.map((variable) => (
+                    {localOutputVariables.map((variable) => (
                       <Card key={variable.id} className="p-4 bg-gray-900 border-gray-700">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div data-output-variable-name>
                             <Label className="text-xs text-gray-400 mb-1 block">Variable Name</Label>
                             <Input
                               value={variable.name}
-                              onChange={(e) => updateOutputVariable(variable.id, 'name', e.target.value)}
+                              onChange={(e) => updateOutputVariableLocal(variable.id, 'name', e.target.value)}
+                              onBlur={handleOutputVariableBlur}
                               placeholder="recommendation"
                               className="text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                             />
@@ -1190,7 +1186,8 @@ export function AILogicSection({
                               <Label className="text-xs text-gray-400 mb-1 block">Description</Label>
                               <Input
                                 value={variable.description}
-                                onChange={(e) => updateOutputVariable(variable.id, 'description', e.target.value)}
+                                onChange={(e) => updateOutputVariableLocal(variable.id, 'description', e.target.value)}
+                                onBlur={handleOutputVariableBlur}
                                 placeholder="Personalized training recommendation"
                                 className="text-sm bg-gray-700 border-gray-600 text-white placeholder-gray-400"
                               />
@@ -1208,7 +1205,7 @@ export function AILogicSection({
                       </Card>
                     ))}
 
-                    {settings.outputVariables.length === 0 && (
+                    {localOutputVariables.length === 0 && (
                       <div className="text-center py-8 text-gray-400 border-2 border-dashed border-gray-600 rounded-lg">
                         <Brain className="h-8 w-8 mx-auto mb-2 opacity-50" />
                         <p className="font-medium">No output variables defined</p>
