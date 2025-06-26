@@ -249,7 +249,7 @@ export default function Dashboard() {
     })
   }, [showConfirmation])
 
-  const canCreateCampaign = true // Removed campaign limit enforcement
+  const canCreateCampaign = true // No campaign limits
 
   if (loading) {
     return (

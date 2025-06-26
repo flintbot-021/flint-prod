@@ -36,7 +36,7 @@ CREATE TABLE profiles (
   subscription_status VARCHAR(50) DEFAULT 'active' CHECK (subscription_status IN ('active', 'cancelled', 'expired', 'trial')),
   trial_ends_at TIMESTAMP WITH TIME ZONE,
   subscription_ends_at TIMESTAMP WITH TIME ZONE,
-  monthly_campaign_limit INTEGER DEFAULT 3,
+  monthly_campaign_limit INTEGER DEFAULT -1, -- Unlimited campaigns (legacy field)
   monthly_campaigns_used INTEGER DEFAULT 0,
   monthly_leads_limit INTEGER DEFAULT 100,
   monthly_leads_captured INTEGER DEFAULT 0,

@@ -123,7 +123,7 @@ CREATE TABLE profiles (
   subscription_status subscription_status NOT NULL DEFAULT 'trial',
   trial_ends_at TIMESTAMPTZ,
   subscription_ends_at TIMESTAMPTZ,
-  monthly_campaign_limit INTEGER NOT NULL DEFAULT 3,
+  monthly_campaign_limit INTEGER NOT NULL DEFAULT -1, -- Unlimited campaigns (legacy field)
   monthly_campaigns_used INTEGER NOT NULL DEFAULT 0,
   monthly_leads_limit INTEGER NOT NULL DEFAULT 100,
   monthly_leads_captured INTEGER NOT NULL DEFAULT 0,

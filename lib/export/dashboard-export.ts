@@ -133,8 +133,8 @@ export const getDashboardExportData = async (
       },
       userInfo: profile ? {
         monthlyUsage: profile.monthly_campaigns_used,
-        monthlyLimit: profile.monthly_campaign_limit,
-        usagePercentage: Math.round((profile.monthly_campaigns_used / profile.monthly_campaign_limit) * 100)
+        monthlyLimit: -1, // Unlimited campaigns
+        usagePercentage: 0 // Always 0% since unlimited
       } : null,
       exportedAt: new Date().toISOString(),
       source: 'dashboard' as const

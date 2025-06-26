@@ -241,28 +241,15 @@ export async function createCampaignWithUsageTracking(
   campaignData: CreateCampaign
 ): Promise<DatabaseResult<Campaign>> {
   const { createCampaign } = await import('./campaigns');
-  const { incrementCampaignUsage, canCreateCampaign } = await import('./profiles');
+  const { incrementCampaignUsage } = await import('./profiles');
 
-  // Check if user can create more campaigns
-  const canCreate = await canCreateCampaign();
-  if (!canCreate.success) {
-    return canCreate as any;
-  }
-
-  if (!canCreate.data) {
-    return {
-      success: false,
-      error: 'Monthly campaign limit reached'
-    };
-  }
-
-  // Create the campaign
+  // Create the campaign - no limit checking needed
   const campaignResult = await createCampaign(campaignData);
   if (!campaignResult.success) {
     return campaignResult;
   }
 
-  // Increment usage counter
+  // Increment usage counter for analytics
   await incrementCampaignUsage();
 
   return campaignResult;
