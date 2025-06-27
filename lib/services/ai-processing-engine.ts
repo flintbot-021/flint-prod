@@ -22,6 +22,7 @@ export interface AITestRequest {
   hasFileVariables?: boolean
   fileVariableNames?: string[]
   fileObjects?: Record<string, { file: File; variableName: string }>
+  knowledgeBaseContext?: string
 }
 
 export interface AITestResponse {
@@ -74,7 +75,7 @@ export class AIProcessingEngine {
       // Fallback for text-only processing
       const finalPrompt = this.replaceVariables(request.prompt, request.variables)
 
-      const aiRequest = this.prepareAIRequest(finalPrompt, request.outputVariables)
+      const aiRequest = this.prepareAIRequest(finalPrompt, request.outputVariables, request.knowledgeBaseContext)
       const response = await this.callOpenAI(aiRequest)
 
       const outputs = this.extractOutputs(response.content, request.outputVariables)
@@ -162,7 +163,7 @@ export class AIProcessingEngine {
       // Add the text prompt
       content.push({
         type: 'text',
-        text: this.buildCombinedPrompt(finalPrompt, request.outputVariables)
+        text: this.buildCombinedPrompt(finalPrompt, request.outputVariables, request.knowledgeBaseContext)
       })
 
       // Make the API call with files
@@ -249,9 +250,9 @@ export class AIProcessingEngine {
   /**
    * Prepare the OpenAI API request with sensible defaults
    */
-  private prepareAIRequest(prompt: string, outputVariables: OutputVariable[]): any {
-    // Combine user's domain prompt with output instructions
-    const combinedPrompt = this.buildCombinedPrompt(prompt, outputVariables)
+  private prepareAIRequest(prompt: string, outputVariables: OutputVariable[], knowledgeBaseContext?: string): any {
+    // Combine user's domain prompt with output instructions and knowledge base context
+    const combinedPrompt = this.buildCombinedPrompt(prompt, outputVariables, knowledgeBaseContext)
     
     console.log('🚀 Final prompt being sent to OpenAI:', combinedPrompt)
 
@@ -271,11 +272,21 @@ export class AIProcessingEngine {
   }
 
   /**
-   * Build combined prompt with user's domain expertise + output format instructions
+   * Build combined prompt with user's domain expertise + output format instructions + knowledge base context
    */
-  private buildCombinedPrompt(userPrompt: string, outputVariables: OutputVariable[]): string {
+  private buildCombinedPrompt(userPrompt: string, outputVariables: OutputVariable[], knowledgeBaseContext?: string): string {
+    let combinedPrompt = userPrompt
+
+    // Add knowledge base context if provided
+    if (knowledgeBaseContext && knowledgeBaseContext.trim()) {
+      combinedPrompt += '\n\n--- KNOWLEDGE BASE CONTEXT ---\n'
+      combinedPrompt += 'Please reference the following knowledge base when generating content:\n\n'
+      combinedPrompt += knowledgeBaseContext
+      combinedPrompt += '\n--- END KNOWLEDGE BASE CONTEXT ---\n'
+    }
+
     if (outputVariables.length === 0) {
-      return userPrompt
+      return combinedPrompt
     }
 
     // First, list all the output field names clearly
@@ -286,7 +297,7 @@ export class AIProcessingEngine {
       `- ${variable.name} = ${variable.description}`
     ).join('\n')
 
-    return `${userPrompt}
+    return `${combinedPrompt}
 
 Please return the following outputs: ${outputNames}
 

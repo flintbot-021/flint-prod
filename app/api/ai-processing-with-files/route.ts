@@ -27,6 +27,7 @@ export async function POST(request: NextRequest) {
     const outputVariablesStr = formData.get('outputVariables') as string
     const hasFileVariables = formData.get('hasFileVariables') === 'true'
     const fileVariableNamesStr = formData.get('fileVariableNames') as string
+    const knowledgeBaseContext = formData.get('knowledgeBaseContext') as string | null
     
     // Validate request
     if (!prompt || typeof prompt !== 'string') {
@@ -125,7 +126,8 @@ export async function POST(request: NextRequest) {
       outputVariables,
       hasFileVariables,
       fileVariableNames,
-      fileObjects: Object.keys(fileObjects).length > 0 ? fileObjects : undefined
+      fileObjects: Object.keys(fileObjects).length > 0 ? fileObjects : undefined,
+      knowledgeBaseContext: knowledgeBaseContext || undefined
     })
 
     console.log(`✅ [API-${requestId}] AI processing completed successfully`)

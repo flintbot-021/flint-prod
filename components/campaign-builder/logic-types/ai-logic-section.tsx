@@ -7,12 +7,16 @@ import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, X, Brain, Play, Check, Lock, ChevronDown, ChevronUp, Sparkles, Upload } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Plus, X, Brain, Play, Check, Lock, ChevronDown, ChevronUp, Sparkles, Upload, Database } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { PromptGenerationRequest, PromptGenerationResponse } from '@/lib/services/prompt-generation'
 import { storeAITestResults } from '@/lib/utils/ai-test-storage'
 import { titleToVariableName, isQuestionSection, extractInputVariablesWithTypes, isFileVariable } from '@/lib/utils/section-variables'
+import { KnowledgeBaseModal } from '@/components/ui/knowledge-base-modal'
+import { KnowledgeBaseSettings } from '@/lib/types/knowledge-base'
+import { getKnowledgeBaseEntries } from '@/lib/data-access/knowledge-base'
 
 interface OutputVariable {
   id: string
@@ -26,6 +30,7 @@ interface AILogicSectionProps {
     outputVariables: OutputVariable[]
     testInputs?: Record<string, any>
     testFiles?: Record<string, File>
+    knowledgeBase?: KnowledgeBaseSettings
   }
   isPreview?: boolean
   isEditing?: boolean
@@ -34,6 +39,7 @@ interface AILogicSectionProps {
   className?: string
   allSections?: CampaignSection[]
   section?: CampaignSection
+  campaignId?: string
 }
 
 // Extract input variables from question sections that come before this AI logic section
@@ -118,7 +124,8 @@ export function AILogicSection({
   availableVariables = [],
   className,
   allSections = [],
-  section
+  section,
+  campaignId
 }: AILogicSectionProps) {
   const [testResult, setTestResult] = useState<string>('')
   const [isTestRunning, setIsTestRunning] = useState(false)
@@ -129,6 +136,11 @@ export function AILogicSection({
   const [localTestInputs, setLocalTestInputs] = useState<Record<string, string>>({})
   const [promptValue, setPromptValue] = useState(settings.prompt || '')
   const [localOutputVariables, setLocalOutputVariables] = useState<OutputVariable[]>(settings.outputVariables || [])
+  
+  // Knowledge base state
+  const [knowledgeBaseEnabled, setKnowledgeBaseEnabled] = useState(settings.knowledgeBase?.enabled || false)
+  const [selectedKnowledgeEntries, setSelectedKnowledgeEntries] = useState<string[]>(settings.knowledgeBase?.entries || [])
+  const [showKnowledgeBaseModal, setShowKnowledgeBaseModal] = useState(false)
   
   // Update local state when settings change externally
   useEffect(() => {
@@ -384,6 +396,74 @@ export function AILogicSection({
     handlePromptChange(newValue)
   }, [promptValue, handlePromptChange])
 
+  // Knowledge base handlers
+  const handleKnowledgeBaseToggle = useCallback((enabled: boolean) => {
+    setKnowledgeBaseEnabled(enabled)
+    const knowledgeBaseSettings: KnowledgeBaseSettings = {
+      enabled,
+      entries: enabled ? selectedKnowledgeEntries : []
+    }
+    handleSettingChange('knowledgeBase', knowledgeBaseSettings)
+  }, [selectedKnowledgeEntries, handleSettingChange])
+
+  const handleKnowledgeBaseEntriesChange = useCallback((entryIds: string[]) => {
+    setSelectedKnowledgeEntries(entryIds)
+    if (knowledgeBaseEnabled) {
+      const knowledgeBaseSettings: KnowledgeBaseSettings = {
+        enabled: knowledgeBaseEnabled,
+        entries: entryIds
+      }
+      handleSettingChange('knowledgeBase', knowledgeBaseSettings)
+    }
+  }, [knowledgeBaseEnabled, handleSettingChange])
+
+  // Fetch knowledge base context for AI processing
+  const fetchKnowledgeBaseContext = useCallback(async (): Promise<string> => {
+    console.log('🔍 fetchKnowledgeBaseContext called:', {
+      knowledgeBaseEnabled,
+      campaignId,
+      selectedKnowledgeEntriesLength: selectedKnowledgeEntries.length,
+      selectedKnowledgeEntries
+    })
+    
+    if (!knowledgeBaseEnabled || !campaignId || selectedKnowledgeEntries.length === 0) {
+      console.log('📚 Knowledge base context skipped - conditions not met')
+      return ''
+    }
+
+    try {
+      console.log('📚 Fetching knowledge base entries for campaign:', campaignId)
+      const result = await getKnowledgeBaseEntries(campaignId)
+      console.log('📚 Knowledge base entries result:', result)
+      
+      if (result.success && result.data) {
+        console.log('📚 All knowledge base entries:', result.data)
+        const selectedEntries = result.data.filter(entry => 
+          selectedKnowledgeEntries.includes(entry.id)
+        )
+        console.log('📚 Selected knowledge base entries:', selectedEntries)
+        
+        const formattedContext = selectedEntries.map(entry => {
+          let content = `## ${entry.title}\n\n${entry.content}`
+          
+          // Add file information if it's a document
+          if (entry.content_type === 'document' && entry.metadata?.file_name) {
+            content = `## ${entry.title} (${entry.metadata.file_name})\n\n${entry.content}`
+          }
+          
+          return content
+        }).join('\n\n---\n\n')
+        
+        console.log('📚 Final formatted knowledge base context:', formattedContext)
+        return formattedContext
+      }
+    } catch (error) {
+      console.error('Error fetching knowledge base context:', error)
+    }
+    
+    return ''
+  }, [knowledgeBaseEnabled, campaignId, selectedKnowledgeEntries])
+
   // Debounced test input updates
   const testInputTimeouts = useRef<Record<string, NodeJS.Timeout>>({})
   
@@ -474,6 +554,9 @@ export function AILogicSection({
       // Prepare the AI test request
       const testVariables = { ...(settings.testInputs || {}) }
       
+      // Fetch knowledge base context if enabled
+      const knowledgeBaseContext = await fetchKnowledgeBaseContext()
+      
       // If we have file variables with actual uploaded files, use the file-aware API
       const hasUploadedFiles = fileVariables.length > 0 && fileVariables.every(v => (settings.testFiles || {})[v.name])
       
@@ -489,6 +572,11 @@ export function AILogicSection({
         }))))
         formData.append('hasFileVariables', 'true')
         formData.append('fileVariableNames', JSON.stringify(fileVariables.map(v => v.name)))
+        
+        // Add knowledge base context if available
+        if (knowledgeBaseContext) {
+          formData.append('knowledgeBaseContext', knowledgeBaseContext)
+        }
         
         // Add the actual uploaded files
         fileVariables.forEach(variable => {
@@ -548,7 +636,8 @@ export function AILogicSection({
           description: v.description
         })),
         hasFileVariables: fileVariables.length > 0,
-        fileVariableNames: fileVariables.map(v => v.name)
+        fileVariableNames: fileVariables.map(v => v.name),
+        knowledgeBaseContext
       }
 
       // Call the AI processing API
@@ -1078,6 +1167,39 @@ export function AILogicSection({
                         </>
                       )}
                     </div>
+
+                    {/* Knowledge Base Toggle */}
+                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Switch
+                            checked={knowledgeBaseEnabled}
+                            onCheckedChange={handleKnowledgeBaseToggle}
+                            className="data-[state=checked]:bg-blue-600"
+                          />
+                          <div>
+                            <Label className="text-sm font-medium text-gray-900">
+                              Include Knowledge Base
+                            </Label>
+                            <p className="text-xs text-gray-600">
+                              Please reference the following{' '}
+                              <button
+                                onClick={() => setShowKnowledgeBaseModal(true)}
+                                className="text-blue-600 underline hover:text-blue-700 font-medium"
+                              >
+                                knowledge base
+                              </button>
+                              {' '}when generating content
+                            </p>
+                          </div>
+                        </div>
+                        {knowledgeBaseEnabled && (
+                          <Badge variant="secondary" className="text-xs">
+                            {selectedKnowledgeEntries.length} {selectedKnowledgeEntries.length === 1 ? 'entry' : 'entries'}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Right: Live Preview */}
@@ -1342,6 +1464,17 @@ export function AILogicSection({
           </div>
         )}
       </Card>
+
+      {/* Knowledge Base Modal */}
+      {campaignId && (
+        <KnowledgeBaseModal
+          isOpen={showKnowledgeBaseModal}
+          onClose={() => setShowKnowledgeBaseModal(false)}
+          campaignId={campaignId}
+          selectedEntries={selectedKnowledgeEntries}
+          onSelectionChange={handleKnowledgeBaseEntriesChange}
+        />
+      )}
     </div>
   )
 } 

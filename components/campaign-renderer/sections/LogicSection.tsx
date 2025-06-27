@@ -117,6 +117,30 @@ function LogicSectionComponent({
 
       setProcessingStatus(hasFileVariables ? 'Processing files with AI...' : 'Sending to AI...')
 
+      // Prepare knowledge base context if enabled
+      let knowledgeBaseContext = ''
+      if (aiConfig.knowledgeBase?.enabled && aiConfig.knowledgeBase?.entries?.length > 0) {
+        try {
+          // Fetch knowledge base entries for this campaign
+          const campaignId = userInputs.campaignId || section.id
+          const response = await fetch(`/api/knowledge-base/${campaignId}?entries=${aiConfig.knowledgeBase.entries.join(',')}`)
+          if (response.ok) {
+            const result = await response.json()
+            if (result.success && result.data) {
+              knowledgeBaseContext = result.data.map((entry: any) => {
+                let content = `## ${entry.title}\n\n${entry.content}`
+                if (entry.content_type === 'document' && entry.metadata?.file_name) {
+                  content = `## ${entry.title} (${entry.metadata.file_name})\n\n${entry.content}`
+                }
+                return content
+              }).join('\n\n---\n\n')
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching knowledge base context:', error)
+        }
+      }
+
       // Prepare the AI request using the predefined configuration
       const aiRequest = {
         prompt: aiConfig.prompt,
@@ -128,6 +152,7 @@ function LogicSectionComponent({
         })),
         hasFileVariables,
         fileVariableNames: fileVariables.map(v => v.name),
+        knowledgeBaseContext,
         // Add lead/campaign info for file processing
         leadId: userInputs.leadId || 'preview-lead',
         campaignId: userInputs.campaignId || 'preview-campaign'
@@ -150,6 +175,11 @@ function LogicSectionComponent({
         formData.append('outputVariables', JSON.stringify(aiRequest.outputVariables))
         formData.append('hasFileVariables', 'true')
         formData.append('fileVariableNames', JSON.stringify(aiRequest.fileVariableNames))
+        
+        // Add knowledge base context if available
+        if (knowledgeBaseContext) {
+          formData.append('knowledgeBaseContext', knowledgeBaseContext)
+        }
         
         // Fetch actual files from storage and append them for direct OpenAI processing
         console.log('📁 Fetching files from storage for direct OpenAI processing...')
