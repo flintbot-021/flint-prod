@@ -15,6 +15,7 @@ function LogicSectionComponent({
   title,
   description,
   deviceInfo,
+  campaignId,
   onSectionComplete,
   userInputs = {},
   sections = []
@@ -123,9 +124,8 @@ function LogicSectionComponent({
       let knowledgeBaseFiles: Array<{ url: string; type: string; name: string }> = []
       if (aiConfig.knowledgeBase?.enabled) {
         try {
-          // Fetch knowledge base data for this campaign
-          const campaignId = userInputs.campaignId || section.id
-          const knowledgeBaseData = await getKnowledgeBaseForAI(campaignId)
+          // Fetch knowledge base data for this campaign - use campaignId prop
+          const knowledgeBaseData = await getKnowledgeBaseForAI(campaignId || section.id)
           knowledgeBaseContext = knowledgeBaseData.textContent
           knowledgeBaseFiles = knowledgeBaseData.files
           console.log('📚 Campaign renderer: Knowledge base data fetched:', { 
