@@ -107,7 +107,7 @@ export function SectionTopBar({
   return (
     <div className={cn(
       'flex items-center justify-between p-3 bg-background border-b border-border',
-      'hover:bg-gray-900 transition-colors group',
+      'hover:bg-gray-100 transition-colors group',
       className
     )}>
       {/* Left Side - Drag Handle, Icon, Name, Order Badge, Type */}

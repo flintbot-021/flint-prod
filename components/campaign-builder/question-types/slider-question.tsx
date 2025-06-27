@@ -72,11 +72,11 @@ export function SliderQuestion({
         <div className="space-y-6">
           {/* Question */}
           <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-white">
+            <h1 className="text-4xl font-bold text-gray-900">
               {settings.question || 'Your question text here...'}
             </h1>
             {settings.subheading && (
-              <p className="text-xl text-gray-300">
+              <p className="text-xl text-gray-600">
                 {settings.subheading}
               </p>
             )}

@@ -25,7 +25,7 @@ import {
   X,
   Image as ImageIcon
 } from 'lucide-react'
-import { uploadFiles, UploadedFileInfo } from '@/lib/supabase/storage'
+
 
 interface CampaignFormData {
   name: string
@@ -251,12 +251,28 @@ export default function EditCampaignPage() {
 
     setIsUploadingLogo(true)
     try {
-      // uploadFiles is already imported at the top
-      const uploadedFiles = await uploadFiles([logoFile], campaignId, 'logo')
-      return uploadedFiles[0]?.url || null
+      // Use API route for upload with proper server-side authentication
+      const formData = new FormData()
+      formData.append('logo', logoFile)
+      formData.append('campaignId', campaignId)
+      
+      const response = await fetch('/api/upload-logo', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Upload failed')
+      }
+      
+      console.log('Logo uploaded successfully via API:', result.url)
+      return result.url
+      
     } catch (error) {
       console.error('Logo upload failed:', error)
-      throw error
+      throw new Error(`Failed to upload logo: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsUploadingLogo(false)
     }

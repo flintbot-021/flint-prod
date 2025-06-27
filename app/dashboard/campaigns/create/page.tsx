@@ -22,7 +22,6 @@ import {
 } from 'lucide-react'
 
 // Import logo upload functionality
-import { uploadFiles } from '@/lib/supabase/storage'
 
 interface CampaignFormData {
   name: string
@@ -155,6 +154,9 @@ export default function CreateCampaignPage() {
   const handleLogoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
+      // Reset any previous errors
+      setError(null)
+      
       // Validate file type
       const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
       if (!validTypes.includes(file.type)) {
@@ -168,6 +170,18 @@ export default function CreateCampaignPage() {
         return
       }
 
+      // Validate file name
+      if (file.name.length > 100) {
+        setError('File name is too long. Please rename your file to be shorter than 100 characters.')
+        return
+      }
+
+      console.log('Logo file selected:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      })
+
       setLogoFile(file)
       
       // Create preview
@@ -175,9 +189,11 @@ export default function CreateCampaignPage() {
       reader.onload = (e) => {
         setLogoPreview(e.target?.result as string)
       }
+      reader.onerror = () => {
+        setError('Failed to read the selected file. Please try again.')
+        setLogoFile(null)
+      }
       reader.readAsDataURL(file)
-      
-      setError(null)
     }
   }
 
@@ -200,23 +216,28 @@ export default function CreateCampaignPage() {
     try {
       setIsUploadingLogo(true)
       
-      // Upload to Supabase storage with campaign-specific path
-      const uploadedFiles = await uploadFiles(
-        [logoFile],
-        campaignId,
-        'branding', // section ID for organizing
-        undefined, // no lead ID for logos
-        undefined  // no response ID for logos
-      )
-
-      if (uploadedFiles.length > 0) {
-        return uploadedFiles[0].url
+      // Use API route for upload with proper server-side authentication
+      const formData = new FormData()
+      formData.append('logo', logoFile)
+      formData.append('campaignId', campaignId)
+      
+      const response = await fetch('/api/upload-logo', {
+        method: 'POST',
+        body: formData,
+      })
+      
+      const result = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Upload failed')
       }
       
-      return null
+      console.log('Logo uploaded successfully via API:', result.url)
+      return result.url
+      
     } catch (error) {
       console.error('Logo upload failed:', error)
-      throw new Error('Failed to upload logo')
+      throw new Error(`Failed to upload logo: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsUploadingLogo(false)
     }
@@ -254,8 +275,10 @@ export default function CreateCampaignPage() {
       // Upload logo if one was selected
       if (logoFile) {
         try {
+          console.log('Starting logo upload for campaign:', campaignId)
           const logoUrl = await uploadLogo(campaignId)
           if (logoUrl) {
+            console.log('Logo uploaded successfully, updating campaign settings...')
             // Update campaign settings with logo URL
             const updatedSettings = {
               ...formData.settings,
@@ -273,15 +296,20 @@ export default function CreateCampaignPage() {
 
             if (!updateResult.success) {
               console.error('Failed to save logo URL to campaign:', updateResult.error)
-              // Don't fail the entire flow, just log the error
+              // Don't fail the entire flow, just show a warning
+              setError('Campaign created successfully, but there was an issue saving the logo. You can upload it again later in the campaign builder.')
             } else {
-              console.log('Logo uploaded and saved successfully:', logoUrl)
+              console.log('Logo uploaded and saved successfully to campaign settings')
             }
+          } else {
+            console.warn('Logo upload returned no URL')
+            setError('Campaign created successfully, but logo upload failed. You can add a logo later in the campaign builder.')
           }
         } catch (logoError) {
           console.error('Logo upload failed:', logoError)
           // Don't fail the entire campaign creation for logo upload failure
-          setError('Campaign created successfully, but logo upload failed. You can add a logo later.')
+          const errorMessage = logoError instanceof Error ? logoError.message : 'Unknown error occurred'
+          setError(`Campaign created successfully, but logo upload failed: ${errorMessage}. You can add a logo later in the campaign builder.`)
         }
       }
 
