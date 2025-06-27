@@ -16,7 +16,7 @@ import { storeAITestResults } from '@/lib/utils/ai-test-storage'
 import { titleToVariableName, isQuestionSection, extractInputVariablesWithTypes, isFileVariable } from '@/lib/utils/section-variables'
 import { KnowledgeBaseModal } from '@/components/ui/knowledge-base-modal'
 import { KnowledgeBaseSettings } from '@/lib/types/knowledge-base'
-import { getKnowledgeBaseEntries } from '@/lib/data-access/knowledge-base'
+import { getKnowledgeBaseEntries, getKnowledgeBaseForAI } from '@/lib/data-access/knowledge-base'
 
 interface OutputVariable {
   id: string
@@ -139,7 +139,6 @@ export function AILogicSection({
   
   // Knowledge base state
   const [knowledgeBaseEnabled, setKnowledgeBaseEnabled] = useState(settings.knowledgeBase?.enabled || false)
-  const [selectedKnowledgeEntries, setSelectedKnowledgeEntries] = useState<string[]>(settings.knowledgeBase?.entries || [])
   const [showKnowledgeBaseModal, setShowKnowledgeBaseModal] = useState(false)
   
   // Update local state when settings change externally
@@ -401,68 +400,37 @@ export function AILogicSection({
     setKnowledgeBaseEnabled(enabled)
     const knowledgeBaseSettings: KnowledgeBaseSettings = {
       enabled,
-      entries: enabled ? selectedKnowledgeEntries : []
+      entries: [] // No longer needed since we use all entries when enabled
     }
     handleSettingChange('knowledgeBase', knowledgeBaseSettings)
-  }, [selectedKnowledgeEntries, handleSettingChange])
+  }, [handleSettingChange])
 
-  const handleKnowledgeBaseEntriesChange = useCallback((entryIds: string[]) => {
-    setSelectedKnowledgeEntries(entryIds)
-    if (knowledgeBaseEnabled) {
-      const knowledgeBaseSettings: KnowledgeBaseSettings = {
-        enabled: knowledgeBaseEnabled,
-        entries: entryIds
-      }
-      handleSettingChange('knowledgeBase', knowledgeBaseSettings)
-    }
-  }, [knowledgeBaseEnabled, handleSettingChange])
-
-  // Fetch knowledge base context for AI processing
-  const fetchKnowledgeBaseContext = useCallback(async (): Promise<string> => {
-    console.log('🔍 fetchKnowledgeBaseContext called:', {
+  // Fetch knowledge base context and files for AI processing
+  const fetchKnowledgeBaseForAI = useCallback(async (): Promise<{
+    textContent: string
+    files: Array<{ url: string; type: string; name: string }>
+  }> => {
+    console.log('🔍 fetchKnowledgeBaseForAI called:', {
       knowledgeBaseEnabled,
-      campaignId,
-      selectedKnowledgeEntriesLength: selectedKnowledgeEntries.length,
-      selectedKnowledgeEntries
+      campaignId
     })
     
-    if (!knowledgeBaseEnabled || !campaignId || selectedKnowledgeEntries.length === 0) {
-      console.log('📚 Knowledge base context skipped - conditions not met')
-      return ''
+    if (!knowledgeBaseEnabled || !campaignId) {
+      console.log('📚 Knowledge base context skipped - toggle off or no campaign ID')
+      return { textContent: '', files: [] }
     }
 
     try {
-      console.log('📚 Fetching knowledge base entries for campaign:', campaignId)
-      const result = await getKnowledgeBaseEntries(campaignId)
-      console.log('📚 Knowledge base entries result:', result)
+      console.log('📚 Fetching knowledge base for AI processing:', campaignId)
+      const result = await getKnowledgeBaseForAI(campaignId)
+      console.log('📚 Knowledge base AI result:', result)
       
-      if (result.success && result.data) {
-        console.log('📚 All knowledge base entries:', result.data)
-        const selectedEntries = result.data.filter(entry => 
-          selectedKnowledgeEntries.includes(entry.id)
-        )
-        console.log('📚 Selected knowledge base entries:', selectedEntries)
-        
-        const formattedContext = selectedEntries.map(entry => {
-          let content = `## ${entry.title}\n\n${entry.content}`
-          
-          // Add file information if it's a document
-          if (entry.content_type === 'document' && entry.metadata?.file_name) {
-            content = `## ${entry.title} (${entry.metadata.file_name})\n\n${entry.content}`
-          }
-          
-          return content
-        }).join('\n\n---\n\n')
-        
-        console.log('📚 Final formatted knowledge base context:', formattedContext)
-        return formattedContext
-      }
+      return result
     } catch (error) {
-      console.error('Error fetching knowledge base context:', error)
+      console.error('Error fetching knowledge base for AI:', error)
+      return { textContent: '', files: [] }
     }
-    
-    return ''
-  }, [knowledgeBaseEnabled, campaignId, selectedKnowledgeEntries])
+  }, [knowledgeBaseEnabled, campaignId])
 
   // Debounced test input updates
   const testInputTimeouts = useRef<Record<string, NodeJS.Timeout>>({})
@@ -554,8 +522,10 @@ export function AILogicSection({
       // Prepare the AI test request
       const testVariables = { ...(settings.testInputs || {}) }
       
-      // Fetch knowledge base context if enabled
-      const knowledgeBaseContext = await fetchKnowledgeBaseContext()
+      // Fetch knowledge base context and files if enabled
+      const knowledgeBaseData = await fetchKnowledgeBaseForAI()
+      console.log('🧪 Test: Knowledge base data fetched:', knowledgeBaseData)
+      const knowledgeBaseContext = knowledgeBaseData.textContent
       
       // If we have file variables with actual uploaded files, use the file-aware API
       const hasUploadedFiles = fileVariables.length > 0 && fileVariables.every(v => (settings.testFiles || {})[v.name])
@@ -573,9 +543,14 @@ export function AILogicSection({
         formData.append('hasFileVariables', 'true')
         formData.append('fileVariableNames', JSON.stringify(fileVariables.map(v => v.name)))
         
-        // Add knowledge base context if available
+        // Add knowledge base context and files if available
         if (knowledgeBaseContext) {
           formData.append('knowledgeBaseContext', knowledgeBaseContext)
+        }
+        
+        // Add knowledge base files for AI vision processing
+        if (knowledgeBaseData.files && knowledgeBaseData.files.length > 0) {
+          formData.append('knowledgeBaseFiles', JSON.stringify(knowledgeBaseData.files))
         }
         
         // Add the actual uploaded files
@@ -637,8 +612,11 @@ export function AILogicSection({
         })),
         hasFileVariables: fileVariables.length > 0,
         fileVariableNames: fileVariables.map(v => v.name),
-        knowledgeBaseContext
+        knowledgeBaseContext,
+        knowledgeBaseFiles: knowledgeBaseData.files
       }
+      
+      console.log('🧪 Test: Full request being sent:', testRequest)
 
       // Call the AI processing API
       const response = await fetch('/api/ai-processing', {
@@ -1195,7 +1173,7 @@ export function AILogicSection({
                         </div>
                         {knowledgeBaseEnabled && (
                           <Badge variant="secondary" className="text-xs">
-                            {selectedKnowledgeEntries.length} {selectedKnowledgeEntries.length === 1 ? 'entry' : 'entries'}
+                            enabled
                           </Badge>
                         )}
                       </div>
@@ -1471,8 +1449,6 @@ export function AILogicSection({
           isOpen={showKnowledgeBaseModal}
           onClose={() => setShowKnowledgeBaseModal(false)}
           campaignId={campaignId}
-          selectedEntries={selectedKnowledgeEntries}
-          onSelectionChange={handleKnowledgeBaseEntriesChange}
         />
       )}
     </div>

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef, memo } from 'react'
 import { Loader2, Zap, AlertCircle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
+import { getKnowledgeBaseForAI } from '@/lib/data-access/knowledge-base'
 import { cn } from '@/lib/utils'
 import { storeAITestResults, clearAITestResults } from '@/lib/utils/ai-test-storage'
 import { buildVariablesFromInputs, extractInputVariablesWithTypes, isFileVariable } from '@/lib/utils/section-variables'
@@ -117,25 +118,20 @@ function LogicSectionComponent({
 
       setProcessingStatus(hasFileVariables ? 'Processing files with AI...' : 'Sending to AI...')
 
-      // Prepare knowledge base context if enabled
+      // Prepare knowledge base context and files if enabled
       let knowledgeBaseContext = ''
-      if (aiConfig.knowledgeBase?.enabled && aiConfig.knowledgeBase?.entries?.length > 0) {
+      let knowledgeBaseFiles: Array<{ url: string; type: string; name: string }> = []
+      if (aiConfig.knowledgeBase?.enabled) {
         try {
-          // Fetch knowledge base entries for this campaign
+          // Fetch knowledge base data for this campaign
           const campaignId = userInputs.campaignId || section.id
-          const response = await fetch(`/api/knowledge-base/${campaignId}?entries=${aiConfig.knowledgeBase.entries.join(',')}`)
-          if (response.ok) {
-            const result = await response.json()
-            if (result.success && result.data) {
-              knowledgeBaseContext = result.data.map((entry: any) => {
-                let content = `## ${entry.title}\n\n${entry.content}`
-                if (entry.content_type === 'document' && entry.metadata?.file_name) {
-                  content = `## ${entry.title} (${entry.metadata.file_name})\n\n${entry.content}`
-                }
-                return content
-              }).join('\n\n---\n\n')
-            }
-          }
+          const knowledgeBaseData = await getKnowledgeBaseForAI(campaignId)
+          knowledgeBaseContext = knowledgeBaseData.textContent
+          knowledgeBaseFiles = knowledgeBaseData.files
+          console.log('📚 Campaign renderer: Knowledge base data fetched:', { 
+            textLength: knowledgeBaseContext.length, 
+            filesCount: knowledgeBaseFiles.length 
+          })
         } catch (error) {
           console.error('Error fetching knowledge base context:', error)
         }
@@ -153,6 +149,7 @@ function LogicSectionComponent({
         hasFileVariables,
         fileVariableNames: fileVariables.map(v => v.name),
         knowledgeBaseContext,
+        knowledgeBaseFiles,
         // Add lead/campaign info for file processing
         leadId: userInputs.leadId || 'preview-lead',
         campaignId: userInputs.campaignId || 'preview-campaign'
@@ -176,9 +173,14 @@ function LogicSectionComponent({
         formData.append('hasFileVariables', 'true')
         formData.append('fileVariableNames', JSON.stringify(aiRequest.fileVariableNames))
         
-        // Add knowledge base context if available
+        // Add knowledge base context and files if available
         if (knowledgeBaseContext) {
           formData.append('knowledgeBaseContext', knowledgeBaseContext)
+        }
+        
+        // Add knowledge base files for AI vision processing
+        if (knowledgeBaseFiles && knowledgeBaseFiles.length > 0) {
+          formData.append('knowledgeBaseFiles', JSON.stringify(knowledgeBaseFiles))
         }
         
         // Fetch actual files from storage and append them for direct OpenAI processing

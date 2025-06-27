@@ -53,18 +53,68 @@ export async function POST(request: NextRequest) {
     }
 
     let fileContent = content || ''
+    let fileUrl: string | undefined = undefined
     
-    // If there's a file, extract its content
+    // If there's a file, store it in Supabase Storage and optionally extract text content
     if (file && content_type === 'file') {
       try {
-        const fileText = await file.text()
-        fileContent = content ? `${content}\n\n--- File Content ---\n${fileText}` : fileText
+        // Store file in Supabase Storage
+        const fileBuffer = await file.arrayBuffer()
+        const fileName = `${Date.now()}-${file.name}`
+        const filePath = `knowledge-base/${campaign_id}/${fileName}`
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('knowledge-base')
+          .upload(filePath, fileBuffer, {
+            contentType: file.type,
+            upsert: false
+          })
+        
+        if (uploadError) {
+          console.error('File upload error:', uploadError)
+          throw new Error('Failed to upload file to storage')
+        }
+        
+        // Get public URL for the file
+        const { data: urlData } = supabase.storage
+          .from('knowledge-base')
+          .getPublicUrl(filePath)
+        
+        fileUrl = urlData.publicUrl
+        
+        // Note: We skip creating a record in uploaded_files table for knowledge base files
+        // because they don't belong to a specific section and we store metadata in knowledge_base table instead
+        console.log('📝 Knowledge base file uploaded successfully, skipping uploaded_files table entry')
+        
+        // Check if file is a supported text-based format for content extraction
+        const supportedTextTypes = [
+          'text/plain',
+          'text/markdown', 
+          'text/csv',
+          'application/json',
+          'text/html',
+          'text/xml'
+        ]
+        
+        const isTextFile = supportedTextTypes.includes(file.type) || 
+                          file.name.match(/\.(txt|md|csv|json|html|xml)$/i)
+        
+        if (isTextFile) {
+          // For text files, extract content directly
+          const fileText = await file.text()
+          // Sanitize content to remove null bytes and other problematic characters
+          const sanitizedText = fileText.replace(/\u0000/g, '').replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+          fileContent = content ? `${content}\n\n--- File Content ---\n${sanitizedText}` : sanitizedText
+        } else {
+          // For non-text files (images, PDFs, etc.), store metadata and user-provided context
+          // The actual file will be sent to AI for vision processing
+          const fileInfo = `File: ${file.name} (${file.type}, ${Math.round(file.size / 1024)}KB)`
+          fileContent = content ? `${content}\n\n--- File Info ---\n${fileInfo}` : fileInfo
+        }
       } catch (error) {
-        console.error('Error reading file:', error)
-        return NextResponse.json(
-          { success: false, error: 'Failed to read uploaded file' },
-          { status: 400 }
-        )
+        console.error('Error processing file:', error)
+        // Fallback to just using the provided content
+        fileContent = content || `File upload failed: ${file.name}`
       }
     }
 
@@ -77,8 +127,13 @@ export async function POST(request: NextRequest) {
         title,
         content: fileContent,
         content_type: (content_type === 'file' ? 'document' : 'text') as 'text' | 'document',
-        file_id: undefined,
-        metadata: file ? { original_filename: file.name, file_size: file.size } : undefined,
+        file_id: null,
+        metadata: file ? { 
+          original_filename: file.name, 
+          file_size: file.size,
+          file_type: file.type,
+          file_url: fileUrl
+        } : undefined,
         is_active: true
       })
       .select()

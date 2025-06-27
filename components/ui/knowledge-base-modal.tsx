@@ -15,8 +15,6 @@ interface KnowledgeBaseModalProps {
   isOpen: boolean
   onClose: () => void
   campaignId: string
-  selectedEntries: string[]
-  onSelectionChange: (entryIds: string[]) => void
 }
 
 interface NewEntry {
@@ -29,9 +27,7 @@ interface NewEntry {
 export function KnowledgeBaseModal({
   isOpen,
   onClose,
-  campaignId,
-  selectedEntries,
-  onSelectionChange
+  campaignId
 }: KnowledgeBaseModalProps) {
   const [entries, setEntries] = useState<KnowledgeBaseEntry[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -65,7 +61,14 @@ export function KnowledgeBaseModal({
   }
 
   const handleAddEntry = async () => {
-    if (!newEntry.title.trim() || !newEntry.content.trim()) {
+    // For text entries, both title and content are required
+    // For file entries, only title is required (content is optional)
+    if (!newEntry.title.trim() || (newEntry.type === 'text' && !newEntry.content.trim())) {
+      return
+    }
+    
+    // For file entries, we need either a file or content
+    if (newEntry.type === 'file' && !newEntry.file && !newEntry.content.trim()) {
       return
     }
 
@@ -86,10 +89,15 @@ export function KnowledgeBaseModal({
         body: formData
       })
 
-      if (response.ok) {
+      const result = await response.json()
+      
+      if (response.ok && result.success) {
         await loadEntries()
         setNewEntry({ title: '', content: '', type: 'text' })
         setShowAddForm(false)
+      } else {
+        console.error('Failed to add entry:', result.error || 'Unknown error')
+        // You could add a toast notification here to show the error to the user
       }
     } catch (error) {
       console.error('Failed to add knowledge base entry:', error)
@@ -105,23 +113,17 @@ export function KnowledgeBaseModal({
         method: 'DELETE'
       })
 
-      if (response.ok) {
+      const result = await response.json()
+      
+      if (response.ok && result.success) {
         await loadEntries()
-        // Remove from selection if it was selected
-        onSelectionChange(selectedEntries.filter(id => id !== entryId))
+      } else {
+        console.error('Failed to delete entry:', result.error || 'Unknown error')
       }
     } catch (error) {
       console.error('Failed to delete knowledge base entry:', error)
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const handleToggleSelection = (entryId: string) => {
-    if (selectedEntries.includes(entryId)) {
-      onSelectionChange(selectedEntries.filter(id => id !== entryId))
-    } else {
-      onSelectionChange([...selectedEntries, entryId])
     }
   }
 
@@ -230,7 +232,12 @@ export function KnowledgeBaseModal({
                 <div className="flex items-center gap-2">
                   <Button
                     onClick={handleAddEntry}
-                    disabled={!newEntry.title.trim() || (!newEntry.content.trim() && !newEntry.file) || isLoading}
+                    disabled={
+                      !newEntry.title.trim() || 
+                      (newEntry.type === 'text' && !newEntry.content.trim()) ||
+                      (newEntry.type === 'file' && !newEntry.file && !newEntry.content.trim()) ||
+                      isLoading
+                    }
                     size="sm"
                   >
                     Add Entry
@@ -276,13 +283,7 @@ export function KnowledgeBaseModal({
               {entries.map((entry) => (
                 <Card
                   key={entry.id}
-                  className={cn(
-                    "p-4 cursor-pointer transition-all border-2",
-                    selectedEntries.includes(entry.id)
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  )}
-                  onClick={() => handleToggleSelection(entry.id)}
+                  className="p-4 border-2 border-gray-200 hover:border-gray-300 transition-all"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
@@ -332,7 +333,7 @@ export function KnowledgeBaseModal({
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
           <div className="text-sm text-gray-600">
-            {selectedEntries.length} of {entries.length} entries selected
+            {entries.length} knowledge base {entries.length === 1 ? 'entry' : 'entries'}
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={onClose}>

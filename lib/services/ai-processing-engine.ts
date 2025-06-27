@@ -23,6 +23,7 @@ export interface AITestRequest {
   fileVariableNames?: string[]
   fileObjects?: Record<string, { file: File; variableName: string }>
   knowledgeBaseContext?: string
+  knowledgeBaseFiles?: Array<{ url: string; type: string; name: string }>
 }
 
 export interface AITestResponse {
@@ -67,8 +68,11 @@ export class AIProcessingEngine {
     try {
       console.log('🔄 Processing AI request with direct file support...')
 
-      // Handle direct file uploads to OpenAI
-      if (request.fileObjects && Object.keys(request.fileObjects).length > 0) {
+      // Handle direct file uploads to OpenAI (either user files or knowledge base files)
+      const hasUserFiles = request.fileObjects && Object.keys(request.fileObjects).length > 0
+      const hasKnowledgeBaseFiles = request.knowledgeBaseFiles && request.knowledgeBaseFiles.length > 0
+      
+      if (hasUserFiles || hasKnowledgeBaseFiles) {
         return await this.processPromptWithDirectFileUpload(request, startTime)
       }
 
@@ -149,6 +153,56 @@ export class AIProcessingEngine {
           }
         })
       })
+
+      // Add knowledge base files to content for AI vision processing
+      if (request.knowledgeBaseFiles && request.knowledgeBaseFiles.length > 0) {
+        console.log('📚 Adding knowledge base files for AI processing:', request.knowledgeBaseFiles.length)
+        
+        for (const kbFile of request.knowledgeBaseFiles) {
+          try {
+            // For images, add them directly as image_url content
+            if (kbFile.type.startsWith('image/')) {
+              content.push({
+                type: 'image_url',
+                image_url: {
+                  url: kbFile.url,
+                  detail: 'high' // Use high detail for better analysis
+                }
+              })
+              console.log(`📷 Added knowledge base image: ${kbFile.name}`)
+            }
+            // For PDFs and other documents, we'd need to upload them to OpenAI first
+            // This is a more complex process that requires fetching the file and uploading
+            else if (kbFile.type === 'application/pdf' || kbFile.type.startsWith('text/')) {
+              // Fetch the file from Supabase and upload to OpenAI
+              const fileResponse = await fetch(kbFile.url)
+              if (fileResponse.ok) {
+                const fileBuffer = await fileResponse.arrayBuffer()
+                const file = new File([fileBuffer], kbFile.name, { type: kbFile.type })
+                
+                const OpenAI = (await import('openai')).default
+                const openai = new OpenAI({ apiKey: this.apiKey })
+                
+                const uploadedFile = await openai.files.create({
+                  file: file,
+                  purpose: 'user_data'
+                })
+                
+                content.push({
+                  type: 'file',
+                  file: {
+                    file_id: uploadedFile.id
+                  }
+                })
+                console.log(`📄 Added knowledge base document: ${kbFile.name} (${uploadedFile.id})`)
+              }
+            }
+          } catch (error) {
+            console.error(`❌ Failed to process knowledge base file ${kbFile.name}:`, error)
+            // Continue with other files
+          }
+        }
+      }
 
       // Replace variables in prompt (excluding file variables since they're handled above)
       const textVariables = { ...request.variables }
@@ -342,6 +396,12 @@ Return only a JSON object with these exact fields and no additional text.`
    */
   private extractOutputs(content: string, outputVariables: OutputVariable[]): Record<string, any> {
     if (outputVariables.length === 0) {
+      return {}
+    }
+
+    // Check if content is null or undefined
+    if (!content || typeof content !== 'string') {
+      console.warn('⚠️ AI response content is null or invalid:', content)
       return {}
     }
 

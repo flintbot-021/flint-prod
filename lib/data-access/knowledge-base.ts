@@ -129,4 +129,68 @@ export async function getKnowledgeBaseContent(entryIds: string[]): Promise<strin
     console.error('Error in getKnowledgeBaseContent:', error)
     return ''
   }
+}
+
+export async function getKnowledgeBaseForAI(campaignId: string): Promise<{
+  textContent: string
+  files: Array<{ url: string; type: string; name: string }>
+}> {
+  if (!isValidUUID(campaignId)) {
+    return { textContent: '', files: [] }
+  }
+
+  try {
+    await requireAuth()
+    const supabase = await getSupabaseClient()
+    
+    const { data, error } = await supabase
+      .from('knowledge_base')
+      .select('title, content, content_type, metadata, file_id')
+      .eq('campaign_id', campaignId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+
+    if (error || !data?.length) {
+      console.error('Error fetching knowledge base for AI:', error)
+      return { textContent: '', files: [] }
+    }
+
+    const textParts: string[] = []
+    const files: Array<{ url: string; type: string; name: string }> = []
+
+    for (const entry of data) {
+      // Add text content
+      textParts.push(`**${entry.title}**\n${entry.content}`)
+      
+      // Check if entry has a file with URL for AI processing
+      if (entry.content_type === 'document' && entry.metadata?.file_url) {
+        const fileType = entry.metadata.file_type || 'application/octet-stream'
+        const fileName = entry.metadata.original_filename || entry.title
+        
+        // Only include files that AI can process (images, PDFs, etc.)
+        const supportedTypes = [
+          'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+          'application/pdf',
+          'text/plain', 'text/markdown', 'text/csv'
+        ]
+        
+        if (supportedTypes.some(type => fileType.includes(type)) || 
+            fileName.match(/\.(jpg|jpeg|png|gif|webp|pdf|txt|md|csv)$/i)) {
+          files.push({
+            url: entry.metadata.file_url,
+            type: fileType,
+            name: fileName
+          })
+        }
+      }
+    }
+
+    return {
+      textContent: textParts.join('\n\n---\n\n'),
+      files
+    }
+  } catch (error) {
+    console.error('Error in getKnowledgeBaseForAI:', error)
+    return { textContent: '', files: [] }
+  }
 } 
