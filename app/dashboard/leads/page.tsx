@@ -430,9 +430,9 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                               
                               {/* AI Response (if available) */}
                               {aiResponse && (
-                                <div className="bg-blue-50 dark:bg-blue-950/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-                                  <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">AI Analysis:</p>
-                                  <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap">
+                                <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                                  <p className="text-xs text-blue-600 mb-1">AI Analysis:</p>
+                                  <p className="text-sm text-blue-800 whitespace-pre-wrap">
                                     {aiResponse}
                                   </p>
                                 </div>
