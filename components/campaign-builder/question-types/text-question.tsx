@@ -85,7 +85,7 @@ export function TextQuestion({
         <div className="space-y-6">
           {/* Main Question Text */}
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-white">
+            <h1 className="text-4xl font-bold text-gray-900">
               {content || 'Your question text here...'}
             </h1>
           </div>
@@ -93,7 +93,7 @@ export function TextQuestion({
           {/* Optional Subheading */}
           {subheading && (
             <div className="text-center">
-              <p className="text-xl text-gray-300">
+              <p className="text-xl text-gray-600">
                 {subheading}
               </p>
             </div>
@@ -102,7 +102,7 @@ export function TextQuestion({
           {/* Label */}
           {label && (
             <div className="pt-6">
-              <label className="text-sm font-medium text-gray-300 block">
+              <label className="text-sm font-medium text-gray-700 block">
                 {label}
               </label>
             </div>

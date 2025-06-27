@@ -134,12 +134,12 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
 
         {/* Content */}
         <div className="relative z-10 text-center space-y-8 px-6 max-w-4xl">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-tight">
             {title}
           </h1>
           
           {subtitle && (
-            <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl md:text-2xl text-gray-700 max-w-3xl mx-auto leading-relaxed">
               {subtitle}
             </p>
           )}

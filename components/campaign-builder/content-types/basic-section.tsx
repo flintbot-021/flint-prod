@@ -74,7 +74,7 @@ export function BasicSection({ section, isPreview = false, onUpdate, className }
       const uploadedFiles = await uploadFiles(
         [file],
         campaignId,
-        undefined
+        'basic-section'
       )
       
       if (uploadedFiles.length > 0) {
@@ -117,19 +117,19 @@ export function BasicSection({ section, isPreview = false, onUpdate, className }
           {/* Text Content */}
           <div className={cn('space-y-6', getAlignmentClass(textAlignment))}>
             <div className="space-y-4">
-              <h1 className="text-4xl md:text-5xl font-bold text-white">
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
                 {title}
               </h1>
               
               {subtitle && (
-                <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">
+                <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto">
                   {subtitle}
                 </p>
               )}
             </div>
 
             {content && (
-              <div className="text-lg text-gray-400 max-w-4xl mx-auto leading-relaxed whitespace-pre-wrap">
+              <div className="text-lg text-gray-700 max-w-4xl mx-auto leading-relaxed whitespace-pre-wrap">
                 {content}
               </div>
             )}

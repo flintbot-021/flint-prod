@@ -268,20 +268,20 @@ export function CaptureSection({
               <Check className="h-8 w-8 text-green-600" />
             </div>
             <div className="space-y-2">
-              <h1 className="text-4xl font-bold text-white">Thank you!</h1>
-              <p className="text-xl text-gray-300">Your information has been saved.</p>
+              <h1 className="text-4xl font-bold text-gray-900">Thank you!</h1>
+              <p className="text-xl text-gray-600">Your information has been saved.</p>
             </div>
           </div>
         ) : (
           <form id={`capture-form-${section.id}`} className="space-y-6">
             {/* Question Text */}
             <div className="text-center space-y-4">
-              <h1 className="text-4xl font-bold text-white">
+              <h1 className="text-4xl font-bold text-gray-900">
                 {content || 'Get Your Results'}
               </h1>
               
               {subheading && (
-                <p className="text-xl text-gray-300">
+                <p className="text-xl text-gray-600">
                   {subheading}
                 </p>
               )}

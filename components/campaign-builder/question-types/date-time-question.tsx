@@ -87,13 +87,13 @@ export function DateTimeQuestion({
         <div className="space-y-6">
           {/* Question Text */}
           <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-white">
+            <h1 className="text-4xl font-bold text-gray-900">
               {content || 'Select a date and time'}
               {required && <span className="text-red-500 ml-1">*</span>}
             </h1>
             
             {subheading && (
-              <p className="text-xl text-gray-300">
+              <p className="text-xl text-gray-600">
                 {subheading}
               </p>
             )}
@@ -104,7 +104,7 @@ export function DateTimeQuestion({
             {/* Date Input - Only if includeDate is true */}
             {settings.includeDate && (
               <div className="space-y-3">
-                <Label htmlFor={`date-${section.id}`} className="text-sm font-medium text-gray-300">
+                <Label htmlFor={`date-${section.id}`} className="text-sm font-medium text-gray-700">
                   Date
                 </Label>
                 <Input
@@ -112,7 +112,7 @@ export function DateTimeQuestion({
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full bg-gray-800 border-gray-600 text-white"
+                  className="w-full bg-white border-gray-300 text-gray-900"
                 />
               </div>
             )}
@@ -120,7 +120,7 @@ export function DateTimeQuestion({
             {/* Time Input - Only if includeTime is true */}
             {settings.includeTime && (
               <div className="space-y-3">
-                <Label htmlFor={`time-${section.id}`} className="text-sm font-medium text-gray-300">
+                <Label htmlFor={`time-${section.id}`} className="text-sm font-medium text-gray-700">
                   Time
                 </Label>
                 <Input
@@ -128,7 +128,7 @@ export function DateTimeQuestion({
                   type="time"
                   value={selectedTime}
                   onChange={(e) => setSelectedTime(e.target.value)}
-                  className="w-full bg-gray-800 border-gray-600 text-white"
+                  className="w-full bg-white border-gray-300 text-gray-900"
                 />
               </div>
             )}

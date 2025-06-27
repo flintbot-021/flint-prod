@@ -259,13 +259,13 @@ export function MultipleChoiceQuestion({
         <div className="space-y-6">
           {/* Question Text */}
           <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-white">
+            <h1 className="text-4xl font-bold text-gray-900">
               {content || 'Your question text here...'}
               {required && <span className="text-red-500 ml-1">*</span>}
             </h1>
             
             {subheading && (
-              <p className="text-xl text-gray-300">
+              <p className="text-xl text-gray-600">
                 {subheading}
               </p>
             )}
@@ -292,7 +292,7 @@ export function MultipleChoiceQuestion({
                     className="h-4 w-4" 
                   />
                 )}
-                <span className="flex-1 text-lg text-white">{option.text}</span>
+                <span className="flex-1 text-lg text-gray-900">{option.text}</span>
               </label>
             ))}
           </div>

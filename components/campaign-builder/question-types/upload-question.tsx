@@ -238,13 +238,13 @@ export function UploadQuestion({
         <div className="space-y-6">
           {/* Question Text */}
           <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-white">
+            <h1 className="text-4xl font-bold text-gray-900">
               {content || 'Upload your files'}
               {required && <span className="text-red-500 ml-1">*</span>}
             </h1>
             
             {subheading && (
-              <p className="text-xl text-gray-300">
+              <p className="text-xl text-gray-600">
                 {subheading}
               </p>
             )}

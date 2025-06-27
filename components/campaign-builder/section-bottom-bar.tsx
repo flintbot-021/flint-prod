@@ -143,7 +143,7 @@ export function SectionBottomBar({
         {/* Left Side - Required Text */}
         <div className="flex items-center">
           {isQuestionType && isRequired && (
-            <span className="text-sm text-red-400 font-medium">
+            <span className="text-sm text-red-600 font-medium">
               This is required
             </span>
           )}
@@ -176,7 +176,7 @@ export function SectionBottomBar({
   return (
     <div className={cn(
       'flex items-center justify-between p-5 bg-background border-t border-border',
-      'hover:bg-gray-900 transition-colors group',
+      'hover:bg-gray-100 transition-colors group',
       className
     )}>
       {/* Left Side - Controls */}
@@ -192,7 +192,7 @@ export function SectionBottomBar({
             />
             <Label 
               htmlFor={`required-${section.id}`}
-              className="text-sm font-medium cursor-pointer text-white"
+              className="text-sm font-medium cursor-pointer text-gray-700"
             >
               Required
             </Label>
