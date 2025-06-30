@@ -22,6 +22,8 @@ interface CampaignBuilderTopBarProps {
   isPublished?: boolean
   isSaving?: boolean
   canPublish?: boolean
+  canPreview?: boolean
+  validationErrors?: string[]
   onCampaignNameChange?: (name: string) => void
   onPreview?: () => void
   onPublish?: () => void
@@ -34,6 +36,8 @@ export function CampaignBuilderTopBar({
   isPublished = false,
   isSaving = false,
   canPublish = true,
+  canPreview = true,
+  validationErrors = [],
   onCampaignNameChange,
   onPreview,
   onPublish,
@@ -187,6 +191,11 @@ export function CampaignBuilderTopBar({
                 variant="outline"
                 size="sm"
                 onClick={onPreview}
+                disabled={!canPreview || isSaving}
+                title={!canPreview && validationErrors.length > 0 
+                  ? `Missing required sections: ${validationErrors.join(', ')}`
+                  : undefined
+                }
               >
                 <Eye className="h-4 w-4 mr-2" />
                 Preview
@@ -200,6 +209,10 @@ export function CampaignBuilderTopBar({
                 onClick={onPublish}
                 disabled={!canPublish || isSaving}
                 variant={isPublished ? 'secondary' : 'default'}
+                title={!canPublish && validationErrors.length > 0 
+                  ? `Missing required sections: ${validationErrors.join(', ')}`
+                  : undefined
+                }
               >
                 <Globe className="h-4 w-4 mr-2" />
                 {isPublished ? 'Published' : 'Publish'}

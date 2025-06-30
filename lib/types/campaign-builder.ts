@@ -256,53 +256,6 @@ export const SECTION_TYPES: SectionType[] = [
     }
   },
   {
-    id: 'output-download',
-    name: 'Download Link',
-    description: 'Provide downloadable resources',
-    icon: 'Download',
-    category: 'output',
-    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    defaultSettings: {
-      title: 'Download Your Resource',
-      description: 'Click below to download',
-      fileUrl: '',
-      fileName: 'resource.pdf',
-      buttonText: 'Download Now'
-    }
-  },
-  {
-    id: 'output-redirect',
-    name: 'Redirect',
-    description: 'Redirect to external URL after completion',
-    icon: 'ExternalLink',
-    category: 'output',
-    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    defaultSettings: {
-      url: '',
-      delay: 3,
-      message: 'Redirecting you now...',
-      showCountdown: true
-    }
-  },
-  {
-    id: 'output-dynamic-redirect',
-    name: 'Dynamic Redirect',
-    description: 'Redirect to Webflow page with dynamic data integration',
-    icon: 'Globe',
-    category: 'output',
-    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
-    defaultSettings: {
-      targetUrl: '',
-      dataTransmissionMethod: 'localStorage',
-      delay: 2,
-      showPreloader: true,
-      preloaderMessage: 'Preparing your personalized page...',
-      variableMappings: [],
-      customAttributes: true,
-      scriptTemplate: ''
-    }
-  },
-  {
     id: 'output-html-embed',
     name: 'HTML Embed',
     description: 'Custom HTML/CSS/JS with dynamic variable replacement',
@@ -314,6 +267,54 @@ export const SECTION_TYPES: SectionType[] = [
       previewTitle: 'Custom Results Page'
     }
   }
+  // Temporarily hidden output sections
+  // {
+  //   id: 'output-download',
+  //   name: 'Download Link',
+  //   description: 'Provide downloadable resources',
+  //   icon: 'Download',
+  //   category: 'output',
+  //   color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  //   defaultSettings: {
+  //     title: 'Download Your Resource',
+  //     description: 'Click below to download',
+  //     fileUrl: '',
+  //     fileName: 'resource.pdf',
+  //     buttonText: 'Download Now'
+  //   }
+  // },
+  // {
+  //   id: 'output-redirect',
+  //   name: 'Redirect',
+  //   description: 'Redirect to external URL after completion',
+  //   icon: 'ExternalLink',
+  //   category: 'output',
+  //   color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  //   defaultSettings: {
+  //     url: '',
+  //     delay: 3,
+  //     message: 'Redirecting you now...',
+  //     showCountdown: true
+  //   }
+  // },
+  // {
+  //   id: 'output-dynamic-redirect',
+  //   name: 'Dynamic Redirect',
+  //   description: 'Redirect to Webflow page with dynamic data integration',
+  //   icon: 'Globe',
+  //   category: 'output',
+  //   color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  //   defaultSettings: {
+  //     targetUrl: '',
+  //     dataTransmissionMethod: 'localStorage',
+  //     delay: 2,
+  //     showPreloader: true,
+  //     preloaderMessage: 'Preparing your personalized page...',
+  //     variableMappings: [],
+  //     customAttributes: true,
+  //     scriptTemplate: ''
+  //   }
+  // }
 ]
 
 // Helper functions

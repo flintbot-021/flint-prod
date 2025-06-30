@@ -33,6 +33,7 @@ interface PublishModalProps {
   isOpen: boolean
   onClose: () => void
   onPublishSuccess: (updatedCampaign: Campaign) => void
+  mandatoryValidationErrors?: string[]
   className?: string
 }
 
@@ -84,6 +85,7 @@ export function PublishModal({
   isOpen,
   onClose,
   onPublishSuccess,
+  mandatoryValidationErrors = [],
   className
 }: PublishModalProps) {
   // Form state
@@ -199,6 +201,7 @@ export function PublishModal({
 
   const canPublish = campaign && 
     validationErrors.length === 0 && 
+    mandatoryValidationErrors.length === 0 &&
     (!useCustomUrl || (urlCheck.available && !urlCheck.checking)) &&
     finalUrl.length >= 3
 
@@ -328,7 +331,7 @@ export function PublishModal({
 
         <div className="space-y-6">
           {/* Validation Errors */}
-          {validationErrors.length > 0 && (
+          {(validationErrors.length > 0 || mandatoryValidationErrors.length > 0) && (
             <Alert variant="destructive">
               <div className="space-y-1">
                 <p className="font-medium flex items-center gap-2">
@@ -336,8 +339,11 @@ export function PublishModal({
                   Cannot publish campaign:
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-sm">
-                  {validationErrors.map((error, index) => (
-                    <li key={index}>{error}</li>
+                  {mandatoryValidationErrors.map((error: string, index: number) => (
+                    <li key={`mandatory-${index}`}>Missing required section: {error}</li>
+                  ))}
+                  {validationErrors.map((error: string, index: number) => (
+                    <li key={`validation-${index}`}>{error}</li>
                   ))}
                 </ul>
               </div>
