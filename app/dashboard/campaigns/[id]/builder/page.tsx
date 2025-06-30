@@ -249,13 +249,58 @@ export default function CampaignBuilderPage() {
     }
   }
 
+  // Check if campaign has mandatory sections
+  const validateMandatorySections = () => {
+    const hasCapture = sections.some(s => s.type === 'capture-details')
+    const hasLogic = sections.some(s => s.type === 'logic-ai')
+    const hasOutput = sections.some(s => 
+      s.type === 'output-results' || 
+      s.type === 'output-download' || 
+      s.type === 'output-redirect' || 
+      s.type === 'output-dynamic-redirect' ||
+      s.type === 'output-html-embed'
+    )
+    
+    return {
+      isValid: hasCapture && hasLogic && hasOutput,
+      missing: [
+        ...(!hasCapture ? ['Capture section'] : []),
+        ...(!hasLogic ? ['Logic section'] : []),
+        ...(!hasOutput ? ['Output section'] : [])
+      ]
+    }
+  }
+
+  const mandatoryValidation = validateMandatorySections()
+
   const handlePreview = () => {
     if (!campaign) return
+    
+    // Check if mandatory sections exist
+    if (!mandatoryValidation.isValid) {
+      toast({
+        title: 'Cannot preview campaign',
+        description: `Missing required sections: ${mandatoryValidation.missing.join(', ')}`,
+        variant: 'destructive'
+      })
+      return
+    }
+    
     const previewUrl = `/campaigns/${campaign.id}/preview`
     window.open(previewUrl, '_blank', 'noopener,noreferrer')
   }
 
   const handlePublish = () => {
+    // Check if mandatory sections exist
+    if (!mandatoryValidation.isValid) {
+      toast({
+        title: 'Cannot publish campaign',
+        description: `Missing required sections: ${mandatoryValidation.missing.join(', ')}`,
+        variant: 'destructive'
+      })
+      return
+    }
+    
     setShowPublishModal(true)
   }
 
@@ -641,7 +686,9 @@ export default function CampaignBuilderPage() {
             campaignStatus={campaign.status}
             isPublished={campaign.status === 'published'}
             isSaving={isSaving}
-            canPublish={true}
+            canPublish={mandatoryValidation.isValid}
+            canPreview={mandatoryValidation.isValid}
+            validationErrors={mandatoryValidation.missing}
             onCampaignNameChange={handleCampaignNameChange}
             onPreview={handlePreview}
             onPublish={handlePublish}
@@ -688,7 +735,7 @@ export default function CampaignBuilderPage() {
                         <div>
                           <CardTitle className="text-lg">Campaign Canvas</CardTitle>
                           <CardDescription>
-                            Click the + button next to sections in the sidebar to add them to your campaign. Use the enhanced controls for inline editing, preview mode, and section management.
+                            Every campaign needs a Capture section, Logic section, and Output section. Click the placeholders below to add required sections, or use the sidebar for additional sections.
                           </CardDescription>
                         </div>
 
@@ -702,6 +749,7 @@ export default function CampaignBuilderPage() {
                         onSectionDuplicate={handleSectionDuplicate}
                         onSectionConfigure={handleSectionConfigure}
                         onSectionTypeChange={handleSectionTypeChange}
+                        onSectionAdd={handleSectionAdd}
                         className="h-full"
                         showCollapsedSections={true}
                         campaignId={campaign?.id}
@@ -735,6 +783,7 @@ export default function CampaignBuilderPage() {
               isOpen={showPublishModal}
               onClose={() => setShowPublishModal(false)}
               onPublishSuccess={handlePublishSuccess}
+              mandatoryValidationErrors={mandatoryValidation.missing}
             />
           )}
         </div>
