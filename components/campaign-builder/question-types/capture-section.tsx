@@ -430,8 +430,8 @@ export function CaptureSection({
           onSave={handleContentChange}
           variant="body"
           placeholder="Get Your Results"
-          className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-4xl !font-bold !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0"
+          className="text-4xl font-bold text-foreground text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
+          inputClassName="!text-4xl !font-bold !text-foreground text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0"
           showEditIcon={false}
           showSaveStatus={false}
           multiline={false}
@@ -446,8 +446,8 @@ export function CaptureSection({
           onSave={handleSubheadingChange}
           variant="body"
           placeholder="Enter your information to unlock your personalized results"
-          className="text-xl text-gray-500 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-xl !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0"
+          className="text-xl text-muted-foreground text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
+          inputClassName="!text-xl !text-muted-foreground text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0"
           showEditIcon={false}
           showSaveStatus={false}
           multiline={false}
@@ -459,13 +459,13 @@ export function CaptureSection({
       <div className="space-y-6 pt-6">
         {/* Fields to Collect */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-gray-300">Fields to Collect</h3>
+          <h3 className="text-sm font-medium text-foreground">Fields to Collect</h3>
           <div className="space-y-4">
             {/* Name Field */}
-            <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
               <div className="flex items-center space-x-3">
-                <User className="w-5 h-5 text-gray-400" />
-                <span className="text-sm font-medium text-gray-300">Name</span>
+                <User className="w-5 h-5 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Name</span>
               </div>
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
@@ -474,7 +474,7 @@ export function CaptureSection({
                     onCheckedChange={(checked) => handleFieldSettingChange('name', 'enabled', checked)}
                     className="scale-75"
                   />
-                  <span className="text-xs text-gray-400">Enabled</span>
+                  <span className="text-xs text-muted-foreground">Enabled</span>
                 </div>
                 {enabledFields.name && (
                   <div className="flex items-center space-x-2">
@@ -483,17 +483,17 @@ export function CaptureSection({
                       onCheckedChange={(checked) => handleFieldSettingChange('name', 'required', checked)}
                       className="scale-75"
                     />
-                    <span className="text-xs text-gray-400">Required</span>
+                    <span className="text-xs text-muted-foreground">Required</span>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Email Field */}
-            <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
               <div className="flex items-center space-x-3">
-                <Mail className="w-5 h-5 text-gray-400" />
-                <span className="text-sm font-medium text-gray-300">Email</span>
+                <Mail className="w-5 h-5 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Email</span>
               </div>
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
@@ -502,7 +502,7 @@ export function CaptureSection({
                     onCheckedChange={(checked) => handleFieldSettingChange('email', 'enabled', checked)}
                     className="scale-75"
                   />
-                  <span className="text-xs text-gray-400">Enabled</span>
+                  <span className="text-xs text-muted-foreground">Enabled</span>
                 </div>
                 {enabledFields.email && (
                   <div className="flex items-center space-x-2">
@@ -511,17 +511,17 @@ export function CaptureSection({
                       onCheckedChange={(checked) => handleFieldSettingChange('email', 'required', checked)}
                       className="scale-75"
                     />
-                    <span className="text-xs text-gray-400">Required</span>
+                    <span className="text-xs text-muted-foreground">Required</span>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Phone Field */}
-            <div className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
               <div className="flex items-center space-x-3">
-                <Phone className="w-5 h-5 text-gray-400" />
-                <span className="text-sm font-medium text-gray-300">Phone</span>
+                <Phone className="w-5 h-5 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">Phone</span>
               </div>
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
@@ -530,7 +530,7 @@ export function CaptureSection({
                     onCheckedChange={(checked) => handleFieldSettingChange('phone', 'enabled', checked)}
                     className="scale-75"
                   />
-                  <span className="text-xs text-gray-400">Enabled</span>
+                  <span className="text-xs text-muted-foreground">Enabled</span>
                 </div>
                 {enabledFields.phone && (
                   <div className="flex items-center space-x-2">
@@ -539,7 +539,7 @@ export function CaptureSection({
                       onCheckedChange={(checked) => handleFieldSettingChange('phone', 'required', checked)}
                       className="scale-75"
                     />
-                    <span className="text-xs text-gray-400">Required</span>
+                    <span className="text-xs text-muted-foreground">Required</span>
                   </div>
                 )}
               </div>
@@ -549,10 +549,10 @@ export function CaptureSection({
 
         {/* Consent Options */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-gray-300">Consent Options</h3>
+          <h3 className="text-sm font-medium text-foreground">Consent Options</h3>
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-              <span className="text-sm text-gray-300">Require GDPR consent checkbox</span>
+            <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
+              <span className="text-sm text-foreground">Require GDPR consent checkbox</span>
               <Switch
                 checked={gdprConsent}
                 onCheckedChange={(checked) => handleConsentChange('gdpr', checked)}
@@ -560,8 +560,8 @@ export function CaptureSection({
               />
             </div>
             
-            <div className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-              <span className="text-sm text-gray-300">Show marketing consent checkbox</span>
+            <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
+              <span className="text-sm text-foreground">Show marketing consent checkbox</span>
               <Switch
                 checked={marketingConsent}
                 onCheckedChange={(checked) => handleConsentChange('marketing', checked)}
