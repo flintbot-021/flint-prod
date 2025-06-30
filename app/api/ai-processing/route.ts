@@ -51,6 +51,9 @@ export async function POST(request: NextRequest) {
     console.log(`🤖 [API-${requestId}] Starting AI processing`)
     console.log(`📤 [API-${requestId}] Final prompt sent to AI:`, body.prompt)
     console.log(`📋 [API-${requestId}] Variables sent to AI:`, body.variables)
+    if (body.knowledgeBaseContext) {
+      console.log(`📚 [API-${requestId}] Knowledge base context included:`, body.knowledgeBaseContext.substring(0, 200) + '...')
+    }
 
     // Create AI processing engine and process the request
     const engine = createAIProcessingEngine(openaiApiKey)

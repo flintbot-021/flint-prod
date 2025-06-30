@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef, memo } from 'react'
 import { Loader2, Zap, AlertCircle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
+import { getKnowledgeBaseForAI } from '@/lib/data-access/knowledge-base'
 import { cn } from '@/lib/utils'
 import { storeAITestResults, clearAITestResults } from '@/lib/utils/ai-test-storage'
 import { buildVariablesFromInputs, extractInputVariablesWithTypes, isFileVariable } from '@/lib/utils/section-variables'
@@ -14,6 +15,7 @@ function LogicSectionComponent({
   title,
   description,
   deviceInfo,
+  campaignId,
   onSectionComplete,
   userInputs = {},
   sections = []
@@ -117,6 +119,24 @@ function LogicSectionComponent({
 
       setProcessingStatus(hasFileVariables ? 'Processing files with AI...' : 'Sending to AI...')
 
+      // Prepare knowledge base context and files if enabled
+      let knowledgeBaseContext = ''
+      let knowledgeBaseFiles: Array<{ url: string; type: string; name: string }> = []
+      if (aiConfig.knowledgeBase?.enabled) {
+        try {
+          // Fetch knowledge base data for this campaign - use campaignId prop
+          const knowledgeBaseData = await getKnowledgeBaseForAI(campaignId || section.id)
+          knowledgeBaseContext = knowledgeBaseData.textContent
+          knowledgeBaseFiles = knowledgeBaseData.files
+          console.log('📚 Campaign renderer: Knowledge base data fetched:', { 
+            textLength: knowledgeBaseContext.length, 
+            filesCount: knowledgeBaseFiles.length 
+          })
+        } catch (error) {
+          console.error('Error fetching knowledge base context:', error)
+        }
+      }
+
       // Prepare the AI request using the predefined configuration
       const aiRequest = {
         prompt: aiConfig.prompt,
@@ -128,6 +148,8 @@ function LogicSectionComponent({
         })),
         hasFileVariables,
         fileVariableNames: fileVariables.map(v => v.name),
+        knowledgeBaseContext,
+        knowledgeBaseFiles,
         // Add lead/campaign info for file processing
         leadId: userInputs.leadId || 'preview-lead',
         campaignId: userInputs.campaignId || 'preview-campaign'
@@ -150,6 +172,16 @@ function LogicSectionComponent({
         formData.append('outputVariables', JSON.stringify(aiRequest.outputVariables))
         formData.append('hasFileVariables', 'true')
         formData.append('fileVariableNames', JSON.stringify(aiRequest.fileVariableNames))
+        
+        // Add knowledge base context and files if available
+        if (knowledgeBaseContext) {
+          formData.append('knowledgeBaseContext', knowledgeBaseContext)
+        }
+        
+        // Add knowledge base files for AI vision processing
+        if (knowledgeBaseFiles && knowledgeBaseFiles.length > 0) {
+          formData.append('knowledgeBaseFiles', JSON.stringify(knowledgeBaseFiles))
+        }
         
         // Fetch actual files from storage and append them for direct OpenAI processing
         console.log('📁 Fetching files from storage for direct OpenAI processing...')

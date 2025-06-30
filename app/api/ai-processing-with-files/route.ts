@@ -27,6 +27,8 @@ export async function POST(request: NextRequest) {
     const outputVariablesStr = formData.get('outputVariables') as string
     const hasFileVariables = formData.get('hasFileVariables') === 'true'
     const fileVariableNamesStr = formData.get('fileVariableNames') as string
+    const knowledgeBaseContext = formData.get('knowledgeBaseContext') as string | null
+    const knowledgeBaseFilesStr = formData.get('knowledgeBaseFiles') as string | null
     
     // Validate request
     if (!prompt || typeof prompt !== 'string') {
@@ -39,11 +41,13 @@ export async function POST(request: NextRequest) {
     let variables: Record<string, any> = {}
     let outputVariables: any[] = []
     let fileVariableNames: string[] = []
+    let knowledgeBaseFiles: Array<{ url: string; type: string; name: string }> = []
     
     try {
       variables = variablesStr ? JSON.parse(variablesStr) : {}
       outputVariables = outputVariablesStr ? JSON.parse(outputVariablesStr) : []
       fileVariableNames = fileVariableNamesStr ? JSON.parse(fileVariableNamesStr) : []
+      knowledgeBaseFiles = knowledgeBaseFilesStr ? JSON.parse(knowledgeBaseFilesStr) : []
     } catch (parseError) {
       return NextResponse.json(
         { success: false, error: 'Invalid JSON in variables or outputVariables' },
@@ -125,7 +129,9 @@ export async function POST(request: NextRequest) {
       outputVariables,
       hasFileVariables,
       fileVariableNames,
-      fileObjects: Object.keys(fileObjects).length > 0 ? fileObjects : undefined
+      fileObjects: Object.keys(fileObjects).length > 0 ? fileObjects : undefined,
+      knowledgeBaseContext: knowledgeBaseContext || undefined,
+      knowledgeBaseFiles: knowledgeBaseFiles.length > 0 ? knowledgeBaseFiles : undefined
     })
 
     console.log(`✅ [API-${requestId}] AI processing completed successfully`)

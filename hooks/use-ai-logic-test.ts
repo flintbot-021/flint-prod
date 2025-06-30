@@ -21,7 +21,8 @@ export function useAILogicTest(options: UseAILogicTestOptions = {}) {
   const testAILogic = async (
     prompt: string,
     outputVariables: OutputVariable[],
-    testInputs: Record<string, string>
+    testInputs: Record<string, string>,
+    knowledgeBaseContext?: string
   ): Promise<{ success: boolean; result: string; outputs?: Record<string, any> }> => {
     setIsLoading(true)
     setError(null)
@@ -38,7 +39,8 @@ export function useAILogicTest(options: UseAILogicTestOptions = {}) {
       const request: AITestRequest = {
         prompt,
         variables: testInputs,
-        outputVariables
+        outputVariables,
+        knowledgeBaseContext
       }
 
       const response = await engine.processPrompt(request)

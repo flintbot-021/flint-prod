@@ -64,6 +64,7 @@ export function ContentComponentFactory({
           className={className}
           allSections={allSections}
           section={section}
+          campaignId={campaignId}
         />
       )
 

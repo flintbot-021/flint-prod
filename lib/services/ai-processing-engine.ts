@@ -22,6 +22,8 @@ export interface AITestRequest {
   hasFileVariables?: boolean
   fileVariableNames?: string[]
   fileObjects?: Record<string, { file: File; variableName: string }>
+  knowledgeBaseContext?: string
+  knowledgeBaseFiles?: Array<{ url: string; type: string; name: string }>
 }
 
 export interface AITestResponse {
@@ -66,15 +68,18 @@ export class AIProcessingEngine {
     try {
       console.log('🔄 Processing AI request with direct file support...')
 
-      // Handle direct file uploads to OpenAI
-      if (request.fileObjects && Object.keys(request.fileObjects).length > 0) {
+      // Handle direct file uploads to OpenAI (either user files or knowledge base files)
+      const hasUserFiles = request.fileObjects && Object.keys(request.fileObjects).length > 0
+      const hasKnowledgeBaseFiles = request.knowledgeBaseFiles && request.knowledgeBaseFiles.length > 0
+      
+      if (hasUserFiles || hasKnowledgeBaseFiles) {
         return await this.processPromptWithDirectFileUpload(request, startTime)
       }
 
       // Fallback for text-only processing
       const finalPrompt = this.replaceVariables(request.prompt, request.variables)
 
-      const aiRequest = this.prepareAIRequest(finalPrompt, request.outputVariables)
+      const aiRequest = this.prepareAIRequest(finalPrompt, request.outputVariables, request.knowledgeBaseContext)
       const response = await this.callOpenAI(aiRequest)
 
       const outputs = this.extractOutputs(response.content, request.outputVariables)
@@ -149,6 +154,56 @@ export class AIProcessingEngine {
         })
       })
 
+      // Add knowledge base files to content for AI vision processing
+      if (request.knowledgeBaseFiles && request.knowledgeBaseFiles.length > 0) {
+        console.log('📚 Adding knowledge base files for AI processing:', request.knowledgeBaseFiles.length)
+        
+        for (const kbFile of request.knowledgeBaseFiles) {
+          try {
+            // For images, add them directly as image_url content
+            if (kbFile.type.startsWith('image/')) {
+              content.push({
+                type: 'image_url',
+                image_url: {
+                  url: kbFile.url,
+                  detail: 'high' // Use high detail for better analysis
+                }
+              })
+              console.log(`📷 Added knowledge base image: ${kbFile.name}`)
+            }
+            // For PDFs and other documents, we'd need to upload them to OpenAI first
+            // This is a more complex process that requires fetching the file and uploading
+            else if (kbFile.type === 'application/pdf' || kbFile.type.startsWith('text/')) {
+              // Fetch the file from Supabase and upload to OpenAI
+              const fileResponse = await fetch(kbFile.url)
+              if (fileResponse.ok) {
+                const fileBuffer = await fileResponse.arrayBuffer()
+                const file = new File([fileBuffer], kbFile.name, { type: kbFile.type })
+                
+                const OpenAI = (await import('openai')).default
+                const openai = new OpenAI({ apiKey: this.apiKey })
+                
+                const uploadedFile = await openai.files.create({
+                  file: file,
+                  purpose: 'user_data'
+                })
+                
+                content.push({
+                  type: 'file',
+                  file: {
+                    file_id: uploadedFile.id
+                  }
+                })
+                console.log(`📄 Added knowledge base document: ${kbFile.name} (${uploadedFile.id})`)
+              }
+            }
+          } catch (error) {
+            console.error(`❌ Failed to process knowledge base file ${kbFile.name}:`, error)
+            // Continue with other files
+          }
+        }
+      }
+
       // Replace variables in prompt (excluding file variables since they're handled above)
       const textVariables = { ...request.variables }
       if (request.fileObjects) {
@@ -162,7 +217,7 @@ export class AIProcessingEngine {
       // Add the text prompt
       content.push({
         type: 'text',
-        text: this.buildCombinedPrompt(finalPrompt, request.outputVariables)
+        text: this.buildCombinedPrompt(finalPrompt, request.outputVariables, request.knowledgeBaseContext)
       })
 
       // Make the API call with files
@@ -249,9 +304,9 @@ export class AIProcessingEngine {
   /**
    * Prepare the OpenAI API request with sensible defaults
    */
-  private prepareAIRequest(prompt: string, outputVariables: OutputVariable[]): any {
-    // Combine user's domain prompt with output instructions
-    const combinedPrompt = this.buildCombinedPrompt(prompt, outputVariables)
+  private prepareAIRequest(prompt: string, outputVariables: OutputVariable[], knowledgeBaseContext?: string): any {
+    // Combine user's domain prompt with output instructions and knowledge base context
+    const combinedPrompt = this.buildCombinedPrompt(prompt, outputVariables, knowledgeBaseContext)
     
     console.log('🚀 Final prompt being sent to OpenAI:', combinedPrompt)
 
@@ -271,11 +326,21 @@ export class AIProcessingEngine {
   }
 
   /**
-   * Build combined prompt with user's domain expertise + output format instructions
+   * Build combined prompt with user's domain expertise + output format instructions + knowledge base context
    */
-  private buildCombinedPrompt(userPrompt: string, outputVariables: OutputVariable[]): string {
+  private buildCombinedPrompt(userPrompt: string, outputVariables: OutputVariable[], knowledgeBaseContext?: string): string {
+    let combinedPrompt = userPrompt
+
+    // Add knowledge base context if provided
+    if (knowledgeBaseContext && knowledgeBaseContext.trim()) {
+      combinedPrompt += '\n\n--- KNOWLEDGE BASE CONTEXT ---\n'
+      combinedPrompt += 'Please reference the following knowledge base when generating content:\n\n'
+      combinedPrompt += knowledgeBaseContext
+      combinedPrompt += '\n--- END KNOWLEDGE BASE CONTEXT ---\n'
+    }
+
     if (outputVariables.length === 0) {
-      return userPrompt
+      return combinedPrompt
     }
 
     // First, list all the output field names clearly
@@ -286,7 +351,7 @@ export class AIProcessingEngine {
       `- ${variable.name} = ${variable.description}`
     ).join('\n')
 
-    return `${userPrompt}
+    return `${combinedPrompt}
 
 Please return the following outputs: ${outputNames}
 
@@ -331,6 +396,12 @@ Return only a JSON object with these exact fields and no additional text.`
    */
   private extractOutputs(content: string, outputVariables: OutputVariable[]): Record<string, any> {
     if (outputVariables.length === 0) {
+      return {}
+    }
+
+    // Check if content is null or undefined
+    if (!content || typeof content !== 'string') {
+      console.warn('⚠️ AI response content is null or invalid:', content)
       return {}
     }
 
