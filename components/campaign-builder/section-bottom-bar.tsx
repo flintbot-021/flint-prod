@@ -248,56 +248,24 @@ export function SectionBottomBar({
 
       {/* Right Side - Controls */}
       <div className="flex items-center space-x-4">
-        {/* Hero Button Toggle */}
-        {isHeroSection && (
-          <button
-            onClick={() => updateHeroSettings({ showButton: !showButton })}
-            className={cn(
-              "px-3 py-1 rounded text-xs font-medium transition-colors",
-              showButton 
-                ? "bg-blue-600 text-white" 
-                : "bg-gray-600 text-gray-300 hover:bg-gray-500"
-            )}
-          >
-            {showButton ? 'Hide Button' : 'Show Button'}
-          </button>
-        )}
 
-        {/* Button Controls for Question Types and Capture Sections */}
-        {(showButtonPreview && !isHeroSection) || isCaptureSection ? (
+
+        {/* Button Controls for Capture Sections Only */}
+        {isCaptureSection ? (
           <div className="flex items-center space-x-2">
             <span className="text-xs text-gray-400 font-medium">Button:</span>
-            {isCaptureSection ? (
-              <InlineEditableText
-                value={captureButtonText}
-                onSave={(newText) => updateCaptureSettings({ submitButtonText: newText })}
-                variant="caption"
-                placeholder="Get my results"
-                className="font-medium text-white px-2 py-1 bg-gray-800 border border-gray-700 rounded"
-                showEditIcon={false}
-                showSaveStatus={true}
-                validation={validateButtonLabel}
-                maxLength={30}
-                required={true}
-              />
-            ) : onButtonLabelChange ? (
-              <InlineEditableText
-                value={buttonLabel}
-                onSave={onButtonLabelChange}
-                variant="caption"
-                placeholder="Enter button text..."
-                className="font-medium text-white px-2 py-1 bg-gray-800 border border-gray-700 rounded"
-                showEditIcon={false}
-                showSaveStatus={true}
-                validation={validateButtonLabel}
-                maxLength={30}
-                required={true}
-              />
-            ) : (
-              <span className="text-xs font-medium text-white px-2 py-1 bg-gray-800 border border-gray-700 rounded">
-                {buttonLabel}
-              </span>
-            )}
+            <InlineEditableText
+              value={captureButtonText}
+              onSave={(newText) => updateCaptureSettings({ submitButtonText: newText })}
+              variant="caption"
+              placeholder="Get my results"
+              className="font-medium text-white px-2 py-1 bg-gray-800 border border-gray-700 rounded"
+              showEditIcon={false}
+              showSaveStatus={true}
+              validation={validateButtonLabel}
+              maxLength={30}
+              required={true}
+            />
           </div>
         ) : null}
       </div>

@@ -429,7 +429,7 @@ export function SectionBlock({
           isRequired={isRequired}
           buttonLabel={buttonLabel}
           onRequiredChange={isQuestionType ? handleRequiredChange : undefined}
-          onButtonLabelChange={handleButtonLabelChange}
+          onButtonLabelChange={section.type === 'capture' ? handleButtonLabelChange : undefined}
           onSectionUpdate={(updates) => onUpdate(section.id, updates)}
           showButtonPreview={true}
           isPreview={isPreview}

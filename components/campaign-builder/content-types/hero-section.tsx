@@ -144,13 +144,11 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
             </p>
           )}
 
-          {showButton && (
-            <div className="pt-4">
-              <button className="bg-white text-gray-900 hover:bg-gray-100 text-lg px-8 py-4 font-semibold rounded-md">
-                {buttonText}
-              </button>
-            </div>
-          )}
+          <div className="pt-4">
+            <button className="bg-white text-gray-900 hover:bg-gray-100 text-lg px-8 py-4 font-semibold rounded-md">
+              {buttonText}
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -260,20 +258,18 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
       </div>
 
       {/* Call-to-Action Button */}
-      {showButton && (
-        <div className="pt-6 text-center">
-          <InlineEditableText
-            value={buttonText}
-            onSave={(newButtonText) => updateSettings({ buttonText: newButtonText })}
-            autoSave={false}
-            placeholder="Get Started"
-            className="!bg-blue-600 !text-white hover:!bg-blue-700 !text-base !px-6 !py-3 !font-semibold !rounded-md inline-block !border-0 !shadow-none !outline-none !ring-0"
-            inputClassName="!bg-blue-600 !text-white !text-base !font-semibold !border-0 !shadow-none !outline-none !ring-0 text-center placeholder:!text-blue-200 focus:!bg-blue-600 hover:!bg-blue-600 !px-6 !py-3 !rounded-md"
-            showEditIcon={false}
-            variant="body"
-          />
-        </div>
-      )}
+      <div className="pt-6 text-center">
+        <InlineEditableText
+          value={buttonText}
+          onSave={(newButtonText) => updateSettings({ buttonText: newButtonText })}
+          autoSave={false}
+          placeholder="Get Started"
+          className="!bg-blue-600 !text-white hover:!bg-blue-700 !text-base !px-6 !py-3 !font-semibold !rounded-md inline-block !border-0 !shadow-none !outline-none !ring-0"
+          inputClassName="!bg-blue-600 !text-white !text-base !font-semibold !border-0 !shadow-none !outline-none !ring-0 text-center placeholder:!text-blue-200 focus:!bg-blue-600 hover:!bg-blue-600 !px-6 !py-3 !rounded-md"
+          showEditIcon={false}
+          variant="body"
+        />
+      </div>
     </div>
   )
 } 
