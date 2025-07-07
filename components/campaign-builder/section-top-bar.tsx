@@ -115,7 +115,7 @@ export function SectionTopBar({
         {/* Drag Handle */}
         <button
           {...dragHandleProps}
-          className="text-white hover:text-gray-200 cursor-grab active:cursor-grabbing transition-colors"
+          className="text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing transition-colors"
         >
           <GripVertical className="h-4 w-4" />
         </button>
