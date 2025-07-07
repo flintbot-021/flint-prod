@@ -37,7 +37,7 @@ export function SectionBlock({
   onTypeChange,
   className,
   isCollapsible = true,
-  initiallyCollapsed = false,
+  initiallyCollapsed = true,
   onCollapseChange,
   allSections,
   campaignId

@@ -148,7 +148,7 @@ export function EnhancedSortableCanvas({
                   onConfigure={onSectionConfigure}
                   onTypeChange={onSectionTypeChange}
                   isCollapsible={showCollapsedSections}
-                  initiallyCollapsed={sectionPersistence?.isSectionCollapsed(section.id) || false}
+                  initiallyCollapsed={sectionPersistence?.isSectionCollapsed(section.id) ?? true}
                   onCollapseChange={sectionPersistence?.setSectionCollapsed}
                   allSections={sections}
                   campaignId={campaignId}

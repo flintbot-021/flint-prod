@@ -46,7 +46,7 @@ export function useSectionPersistence(campaignId: string) {
 
   // Get collapse state for a specific section
   const getSectionState = useCallback((sectionId: string): SectionState => {
-    return sectionStates[sectionId] || { isCollapsed: false }
+    return sectionStates[sectionId] || { isCollapsed: true }
   }, [sectionStates])
 
   // Update collapse state for a specific section
