@@ -173,42 +173,29 @@ export function DateTimeQuestion({
         />
       </div>
 
-      {/* Date & Time Inputs */}
+      {/* Date & Time Configuration */}
       <div className="space-y-6 pt-6">
-        {/* Date Input with Toggle */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label htmlFor={`date-${section.id}`} className="text-sm font-medium text-gray-300">
-              Date
-            </Label>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-gray-400">Include</span>
+        {/* Date & Time Options */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-medium text-gray-900">Date & Time Options</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <CalendarIcon className="w-4 h-4 text-gray-600" />
+                <span className="text-sm text-gray-900">Date</span>
+              </div>
               <Switch
                 checked={settings.includeDate}
                 onCheckedChange={(checked) => handleSettingChange('includeDate', checked)}
                 className="scale-75"
               />
             </div>
-          </div>
-          {settings.includeDate && (
-            <Input
-              id={`date-${section.id}`}
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full bg-white border-gray-300 text-gray-900"
-            />
-          )}
-        </div>
-
-        {/* Time Input with Toggle */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label htmlFor={`time-${section.id}`} className="text-sm font-medium text-gray-300">
-              Time
-            </Label>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-gray-400">Include</span>
+            
+            <div className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+              <div className="flex items-center space-x-2">
+                <Clock className="w-4 h-4 text-gray-600" />
+                <span className="text-sm text-gray-900">Time</span>
+              </div>
               <Switch
                 checked={settings.includeTime}
                 onCheckedChange={(checked) => handleSettingChange('includeTime', checked)}
@@ -216,16 +203,9 @@ export function DateTimeQuestion({
               />
             </div>
           </div>
-          {settings.includeTime && (
-            <Input
-              id={`time-${section.id}`}
-              type="time"
-              value={selectedTime}
-              onChange={(e) => setSelectedTime(e.target.value)}
-              className="w-full bg-white border-gray-300 text-gray-900"
-            />
-          )}
         </div>
+
+
       </div>
 
       {/* Saving Indicator */}
