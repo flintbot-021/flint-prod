@@ -196,7 +196,7 @@ export function DateTimeQuestion({
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full bg-gray-800 border-gray-600 text-white"
+              className="w-full bg-white border-gray-300 text-gray-900"
             />
           )}
         </div>
@@ -222,7 +222,7 @@ export function DateTimeQuestion({
               type="time"
               value={selectedTime}
               onChange={(e) => setSelectedTime(e.target.value)}
-              className="w-full bg-gray-800 border-gray-600 text-white"
+              className="w-full bg-white border-gray-300 text-gray-900"
             />
           )}
         </div>
