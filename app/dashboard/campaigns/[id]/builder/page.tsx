@@ -31,7 +31,7 @@ import {
 import { EnhancedSortableCanvas } from '@/components/campaign-builder/enhanced-sortable-canvas'
 import { DragPreview } from '@/components/campaign-builder/drag-preview'
 import { cn } from '@/lib/utils'
-import { isQuestionSection } from '@/lib/utils/section-variables'
+import { isQuestionSection, titleToVariableName, updateAILogicVariableReferences, updateOutputSectionVariableReferences } from '@/lib/utils/section-variables'
 import { createVariableName } from '@/lib/utils/variable-extractor'
 
 // Helper functions to convert between database and UI types
@@ -433,6 +433,23 @@ export default function CampaignBuilderPage() {
     try {
       setIsSaving(true)
       
+      // Get the current section for variable name comparison
+      const currentSection = sections.find(section => section.id === sectionId)
+      if (!currentSection) {
+        throw new Error('Section not found')
+      }
+      
+      // Check if this is a question section with a title change
+      let oldVariableName: string | null = null
+      let newVariableName: string | null = null
+      let variableNameChanged = false
+      
+      if (updates.title !== undefined && isQuestionSection(currentSection.type)) {
+        oldVariableName = titleToVariableName(currentSection.title)
+        newVariableName = titleToVariableName(updates.title)
+        variableNameChanged = oldVariableName !== newVariableName
+      }
+      
       // Prepare database updates
       const dbUpdates: any = {}
       if (updates.title !== undefined) dbUpdates.title = updates.title
@@ -446,15 +463,111 @@ export default function CampaignBuilderPage() {
         throw new Error(result.error || 'Failed to update section')
       }
       
-      // Update local state
-      setSections(prev => prev.map(section => 
-        section.id === sectionId 
-          ? { ...section, ...updates, updatedAt: new Date().toISOString() }
-          : section
-      ))
+      // If variable name changed, update all references in other sections
+      if (variableNameChanged && oldVariableName && newVariableName) {
+        const sectionsToUpdate: { id: string; updates: Partial<CampaignSection> }[] = []
+        
+        // Find all sections that might reference the variable
+        sections.forEach(section => {
+          if (section.id === sectionId) return // Skip the current section
+          
+          let sectionUpdates: Partial<CampaignSection> = {}
+          
+          // Check AI logic sections
+          if (section.type === 'logic-ai') {
+            const updatedSettings = updateAILogicVariableReferences(
+              section.settings,
+              oldVariableName,
+              newVariableName
+            )
+            // Only update if the function returned a different object reference
+            if (updatedSettings !== section.settings) {
+              sectionUpdates.settings = updatedSettings
+            }
+          }
+          
+          // Check output sections
+          if (section.type.startsWith('output-')) {
+            const updatedSettings = updateOutputSectionVariableReferences(
+              section.settings,
+              oldVariableName,
+              newVariableName
+            )
+            // Only update if the function returned a different object reference
+            if (updatedSettings !== section.settings) {
+              sectionUpdates.settings = updatedSettings
+            }
+          }
+          
+          // Check content sections that might reference variables
+          if (section.type.startsWith('content-')) {
+            const updatedSettings = updateOutputSectionVariableReferences(
+              section.settings,
+              oldVariableName,
+              newVariableName
+            )
+            // Only update if the function returned a different object reference
+            if (updatedSettings !== section.settings) {
+              sectionUpdates.settings = updatedSettings
+            }
+          }
+          
+          // If there are updates, add to the list
+          if (Object.keys(sectionUpdates).length > 0) {
+            sectionsToUpdate.push({
+              id: section.id,
+              updates: sectionUpdates
+            })
+          }
+        })
+        
+        // Update all sections that reference the variable
+        for (const sectionUpdate of sectionsToUpdate) {
+          const dbUpdates: any = {}
+          if (sectionUpdate.updates.settings) {
+            dbUpdates.configuration = sectionUpdate.updates.settings
+          }
+          
+          const updateResult = await updateSection(sectionUpdate.id, dbUpdates)
+          if (!updateResult.success) {
+            console.error(`Failed to update section ${sectionUpdate.id}:`, updateResult.error)
+          }
+        }
+        
+        // Update local state for all affected sections
+        setSections(prev => prev.map(section => {
+          if (section.id === sectionId) {
+            return { ...section, ...updates, updatedAt: new Date().toISOString() }
+          }
+          
+          // Check if this section was updated due to variable reference changes
+          const sectionUpdate = sectionsToUpdate.find(su => su.id === section.id)
+          if (sectionUpdate) {
+            return { ...section, ...sectionUpdate.updates, updatedAt: new Date().toISOString() }
+          }
+          
+          return section
+        }))
+        
+        // Show success feedback for variable name changes
+        if (sectionsToUpdate.length > 0) {
+          toast({
+            title: 'Variable references updated',
+            description: `Updated @${oldVariableName} to @${newVariableName} in ${sectionsToUpdate.length} section(s)`,
+            duration: 3000
+          })
+        }
+      } else {
+        // Normal update without variable name changes
+        setSections(prev => prev.map(section => 
+          section.id === sectionId 
+            ? { ...section, ...updates, updatedAt: new Date().toISOString() }
+            : section
+        ))
+      }
       
       // Show success feedback for title changes
-      if (updates.title) {
+      if (updates.title && !variableNameChanged) {
         toast({
           title: 'Section updated',
           description: 'Section title has been updated',

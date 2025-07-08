@@ -336,7 +336,7 @@ Random seed: ${Math.random().toString(36).substring(7)}`
     
     return title
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+      .replace(/[^a-z0-9\s_]/g, '') // Remove special characters but keep underscores
       .replace(/\s+/g, '_') // Replace spaces with underscores
       .replace(/^_+|_+$/g, '') // Remove leading/trailing underscores
       .replace(/_+/g, '_') // Replace multiple underscores with single

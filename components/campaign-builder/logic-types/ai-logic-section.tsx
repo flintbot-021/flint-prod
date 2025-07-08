@@ -825,7 +825,7 @@ export function AILogicSection({
                             
                             return (
                               <div key={variable.name} className="flex items-start space-x-4">
-                                <Label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
+                                <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
                                   @{variable.name}:
                                 </Label>
                                 <div className="flex-1 space-y-2">
@@ -903,7 +903,7 @@ export function AILogicSection({
                             
                             return (
                               <div key={variable.name} className="flex items-start space-x-4">
-                                <Label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
+                                <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
                                   @{variable.name}:
                                 </Label>
                                 <div className="flex-1 grid grid-cols-2 gap-2">
@@ -1013,7 +1013,7 @@ export function AILogicSection({
                             
                             return (
                               <div key={variable.name} className="flex items-start space-x-4">
-                                <Label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
+                                <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
                                   @{variable.name}:
                                 </Label>
                                 <div className="flex-1 flex space-x-4">
@@ -1044,7 +1044,7 @@ export function AILogicSection({
                             // For regular text variables, show text input
                             return (
                               <div key={variable.name} className="flex items-center space-x-4">
-                                <Label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
+                                <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
                                   @{variable.name}:
                                 </Label>
                                 <Input
@@ -1068,7 +1068,7 @@ export function AILogicSection({
                       <div className="space-y-4">
                         {fileVariables.map((variable) => (
                           <div key={variable.name} className="flex items-start space-x-4">
-                            <Label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
+                            <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
                               @{variable.name}:
                             </Label>
                             <div className="flex-1">
@@ -1464,7 +1464,7 @@ export function AILogicSection({
                             <div className="space-y-4">
                               {Object.entries(outputs).map(([variable, value]) => (
                                 <div key={variable} className="flex items-start space-x-4">
-                                  <Label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0 pt-2">
+                                  <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0 pt-2">
                                     @{variable}:
                                   </Label>
                                   <div className="flex-1 bg-gray-50 border border-gray-300 rounded-md p-3 text-gray-900 text-sm">
