@@ -9,7 +9,14 @@ import { CampaignSection, getSectionTypeById } from '@/lib/types/campaign-builde
 import { cn } from '@/lib/utils'
 import { titleToVariableName, isQuestionSection } from '@/lib/utils/section-variables'
 import * as Icons from 'lucide-react'
-import { GripVertical, ChevronDown, ChevronUp } from 'lucide-react'
+import { GripVertical, ChevronDown, ChevronUp, MoreVertical, Copy, Trash2, Eye, EyeOff } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface SectionTopBarProps {
   section: CampaignSection
@@ -187,6 +194,46 @@ export function SectionTopBar({
             <ChevronUp className="h-3 w-3" />
           )}
         </Button>
+
+        {/* Actions Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+            >
+              <MoreVertical className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={onDuplicate} className="cursor-pointer">
+              <Copy className="h-4 w-4 mr-2" />
+              Duplicate
+            </DropdownMenuItem>
+                         <DropdownMenuItem onClick={onVisibilityToggle} className="cursor-pointer">
+               {!section.isVisible ? (
+                 <>
+                   <Eye className="h-4 w-4 mr-2" />
+                   Show Section
+                 </>
+               ) : (
+                 <>
+                   <EyeOff className="h-4 w-4 mr-2" />
+                   Hide Section
+                 </>
+               )}
+             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={onDelete} 
+              className="cursor-pointer text-red-600 focus:text-red-600"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   )

@@ -137,6 +137,10 @@ export function AILogicSection({
   const [promptValue, setPromptValue] = useState(settings.prompt || '')
   const [localOutputVariables, setLocalOutputVariables] = useState<OutputVariable[]>(settings.outputVariables || [])
   
+  // Validation state for output variables
+  const [touchedOutputs, setTouchedOutputs] = useState<Record<string, { name: boolean; description: boolean }>>({})
+  const [outputErrors, setOutputErrors] = useState<Record<string, { name?: string; description?: string }>>({})
+  
   // Knowledge base state
   const [knowledgeBaseEnabled, setKnowledgeBaseEnabled] = useState(settings.knowledgeBase?.enabled || false)
   const [showKnowledgeBaseModal, setShowKnowledgeBaseModal] = useState(false)
@@ -294,32 +298,18 @@ export function AILogicSection({
       const result: PromptGenerationResponse = await response.json()
 
       if (result.success && result.suggestedOutputVariables?.length > 0) {
-        // Take max 2 outputs and add an empty one for user input
+        // Take max 2 outputs only
         const maxOutputs = result.suggestedOutputVariables.slice(0, 2)
         const newOutputVariables = [
           ...maxOutputs.map((suggested, index) => ({
             id: (Date.now() + index).toString(),
             name: suggested.name,
             description: suggested.description
-          })),
-          // Add empty one for user input
-          {
-            id: (Date.now() + 999).toString(),
-            name: '',
-            description: ''
-          }
+          }))
         ]
         
         handleSettingChange('outputVariables', newOutputVariables)
         console.log('✅ Output variables generated successfully')
-        
-        // Focus the last (empty) input after a brief delay
-        setTimeout(() => {
-          const lastInput = document.querySelector('[data-output-variable-name]:last-of-type input')
-          if (lastInput instanceof HTMLInputElement) {
-            lastInput.focus()
-          }
-        }, 100)
       }
 
     } catch (error) {
@@ -354,8 +344,11 @@ export function AILogicSection({
 
 
   const step3Complete = useMemo(() => {
-    return localOutputVariables.length > 0 && 
-           localOutputVariables.every(v => v.name.trim() !== '' && v.description.trim() !== '')
+    // Filter out outputs where both name and description are empty (treat as non-existent)
+    const validOutputVariables = localOutputVariables.filter(v => v.name.trim() || v.description.trim())
+    // Must have at least one valid output, and all valid outputs must be complete
+    return validOutputVariables.length > 0 && 
+           validOutputVariables.every(v => v.name.trim() !== '' && v.description.trim() !== '')
   }, [localOutputVariables])
 
   const addOutputVariable = useCallback(() => {
@@ -378,10 +371,64 @@ export function AILogicSection({
     )
   }, [])
   
-  const handleOutputVariableBlur = useCallback(() => {
+  const validateOutputVariable = useCallback((id: string, field: 'name' | 'description', value: string) => {
+    const errors: { name?: string; description?: string } = {}
+    const variable = localOutputVariables.find(v => v.id === id)
+    
+    if (!variable) return errors
+    
+    // Only validate description if name has content (user has committed to this output)
+    if (field === 'description' && variable.name.trim() && !value.trim()) {
+      errors.description = 'Description is required'
+    }
+    
+    // Only validate name if description has content (user started working on it)
+    if (field === 'name' && variable.description.trim() && !value.trim()) {
+      errors.name = 'Name is required'
+    }
+    
+    return errors
+  }, [localOutputVariables])
+
+  const handleOutputVariableBlur = useCallback((id: string, field: 'name' | 'description') => {
+    const variable = localOutputVariables.find(v => v.id === id)
+    if (!variable) return
+    
+    // Mark the current field as touched
+    setTouchedOutputs(prev => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: true }
+    }))
+    
+    // When name is filled and user focuses away, also mark description as needing validation
+    if (field === 'name' && variable.name.trim() && !variable.description.trim()) {
+      setTouchedOutputs(prev => ({
+        ...prev,
+        [id]: { ...prev[id], name: true, description: true }
+      }))
+    }
+    
+    // When description is filled and user focuses away, also mark name as needing validation  
+    if (field === 'description' && variable.description.trim() && !variable.name.trim()) {
+      setTouchedOutputs(prev => ({
+        ...prev,
+        [id]: { ...prev[id], name: true, description: true }
+      }))
+    }
+    
+    // Validate both fields (since they're interdependent)
+    const nameErrors = validateOutputVariable(id, 'name', variable.name)
+    const descriptionErrors = validateOutputVariable(id, 'description', variable.description)
+    const allErrors = { ...nameErrors, ...descriptionErrors }
+    
+    setOutputErrors(prev => ({
+      ...prev,
+      [id]: allErrors
+    }))
+    
     // Save to settings only when user clicks away from any output variable input
     handleSettingChange('outputVariables', localOutputVariables)
-  }, [localOutputVariables, handleSettingChange])
+  }, [localOutputVariables, handleSettingChange, validateOutputVariable])
 
   const removeOutputVariable = useCallback((id: string) => {
     const filteredVariables = localOutputVariables.filter(variable => variable.id !== id)
@@ -494,7 +541,10 @@ export function AILogicSection({
         return
       }
       
-      if (localOutputVariables.length === 0) {
+      // Filter out empty outputs (where both name and description are empty)
+      const validOutputVariables = localOutputVariables.filter(v => v.name.trim() || v.description.trim())
+      
+      if (validOutputVariables.length === 0) {
         setTestResult('Please define at least one output variable in Step 3 before testing.')
         return
       }
@@ -535,7 +585,7 @@ export function AILogicSection({
         const formData = new FormData()
         formData.append('prompt', settings.prompt)
         formData.append('variables', JSON.stringify(testVariables))
-        formData.append('outputVariables', JSON.stringify(settings.outputVariables.map(v => ({
+        formData.append('outputVariables', JSON.stringify(validOutputVariables.map(v => ({
           id: v.id,
           name: v.name,
           description: v.description
@@ -605,7 +655,7 @@ export function AILogicSection({
       const testRequest = {
         prompt: settings.prompt,
         variables: testVariables,
-        outputVariables: settings.outputVariables.map(v => ({
+        outputVariables: validOutputVariables.map(v => ({
           id: v.id,
           name: v.name,
           description: v.description
@@ -1279,10 +1329,18 @@ export function AILogicSection({
                             <Input
                               value={variable.name}
                               onChange={(e) => updateOutputVariableLocal(variable.id, 'name', e.target.value)}
-                              onBlur={handleOutputVariableBlur}
-                              placeholder="recommendation"
-                              className="text-sm bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                              onBlur={() => handleOutputVariableBlur(variable.id, 'name')}
+                              placeholder="eg. training_plan"
+                              className={cn(
+                                "text-sm bg-white text-gray-900 placeholder:text-gray-300 placeholder:opacity-50",
+                                touchedOutputs[variable.id]?.name && outputErrors[variable.id]?.name
+                                  ? "border-red-500 focus-visible:ring-red-500"
+                                  : "border-gray-300"
+                              )}
                             />
+                            {touchedOutputs[variable.id]?.name && outputErrors[variable.id]?.name && (
+                              <p className="text-xs text-red-600 mt-1">{outputErrors[variable.id]?.name}</p>
+                            )}
                           </div>
                           <div className="flex items-end space-x-2">
                             <div className="flex-1">
@@ -1290,10 +1348,18 @@ export function AILogicSection({
                               <Input
                                 value={variable.description}
                                 onChange={(e) => updateOutputVariableLocal(variable.id, 'description', e.target.value)}
-                                onBlur={handleOutputVariableBlur}
-                                placeholder="Personalized training recommendation"
-                                className="text-sm bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                                onBlur={() => handleOutputVariableBlur(variable.id, 'description')}
+                                placeholder="eg. A personalised training plan based on their distance etc."
+                                className={cn(
+                                  "text-sm bg-white text-gray-900 placeholder:text-gray-300 placeholder:opacity-80",
+                                  touchedOutputs[variable.id]?.description && outputErrors[variable.id]?.description
+                                    ? "border-red-500 focus-visible:ring-red-500"
+                                    : "border-gray-300"
+                                )}
                               />
+                              {touchedOutputs[variable.id]?.description && outputErrors[variable.id]?.description && (
+                                <p className="text-xs text-red-600 mt-1">{outputErrors[variable.id]?.description}</p>
+                              )}
                             </div>
                             <Button
                               onClick={() => removeOutputVariable(variable.id)}
