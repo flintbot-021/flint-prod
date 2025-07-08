@@ -532,27 +532,99 @@ export default function CampaignBuilderPage() {
     }
   }
 
-  const handleSectionDuplicate = (sectionId: string) => {
-    setSections(prev => {
-      const sectionToDuplicate = prev.find(section => section.id === sectionId)
-      if (!sectionToDuplicate) return prev
+  const handleSectionDuplicate = async (sectionId: string) => {
+    if (!campaign) return
 
-      const duplicatedSection: CampaignSection = {
-        ...sectionToDuplicate,
-        id: `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        title: `${sectionToDuplicate.title} (Copy)`,
-        order: prev.length + 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+    try {
+      setIsSaving(true)
+      
+      const sectionToDuplicate = sections.find(section => section.id === sectionId)
+      if (!sectionToDuplicate) {
+        throw new Error('Section to duplicate not found')
       }
+
+      // Find the position to insert (right after the original)
+      const originalIndex = sections.findIndex(s => s.id === sectionId)
+      const insertIndex = originalIndex + 1
+
+      // Generate unique title
+      let duplicateTitle = `${sectionToDuplicate.title} (Copy)`
+      let counter = 2
+      while (sections.some(s => s.title === duplicateTitle)) {
+        duplicateTitle = `${sectionToDuplicate.title} (Copy ${counter})`
+        counter++
+      }
+
+      // Create the duplicated section data for database
+      const sectionData = {
+        campaign_id: campaign.id,
+        type: mapCampaignBuilderTypeToDatabase(sectionToDuplicate.type) as any,
+        title: duplicateTitle,
+        description: null,
+        order_index: 9999, // Temporary high value to avoid constraint conflicts
+        configuration: sectionToDuplicate.settings as any,
+        required: false
+      }
+
+      // Create in database
+      const result = await createSection(sectionData)
+      
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to duplicate section')
+      }
+
+      const newCampaignSection = convertDatabaseSectionToCampaignSection(result.data as SectionWithOptions)
+      
+      // Update local state - insert at the correct position
+      setSections(prev => {
+        const newSections = [...prev]
+        // Insert the duplicate right after the original
+        newSections.splice(insertIndex, 0, newCampaignSection)
+        
+        // Update order indices for all sections
+        return newSections.map((section, index) => ({
+          ...section,
+          order: index + 1,
+          updatedAt: new Date().toISOString()
+        }))
+      })
+
+      // Reorder all sections in the database with correct order_indices
+      const allSectionsWithDuplicate = [...sections]
+      allSectionsWithDuplicate.splice(insertIndex, 0, newCampaignSection)
+      
+      const reorderData = allSectionsWithDuplicate.map((section, index) => ({
+        id: section.id,
+        order_index: index + 1
+      }))
+      
+      // Apply the reordering in database
+      if (reorderData.length > 0) {
+        const reorderResult = await reorderSections(campaign.id, reorderData)
+        if (!reorderResult.success) {
+          console.error('Failed to reorder sections after duplicate:', reorderResult.error)
+        }
+      }
+
+      // Select the newly duplicated section
+      setSelectedSectionId(newCampaignSection.id)
 
       toast({
         title: 'Section duplicated',
-        description: 'A copy of the section has been created'
+        description: `"${sectionToDuplicate.title}" has been duplicated below the original`
       })
 
-      return [...prev, duplicatedSection]
-    })
+    } catch (err) {
+      console.error('Error duplicating section:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to duplicate section'
+      toast({
+        title: 'Duplicate failed',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleSectionConfigure = (sectionId: string) => {

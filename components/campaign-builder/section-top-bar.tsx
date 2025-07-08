@@ -13,6 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { CampaignSection, SECTION_TYPES, getSectionTypeById } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
 import { titleToVariableName, isQuestionSection } from '@/lib/utils/section-variables'
@@ -21,6 +28,8 @@ import {
   Eye,
   EyeOff,
   Trash2,
+  Copy,
+  MoreHorizontal,
   GripVertical,
   ChevronDown,
   ChevronUp
@@ -35,6 +44,7 @@ interface SectionTopBarProps {
   onTypeChange: (type: string) => void
   onPreviewToggle: () => void
   onVisibilityToggle: () => void
+  onDuplicate: () => void
   onDelete: () => void
   onConfigure: () => void
   onCollapseToggle: () => void
@@ -51,6 +61,7 @@ export function SectionTopBar({
   onTypeChange,
   onPreviewToggle,
   onVisibilityToggle,
+  onDuplicate,
   onDelete,
   onConfigure,
   onCollapseToggle,
@@ -244,23 +255,6 @@ export function SectionTopBar({
           </div>
         )}
 
-        {/* Visibility Toggle */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onVisibilityToggle}
-          className={cn(
-            "h-7 px-2 text-xs",
-            !section.isVisible && "text-orange-600 bg-orange-50 hover:bg-orange-100"
-          )}
-        >
-          {section.isVisible ? (
-            <Eye className="h-3 w-3" />
-          ) : (
-            <EyeOff className="h-3 w-3" />
-          )}
-        </Button>
-
         {/* Collapse Toggle */}
         <Button
           variant="ghost"
@@ -275,15 +269,40 @@ export function SectionTopBar({
           )}
         </Button>
 
-        {/* Delete Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={onDelete}
-          className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        {/* 3-Dot Menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-gray-500 hover:text-gray-700"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={onDuplicate}>
+              <Copy className="h-4 w-4 mr-2" />
+              Duplicate
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onVisibilityToggle}>
+              {section.isVisible ? (
+                <EyeOff className="h-4 w-4 mr-2" />
+              ) : (
+                <Eye className="h-4 w-4 mr-2" />
+              )}
+              {section.isVisible ? 'Hide' : 'Show'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              onClick={onDelete}
+              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   )
