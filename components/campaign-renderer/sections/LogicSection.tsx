@@ -22,7 +22,7 @@ function LogicSectionComponent({
 }: SectionRendererProps) {
   const [isProcessing, setIsProcessing] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [processingStatus, setProcessingStatus] = useState('Analyzing your responses...')
+  const [processingStatus, setProcessingStatus] = useState('Preparing analysis...')
   
   // Add processing tracking to prevent duplicates
   const isProcessingRef = useRef(false)
@@ -54,7 +54,7 @@ function LogicSectionComponent({
       
       // Check if this is an AI logic section with proper configuration
       if (!aiConfig.prompt || !aiConfig.outputVariables) {
-        setProcessingStatus('Processing...')
+        setProcessingStatus('Getting ready...')
         setTimeout(() => {
           if (!hasCompletedRef.current) {
             hasCompletedRef.current = true
@@ -67,7 +67,7 @@ function LogicSectionComponent({
         return
       }
 
-      setProcessingStatus('Preparing AI processing...')
+      setProcessingStatus('Analyzing your responses...')
       
       // ✅ SUPER SIMPLE APPROACH - Use new helper functions
       
@@ -117,7 +117,7 @@ function LogicSectionComponent({
       
       console.log('📁 File variables detected:', fileVariables.map(v => v.name))
 
-      setProcessingStatus(hasFileVariables ? 'Processing files with AI...' : 'Sending to AI...')
+      setProcessingStatus(hasFileVariables ? 'Processing uploaded files...' : 'Generating your results...')
 
       // Prepare knowledge base context and files if enabled
       let knowledgeBaseContext = ''
@@ -164,7 +164,7 @@ function LogicSectionComponent({
       
       if (hasFileVariables) {
         // For file variables, we send files directly to OpenAI via our API
-        setProcessingStatus('Retrieving files for AI analysis...')
+        setProcessingStatus('Analyzing uploaded files...')
         
         const formData = new FormData()
         formData.append('prompt', aiRequest.prompt)
@@ -310,7 +310,7 @@ function LogicSectionComponent({
           }
         }
         
-        setProcessingStatus('Sending files to OpenAI for analysis...')
+        setProcessingStatus('Finalizing analysis...')
         
         response = await fetch(apiEndpoint, {
           method: 'POST',
@@ -335,7 +335,7 @@ function LogicSectionComponent({
       console.log('🤖 AI Response received:', result)
 
       if (result.success && result.outputs) {
-        setProcessingStatus('OpenAI processing complete!')
+        setProcessingStatus('Analysis complete!')
         console.log('✅ AI processing completed successfully')
         
         // Filter outputs to only include the configured variables
@@ -366,13 +366,13 @@ function LogicSectionComponent({
         }, 1000)
         
       } else {
-        throw new Error(result.error || 'AI processing failed')
+        throw new Error(result.error || 'Analysis failed')
       }
 
     } catch (error) {
       console.error('❌ AI Logic processing error:', error)
-      setError(error instanceof Error ? error.message : 'AI processing failed')
-      setProcessingStatus('Processing error occurred')
+      setError(error instanceof Error ? error.message : 'Analysis failed')
+              setProcessingStatus('Analysis error occurred')
       
       // Fallback: complete the section anyway after showing error
       setTimeout(() => {
@@ -408,7 +408,7 @@ function LogicSectionComponent({
                     "font-bold text-foreground",
                     deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
                   )}>
-                    Processing Error
+                    Analysis Error
                   </h1>
                   <p className="text-sm text-red-600">{error}</p>
                   <p className="text-xs text-muted-foreground">Continuing to next section...</p>
@@ -427,7 +427,7 @@ function LogicSectionComponent({
                     "font-bold text-foreground",
                     deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
                   )}>
-                    {title || 'AI Processing'}
+                    {title || 'Analyzing Your Responses'}
                   </h1>
                   <p className="text-sm text-muted-foreground">{processingStatus}</p>
                   {description && (
@@ -445,7 +445,7 @@ function LogicSectionComponent({
                     "font-bold text-foreground",
                     deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
                   )}>
-                    Processing Complete
+                    Analysis Complete
                   </h1>
                   <p className="text-sm text-muted-foreground">Your personalized results are ready!</p>
                 </div>

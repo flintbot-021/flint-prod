@@ -118,11 +118,6 @@ export function CaptureSection({
   // Handle form field changes
   const handleFieldChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
-    
-    // Clear errors when user starts typing
-    if (errors[field as keyof typeof errors]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }))
-    }
 
     // Real-time response collection
     if (typeof value === 'string' && value.trim()) {
@@ -245,34 +240,8 @@ export function CaptureSection({
   
   // Generate validation text for bottom bar
   const getValidationText = () => {
-    const missingFields: string[] = []
-    
-    if (settings.enabledFields?.name && settings.requiredFields?.name && !formData.name?.trim()) {
-      missingFields.push('name')
-    }
-    
-    if (settings.enabledFields?.email && settings.requiredFields?.email) {
-      if (!formData.email?.trim()) {
-        missingFields.push('email')
-      } else if (!isValidEmail(formData.email)) {
-        return 'Please enter a valid email address'
-      }
-    }
-    
-    if (settings.enabledFields?.phone && settings.requiredFields?.phone) {
-      if (!formData.phone?.trim()) {
-        missingFields.push('phone')
-      } else if (!validatePhone(formData.phone)) {
-        return 'Please enter a valid phone number'
-      }
-    }
-    
-    if (settings.gdprConsent && !formData.gdprConsent) {
-      return 'Please accept the privacy policy to continue'
-    }
-    
-    if (missingFields.length > 0) {
-      return `Please fill in all required fields: ${missingFields.join(', ')}`
+    if (!isFormValid()) {
+      return 'Please fill in all required fields'
     }
     
     return undefined
@@ -423,24 +392,6 @@ export function CaptureSection({
               </div>
             )}
           </div>
-
-          {/* Trust signals */}
-          <div className="text-center">
-            <div className="flex items-center justify-center space-x-6 text-sm text-muted-foreground">
-              <div className="flex items-center">
-                <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
-                <span>Secure & Private</span>
-              </div>
-              <div className="flex items-center">
-                <Zap className="h-4 w-4 text-primary mr-1" />
-                <span>AI-Powered</span>
-              </div>
-              <div className="flex items-center">
-                <Clock className="h-4 w-4 text-purple-500 mr-1" />
-                <span>Instant Results</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -448,7 +399,7 @@ export function CaptureSection({
       <SectionNavigationBar
         onPrevious={onPrevious}
         icon={<User className="h-5 w-5 text-primary" />}
-        label={`Contact ${index + 1}`}
+        label="Contact"
         validationText={getValidationText()}
         actionButton={{
           label: settings.submitButtonText || 'Generate My Results',

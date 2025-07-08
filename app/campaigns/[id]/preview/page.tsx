@@ -281,59 +281,60 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
               </div>
             </div>
             
-            {/* Center: Navigation Controls */}
+            {/* Right: Navigation Controls & Device Selector */}
             <div className="flex items-center space-x-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrevious}
-                disabled={!canGoPrevious}
-                className="text-sm"
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                Previous
-              </Button>
-              
-              <Badge variant="secondary" className="px-3 py-1 text-sm font-medium">
-                {currentSectionIndex + 1} / {sectionsData.length}
-              </Badge>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNext}
-                disabled={!canGoNext}
-                className="text-sm"
-              >
-                Next
-                <ChevronRight className="h-4 w-4 ml-1" />
-              </Button>
-            </div>
-            
-            {/* Right: Device Selector */}
-            <div className="flex items-center space-x-1 bg-muted rounded-lg p-1">
-              {Object.entries(DEVICE_CONFIGS).map(([key, config]) => {
-                const IconComponent = config.icon
-                const isActive = currentDevice === key
+              {/* Navigation Controls */}
+              <div className="flex items-center space-x-1 bg-muted rounded-lg p-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePrevious}
+                  disabled={!canGoPrevious}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
                 
-                return (
-                  <Button
-                    key={key}
-                    variant={isActive ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => handleDeviceChange(key as PreviewDevice)}
-                    className={cn(
-                      "h-8 w-8 p-0",
-                      isActive 
-                        ? "bg-background text-foreground shadow-sm" 
-                        : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                    )}
-                    title={config.description}
-                  >
-                    <IconComponent className="h-4 w-4" />
-                  </Button>
-                )
-              })}
+                <Badge variant="secondary" className="px-3 py-1 text-sm font-medium">
+                  {currentSectionIndex + 1} / {sectionsData.length}
+                </Badge>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleNext}
+                  disabled={!canGoNext}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {/* Device Selector */}
+              <div className="flex items-center space-x-1 bg-muted rounded-lg p-1">
+                {Object.entries(DEVICE_CONFIGS).map(([key, config]) => {
+                  const IconComponent = config.icon
+                  const isActive = currentDevice === key
+                  
+                  return (
+                    <Button
+                      key={key}
+                      variant={isActive ? "default" : "ghost"}
+                      size="sm"
+                      onClick={() => handleDeviceChange(key as PreviewDevice)}
+                      className={cn(
+                        "h-8 w-8 p-0",
+                        isActive 
+                          ? "bg-background text-foreground shadow-sm" 
+                          : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                      )}
+                      title={config.description}
+                    >
+                      <IconComponent className="h-4 w-4" />
+                    </Button>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>

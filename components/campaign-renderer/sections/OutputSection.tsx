@@ -1,12 +1,14 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Share2, CheckCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Copy, CheckCircle, RotateCcw } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses } from '../utils'
 import { cn } from '@/lib/utils'
-import { getAITestResults } from '@/lib/utils/ai-test-storage'
+import { getAITestResults, clearAITestResults } from '@/lib/utils/ai-test-storage'
 import { titleToVariableName, isQuestionSection, extractResponseValue, buildVariablesFromInputs } from '@/lib/utils/section-variables'
+import { toast } from '@/components/ui/use-toast'
+import { SectionNavigationBar } from '../SectionNavigationBar'
 
 
 
@@ -27,6 +29,7 @@ export function OutputSection({
   description,
   deviceInfo,
   onPrevious,
+  onNavigateToSection,
   onSectionComplete,
   userInputs = {},
   sections = [],
@@ -104,28 +107,39 @@ export function OutputSection({
   const handleShare = async () => {
     setIsSharing(true)
     try {
-      if (navigator.share) {
-        await navigator.share({
-          title: title || 'My Results',
-          text: description || 'Check out my personalized results!',
-          url: window.location.href
-        })
-      } else {
-        await navigator.clipboard.writeText(window.location.href)
-        alert('Link copied to clipboard!')
-      }
+      await navigator.clipboard.writeText(window.location.href)
+      toast({
+        title: 'Link copied to clipboard!',
+        description: 'Share this link with friends to show your personalized results.',
+      })
     } catch (error) {
-      console.error('Error sharing:', error)
+      console.error('Error copying to clipboard:', error)
+      toast({
+        title: 'Unable to copy link',
+        description: 'Please copy the URL from your browser address bar to share.',
+        variant: 'destructive'
+      })
     } finally {
       setIsSharing(false)
     }
   }
 
-  const handleComplete = () => {
-    onSectionComplete(index, {
-      [section.id]: 'completed',
-      output_viewed: true
+  const handleTryAgain = () => {
+    // Clear all cached AI results
+    clearAITestResults()
+    
+    // Show feedback toast
+    toast({
+      title: 'Starting over!',
+      description: 'All results have been cleared. Redirecting to the beginning...',
     })
+    
+    // Navigate back to the first section (index 0)
+    if (onNavigateToSection) {
+      setTimeout(() => {
+        onNavigateToSection(0)
+      }, 500) // Small delay to let user see the toast
+    }
   }
 
   // Show fallback if no content is configured
@@ -140,27 +154,10 @@ export function OutputSection({
     )
   }
 
-  return (
-    <div className="h-full bg-background flex flex-col">
-      {/* Header with navigation - same as other sections */}
-      <div className="flex-shrink-0 p-6 border-b border-border">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <button
-            onClick={onPrevious}
-            className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ChevronLeft className="h-5 w-5 mr-1" />
-            <span className="hidden sm:inline">Previous</span>
-          </button>
-          <div className="flex items-center">
-            <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-            <span className="text-sm text-muted-foreground">Results</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content - Enhanced layout like builder preview */}
-      <div className="flex-1 px-6 py-12">
+      return (
+      <div className="h-full bg-background flex flex-col">
+        {/* Main Content - Enhanced layout like builder preview */}
+        <div className="flex-1 px-6 py-12 pb-20">
         <div className="w-full max-w-4xl mx-auto space-y-12">
           {/* Image */}
           {settings.image && (
@@ -209,37 +206,30 @@ export function OutputSection({
             )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex justify-center space-x-3 pt-8">
-            <button
-              onClick={handleShare}
-              disabled={isSharing}
-              className={cn(
-                "px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                "flex items-center space-x-2 border border-border",
-                "bg-background hover:bg-gray-50 text-muted-foreground hover:text-foreground",
-                getMobileClasses("", deviceInfo?.type)
-              )}
-            >
-              <Share2 className="h-4 w-4" />
-              <span>{isSharing ? 'Sharing...' : 'Share'}</span>
-            </button>
 
-            <button
-              onClick={handleComplete}
-              className={cn(
-                "px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                "flex items-center space-x-2",
-                "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl",
-                getMobileClasses("", deviceInfo?.type)
-              )}
-            >
-              <span>Complete</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
         </div>
       </div>
+
+      {/* Bottom Navigation Bar with Action Buttons */}
+      <SectionNavigationBar
+        onPrevious={onPrevious}
+        actionButtons={[
+          {
+            label: isSharing ? 'Copying...' : 'Share',
+            onClick: handleShare,
+            disabled: isSharing,
+            variant: 'secondary' as const,
+            icon: <Copy className="h-4 w-4" />
+          },
+          {
+            label: 'Try Again',
+            onClick: handleTryAgain,
+            variant: 'primary' as const,
+            icon: <RotateCcw className="h-4 w-4" />
+          }
+        ]}
+        deviceInfo={deviceInfo}
+      />
     </div>
   )
 } 
