@@ -239,7 +239,7 @@ export function OutputSection({
       const uploadedFiles = await uploadFiles(
         [file],
         campaignId,
-        undefined
+        'output-sections'
       )
       
       if (uploadedFiles.length > 0) {
@@ -288,7 +288,7 @@ export function OutputSection({
             {/* Text Content with Variable Interpolation */}
             <div className={cn('space-y-6', getAlignmentClass(textAlignment))}>
               <div className="space-y-4">
-                <h1 className="text-4xl md:text-5xl font-bold text-white">
+                <h1 className="text-4xl md:text-5xl font-bold text-foreground">
                   <VariableInterpolatedContent
                     content={title}
                     context={variableContext}
@@ -298,7 +298,7 @@ export function OutputSection({
                 </h1>
                 
                 {subtitle && (
-                  <div className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto">
+                  <div className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
                     <VariableInterpolatedContent
                       content={subtitle}
                       context={variableContext}
@@ -310,7 +310,7 @@ export function OutputSection({
               </div>
 
               {content && (
-                <div className="text-lg text-gray-400 max-w-4xl mx-auto leading-relaxed">
+                <div className="text-lg text-foreground max-w-4xl mx-auto leading-relaxed">
                   <VariableInterpolatedContent
                     content={content}
                     context={variableContext}
