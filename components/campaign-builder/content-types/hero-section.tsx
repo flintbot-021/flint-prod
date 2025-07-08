@@ -98,14 +98,10 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
     }
   }, [campaignId, user])
 
-  // Convert hex color with opacity to rgba
+  // Fixed overlay style - 50% black background
   const getOverlayStyle = () => {
-    const hex = overlayColor.replace('#', '')
-    const r = parseInt(hex.substr(0, 2), 16)
-    const g = parseInt(hex.substr(2, 2), 16)
-    const b = parseInt(hex.substr(4, 2), 16)
     return {
-      backgroundColor: `rgba(${r}, ${g}, ${b}, ${overlayOpacity / 100})`
+      backgroundColor: 'rgba(0, 0, 0, 0.5)'
     }
   }
 

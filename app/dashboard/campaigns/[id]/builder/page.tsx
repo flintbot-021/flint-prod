@@ -8,8 +8,6 @@ import { Campaign, Section, SectionWithOptions } from '@/lib/types/database'
 import { CampaignSection, SectionType, getSectionTypeById } from '@/lib/types/campaign-builder'
 import { CampaignBuilderTopBar } from '@/components/campaign-builder/top-bar'
 import { SectionsMenu } from '@/components/campaign-builder/sections-menu'
-
-import { EnhancedSectionCard } from '@/components/campaign-builder/enhanced-section-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PublishModal } from '@/components/campaign-builder/publish-modal'
 import { CaptureProvider } from '@/contexts/capture-context'
@@ -31,6 +29,7 @@ import {
 } from '@dnd-kit/sortable'
 
 import { EnhancedSortableCanvas } from '@/components/campaign-builder/enhanced-sortable-canvas'
+import { DragPreview } from '@/components/campaign-builder/drag-preview'
 import { cn } from '@/lib/utils'
 
 // Helper functions to convert between database and UI types
@@ -813,13 +812,10 @@ export default function CampaignBuilderPage() {
           <DragOverlay>
             {activeDragItem && (
               /* Campaign Section being dragged */
-              <EnhancedSectionCard
+              <DragPreview
                 section={activeDragItem as CampaignSection}
-                onUpdate={async () => {}}
-                onDelete={() => {}}
-                onDuplicate={() => {}}
-                onConfigure={() => {}}
-                className="shadow-lg rotate-2 opacity-90"
+                campaignId={campaign.id}
+                allSections={sections}
               />
             )}
           </DragOverlay>

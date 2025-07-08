@@ -32,7 +32,7 @@ interface EnhancedSortableCanvasProps {
   sectionPersistence?: SectionPersistence
 }
 
-export function EnhancedSortableCanvas({
+export function EnhancedSortableCanvas({ 
   sections,
   onSectionUpdate,
   onSectionDelete,

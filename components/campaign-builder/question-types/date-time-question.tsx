@@ -180,7 +180,7 @@ export function DateTimeQuestion({
           <h3 className="text-sm font-medium text-gray-900">Date & Time Options</h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
-              <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2">
                 <CalendarIcon className="w-4 h-4 text-gray-600" />
                 <span className="text-sm text-gray-900">Date</span>
               </div>
@@ -189,10 +189,10 @@ export function DateTimeQuestion({
                 onCheckedChange={(checked) => handleSettingChange('includeDate', checked)}
                 className="scale-75"
               />
-            </div>
-            
+        </div>
+
             <div className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
-              <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2">
                 <Clock className="w-4 h-4 text-gray-600" />
                 <span className="text-sm text-gray-900">Time</span>
               </div>

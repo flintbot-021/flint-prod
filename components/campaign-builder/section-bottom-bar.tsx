@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { CampaignSection, getSectionTypeById } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
-import { Palette } from 'lucide-react'
+
 
 interface SectionBottomBarProps {
   section: CampaignSection
@@ -63,8 +63,6 @@ export function SectionBottomBar({
   
   // Get Hero settings if it's a Hero section
   const heroSettings = isHeroSection ? section.settings as any : null
-  const overlayColor = heroSettings?.overlayColor || '#000000'
-  const overlayOpacity = heroSettings?.overlayOpacity || 40
   const showButton = heroSettings?.showButton !== false
   const hasBackgroundImage = heroSettings?.backgroundImage
 
@@ -76,17 +74,7 @@ export function SectionBottomBar({
   const captureSettings = isCaptureSection ? section.settings as any : null
   const captureButtonText = captureSettings?.submitButtonText || 'Get my results'
 
-  // Handle Hero settings updates
-  const updateHeroSettings = async (newSettings: Record<string, unknown>) => {
-    if (onSectionUpdate) {
-      await onSectionUpdate({
-        settings: {
-          ...section.settings,
-          ...newSettings
-        }
-      })
-    }
-  }
+
 
   // Handle Basic section settings updates
   const updateBasicSettings = async (newSettings: Record<string, unknown>) => {
@@ -123,13 +111,8 @@ export function SectionBottomBar({
     return null
   }
 
-  // Don't render if no controls are needed or if this is an AI Logic section
-  if (isAILogicSection || (!isQuestionType && !showButtonPreview && !isHeroSection && !isBasicSection && !isCaptureSection)) {
-    return null
-  }
-
-  // For Hero sections, don't show button in preview mode
-  if (isHeroSection && isPreview) {
+  // Don't render if no controls are needed or if this is an AI Logic section or Hero section
+  if (isAILogicSection || isHeroSection || (!isQuestionType && !showButtonPreview && !isBasicSection && !isCaptureSection)) {
     return null
   }
 
@@ -199,30 +182,7 @@ export function SectionBottomBar({
           </div>
         )}
 
-        {/* Hero Section Overlay Controls */}
-        {isHeroSection && (
-          <div className="flex items-center space-x-4 text-sm">
-            <div className="flex items-center space-x-2">
-              <Palette className="h-4 w-4 text-gray-500" />
-              <span className="text-gray-500">Overlay</span>
-              <input
-                type="color"
-                value={overlayColor}
-                onChange={(e) => updateHeroSettings({ overlayColor: e.target.value })}
-                className="w-6 h-6 rounded border-0 bg-transparent cursor-pointer"
-              />
-              <span className="text-gray-500">{overlayOpacity}%</span>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={overlayOpacity}
-                onChange={(e) => updateHeroSettings({ overlayOpacity: parseInt(e.target.value) })}
-                className="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-          </div>
-        )}
+
 
 
       </div>

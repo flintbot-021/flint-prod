@@ -619,7 +619,7 @@ export function InfoSection({
           </div>
 
           {showButton && (
-            <div>
+              <div>
               <div>
                 <Label className="text-sm font-medium text-foreground mb-2 block">
                   Button URL (Optional)
