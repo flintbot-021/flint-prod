@@ -110,9 +110,7 @@ export function InfoSection({
     await updateSettings({ imageAlt: newAlt })
   }
 
-  const handleButtonLabelChange = async (newLabel: string) => {
-    await updateSettings({ buttonLabel: newLabel })
-  }
+
 
   // Handle image upload
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -621,22 +619,7 @@ export function InfoSection({
           </div>
 
           {showButton && (
-            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-sm font-medium text-foreground mb-2 block">
-                  Button Label
-                </Label>
-                <InlineEditableText
-                  value={buttonLabel}
-                  onSave={handleButtonLabelChange}
-                  variant="body"
-                  placeholder="Continue"
-                  className="p-3 border border-border rounded-lg w-full"
-                  showEditIcon={false}
-                  showSaveStatus={true}
-                  maxLength={50}
-                />
-              </div>
               <div>
                 <Label className="text-sm font-medium text-foreground mb-2 block">
                   Button URL (Optional)

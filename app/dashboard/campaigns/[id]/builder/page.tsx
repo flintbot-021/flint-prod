@@ -8,8 +8,6 @@ import { Campaign, Section, SectionWithOptions } from '@/lib/types/database'
 import { CampaignSection, SectionType, getSectionTypeById } from '@/lib/types/campaign-builder'
 import { CampaignBuilderTopBar } from '@/components/campaign-builder/top-bar'
 import { SectionsMenu } from '@/components/campaign-builder/sections-menu'
-
-import { EnhancedSectionCard } from '@/components/campaign-builder/enhanced-section-card'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PublishModal } from '@/components/campaign-builder/publish-modal'
 import { CaptureProvider } from '@/contexts/capture-context'
@@ -31,6 +29,7 @@ import {
 } from '@dnd-kit/sortable'
 
 import { EnhancedSortableCanvas } from '@/components/campaign-builder/enhanced-sortable-canvas'
+import { DragPreview } from '@/components/campaign-builder/drag-preview'
 import { cn } from '@/lib/utils'
 
 // Helper functions to convert between database and UI types
@@ -119,6 +118,7 @@ export default function CampaignBuilderPage() {
   // State
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [sections, setSections] = useState<CampaignSection[]>([])
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -315,12 +315,22 @@ export default function CampaignBuilderPage() {
     try {
       setIsSaving(true)
       
+      // Determine insert position based on selected section
+      let insertIndex = sections.length
+      if (selectedSectionId) {
+        const selectedIndex = sections.findIndex(s => s.id === selectedSectionId)
+        if (selectedIndex !== -1) {
+          insertIndex = selectedIndex + 1
+        }
+      }
+      
+      // Create section with a high temporary order_index to avoid conflicts
       const sectionData = {
         campaign_id: campaign.id,
         type: mapCampaignBuilderTypeToDatabase(sectionType.id) as any,
         title: sectionType.name,
         description: null,
-        order_index: sections.length + 1,
+        order_index: 9999, // Temporary high value to avoid constraint conflicts
         configuration: (sectionType.defaultSettings || {}) as any,
         required: false
       }
@@ -332,11 +342,45 @@ export default function CampaignBuilderPage() {
       }
 
       const newCampaignSection = convertDatabaseSectionToCampaignSection(result.data as SectionWithOptions)
-      setSections(prev => [...prev, newCampaignSection])
+      
+      // Update local state immediately
+      setSections(prev => {
+        const newSections = [...prev]
+        // Insert at the calculated position
+        newSections.splice(insertIndex, 0, newCampaignSection)
+        
+        // Update order indices for all sections
+        return newSections.map((section, index) => ({
+          ...section,
+          order: index + 1
+        }))
+      })
+
+      // Now reorder all sections in the database with correct order_indices
+      const allSectionsWithNew = [...sections]
+      allSectionsWithNew.splice(insertIndex, 0, newCampaignSection)
+      
+      const reorderData = allSectionsWithNew.map((section, index) => ({
+        id: section.id,
+        order_index: index + 1
+      }))
+      
+      // Apply the reordering in database
+      if (reorderData.length > 0) {
+        const reorderResult = await reorderSections(campaign.id, reorderData)
+        if (!reorderResult.success) {
+          console.error('Failed to reorder sections:', reorderResult.error)
+        }
+      }
+      
+      // Select the newly added section
+      setSelectedSectionId(newCampaignSection.id)
       
       toast({
         title: 'Section added',
-        description: `${sectionType.name} section has been added to your campaign`
+        description: selectedSectionId 
+          ? `${sectionType.name} section has been added below the selected section`
+          : `${sectionType.name} section has been added to your campaign`
       })
     } catch (err) {
       console.error('Error adding section:', err)
@@ -750,6 +794,8 @@ export default function CampaignBuilderPage() {
                         onSectionConfigure={handleSectionConfigure}
                         onSectionTypeChange={handleSectionTypeChange}
                         onSectionAdd={handleSectionAdd}
+                        selectedSectionId={selectedSectionId}
+                        onSectionSelect={setSelectedSectionId}
                         className="h-full"
                         showCollapsedSections={true}
                         campaignId={campaign?.id}
@@ -766,13 +812,10 @@ export default function CampaignBuilderPage() {
           <DragOverlay>
             {activeDragItem && (
               /* Campaign Section being dragged */
-              <EnhancedSectionCard
+              <DragPreview
                 section={activeDragItem as CampaignSection}
-                onUpdate={async () => {}}
-                onDelete={() => {}}
-                onDuplicate={() => {}}
-                onConfigure={() => {}}
-                className="shadow-lg rotate-2 opacity-90"
+                campaignId={campaign.id}
+                allSections={sections}
               />
             )}
           </DragOverlay>

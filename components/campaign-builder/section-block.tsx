@@ -20,6 +20,8 @@ interface SectionBlockProps {
   onDuplicate: (sectionId: string) => void
   onConfigure?: (sectionId: string) => void
   onTypeChange?: (sectionId: string, newType: string) => void
+  isSelected?: boolean
+  onSelect?: () => void
   className?: string
   isCollapsible?: boolean
   initiallyCollapsed?: boolean
@@ -35,9 +37,11 @@ export function SectionBlock({
   onDuplicate,
   onConfigure,
   onTypeChange,
+  isSelected = false,
+  onSelect,
   className,
   isCollapsible = true,
-  initiallyCollapsed = false,
+  initiallyCollapsed = true,
   onCollapseChange,
   allSections,
   campaignId
@@ -383,10 +387,12 @@ export function SectionBlock({
     <Card
       ref={setNodeRef}
       style={style}
+      onClick={onSelect}
       className={cn(
-        'transition-all duration-200 overflow-hidden',
+        'transition-all duration-200 overflow-hidden cursor-pointer',
         isDragging && 'opacity-50 shadow-lg scale-105 rotate-2',
         !section.isVisible && 'opacity-60',
+        isSelected && 'ring-1 ring-black shadow-lg',
         'hover:shadow-md',
         className
       )}
@@ -429,7 +435,7 @@ export function SectionBlock({
           isRequired={isRequired}
           buttonLabel={buttonLabel}
           onRequiredChange={isQuestionType ? handleRequiredChange : undefined}
-          onButtonLabelChange={handleButtonLabelChange}
+          onButtonLabelChange={section.type === 'capture' ? handleButtonLabelChange : undefined}
           onSectionUpdate={(updates) => onUpdate(section.id, updates)}
           showButtonPreview={true}
           isPreview={isPreview}

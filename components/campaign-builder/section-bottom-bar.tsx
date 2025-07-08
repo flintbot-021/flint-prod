@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { CampaignSection, getSectionTypeById } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
-import { Palette } from 'lucide-react'
+
 
 interface SectionBottomBarProps {
   section: CampaignSection
@@ -63,8 +63,6 @@ export function SectionBottomBar({
   
   // Get Hero settings if it's a Hero section
   const heroSettings = isHeroSection ? section.settings as any : null
-  const overlayColor = heroSettings?.overlayColor || '#000000'
-  const overlayOpacity = heroSettings?.overlayOpacity || 40
   const showButton = heroSettings?.showButton !== false
   const hasBackgroundImage = heroSettings?.backgroundImage
 
@@ -76,17 +74,7 @@ export function SectionBottomBar({
   const captureSettings = isCaptureSection ? section.settings as any : null
   const captureButtonText = captureSettings?.submitButtonText || 'Get my results'
 
-  // Handle Hero settings updates
-  const updateHeroSettings = async (newSettings: Record<string, unknown>) => {
-    if (onSectionUpdate) {
-      await onSectionUpdate({
-        settings: {
-          ...section.settings,
-          ...newSettings
-        }
-      })
-    }
-  }
+
 
   // Handle Basic section settings updates
   const updateBasicSettings = async (newSettings: Record<string, unknown>) => {
@@ -123,13 +111,8 @@ export function SectionBottomBar({
     return null
   }
 
-  // Don't render if no controls are needed or if this is an AI Logic section
-  if (isAILogicSection || (!isQuestionType && !showButtonPreview && !isHeroSection && !isBasicSection && !isCaptureSection)) {
-    return null
-  }
-
-  // For Hero sections, don't show button in preview mode
-  if (isHeroSection && isPreview) {
+  // Don't render if no controls are needed or if this is an AI Logic section or Hero section
+  if (isAILogicSection || isHeroSection || (!isQuestionType && !showButtonPreview && !isBasicSection && !isCaptureSection)) {
     return null
   }
 
@@ -199,105 +182,31 @@ export function SectionBottomBar({
           </div>
         )}
 
-        {/* Hero Section Overlay Controls */}
-        {isHeroSection && (
-          <div className="flex items-center space-x-4 text-sm">
-            <div className="flex items-center space-x-2">
-              <Palette className="h-4 w-4 text-gray-500" />
-              <span className="text-gray-500">Overlay</span>
-              <input
-                type="color"
-                value={overlayColor}
-                onChange={(e) => updateHeroSettings({ overlayColor: e.target.value })}
-                className="w-6 h-6 rounded border-0 bg-transparent cursor-pointer"
-              />
-              <span className="text-gray-500">{overlayOpacity}%</span>
-              <input
-                type="range"
-                min="0"
-                max="100"
-                value={overlayOpacity}
-                onChange={(e) => updateHeroSettings({ overlayOpacity: parseInt(e.target.value) })}
-                className="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
-              />
-            </div>
-          </div>
-        )}
 
-        {/* Basic Section Text Alignment Controls */}
-        {isBasicSection && (
-          <div className="flex items-center space-x-2 text-sm">
-            <span className="text-gray-500">Align:</span>
-            {(['left', 'center', 'right'] as const).map((alignment) => (
-              <button
-                key={alignment}
-                onClick={() => updateBasicSettings({ textAlignment: alignment })}
-                className={cn(
-                  "px-2 py-1 rounded text-xs font-medium transition-colors capitalize",
-                  textAlignment === alignment 
-                    ? "bg-blue-600 text-white" 
-                    : "bg-gray-600 text-gray-300 hover:bg-gray-500"
-                )}
-              >
-                {alignment}
-              </button>
-            ))}
-          </div>
-        )}
+
+
       </div>
 
       {/* Right Side - Controls */}
       <div className="flex items-center space-x-4">
-        {/* Hero Button Toggle */}
-        {isHeroSection && (
-          <button
-            onClick={() => updateHeroSettings({ showButton: !showButton })}
-            className={cn(
-              "px-3 py-1 rounded text-xs font-medium transition-colors",
-              showButton 
-                ? "bg-blue-600 text-white" 
-                : "bg-gray-600 text-gray-300 hover:bg-gray-500"
-            )}
-          >
-            {showButton ? 'Hide Button' : 'Show Button'}
-          </button>
-        )}
 
-        {/* Button Controls for Question Types and Capture Sections */}
-        {(showButtonPreview && !isHeroSection) || isCaptureSection ? (
+
+        {/* Button Controls for Capture Sections Only */}
+        {isCaptureSection ? (
           <div className="flex items-center space-x-2">
             <span className="text-xs text-gray-400 font-medium">Button:</span>
-            {isCaptureSection ? (
-              <InlineEditableText
-                value={captureButtonText}
-                onSave={(newText) => updateCaptureSettings({ submitButtonText: newText })}
-                variant="caption"
-                placeholder="Get my results"
-                className="font-medium text-white px-2 py-1 bg-gray-800 border border-gray-700 rounded"
-                showEditIcon={false}
-                showSaveStatus={true}
-                validation={validateButtonLabel}
-                maxLength={30}
-                required={true}
-              />
-            ) : onButtonLabelChange ? (
-              <InlineEditableText
-                value={buttonLabel}
-                onSave={onButtonLabelChange}
-                variant="caption"
-                placeholder="Enter button text..."
-                className="font-medium text-white px-2 py-1 bg-gray-800 border border-gray-700 rounded"
-                showEditIcon={false}
-                showSaveStatus={true}
-                validation={validateButtonLabel}
-                maxLength={30}
-                required={true}
-              />
-            ) : (
-              <span className="text-xs font-medium text-white px-2 py-1 bg-gray-800 border border-gray-700 rounded">
-                {buttonLabel}
-              </span>
-            )}
+            <InlineEditableText
+              value={captureButtonText}
+              onSave={(newText) => updateCaptureSettings({ submitButtonText: newText })}
+              variant="caption"
+              placeholder="Get my results"
+              className="font-medium text-white px-2 py-1 bg-gray-800 border border-gray-700 rounded"
+              showEditIcon={false}
+              showSaveStatus={true}
+              validation={validateButtonLabel}
+              maxLength={30}
+              required={true}
+            />
           </div>
         ) : null}
       </div>
