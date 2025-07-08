@@ -59,3 +59,9 @@ export const useToast = () => {
     toasts: toastList
   }
 } 
+
+// Helper function to remove a specific toast
+export const removeToast = (id: string) => {
+  toasts = toasts.filter(t => t.id !== id)
+  updateListeners()
+} 

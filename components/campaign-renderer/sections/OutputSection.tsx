@@ -36,11 +36,11 @@ export function OutputSection({
 
   const outputConfig = config as OutputSectionConfig
   
-  // Get settings with defaults and null safety
+  // Get settings without fallbacks - only show if actually configured
   const settings = {
-    title: outputConfig?.title || title || 'Your Results',
-    subtitle: outputConfig?.subtitle || description || 'Based on your answers, here\'s what we found',
-    content: outputConfig?.content || 'Hello @name! Your score is @score out of 100.\n\n@recommendation\n\nThanks for taking our quiz!',
+    title: outputConfig?.title || title || '',
+    subtitle: outputConfig?.subtitle || description || '',
+    content: outputConfig?.content || '',
     image: outputConfig?.image || '',
     textAlignment: outputConfig?.textAlignment || 'center'
   }
@@ -176,21 +176,23 @@ export function OutputSection({
           {/* Text Content with Variable Interpolation */}
           <div className={cn('space-y-6', getAlignmentClass(settings.textAlignment))}>
             <div className="space-y-4">
-              <h1 className={cn(
-                "font-bold text-foreground",
-                deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
-              )}>
-                {simpleVariableReplace(settings.title, variableMap)}
-              </h1>
+              {settings.title && (
+                <h1 className={cn(
+                  "font-bold text-foreground",
+                  deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
+                )}>
+                  {simpleVariableReplace(settings.title, variableMap)}
+                </h1>
+              )}
               
               {settings.subtitle && (
-              <div className={cn(
-                   "text-muted-foreground max-w-3xl",
-                   settings.textAlignment === 'center' ? "mx-auto" : "",
-                   deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
-              )}>
-                   {simpleVariableReplace(settings.subtitle, variableMap)}
-                 </div>
+                <div className={cn(
+                     "text-muted-foreground max-w-3xl",
+                     settings.textAlignment === 'center' ? "mx-auto" : "",
+                     deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
+                )}>
+                     {simpleVariableReplace(settings.subtitle, variableMap)}
+                   </div>
               )}
               </div>
 

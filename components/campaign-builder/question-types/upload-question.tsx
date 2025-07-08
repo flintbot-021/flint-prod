@@ -221,7 +221,6 @@ export function UploadQuestion({
     if (allowDocuments && (
       file.type === 'application/pdf' ||
       file.type.includes('document') ||
-      file.type === 'text/plain' ||
       file.type.includes('sheet') ||
       file.type.includes('presentation')
     )) return true
@@ -419,43 +418,6 @@ export function UploadQuestion({
                 onCheckedChange={(checked) => handleSettingChange('allowVideo', checked)}
                 className="scale-75"
               />
-            </div>
-          </div>
-        </div>
-
-        {/* Upload Limits */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-medium text-gray-900">Upload Limits</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-sm text-gray-600">Max File Size (MB)</Label>
-              <select
-                value={maxFileSize}
-                onChange={(e) => handleSettingChange('maxFileSize', parseInt(e.target.value))}
-                className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-900 text-sm"
-              >
-                <option value={1}>1 MB</option>
-                <option value={5}>5 MB</option>
-                <option value={10}>10 MB</option>
-                <option value={25}>25 MB</option>
-                <option value={50}>50 MB</option>
-                <option value={100}>100 MB</option>
-              </select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label className="text-sm text-gray-600">Max Number of Files</Label>
-              <select
-                value={maxFiles}
-                onChange={(e) => handleSettingChange('maxFiles', parseInt(e.target.value))}
-                className="w-full bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-900 text-sm"
-              >
-                <option value={1}>1 file</option>
-                <option value={3}>3 files</option>
-                <option value={5}>5 files</option>
-                <option value={10}>10 files</option>
-                <option value={20}>20 files</option>
-              </select>
             </div>
           </div>
         </div>

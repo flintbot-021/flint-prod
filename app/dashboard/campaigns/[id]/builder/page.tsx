@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { getCampaignById, updateCampaign, getCampaignSections, createSection, updateSection, deleteSection, reorderSections } from '@/lib/data-access'
@@ -31,6 +31,8 @@ import {
 import { EnhancedSortableCanvas } from '@/components/campaign-builder/enhanced-sortable-canvas'
 import { DragPreview } from '@/components/campaign-builder/drag-preview'
 import { cn } from '@/lib/utils'
+import { isQuestionSection } from '@/lib/utils/section-variables'
+import { createVariableName } from '@/lib/utils/variable-extractor'
 
 // Helper functions to convert between database and UI types
 const mapCampaignBuilderTypeToDatabase = (builderType: string): string => {
@@ -111,24 +113,23 @@ const convertCampaignSectionToDatabase = (section: CampaignSection, campaignId: 
 }
 
 export default function CampaignBuilderPage() {
-  const { user, loading } = useAuth()
-  const params = useParams()
   const router = useRouter()
-  
-  // State
+  const params = useParams()
+  const { user, loading } = useAuth()
+
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [sections, setSections] = useState<CampaignSection[]>([])
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [activeDragItem, setActiveDragItem] = useState<SectionType | CampaignSection | null>(null)
   const [showPublishModal, setShowPublishModal] = useState(false)
+  const [activeDragItem, setActiveDragItem] = useState<CampaignSection | null>(null)
+  const [isAutoReordering, setIsAutoReordering] = useState(false) // Track automatic reordering
 
-  // Section persistence hook
   const sectionPersistence = useSectionPersistence(params.id as string)
 
-  // DnD sensors
+  // DnD sensors for pointer interactions  
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -137,10 +138,11 @@ export default function CampaignBuilderPage() {
     })
   )
 
-  // Load campaign data
   useEffect(() => {
-    loadCampaign()
-  }, [])
+    if (user && params.id) {
+      loadCampaign()
+    }
+  }, [user, params.id])
 
   const loadCampaign = async () => {
     if (!params.id || typeof params.id !== 'string') {
@@ -324,11 +326,32 @@ export default function CampaignBuilderPage() {
         }
       }
       
+      // Generate unique title for question sections
+      let sectionTitle = sectionType.name
+      let wasRenamed = false
+      
+      if (isQuestionSection(sectionType.id)) {
+        const baseVariableName = createVariableName(sectionType.name)
+        const existingTitles = sections.map(s => s.title.toLowerCase())
+        
+        // Check if the base name already exists
+        let uniqueTitle = baseVariableName
+        let counter = 2
+        
+        while (existingTitles.includes(uniqueTitle)) {
+          uniqueTitle = `${baseVariableName}${counter}`
+          counter++
+          wasRenamed = true
+        }
+        
+        sectionTitle = uniqueTitle
+      }
+      
       // Create section with a high temporary order_index to avoid conflicts
       const sectionData = {
         campaign_id: campaign.id,
         type: mapCampaignBuilderTypeToDatabase(sectionType.id) as any,
-        title: sectionType.name,
+        title: sectionTitle,
         description: null,
         order_index: 9999, // Temporary high value to avoid constraint conflicts
         configuration: (sectionType.defaultSettings || {}) as any,
@@ -376,12 +399,23 @@ export default function CampaignBuilderPage() {
       // Select the newly added section
       setSelectedSectionId(newCampaignSection.id)
       
-      toast({
-        title: 'Section added',
-        description: selectedSectionId 
-          ? `${sectionType.name} section has been added below the selected section`
-          : `${sectionType.name} section has been added to your campaign`
-      })
+      // Show appropriate toast message with a slight delay to avoid timing issues
+      setTimeout(() => {
+        if (wasRenamed) {
+          toast({
+            title: '💡 Variable name updated',
+            description: `Added ${sectionType.name} section with variable name "${sectionTitle}". Consider naming it something more descriptive that reflects this section, so it's easily identifiable.`,
+            duration: 8000
+          })
+        } else {
+          toast({
+            title: 'Section added',
+            description: selectedSectionId 
+              ? `${sectionType.name} section has been added below the selected section`
+              : `${sectionType.name} section has been added to your campaign`
+          })
+        }
+      }, 100)
     } catch (err) {
       console.error('Error adding section:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to add section'
@@ -454,32 +488,37 @@ export default function CampaignBuilderPage() {
         throw new Error(result.error || 'Failed to delete section')
       }
       
+      // Update local state
       setSections(prev => {
         const filtered = prev.filter(section => section.id !== sectionId)
         // Reorder remaining sections
-        const reordered = filtered.map((section, index) => ({
+        return filtered.map((section, index) => ({
           ...section,
           order: index + 1,
           updatedAt: new Date().toISOString()
         }))
-        
-        // Update order in database for remaining sections
-        const reorderData = reordered.map(section => ({
+      })
+      
+      // Update order in database for remaining sections (after state update)
+      const remainingSections = sections.filter(section => section.id !== sectionId)
+      if (remainingSections.length > 0) {
+        setIsAutoReordering(true) // Mark as automatic reordering
+        const reorderData = remainingSections.map((section, index) => ({
           id: section.id,
-          order_index: section.order
+          order_index: index + 1
         }))
         
-        if (reorderData.length > 0) {
-          reorderSections(campaign.id, reorderData).catch(console.error)
-        }
-        
-        toast({
-          title: 'Section deleted',
-          description: 'Section has been removed from your campaign'
-        })
-        
-        return reordered
+        reorderSections(campaign.id, reorderData)
+          .catch(console.error)
+          .finally(() => setIsAutoReordering(false)) // Reset flag
+      }
+      
+      // Show success toast (outside of state setter)
+      toast({
+        title: 'Section deleted',
+        description: 'Section has been removed from your campaign'
       })
+      
     } catch (err) {
       console.error('Error deleting section:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete section'
@@ -493,27 +532,99 @@ export default function CampaignBuilderPage() {
     }
   }
 
-  const handleSectionDuplicate = (sectionId: string) => {
-    setSections(prev => {
-      const sectionToDuplicate = prev.find(section => section.id === sectionId)
-      if (!sectionToDuplicate) return prev
+  const handleSectionDuplicate = async (sectionId: string) => {
+    if (!campaign) return
 
-      const duplicatedSection: CampaignSection = {
-        ...sectionToDuplicate,
-        id: `section-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        title: `${sectionToDuplicate.title} (Copy)`,
-        order: prev.length + 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+    try {
+      setIsSaving(true)
+      
+      const sectionToDuplicate = sections.find(section => section.id === sectionId)
+      if (!sectionToDuplicate) {
+        throw new Error('Section to duplicate not found')
       }
+
+      // Find the position to insert (right after the original)
+      const originalIndex = sections.findIndex(s => s.id === sectionId)
+      const insertIndex = originalIndex + 1
+
+      // Generate unique title
+      let duplicateTitle = `${sectionToDuplicate.title} (Copy)`
+      let counter = 2
+      while (sections.some(s => s.title === duplicateTitle)) {
+        duplicateTitle = `${sectionToDuplicate.title} (Copy ${counter})`
+        counter++
+      }
+
+      // Create the duplicated section data for database
+      const sectionData = {
+        campaign_id: campaign.id,
+        type: mapCampaignBuilderTypeToDatabase(sectionToDuplicate.type) as any,
+        title: duplicateTitle,
+        description: null,
+        order_index: 9999, // Temporary high value to avoid constraint conflicts
+        configuration: sectionToDuplicate.settings as any,
+        required: false
+      }
+
+      // Create in database
+      const result = await createSection(sectionData)
+      
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to duplicate section')
+      }
+
+      const newCampaignSection = convertDatabaseSectionToCampaignSection(result.data as SectionWithOptions)
+      
+      // Update local state - insert at the correct position
+      setSections(prev => {
+        const newSections = [...prev]
+        // Insert the duplicate right after the original
+        newSections.splice(insertIndex, 0, newCampaignSection)
+        
+        // Update order indices for all sections
+        return newSections.map((section, index) => ({
+          ...section,
+          order: index + 1,
+          updatedAt: new Date().toISOString()
+        }))
+      })
+
+      // Reorder all sections in the database with correct order_indices
+      const allSectionsWithDuplicate = [...sections]
+      allSectionsWithDuplicate.splice(insertIndex, 0, newCampaignSection)
+      
+      const reorderData = allSectionsWithDuplicate.map((section, index) => ({
+        id: section.id,
+        order_index: index + 1
+      }))
+      
+      // Apply the reordering in database
+      if (reorderData.length > 0) {
+        const reorderResult = await reorderSections(campaign.id, reorderData)
+        if (!reorderResult.success) {
+          console.error('Failed to reorder sections after duplicate:', reorderResult.error)
+        }
+      }
+
+      // Select the newly duplicated section
+      setSelectedSectionId(newCampaignSection.id)
 
       toast({
         title: 'Section duplicated',
-        description: 'A copy of the section has been created'
+        description: `"${sectionToDuplicate.title}" has been duplicated below the original`
       })
 
-      return [...prev, duplicatedSection]
-    })
+    } catch (err) {
+      console.error('Error duplicating section:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to duplicate section'
+      toast({
+        title: 'Duplicate failed',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleSectionConfigure = (sectionId: string) => {
@@ -639,11 +750,14 @@ export default function CampaignBuilderPage() {
           return updatedItems
         })
         
-        toast({
-          title: 'Sections reordered',
-          description: 'Section order has been updated',
-          duration: 2000
-        })
+        // Only show reorder toast for user-initiated drag and drop (not automatic reordering after deletion)
+        if (!isAutoReordering) {
+          toast({
+            title: 'Sections reordered',
+            description: 'Section order has been updated',
+            duration: 2000
+          })
+        }
       }
     }
   }

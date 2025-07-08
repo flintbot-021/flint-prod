@@ -130,12 +130,12 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
 
         {/* Content */}
         <div className="relative z-10 text-center space-y-8 px-6 max-w-4xl">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-tight">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight">
             {title}
           </h1>
           
           {subtitle && (
-            <p className="text-xl md:text-2xl text-gray-700 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed">
               {subtitle}
             </p>
           )}
@@ -230,12 +230,14 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
         <InlineEditableText
           value={title}
           onSave={(newTitle) => updateSettings({ title: newTitle })}
-          autoSave={false}
+          variant="body"
           placeholder="Your Hero Title"
-          className="!text-4xl !font-bold text-center text-gray-400 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0"
-          inputClassName="!text-4xl !font-bold !border-0 !bg-transparent !shadow-none !outline-none !ring-0 text-center text-gray-400 placeholder:text-gray-600 focus:!bg-transparent hover:!bg-transparent"
+          className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
+          inputClassName="!text-4xl !font-bold !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
           showEditIcon={false}
-          variant="heading"
+          showSaveStatus={false}
+          multiline={false}
+          autoSave={false}
         />
       </div>
 
@@ -244,12 +246,14 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
         <InlineEditableText
           value={subtitle}
           onSave={(newSubtitle) => updateSettings({ subtitle: newSubtitle })}
-          autoSave={false}
-          placeholder="Add your compelling subtitle here"
-          className="!text-xl text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0"
-          inputClassName="!text-xl !border-0 !bg-transparent !shadow-none !outline-none !ring-0 text-center text-gray-500 placeholder:text-gray-600 focus:!bg-transparent hover:!bg-transparent"
-          showEditIcon={false}
           variant="body"
+          placeholder="Add your compelling subtitle here"
+          className="text-xl text-gray-500 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
+          inputClassName="!text-xl !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+          showEditIcon={false}
+          showSaveStatus={false}
+          multiline={false}
+          autoSave={false}
         />
       </div>
 

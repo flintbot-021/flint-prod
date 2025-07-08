@@ -23,7 +23,7 @@ export function HeroContentSection({
   const configAny = heroConfig as any
   const settings = {
     title: heroConfig.title || title || 'Hero Title',
-    subtitle: heroConfig.description || description || 'Hero subtitle',
+    subtitle: configAny.subtitle || heroConfig.description || description || 'Hero subtitle',
     backgroundImage: configAny.backgroundImage || configAny.image || '',
     overlayColor: heroConfig.overlayColor || '#000000',
     overlayOpacity: heroConfig.overlayOpacity ?? 40,

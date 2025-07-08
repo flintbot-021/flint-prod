@@ -406,6 +406,7 @@ export function SectionBlock({
         onTypeChange={handleTypeChange}
         onPreviewToggle={() => setIsPreview(!isPreview)}
         onVisibilityToggle={handleVisibilityToggle}
+        onDuplicate={() => onDuplicate(section.id)}
         onDelete={handleDelete}
         onConfigure={() => onConfigure?.(section.id)}
         onCollapseToggle={() => {
