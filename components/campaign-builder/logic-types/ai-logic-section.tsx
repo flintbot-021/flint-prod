@@ -800,21 +800,11 @@ export function AILogicSection({
                             const progressPercent = ((numericValue - minVal) / (maxVal - minVal)) * 100
                             
                             return (
-                              <div key={variable.name} className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <Label className="text-sm font-medium text-gray-700">
-                                    @{variable.name}: {variable.title}
-                                  </Label>
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-lg font-bold text-orange-600 font-mono min-w-[3ch] text-right">
-                                      {numericValue}
-                                    </span>
-                                    <span className="text-xs text-gray-500">
-                                      / {maxVal}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="px-4">
+                              <div key={variable.name} className="flex items-start space-x-4">
+                                <Label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
+                                  @{variable.name}:
+                                </Label>
+                                <div className="flex-1 space-y-2">
                                   <div className="relative group">
                                     <input
                                       type="range"
@@ -826,7 +816,7 @@ export function AILogicSection({
                                         updateTestInput(variable.name, e.target.value)
                                         saveTestInput(variable.name, e.target.value)
                                       }}
-                                      className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider transition-all duration-150 hover:h-4 focus:h-4 focus:outline-none"
+                                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider focus:outline-none"
                                       style={{
                                         background: `linear-gradient(to right, #f97316 0%, #f97316 ${progressPercent}%, #e5e7eb ${progressPercent}%, #e5e7eb 100%)`
                                       }}
@@ -864,8 +854,16 @@ export function AILogicSection({
                                       }
                                     `}</style>
                                   </div>
-                                  <div className="flex justify-between text-xs text-gray-500 mt-2">
+                                  <div className="flex justify-between items-center text-xs text-gray-500">
                                     <span className="font-medium">{sliderConfig?.minLabel || 'Low'}</span>
+                                    <div className="flex items-center space-x-1">
+                                      <span className="text-xs font-bold text-orange-600 font-mono">
+                                        {numericValue}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        / {maxVal}
+                                      </span>
+                                    </div>
                                     <span className="font-medium">{sliderConfig?.maxLabel || 'High'}</span>
                                   </div>
                                 </div>
@@ -884,7 +882,7 @@ export function AILogicSection({
                                 <Label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
                                   @{variable.name}:
                                 </Label>
-                                <div className="flex-1 space-y-2">
+                                <div className="flex-1 grid grid-cols-2 gap-2">
                                   {options.map((option: any, index: number) => {
                                     // Handle different option formats
                                     let optionValue = ''
@@ -915,14 +913,18 @@ export function AILogicSection({
                                           updateTestInput(variable.name, optionValue)
                                           saveTestInput(variable.name, optionValue)
                                         }}
-                                        className={`w-full text-left px-3 py-2 rounded-md border transition-all duration-200 text-sm focus:outline-none flex items-center justify-between ${
+                                        className={`text-left px-3 py-2 rounded-md border transition-all duration-200 text-sm focus:outline-none flex items-center justify-between ${
                                           isSelected 
-                                            ? 'bg-blue-50 border-blue-300 text-blue-900' 
+                                            ? 'bg-orange-50 border-orange-300 text-orange-900' 
                                             : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
                                         }`}
                                       >
                                         <span>{optionDisplay}</span>
-                                        {isSelected && <Check className="w-4 h-4 text-green-600 flex-shrink-0" />}
+                                        {isSelected ? (
+                                          <Check className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                                        ) : (
+                                          <div className="w-4 h-4 border border-gray-300 rounded flex-shrink-0"></div>
+                                        )}
                                       </button>
                                     )
                                   })}
@@ -1040,23 +1042,13 @@ export function AILogicSection({
                     {/* File Variables */}
                     {fileVariables.length > 0 && (
                       <div className="space-y-4">
-                        <h4 className="text-sm font-medium text-gray-700 flex items-center space-x-2">
-                          <Upload className="w-4 h-4" />
-                          <span>Test File Uploads</span>
-                        </h4>
-                        <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-                          <p className="text-sm text-gray-600 mb-3">
-                            Upload test files to see how your AI will process them:
-                          </p>
-                          {fileVariables.map((variable) => (
-                            <div key={variable.name} className="space-y-2">
+                        {fileVariables.map((variable) => (
+                          <div key={variable.name} className="flex items-start space-x-4">
+                            <Label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
+                              @{variable.name}:
+                            </Label>
+                            <div className="flex-1">
                               <div className="flex items-center space-x-3">
-                                <Badge variant="outline" className="border-purple-500 text-purple-700">
-                                  @{variable.name}
-                                </Badge>
-                                <span className="text-sm text-gray-600">{variable.title}</span>
-                              </div>
-                              <div className="ml-4">
                                 <input
                                   type="file"
                                   onChange={(e) => {
@@ -1067,24 +1059,18 @@ export function AILogicSection({
                                            file:mr-4 file:py-2 file:px-4
                                            file:rounded-md file:border-0
                                            file:text-sm file:font-medium
-                                           file:bg-purple-600 file:text-white
-                                           hover:file:bg-purple-700
+                                           file:bg-orange-600 file:text-white
+                                           hover:file:bg-orange-700
                                            file:cursor-pointer"
                                   accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
                                 />
                                 {(settings.testFiles || {})[variable.name] && (
-                                  <p className="text-xs text-green-600 mt-1 flex items-center space-x-1">
-                                    <Check className="w-3 h-3" />
-                                    <span>✓ {(settings.testFiles || {})[variable.name]?.name}</span>
-                                  </p>
+                                  <Check className="w-4 h-4 text-orange-600 flex-shrink-0" />
                                 )}
                               </div>
                             </div>
-                          ))}
-                          <p className="text-xs text-gray-500 mt-3">
-                            💡 These test files will be analyzed during AI testing to show you exactly how your prompts work with real content.
-                          </p>
-                        </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
