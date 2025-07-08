@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { WebVitals } from "@/components/analytics/web-vitals";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -33,6 +34,7 @@ export default function RootLayout({
           <AuthProvider>
             <WebVitals />
             {children}
+            <Toaster />
           </AuthProvider>
         </ErrorBoundary>
       </body>

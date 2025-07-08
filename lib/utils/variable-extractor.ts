@@ -318,7 +318,7 @@ export function extractRichContextForSection(
 /**
  * Create a valid variable name from a section title
  */
-function createVariableName(title: string): string {
+export function createVariableName(title: string): string {
   if (!title) return 'untitled_variable'
   
   return title
