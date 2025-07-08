@@ -150,9 +150,7 @@ export function AILogicSection({
     setPromptValue(settings.prompt || '')
   }, [settings.prompt])
   
-  useEffect(() => {
-    setLocalTestInputs(settings.testInputs || {})
-  }, [settings.testInputs])
+
   
   useEffect(() => {
     setLocalOutputVariables(settings.outputVariables || [])
@@ -324,10 +322,13 @@ export function AILogicSection({
     // Check if we have variables and all required inputs are provided
     if (extractedVariablesWithTypes.length === 0) return false
     
-    // For text variables, require test inputs
-    const missingTextInputs = textVariables.filter(variable => 
-      !(settings.testInputs || {})[variable.name] || (settings.testInputs || {})[variable.name]?.trim() === ''
-    )
+    // For text variables, require test inputs (check both saved and local values)
+    const missingTextInputs = textVariables.filter(variable => {
+      const savedValue = (settings.testInputs || {})[variable.name]
+      const localValue = localTestInputs[variable.name]
+      const hasValue = (savedValue && savedValue.trim()) || (localValue && localValue.trim())
+      return !hasValue
+    })
     
     // For file variables, require test files
     const missingTestFiles = fileVariables.filter(variable => 
@@ -479,32 +480,16 @@ export function AILogicSection({
     }
   }, [knowledgeBaseEnabled, campaignId])
 
-  // Debounced test input updates
-  const testInputTimeouts = useRef<Record<string, NodeJS.Timeout>>({})
-  
+  // Simple test input updates
   const updateTestInput = useCallback((variableName: string, value: string) => {
     // Update local state immediately for responsive UI
     setLocalTestInputs(prev => ({ ...prev, [variableName]: value }))
-    
-    // Clear existing timeout for this variable
-    if (testInputTimeouts.current[variableName]) {
-      clearTimeout(testInputTimeouts.current[variableName])
-    }
-    
-    // For sliders, update settings immediately (no debounce needed)
-    const isSliderUpdate = typeof value === 'string' && /^\d+(\.\d+)?$/.test(value)
-    
-    if (isSliderUpdate) {
-      const newTestInputs = { ...(settings.testInputs || {}), [variableName]: value }
-      handleSettingChange('testInputs', newTestInputs)
-    } else {
-      // For text inputs, debounce the settings update
-      testInputTimeouts.current[variableName] = setTimeout(() => {
-        const newTestInputs = { ...(settings.testInputs || {}), [variableName]: value }
-        handleSettingChange('testInputs', newTestInputs)
-        delete testInputTimeouts.current[variableName]
-      }, 300) // 300ms debounce
-    }
+  }, [])
+
+  const saveTestInput = useCallback((variableName: string, value: string) => {
+    // Save to settings on blur
+    const newTestInputs = { ...(settings.testInputs || {}), [variableName]: value }
+    handleSettingChange('testInputs', newTestInputs)
   }, [settings.testInputs, handleSettingChange])
 
   const updateTestFile = useCallback((variableName: string, file: File | null) => {
@@ -549,10 +534,13 @@ export function AILogicSection({
         return
       }
 
-      // Check if all text inputs are provided
-      const missingTextInputs = textVariables.filter(variable => 
-        !(settings.testInputs || {})[variable.name] || (settings.testInputs || {})[variable.name]?.trim() === ''
-      )
+      // Check if all text inputs are provided (check both saved and local values)
+      const missingTextInputs = textVariables.filter(variable => {
+        const savedValue = (settings.testInputs || {})[variable.name]
+        const localValue = localTestInputs[variable.name]
+        const hasValue = (savedValue && savedValue.trim()) || (localValue && localValue.trim())
+        return !hasValue
+      })
       
       if (missingTextInputs.length > 0) {
         setTestResult(`Please provide example answers for: ${missingTextInputs.map(v => '@' + v.name).join(', ')}`)
@@ -569,8 +557,8 @@ export function AILogicSection({
         return
       }
 
-      // Prepare the AI test request
-      const testVariables = { ...(settings.testInputs || {}) }
+      // Prepare the AI test request - merge saved and local values
+      const testVariables = { ...(settings.testInputs || {}), ...localTestInputs }
       
       // Fetch knowledge base context and files if enabled
       const knowledgeBaseData = await fetchKnowledgeBaseForAI()
@@ -834,7 +822,10 @@ export function AILogicSection({
                                       max={maxVal}
                                       step={sliderConfig?.step || 1}
                                       value={numericValue}
-                                      onChange={(e) => updateTestInput(variable.name, e.target.value)}
+                                      onChange={(e) => {
+                                        updateTestInput(variable.name, e.target.value)
+                                        saveTestInput(variable.name, e.target.value)
+                                      }}
                                       className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider transition-all duration-150 hover:h-4 focus:h-4 focus:outline-none"
                                       style={{
                                         background: `linear-gradient(to right, #f97316 0%, #f97316 ${progressPercent}%, #e5e7eb ${progressPercent}%, #e5e7eb 100%)`
@@ -922,6 +913,7 @@ export function AILogicSection({
                                           e.preventDefault()
                                           console.log('Clicked option:', optionValue, 'for variable:', variable.name)
                                           updateTestInput(variable.name, optionValue)
+                                          saveTestInput(variable.name, optionValue)
                                         }}
                                         className={`w-full text-left px-3 py-2 rounded-md border transition-all duration-200 text-sm focus:outline-none flex items-center justify-between ${
                                           isSelected 
@@ -990,6 +982,7 @@ export function AILogicSection({
                                 newValue = value
                               }
                               updateTestInput(variable.name, newValue)
+                              saveTestInput(variable.name, newValue)
                             }
                             
                             return (
@@ -1029,10 +1022,11 @@ export function AILogicSection({
                                   @{variable.name}:
                                 </Label>
                                 <Input
-                                  value={localTestInputs[variable.name] !== undefined 
-                                    ? localTestInputs[variable.name] 
-                                    : (settings.testInputs || {})[variable.name] || ''}
-                                  onChange={(e) => updateTestInput(variable.name, e.target.value)}
+                                                                value={localTestInputs[variable.name] !== undefined
+                                ? localTestInputs[variable.name]
+                                : (settings.testInputs || {})[variable.name] || ''}
+                              onChange={(e) => updateTestInput(variable.name, e.target.value)}
+                              onBlur={(e) => saveTestInput(variable.name, e.target.value)}
                                   placeholder={`Example answer for ${variable.title}`}
                                   className="flex-1 bg-white border-gray-300 text-gray-900 placeholder-gray-500"
                                 />
