@@ -224,26 +224,7 @@ export function SectionBottomBar({
           </div>
         )}
 
-        {/* Basic Section Text Alignment Controls */}
-        {isBasicSection && (
-          <div className="flex items-center space-x-2 text-sm">
-            <span className="text-gray-500">Align:</span>
-            {(['left', 'center', 'right'] as const).map((alignment) => (
-              <button
-                key={alignment}
-                onClick={() => updateBasicSettings({ textAlignment: alignment })}
-                className={cn(
-                  "px-2 py-1 rounded text-xs font-medium transition-colors capitalize",
-                  textAlignment === alignment 
-                    ? "bg-blue-600 text-white" 
-                    : "bg-gray-600 text-gray-300 hover:bg-gray-500"
-                )}
-              >
-                {alignment}
-              </button>
-            ))}
-          </div>
-        )}
+
       </div>
 
       {/* Right Side - Controls */}

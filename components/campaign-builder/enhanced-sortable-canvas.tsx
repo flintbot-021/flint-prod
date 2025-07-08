@@ -24,13 +24,15 @@ interface EnhancedSortableCanvasProps {
   onSectionConfigure?: (sectionId: string) => void
   onSectionTypeChange?: (sectionId: string, newType: string) => void
   onSectionAdd: (sectionType: SectionType) => Promise<void>
+  selectedSectionId?: string | null
+  onSectionSelect?: (sectionId: string | null) => void
   className?: string
   showCollapsedSections?: boolean
   campaignId: string
   sectionPersistence?: SectionPersistence
 }
 
-export function EnhancedSortableCanvas({ 
+export function EnhancedSortableCanvas({
   sections,
   onSectionUpdate,
   onSectionDelete,
@@ -38,6 +40,8 @@ export function EnhancedSortableCanvas({
   onSectionConfigure,
   onSectionTypeChange,
   onSectionAdd,
+  selectedSectionId,
+  onSectionSelect,
   className,
   showCollapsedSections = true,
   campaignId,
@@ -147,6 +151,8 @@ export function EnhancedSortableCanvas({
                   onDuplicate={onSectionDuplicate}
                   onConfigure={onSectionConfigure}
                   onTypeChange={onSectionTypeChange}
+                  isSelected={selectedSectionId === section.id}
+                  onSelect={() => onSectionSelect?.(section.id)}
                   isCollapsible={showCollapsedSections}
                   initiallyCollapsed={sectionPersistence?.isSectionCollapsed(section.id) ?? true}
                   onCollapseChange={sectionPersistence?.setSectionCollapsed}
