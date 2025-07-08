@@ -1291,37 +1291,10 @@ export function AILogicSection({
             {expandedSections.step3 && (
               <div className="mt-6">
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between">
+                  <div className="mb-6">
                     <p className="text-sm text-gray-600">
                       Define variables that the AI will generate, like @recommendation or @score
                     </p>
-                    <div className="flex items-center space-x-2">
-                      {currentAvailableVariables.length > 0 && (
-                                              <Button
-                        onClick={generateOutputs}
-                        disabled={isGeneratingOutputs || !settings.prompt?.trim()}
-                        size="sm"
-                        variant="outline"
-                        className="border-purple-500 text-purple-700 hover:bg-purple-50 hover:border-purple-600"
-                      >
-                        {isGeneratingOutputs ? (
-                          <>
-                            <div className="animate-spin h-4 w-4 mr-2 border-2 border-purple-700 border-t-transparent rounded-full" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Suggest my outputs
-                          </>
-                        )}
-                      </Button>
-                      )}
-                      <Button onClick={addOutputVariable} size="sm" variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50">
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Output
-                      </Button>
-                    </div>
                   </div>
 
                   <div className="space-y-4">
@@ -1385,6 +1358,35 @@ export function AILogicSection({
                         <p className="text-sm">Add variables that the AI should generate</p>
                       </div>
                     )}
+                    
+                    {/* Action buttons at the bottom */}
+                    <div className="flex justify-center items-center space-x-3 pt-4">
+                      <Button onClick={addOutputVariable} size="sm" variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Output
+                      </Button>
+                      {currentAvailableVariables.length > 0 && (
+                        <Button
+                          onClick={generateOutputs}
+                          disabled={isGeneratingOutputs || !settings.prompt?.trim()}
+                          size="sm"
+                          variant="outline"
+                          className="border-purple-500 text-purple-700 hover:bg-purple-50 hover:border-purple-600"
+                        >
+                          {isGeneratingOutputs ? (
+                            <>
+                              <div className="animate-spin h-4 w-4 mr-2 border-2 border-purple-700 border-t-transparent rounded-full" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4 mr-2" />
+                              Suggest my outputs
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
