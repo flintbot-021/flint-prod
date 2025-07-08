@@ -155,7 +155,7 @@ export function SectionsMenu({ className, onSectionAdd }: SectionsMenuProps) {
 
                   {/* Category Sections */}
                   {isExpanded && (
-                    <div className="px-4 pb-4 space-y-3">
+                    <div className="px-4 pt-3 pb-4 space-y-3">
                       {getCategorySections(category.id).map((sectionType) => (
                         <SectionTypeCard
                           key={sectionType.id}
