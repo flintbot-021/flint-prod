@@ -240,8 +240,10 @@ ${richContext.variables.map(v => `@${v}`).join(', ')}
 Always include the full question text before mentioning the variable to provide proper context.
 
 ${outputVars.length > 0 ? `
-The prompt should generate these outputs:
+The user already has these existing outputs defined:
 ${outputVars.map(v => `- ${v.name}: ${v.description}`).join('\n')}
+
+DO NOT include these existing outputs in your response. Only suggest NEW, ADDITIONAL outputs that complement the existing ones.
 ` : ''}
 
 ${request.existingPrompt ? `
@@ -259,14 +261,23 @@ Return your response as JSON:
   "reasoning": "Brief explanation of your approach"
 }
 
-For outputVariables, suggest 2-4 meaningful variables that the AI should generate based on the campaign context. Consider variables like:
+IMPORTANT: The "outputVariables" array should contain ONLY the NEW additional output variables you are suggesting. Do NOT include any existing outputs that were already provided above.
+
+For outputVariables, suggest exactly 2 NEW meaningful variables that the AI should generate based on the campaign context. Consider variables like:
 - recommendation, advice, plan, strategy (for personalized guidance)
 - score, rating, percentage (for numerical assessments) 
 - insights, analysis, summary (for analytical content)
 - timeline, duration, steps (for process-oriented outputs)
 - category, type, level (for classification)
 
-Make it conversational and helpful. Remember to include the @variable references in the prompt.`
+IMPORTANT: 
+- Generate exactly 2 NEW output variables that are DIFFERENT from any existing outputs
+- Be creative and innovative - think of unique variables that would be valuable for this specific campaign context
+- Do NOT repeat or include any existing output variable names
+
+Make it conversational and helpful. Remember to include the @variable references in the prompt.
+
+Random seed: ${Math.random().toString(36).substring(7)}`
 
     return prompt
   }
@@ -295,7 +306,10 @@ Make it conversational and helpful. Remember to include the @variable references
           }
         ],
         max_tokens: this.MAX_TOKENS,
-        temperature: this.TEMPERATURE,
+        temperature: 0.9, // Higher temperature for more randomness
+        top_p: 0.95, // Add nucleus sampling for more variety
+        frequency_penalty: 0.3, // Reduce repetition
+        presence_penalty: 0.3, // Encourage new concepts
         response_format: { type: 'json_object' }
       })
     })

@@ -271,15 +271,38 @@ export function AILogicSection({
     setIsGeneratingOutputs(true)
 
     try {
+      // Get existing outputs that have both name and description filled (to use as examples)
+      const existingValidOutputs = settings.outputVariables.filter(v => 
+        v.name.trim() && v.description.trim()
+      )
+
+
+
+      // Add variety to the prompt to ensure different suggestions each time
+      const variations = [
+        "Focus on actionable insights and recommendations",
+        "Emphasize emotional and motivational aspects", 
+        "Prioritize practical tools and resources",
+        "Consider behavioral and psychological factors",
+        "Think about long-term outcomes and progress tracking",
+        "Focus on immediate next steps and quick wins",
+        "Consider personalization and customization aspects",
+        "Think about community and social elements"
+      ]
+      
+      const randomVariation = variations[Math.floor(Math.random() * variations.length)]
+      const randomSeed = Math.random().toString(36).substring(7)
+      
       const request: PromptGenerationRequest = {
         sections: allSections,
         currentSectionOrder: section.order,
-        existingPrompt: settings.prompt, // Use current prompt for context
-        outputVariables: settings.outputVariables.map(v => ({
+        existingPrompt: settings.prompt + `\n\n[Generate 2 additional unique output variables that complement the existing ones. ${randomVariation}. Seed: ${randomSeed}]`,
+        outputVariables: existingValidOutputs.map(v => ({
           name: v.name,
           description: v.description
         }))
       }
+
 
       const response = await fetch('/api/generate-prompt', {
         method: 'POST',
@@ -296,18 +319,19 @@ export function AILogicSection({
       const result: PromptGenerationResponse = await response.json()
 
       if (result.success && result.suggestedOutputVariables?.length > 0) {
-        // Take max 2 outputs only
-        const maxOutputs = result.suggestedOutputVariables.slice(0, 2)
-        const newOutputVariables = [
-          ...maxOutputs.map((suggested, index) => ({
-            id: (Date.now() + index).toString(),
-            name: suggested.name,
-            description: suggested.description
-          }))
-        ]
+        // Since AI now only returns new outputs, we can use all of them
+        const newSuggestedOutputs = result.suggestedOutputVariables.map((suggested, index) => ({
+          id: (Date.now() + index).toString(),
+          name: suggested.name,
+          description: suggested.description
+        }))
         
-        handleSettingChange('outputVariables', newOutputVariables)
-        console.log('✅ Output variables generated successfully')
+        // Keep existing outputs and add new suggested ones
+        const updatedOutputVariables = [...settings.outputVariables, ...newSuggestedOutputs]
+        
+        // Update both local state and settings
+        setLocalOutputVariables(updatedOutputVariables)
+        handleSettingChange('outputVariables', updatedOutputVariables)
       }
 
     } catch (error) {
