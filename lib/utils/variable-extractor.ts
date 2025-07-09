@@ -323,7 +323,7 @@ export function createVariableName(title: string): string {
   
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+    .replace(/[^a-z0-9\s_]/g, '') // Remove special characters but keep underscores
     .replace(/\s+/g, '_') // Replace spaces with underscores
     .replace(/^_+|_+$/g, '') // Remove leading/trailing underscores
     .replace(/_+/g, '_') // Replace multiple underscores with single
@@ -347,13 +347,14 @@ export function sanitizeVariableName(name: string): string {
   if (!name) return 'variable'
   
   let sanitized = name
-    .replace(/[^a-zA-Z0-9_]/g, '_')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
     .replace(/^[0-9]+/, '') // Remove leading numbers
     .replace(/_+/g, '_') // Replace multiple underscores
     .replace(/^_+|_+$/g, '') // Remove leading/trailing underscores
   
   // Ensure it starts with a letter or underscore
-  if (sanitized && !/^[a-zA-Z_]/.test(sanitized)) {
+  if (sanitized && !/^[a-z_]/.test(sanitized)) {
     sanitized = 'var_' + sanitized
   }
   

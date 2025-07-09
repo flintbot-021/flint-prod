@@ -165,6 +165,11 @@ function OutputItem({
   const [isEditing, setIsEditing] = useState(false)
   const [editingOutput, setEditingOutput] = useState<OutputDefinition>(output)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [touchedFields, setTouchedFields] = useState<{ name: boolean; description: boolean }>({
+    name: false,
+    description: false
+  })
+  const [fieldErrors, setFieldErrors] = useState<{ name?: string; description?: string }>({})
 
   const hasErrors = errors.length > 0
   const hasWarnings = warnings.length > 0
@@ -176,14 +181,57 @@ function OutputItem({
       return // Don't save invalid names
     }
     
+    // Check if description is also provided
+    if (!editingOutput.description.trim()) {
+      setTouchedFields({ name: true, description: true })
+      setFieldErrors({ description: 'Description is required' })
+      return
+    }
+    
     onUpdate(editingOutput)
     setIsEditing(false)
+    setTouchedFields({ name: false, description: false })
+    setFieldErrors({})
   }, [editingOutput, onUpdate])
 
   const handleCancel = useCallback(() => {
     setEditingOutput(output)
     setIsEditing(false)
+    setTouchedFields({ name: false, description: false })
+    setFieldErrors({})
   }, [output])
+
+  const validateField = useCallback((field: 'name' | 'description', value: string) => {
+    const errors: { name?: string; description?: string } = {}
+    
+    if (field === 'name') {
+      if (!value.trim()) {
+        errors.name = 'Name is required'
+      } else {
+        const nameValidation = validateOutputName(value)
+        if (!nameValidation.isValid) {
+          errors.name = nameValidation.error
+        }
+      }
+    }
+    
+    if (field === 'description') {
+      if (!value.trim()) {
+        errors.description = 'Description is required'
+      }
+    }
+    
+    return errors
+  }, [])
+
+  const handleFieldBlur = useCallback((field: 'name' | 'description') => {
+    setTouchedFields(prev => ({ ...prev, [field]: true }))
+    
+    const value = field === 'name' ? editingOutput.name : editingOutput.description
+    const errors = validateField(field, value)
+    
+    setFieldErrors(prev => ({ ...prev, ...errors }))
+  }, [editingOutput.name, editingOutput.description, validateField])
 
   if (isEditing) {
     return (
@@ -210,10 +258,30 @@ function OutputItem({
               </label>
               <Input
                 value={editingOutput.name}
-                onChange={(e) => setEditingOutput({ ...editingOutput, name: e.target.value })}
+                onChange={(e) => {
+                  const newValue = e.target.value
+                  setEditingOutput({ ...editingOutput, name: newValue })
+                  // Clear field error if user provides a valid value
+                  if (touchedFields.name && fieldErrors.name && newValue.trim()) {
+                    const errors = validateField('name', newValue)
+                    if (!errors.name) {
+                      setFieldErrors(prev => ({ ...prev, name: undefined }))
+                    }
+                  }
+                }}
+                onBlur={() => handleFieldBlur('name')}
                 placeholder="e.g., recommendation, score, summary"
                 disabled={disabled}
+                className={cn(
+                  touchedFields.name && fieldErrors.name && "border-red-500 focus-visible:ring-red-500"
+                )}
               />
+              {touchedFields.name && fieldErrors.name && (
+                <div className="flex items-center space-x-1 text-red-600 text-xs mt-1">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>{fieldErrors.name}</span>
+                </div>
+              )}
             </div>
             <div>
               <label className="text-sm font-medium text-foreground mb-1 block">
@@ -252,11 +320,28 @@ function OutputItem({
             </label>
             <Textarea
               value={editingOutput.description}
-              onChange={(e) => setEditingOutput({ ...editingOutput, description: e.target.value })}
+              onChange={(e) => {
+                const newValue = e.target.value
+                setEditingOutput({ ...editingOutput, description: newValue })
+                // Clear field error if user provides a valid value
+                if (touchedFields.description && fieldErrors.description && newValue.trim()) {
+                  setFieldErrors(prev => ({ ...prev, description: undefined }))
+                }
+              }}
+              onBlur={() => handleFieldBlur('description')}
               placeholder="Describe what this output should contain..."
               disabled={disabled}
               rows={2}
+              className={cn(
+                touchedFields.description && fieldErrors.description && "border-red-500 focus-visible:ring-red-500"
+              )}
             />
+            {touchedFields.description && fieldErrors.description && (
+              <div className="flex items-center space-x-1 text-red-600 text-xs mt-1">
+                <AlertCircle className="h-3 w-3" />
+                <span>{fieldErrors.description}</span>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
@@ -374,7 +459,11 @@ function OutputItem({
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => setIsEditing(true)}
+              onClick={() => {
+                setIsEditing(true)
+                setTouchedFields({ name: false, description: false })
+                setFieldErrors({})
+              }}
               disabled={disabled}
             >
               <Edit3 className="h-4 w-4" />

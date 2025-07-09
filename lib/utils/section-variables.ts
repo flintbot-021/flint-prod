@@ -7,7 +7,7 @@ import { SectionWithOptions } from '@/lib/types/database'
 export function titleToVariableName(title: string): string {
   return title
     .toLowerCase()
-    .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special chars
+    .replace(/[^a-zA-Z0-9\s_]/g, '') // Remove special chars but keep underscores
     .replace(/\s+/g, '_') // Replace spaces with underscores
     .replace(/_{2,}/g, '_') // Remove multiple underscores
     .replace(/^_|_$/g, '') // Remove leading/trailing underscores
@@ -241,4 +241,136 @@ export function getVariablesFromSections(sections: any[]): Array<{name: string; 
   })
   
   return variables
+} 
+
+/**
+ * Update variable references in text content
+ * @param content - The text content to update
+ * @param oldVariableName - The old variable name (without @)
+ * @param newVariableName - The new variable name (without @)
+ * @returns Updated content with variable references changed
+ */
+export function updateVariableReferences(
+  content: string,
+  oldVariableName: string,
+  newVariableName: string
+): string {
+  if (!content || !oldVariableName || !newVariableName || oldVariableName === newVariableName) {
+    return content
+  }
+
+  // Create regex to match @oldVariableName with word boundaries
+  const regex = new RegExp(`@${oldVariableName}\\b`, 'g')
+  
+  // Replace all occurrences
+  return content.replace(regex, `@${newVariableName}`)
+}
+
+/**
+ * Update variable references in AI logic section settings
+ * @param settings - The AI logic section settings
+ * @param oldVariableName - The old variable name (without @)
+ * @param newVariableName - The new variable name (without @)
+ * @returns Updated settings with variable references changed
+ */
+export function updateAILogicVariableReferences(
+  settings: any,
+  oldVariableName: string,
+  newVariableName: string
+): any {
+  if (!settings || !oldVariableName || !newVariableName || oldVariableName === newVariableName) {
+    return settings
+  }
+
+  const updatedSettings = { ...settings }
+  let hasChanges = false
+
+  // Update prompt if it exists and contains the variable
+  if (updatedSettings.prompt) {
+    const updatedPrompt = updateVariableReferences(
+      updatedSettings.prompt,
+      oldVariableName,
+      newVariableName
+    )
+    if (updatedPrompt !== updatedSettings.prompt) {
+      updatedSettings.prompt = updatedPrompt
+      hasChanges = true
+    }
+  }
+
+  // Update testInputs keys if they match the old variable name
+  // (Preserve the VALUES, just update the KEYS if they match)
+  if (updatedSettings.testInputs) {
+    const updatedTestInputs = { ...updatedSettings.testInputs }
+    if (updatedTestInputs[oldVariableName] !== undefined) {
+      updatedTestInputs[newVariableName] = updatedTestInputs[oldVariableName]
+      delete updatedTestInputs[oldVariableName]
+      updatedSettings.testInputs = updatedTestInputs
+      hasChanges = true
+    }
+  }
+
+  // Update testFiles keys if they match the old variable name
+  // (Preserve the file VALUES, just update the KEYS if they match)
+  if (updatedSettings.testFiles) {
+    const updatedTestFiles = { ...updatedSettings.testFiles }
+    if (updatedTestFiles[oldVariableName] !== undefined) {
+      updatedTestFiles[newVariableName] = updatedTestFiles[oldVariableName]
+      delete updatedTestFiles[oldVariableName]
+      updatedSettings.testFiles = updatedTestFiles
+      hasChanges = true
+    }
+  }
+
+  // Only return updated settings if there were actual changes
+  return hasChanges ? updatedSettings : settings
+}
+
+/**
+ * Update variable references in output section settings
+ * @param settings - The output section settings
+ * @param oldVariableName - The old variable name (without @)
+ * @param newVariableName - The new variable name (without @)
+ * @returns Updated settings with variable references changed
+ */
+export function updateOutputSectionVariableReferences(
+  settings: any,
+  oldVariableName: string,
+  newVariableName: string
+): any {
+  if (!settings || !oldVariableName || !newVariableName || oldVariableName === newVariableName) {
+    return settings
+  }
+
+  const updatedSettings = { ...settings }
+  let hasChanges = false
+
+  // Update template if it exists and contains the variable
+  if (updatedSettings.template) {
+    const updatedTemplate = updateVariableReferences(
+      updatedSettings.template,
+      oldVariableName,
+      newVariableName
+    )
+    if (updatedTemplate !== updatedSettings.template) {
+      updatedSettings.template = updatedTemplate
+      hasChanges = true
+    }
+  }
+
+  // Update content if it exists and contains the variable
+  if (updatedSettings.content) {
+    const updatedContent = updateVariableReferences(
+      updatedSettings.content,
+      oldVariableName,
+      newVariableName
+    )
+    if (updatedContent !== updatedSettings.content) {
+      updatedSettings.content = updatedContent
+      hasChanges = true
+    }
+  }
+
+  // Only return updated settings if there were actual changes
+  return hasChanges ? updatedSettings : settings
 } 

@@ -137,6 +137,10 @@ export function AILogicSection({
   const [promptValue, setPromptValue] = useState(settings.prompt || '')
   const [localOutputVariables, setLocalOutputVariables] = useState<OutputVariable[]>(settings.outputVariables || [])
   
+  // Validation state for output variables
+  const [touchedOutputs, setTouchedOutputs] = useState<Record<string, { name: boolean; description: boolean }>>({})
+  const [outputErrors, setOutputErrors] = useState<Record<string, { name?: string; description?: string }>>({})
+  
   // Knowledge base state
   const [knowledgeBaseEnabled, setKnowledgeBaseEnabled] = useState(settings.knowledgeBase?.enabled || false)
   const [showKnowledgeBaseModal, setShowKnowledgeBaseModal] = useState(false)
@@ -146,9 +150,7 @@ export function AILogicSection({
     setPromptValue(settings.prompt || '')
   }, [settings.prompt])
   
-  useEffect(() => {
-    setLocalTestInputs(settings.testInputs || {})
-  }, [settings.testInputs])
+
   
   useEffect(() => {
     setLocalOutputVariables(settings.outputVariables || [])
@@ -269,15 +271,38 @@ export function AILogicSection({
     setIsGeneratingOutputs(true)
 
     try {
+      // Get existing outputs that have both name and description filled (to use as examples)
+      const existingValidOutputs = settings.outputVariables.filter(v => 
+        v.name.trim() && v.description.trim()
+      )
+
+
+
+      // Add variety to the prompt to ensure different suggestions each time
+      const variations = [
+        "Focus on actionable insights and recommendations",
+        "Emphasize emotional and motivational aspects", 
+        "Prioritize practical tools and resources",
+        "Consider behavioral and psychological factors",
+        "Think about long-term outcomes and progress tracking",
+        "Focus on immediate next steps and quick wins",
+        "Consider personalization and customization aspects",
+        "Think about community and social elements"
+      ]
+      
+      const randomVariation = variations[Math.floor(Math.random() * variations.length)]
+      const randomSeed = Math.random().toString(36).substring(7)
+      
       const request: PromptGenerationRequest = {
         sections: allSections,
         currentSectionOrder: section.order,
-        existingPrompt: settings.prompt, // Use current prompt for context
-        outputVariables: settings.outputVariables.map(v => ({
+        existingPrompt: settings.prompt + `\n\n[Generate 2 additional unique output variables that complement the existing ones. ${randomVariation}. Seed: ${randomSeed}]`,
+        outputVariables: existingValidOutputs.map(v => ({
           name: v.name,
           description: v.description
         }))
       }
+
 
       const response = await fetch('/api/generate-prompt', {
         method: 'POST',
@@ -294,32 +319,19 @@ export function AILogicSection({
       const result: PromptGenerationResponse = await response.json()
 
       if (result.success && result.suggestedOutputVariables?.length > 0) {
-        // Take max 2 outputs and add an empty one for user input
-        const maxOutputs = result.suggestedOutputVariables.slice(0, 2)
-        const newOutputVariables = [
-          ...maxOutputs.map((suggested, index) => ({
-            id: (Date.now() + index).toString(),
-            name: suggested.name,
-            description: suggested.description
-          })),
-          // Add empty one for user input
-          {
-            id: (Date.now() + 999).toString(),
-            name: '',
-            description: ''
-          }
-        ]
+        // Since AI now only returns new outputs, we can use all of them
+        const newSuggestedOutputs = result.suggestedOutputVariables.map((suggested, index) => ({
+          id: (Date.now() + index).toString(),
+          name: suggested.name,
+          description: suggested.description
+        }))
         
-        handleSettingChange('outputVariables', newOutputVariables)
-        console.log('✅ Output variables generated successfully')
+        // Keep existing outputs and add new suggested ones
+        const updatedOutputVariables = [...settings.outputVariables, ...newSuggestedOutputs]
         
-        // Focus the last (empty) input after a brief delay
-        setTimeout(() => {
-          const lastInput = document.querySelector('[data-output-variable-name]:last-of-type input')
-          if (lastInput instanceof HTMLInputElement) {
-            lastInput.focus()
-          }
-        }, 100)
+        // Update both local state and settings
+        setLocalOutputVariables(updatedOutputVariables)
+        handleSettingChange('outputVariables', updatedOutputVariables)
       }
 
     } catch (error) {
@@ -334,10 +346,13 @@ export function AILogicSection({
     // Check if we have variables and all required inputs are provided
     if (extractedVariablesWithTypes.length === 0) return false
     
-    // For text variables, require test inputs
-    const missingTextInputs = textVariables.filter(variable => 
-      !(settings.testInputs || {})[variable.name] || (settings.testInputs || {})[variable.name]?.trim() === ''
-    )
+    // For text variables, require test inputs (check both saved and local values)
+    const missingTextInputs = textVariables.filter(variable => {
+      const savedValue = (settings.testInputs || {})[variable.name]
+      const localValue = localTestInputs[variable.name]
+      const hasValue = (savedValue && savedValue.trim()) || (localValue && localValue.trim())
+      return !hasValue
+    })
     
     // For file variables, require test files
     const missingTestFiles = fileVariables.filter(variable => 
@@ -354,8 +369,11 @@ export function AILogicSection({
 
 
   const step3Complete = useMemo(() => {
-    return localOutputVariables.length > 0 && 
-           localOutputVariables.every(v => v.name.trim() !== '' && v.description.trim() !== '')
+    // Filter out outputs where both name and description are empty (treat as non-existent)
+    const validOutputVariables = localOutputVariables.filter(v => v.name.trim() || v.description.trim())
+    // Must have at least one valid output, and all valid outputs must be complete
+    return validOutputVariables.length > 0 && 
+           validOutputVariables.every(v => v.name.trim() !== '' && v.description.trim() !== '')
   }, [localOutputVariables])
 
   const addOutputVariable = useCallback(() => {
@@ -378,10 +396,64 @@ export function AILogicSection({
     )
   }, [])
   
-  const handleOutputVariableBlur = useCallback(() => {
+  const validateOutputVariable = useCallback((id: string, field: 'name' | 'description', value: string) => {
+    const errors: { name?: string; description?: string } = {}
+    const variable = localOutputVariables.find(v => v.id === id)
+    
+    if (!variable) return errors
+    
+    // Only validate description if name has content (user has committed to this output)
+    if (field === 'description' && variable.name.trim() && !value.trim()) {
+      errors.description = 'Description is required'
+    }
+    
+    // Only validate name if description has content (user started working on it)
+    if (field === 'name' && variable.description.trim() && !value.trim()) {
+      errors.name = 'Name is required'
+    }
+    
+    return errors
+  }, [localOutputVariables])
+
+  const handleOutputVariableBlur = useCallback((id: string, field: 'name' | 'description') => {
+    const variable = localOutputVariables.find(v => v.id === id)
+    if (!variable) return
+    
+    // Mark the current field as touched
+    setTouchedOutputs(prev => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: true }
+    }))
+    
+    // When name is filled and user focuses away, also mark description as needing validation
+    if (field === 'name' && variable.name.trim() && !variable.description.trim()) {
+      setTouchedOutputs(prev => ({
+        ...prev,
+        [id]: { ...prev[id], name: true, description: true }
+      }))
+    }
+    
+    // When description is filled and user focuses away, also mark name as needing validation  
+    if (field === 'description' && variable.description.trim() && !variable.name.trim()) {
+      setTouchedOutputs(prev => ({
+        ...prev,
+        [id]: { ...prev[id], name: true, description: true }
+      }))
+    }
+    
+    // Validate both fields (since they're interdependent)
+    const nameErrors = validateOutputVariable(id, 'name', variable.name)
+    const descriptionErrors = validateOutputVariable(id, 'description', variable.description)
+    const allErrors = { ...nameErrors, ...descriptionErrors }
+    
+    setOutputErrors(prev => ({
+      ...prev,
+      [id]: allErrors
+    }))
+    
     // Save to settings only when user clicks away from any output variable input
     handleSettingChange('outputVariables', localOutputVariables)
-  }, [localOutputVariables, handleSettingChange])
+  }, [localOutputVariables, handleSettingChange, validateOutputVariable])
 
   const removeOutputVariable = useCallback((id: string) => {
     const filteredVariables = localOutputVariables.filter(variable => variable.id !== id)
@@ -432,32 +504,16 @@ export function AILogicSection({
     }
   }, [knowledgeBaseEnabled, campaignId])
 
-  // Debounced test input updates
-  const testInputTimeouts = useRef<Record<string, NodeJS.Timeout>>({})
-  
+  // Simple test input updates
   const updateTestInput = useCallback((variableName: string, value: string) => {
     // Update local state immediately for responsive UI
     setLocalTestInputs(prev => ({ ...prev, [variableName]: value }))
-    
-    // Clear existing timeout for this variable
-    if (testInputTimeouts.current[variableName]) {
-      clearTimeout(testInputTimeouts.current[variableName])
-    }
-    
-    // For sliders, update settings immediately (no debounce needed)
-    const isSliderUpdate = typeof value === 'string' && /^\d+(\.\d+)?$/.test(value)
-    
-    if (isSliderUpdate) {
-      const newTestInputs = { ...(settings.testInputs || {}), [variableName]: value }
-      handleSettingChange('testInputs', newTestInputs)
-    } else {
-      // For text inputs, debounce the settings update
-      testInputTimeouts.current[variableName] = setTimeout(() => {
-        const newTestInputs = { ...(settings.testInputs || {}), [variableName]: value }
-        handleSettingChange('testInputs', newTestInputs)
-        delete testInputTimeouts.current[variableName]
-      }, 300) // 300ms debounce
-    }
+  }, [])
+
+  const saveTestInput = useCallback((variableName: string, value: string) => {
+    // Save to settings on blur
+    const newTestInputs = { ...(settings.testInputs || {}), [variableName]: value }
+    handleSettingChange('testInputs', newTestInputs)
   }, [settings.testInputs, handleSettingChange])
 
   const updateTestFile = useCallback((variableName: string, file: File | null) => {
@@ -494,15 +550,21 @@ export function AILogicSection({
         return
       }
       
-      if (localOutputVariables.length === 0) {
+      // Filter out empty outputs (where both name and description are empty)
+      const validOutputVariables = localOutputVariables.filter(v => v.name.trim() || v.description.trim())
+      
+      if (validOutputVariables.length === 0) {
         setTestResult('Please define at least one output variable in Step 3 before testing.')
         return
       }
 
-      // Check if all text inputs are provided
-      const missingTextInputs = textVariables.filter(variable => 
-        !(settings.testInputs || {})[variable.name] || (settings.testInputs || {})[variable.name]?.trim() === ''
-      )
+      // Check if all text inputs are provided (check both saved and local values)
+      const missingTextInputs = textVariables.filter(variable => {
+        const savedValue = (settings.testInputs || {})[variable.name]
+        const localValue = localTestInputs[variable.name]
+        const hasValue = (savedValue && savedValue.trim()) || (localValue && localValue.trim())
+        return !hasValue
+      })
       
       if (missingTextInputs.length > 0) {
         setTestResult(`Please provide example answers for: ${missingTextInputs.map(v => '@' + v.name).join(', ')}`)
@@ -519,8 +581,8 @@ export function AILogicSection({
         return
       }
 
-      // Prepare the AI test request
-      const testVariables = { ...(settings.testInputs || {}) }
+      // Prepare the AI test request - merge saved and local values
+      const testVariables = { ...(settings.testInputs || {}), ...localTestInputs }
       
       // Fetch knowledge base context and files if enabled
       const knowledgeBaseData = await fetchKnowledgeBaseForAI()
@@ -535,7 +597,7 @@ export function AILogicSection({
         const formData = new FormData()
         formData.append('prompt', settings.prompt)
         formData.append('variables', JSON.stringify(testVariables))
-        formData.append('outputVariables', JSON.stringify(settings.outputVariables.map(v => ({
+        formData.append('outputVariables', JSON.stringify(validOutputVariables.map(v => ({
           id: v.id,
           name: v.name,
           description: v.description
@@ -605,7 +667,7 @@ export function AILogicSection({
       const testRequest = {
         prompt: settings.prompt,
         variables: testVariables,
-        outputVariables: settings.outputVariables.map(v => ({
+        outputVariables: validOutputVariables.map(v => ({
           id: v.id,
           name: v.name,
           description: v.description
@@ -762,21 +824,11 @@ export function AILogicSection({
                             const progressPercent = ((numericValue - minVal) / (maxVal - minVal)) * 100
                             
                             return (
-                              <div key={variable.name} className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <Label className="text-sm font-medium text-gray-700">
-                                    @{variable.name}: {variable.title}
-                                  </Label>
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-lg font-bold text-orange-600 font-mono min-w-[3ch] text-right">
-                                      {numericValue}
-                                    </span>
-                                    <span className="text-xs text-gray-500">
-                                      / {maxVal}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="px-4">
+                              <div key={variable.name} className="flex items-start space-x-4">
+                                <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
+                                  @{variable.name}:
+                                </Label>
+                                <div className="flex-1 space-y-2">
                                   <div className="relative group">
                                     <input
                                       type="range"
@@ -784,8 +836,11 @@ export function AILogicSection({
                                       max={maxVal}
                                       step={sliderConfig?.step || 1}
                                       value={numericValue}
-                                      onChange={(e) => updateTestInput(variable.name, e.target.value)}
-                                      className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer slider transition-all duration-150 hover:h-4 focus:h-4 focus:outline-none"
+                                      onChange={(e) => {
+                                        updateTestInput(variable.name, e.target.value)
+                                        saveTestInput(variable.name, e.target.value)
+                                      }}
+                                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider focus:outline-none"
                                       style={{
                                         background: `linear-gradient(to right, #f97316 0%, #f97316 ${progressPercent}%, #e5e7eb ${progressPercent}%, #e5e7eb 100%)`
                                       }}
@@ -823,8 +878,16 @@ export function AILogicSection({
                                       }
                                     `}</style>
                                   </div>
-                                  <div className="flex justify-between text-xs text-gray-500 mt-2">
+                                  <div className="flex justify-between items-center text-xs text-gray-500">
                                     <span className="font-medium">{sliderConfig?.minLabel || 'Low'}</span>
+                                    <div className="flex items-center space-x-1">
+                                      <span className="text-xs font-bold text-orange-600 font-mono">
+                                        {numericValue}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        / {maxVal}
+                                      </span>
+                                    </div>
                                     <span className="font-medium">{sliderConfig?.maxLabel || 'High'}</span>
                                   </div>
                                 </div>
@@ -840,10 +903,10 @@ export function AILogicSection({
                             
                             return (
                               <div key={variable.name} className="flex items-start space-x-4">
-                                <Label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
+                                <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
                                   @{variable.name}:
                                 </Label>
-                                <div className="flex-1 space-y-2">
+                                <div className="flex-1 grid grid-cols-2 gap-2">
                                   {options.map((option: any, index: number) => {
                                     // Handle different option formats
                                     let optionValue = ''
@@ -872,15 +935,20 @@ export function AILogicSection({
                                           e.preventDefault()
                                           console.log('Clicked option:', optionValue, 'for variable:', variable.name)
                                           updateTestInput(variable.name, optionValue)
+                                          saveTestInput(variable.name, optionValue)
                                         }}
-                                        className={`w-full text-left px-3 py-2 rounded-md border transition-all duration-200 text-sm focus:outline-none flex items-center justify-between ${
+                                        className={`text-left px-3 py-2 rounded-md border transition-all duration-200 text-sm focus:outline-none flex items-center justify-between ${
                                           isSelected 
-                                            ? 'bg-blue-50 border-blue-300 text-blue-900' 
+                                            ? 'bg-orange-50 border-orange-300 text-orange-900' 
                                             : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
                                         }`}
                                       >
                                         <span>{optionDisplay}</span>
-                                        {isSelected && <Check className="w-4 h-4 text-green-600 flex-shrink-0" />}
+                                        {isSelected ? (
+                                          <Check className="w-4 h-4 text-orange-600 flex-shrink-0" />
+                                        ) : (
+                                          <div className="w-4 h-4 border border-gray-300 rounded flex-shrink-0"></div>
+                                        )}
                                       </button>
                                     )
                                   })}
@@ -940,11 +1008,12 @@ export function AILogicSection({
                                 newValue = value
                               }
                               updateTestInput(variable.name, newValue)
+                              saveTestInput(variable.name, newValue)
                             }
                             
                             return (
                               <div key={variable.name} className="flex items-start space-x-4">
-                                <Label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
+                                <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
                                   @{variable.name}:
                                 </Label>
                                 <div className="flex-1 flex space-x-4">
@@ -975,14 +1044,15 @@ export function AILogicSection({
                             // For regular text variables, show text input
                             return (
                               <div key={variable.name} className="flex items-center space-x-4">
-                                <Label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0">
+                                <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
                                   @{variable.name}:
                                 </Label>
                                 <Input
-                                  value={localTestInputs[variable.name] !== undefined 
-                                    ? localTestInputs[variable.name] 
-                                    : (settings.testInputs || {})[variable.name] || ''}
-                                  onChange={(e) => updateTestInput(variable.name, e.target.value)}
+                                                                value={localTestInputs[variable.name] !== undefined
+                                ? localTestInputs[variable.name]
+                                : (settings.testInputs || {})[variable.name] || ''}
+                              onChange={(e) => updateTestInput(variable.name, e.target.value)}
+                              onBlur={(e) => saveTestInput(variable.name, e.target.value)}
                                   placeholder={`Example answer for ${variable.title}`}
                                   className="flex-1 bg-white border-gray-300 text-gray-900 placeholder-gray-500"
                                 />
@@ -996,23 +1066,13 @@ export function AILogicSection({
                     {/* File Variables */}
                     {fileVariables.length > 0 && (
                       <div className="space-y-4">
-                        <h4 className="text-sm font-medium text-gray-700 flex items-center space-x-2">
-                          <Upload className="w-4 h-4" />
-                          <span>Test File Uploads</span>
-                        </h4>
-                        <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-                          <p className="text-sm text-gray-600 mb-3">
-                            Upload test files to see how your AI will process them:
-                          </p>
-                          {fileVariables.map((variable) => (
-                            <div key={variable.name} className="space-y-2">
+                        {fileVariables.map((variable) => (
+                          <div key={variable.name} className="flex items-start space-x-4">
+                            <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
+                              @{variable.name}:
+                            </Label>
+                            <div className="flex-1">
                               <div className="flex items-center space-x-3">
-                                <Badge variant="outline" className="border-purple-500 text-purple-700">
-                                  @{variable.name}
-                                </Badge>
-                                <span className="text-sm text-gray-600">{variable.title}</span>
-                              </div>
-                              <div className="ml-4">
                                 <input
                                   type="file"
                                   onChange={(e) => {
@@ -1023,24 +1083,18 @@ export function AILogicSection({
                                            file:mr-4 file:py-2 file:px-4
                                            file:rounded-md file:border-0
                                            file:text-sm file:font-medium
-                                           file:bg-purple-600 file:text-white
-                                           hover:file:bg-purple-700
+                                           file:bg-orange-600 file:text-white
+                                           hover:file:bg-orange-700
                                            file:cursor-pointer"
                                   accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
                                 />
                                 {(settings.testFiles || {})[variable.name] && (
-                                  <p className="text-xs text-green-600 mt-1 flex items-center space-x-1">
-                                    <Check className="w-3 h-3" />
-                                    <span>✓ {(settings.testFiles || {})[variable.name]?.name}</span>
-                                  </p>
+                                  <Check className="w-4 h-4 text-orange-600 flex-shrink-0" />
                                 )}
                               </div>
                             </div>
-                          ))}
-                          <p className="text-xs text-gray-500 mt-3">
-                            💡 These test files will be analyzed during AI testing to show you exactly how your prompts work with real content.
-                          </p>
-                        </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -1237,37 +1291,10 @@ export function AILogicSection({
             {expandedSections.step3 && (
               <div className="mt-6">
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between">
+                  <div className="mb-6">
                     <p className="text-sm text-gray-600">
                       Define variables that the AI will generate, like @recommendation or @score
                     </p>
-                    <div className="flex items-center space-x-2">
-                      {currentAvailableVariables.length > 0 && (
-                                              <Button
-                        onClick={generateOutputs}
-                        disabled={isGeneratingOutputs || !settings.prompt?.trim()}
-                        size="sm"
-                        variant="outline"
-                        className="border-purple-500 text-purple-700 hover:bg-purple-50 hover:border-purple-600"
-                      >
-                        {isGeneratingOutputs ? (
-                          <>
-                            <div className="animate-spin h-4 w-4 mr-2 border-2 border-purple-700 border-t-transparent rounded-full" />
-                            Generating...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Suggest my outputs
-                          </>
-                        )}
-                      </Button>
-                      )}
-                      <Button onClick={addOutputVariable} size="sm" variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50">
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add Output
-                      </Button>
-                    </div>
                   </div>
 
                   <div className="space-y-4">
@@ -1279,10 +1306,18 @@ export function AILogicSection({
                             <Input
                               value={variable.name}
                               onChange={(e) => updateOutputVariableLocal(variable.id, 'name', e.target.value)}
-                              onBlur={handleOutputVariableBlur}
-                              placeholder="recommendation"
-                              className="text-sm bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                              onBlur={() => handleOutputVariableBlur(variable.id, 'name')}
+                              placeholder="eg. training_plan"
+                              className={cn(
+                                "text-sm bg-white text-gray-900 placeholder:text-gray-300 placeholder:opacity-50",
+                                touchedOutputs[variable.id]?.name && outputErrors[variable.id]?.name
+                                  ? "border-red-500 focus-visible:ring-red-500"
+                                  : "border-gray-300"
+                              )}
                             />
+                            {touchedOutputs[variable.id]?.name && outputErrors[variable.id]?.name && (
+                              <p className="text-xs text-red-600 mt-1">{outputErrors[variable.id]?.name}</p>
+                            )}
                           </div>
                           <div className="flex items-end space-x-2">
                             <div className="flex-1">
@@ -1290,10 +1325,18 @@ export function AILogicSection({
                               <Input
                                 value={variable.description}
                                 onChange={(e) => updateOutputVariableLocal(variable.id, 'description', e.target.value)}
-                                onBlur={handleOutputVariableBlur}
-                                placeholder="Personalized training recommendation"
-                                className="text-sm bg-white border-gray-300 text-gray-900 placeholder-gray-500"
+                                onBlur={() => handleOutputVariableBlur(variable.id, 'description')}
+                                placeholder="eg. A personalised training plan based on their distance etc."
+                                className={cn(
+                                  "text-sm bg-white text-gray-900 placeholder:text-gray-300 placeholder:opacity-80",
+                                  touchedOutputs[variable.id]?.description && outputErrors[variable.id]?.description
+                                    ? "border-red-500 focus-visible:ring-red-500"
+                                    : "border-gray-300"
+                                )}
                               />
+                              {touchedOutputs[variable.id]?.description && outputErrors[variable.id]?.description && (
+                                <p className="text-xs text-red-600 mt-1">{outputErrors[variable.id]?.description}</p>
+                              )}
                             </div>
                             <Button
                               onClick={() => removeOutputVariable(variable.id)}
@@ -1315,6 +1358,35 @@ export function AILogicSection({
                         <p className="text-sm">Add variables that the AI should generate</p>
                       </div>
                     )}
+                    
+                    {/* Action buttons at the bottom */}
+                    <div className="flex justify-center items-center space-x-3 pt-4">
+                      <Button onClick={addOutputVariable} size="sm" variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50">
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Output
+                      </Button>
+                      {currentAvailableVariables.length > 0 && (
+                        <Button
+                          onClick={generateOutputs}
+                          disabled={isGeneratingOutputs || !settings.prompt?.trim()}
+                          size="sm"
+                          variant="outline"
+                          className="border-purple-500 text-purple-700 hover:bg-purple-50 hover:border-purple-600"
+                        >
+                          {isGeneratingOutputs ? (
+                            <>
+                              <div className="animate-spin h-4 w-4 mr-2 border-2 border-purple-700 border-t-transparent rounded-full" />
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="h-4 w-4 mr-2" />
+                              Suggest my outputs
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1392,7 +1464,7 @@ export function AILogicSection({
                             <div className="space-y-4">
                               {Object.entries(outputs).map(([variable, value]) => (
                                 <div key={variable} className="flex items-start space-x-4">
-                                  <Label className="text-sm font-medium text-gray-700 w-32 flex-shrink-0 pt-2">
+                                  <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0 pt-2">
                                     @{variable}:
                                   </Label>
                                   <div className="flex-1 bg-gray-50 border border-gray-300 rounded-md p-3 text-gray-900 text-sm">
