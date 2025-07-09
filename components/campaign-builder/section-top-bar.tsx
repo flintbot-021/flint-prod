@@ -74,6 +74,18 @@ export function SectionTopBar({
     )
   }
 
+  // Handle name change with space-to-underscore conversion for question sections
+  const handleNameChange = async (name: string) => {
+    let processedName = name
+    
+    // For question sections, convert spaces to underscores to maintain valid variable names
+    if (isQuestionSection(section.type)) {
+      processedName = name.replace(/\s+/g, '_')
+    }
+    
+    await onNameChange(processedName)
+  }
+
   // Validate section name
   const validateName = (name: string): string | null => {
     if (!name.trim()) {
@@ -137,9 +149,9 @@ export function SectionTopBar({
             
             <InlineEditableText
               value={section.title}
-              onSave={onNameChange}
+              onSave={handleNameChange}
               variant="body"
-              placeholder={isQuestionSection(section.type) ? "variable_name" : "Section name (edit me)"}
+              placeholder={isQuestionSection(section.type) ? "use_underscores_for_variables" : "Section name (edit me)"}
               className={cn(
                 "font-medium",
                 isQuestionSection(section.type) && checkVariableNameConflict(section.title)
