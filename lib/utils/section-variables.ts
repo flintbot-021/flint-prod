@@ -345,31 +345,36 @@ export function updateOutputSectionVariableReferences(
   const updatedSettings = { ...settings }
   let hasChanges = false
 
-  // Update template if it exists and contains the variable
-  if (updatedSettings.template) {
-    const updatedTemplate = updateVariableReferences(
-      updatedSettings.template,
-      oldVariableName,
-      newVariableName
-    )
-    if (updatedTemplate !== updatedSettings.template) {
-      updatedSettings.template = updatedTemplate
-      hasChanges = true
-    }
-  }
+  // List of all field names that could contain @variable references
+  // This covers all output section types: regular, HTML embed, dynamic redirect, etc.
+  const fieldNamesToUpdate = [
+    'template',           // Original field
+    'content',           // Original field - regular output sections
+    'htmlContent',       // HTML embed sections - MAIN content field
+    'title',             // Regular output sections - title can contain variables
+    'subtitle',          // Regular output sections - subtitle can contain variables  
+    'preloaderMessage',  // Dynamic redirect sections - loading message
+    'targetUrl',         // Dynamic redirect sections - URL might contain variables
+    'message',           // General message field used by various output types
+    'description',       // Some output types use description field
+    'buttonText',        // Button text that might contain variables
+    'fileName',          // Download sections - filename might be dynamic
+  ]
 
-  // Update content if it exists and contains the variable
-  if (updatedSettings.content) {
-    const updatedContent = updateVariableReferences(
-      updatedSettings.content,
-      oldVariableName,
-      newVariableName
-    )
-    if (updatedContent !== updatedSettings.content) {
-      updatedSettings.content = updatedContent
-      hasChanges = true
+  // Update each field if it exists and contains the variable
+  fieldNamesToUpdate.forEach(fieldName => {
+    if (updatedSettings[fieldName] && typeof updatedSettings[fieldName] === 'string') {
+      const updatedField = updateVariableReferences(
+        updatedSettings[fieldName],
+        oldVariableName,
+        newVariableName
+      )
+      if (updatedField !== updatedSettings[fieldName]) {
+        updatedSettings[fieldName] = updatedField
+        hasChanges = true
+      }
     }
-  }
+  })
 
   // Only return updated settings if there were actual changes
   return hasChanges ? updatedSettings : settings

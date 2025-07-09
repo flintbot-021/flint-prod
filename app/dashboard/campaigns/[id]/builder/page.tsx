@@ -32,6 +32,7 @@ import { EnhancedSortableCanvas } from '@/components/campaign-builder/enhanced-s
 import { DragPreview } from '@/components/campaign-builder/drag-preview'
 import { cn } from '@/lib/utils'
 import { isQuestionSection, titleToVariableName, updateAILogicVariableReferences, updateOutputSectionVariableReferences } from '@/lib/utils/section-variables'
+import { updateAITestResultVariableName, updateAITestResultVariableNames } from '@/lib/utils/ai-test-storage'
 import { createVariableName } from '@/lib/utils/variable-extractor'
 
 // Helper functions to convert between database and UI types
@@ -450,6 +451,26 @@ export default function CampaignBuilderPage() {
         variableNameChanged = oldVariableName !== newVariableName
       }
       
+      // Check if this is an AI logic section with output variable changes
+      let outputVariableNameMap: Record<string, string> = {}
+      let outputVariablesChanged = false
+      
+      if (updates.settings !== undefined && currentSection.type === 'logic-ai') {
+        const oldOutputVariables = (currentSection.settings as any)?.outputVariables || []
+        const newOutputVariables = (updates.settings as any)?.outputVariables || []
+        
+        // Create a map of old name -> new name for variables that changed
+        if (Array.isArray(oldOutputVariables) && Array.isArray(newOutputVariables)) {
+          oldOutputVariables.forEach((oldVar: any) => {
+            const matchingNewVar = newOutputVariables.find((newVar: any) => newVar.id === oldVar.id)
+            if (matchingNewVar && oldVar.name !== matchingNewVar.name && oldVar.name && matchingNewVar.name) {
+              outputVariableNameMap[oldVar.name] = matchingNewVar.name
+              outputVariablesChanged = true
+            }
+          })
+        }
+      }
+      
       // Prepare database updates
       const dbUpdates: any = {}
       if (updates.title !== undefined) dbUpdates.title = updates.title
@@ -465,6 +486,9 @@ export default function CampaignBuilderPage() {
       
       // If variable name changed, update all references in other sections
       if (variableNameChanged && oldVariableName && newVariableName) {
+        // Update stored AI test results with new variable name
+        updateAITestResultVariableName(oldVariableName, newVariableName)
+        
         const sectionsToUpdate: { id: string; updates: Partial<CampaignSection> }[] = []
         
         // Find all sections that might reference the variable
@@ -557,8 +581,120 @@ export default function CampaignBuilderPage() {
             duration: 3000
           })
         }
-      } else {
-        // Normal update without variable name changes
+      }
+      
+      // Handle AI logic output variable changes
+      if (outputVariablesChanged && Object.keys(outputVariableNameMap).length > 0) {
+        // Update stored AI test results with new output variable names
+        updateAITestResultVariableNames(outputVariableNameMap)
+        
+        const sectionsToUpdate: { id: string; updates: Partial<CampaignSection> }[] = []
+        
+        // Find all output sections that might reference the changed output variables
+        sections.forEach(section => {
+          if (section.id === sectionId) return // Skip the current section
+          
+          let sectionUpdates: Partial<CampaignSection> = {}
+          
+          // Check output sections for references to the changed output variables
+          if (section.type.startsWith('output-')) {
+            let settingsUpdated = { ...section.settings }
+            let hasUpdates = false
+            
+            // Update each changed output variable name in the section
+            Object.entries(outputVariableNameMap).forEach(([oldName, newName]) => {
+              const updatedSettings = updateOutputSectionVariableReferences(
+                settingsUpdated,
+                oldName,
+                newName
+              )
+              if (updatedSettings !== settingsUpdated) {
+                settingsUpdated = updatedSettings
+                hasUpdates = true
+              }
+            })
+            
+            if (hasUpdates) {
+              sectionUpdates.settings = settingsUpdated
+            }
+          }
+          
+          // Check content sections that might reference the output variables
+          if (section.type.startsWith('content-')) {
+            let settingsUpdated = { ...section.settings }
+            let hasUpdates = false
+            
+            // Update each changed output variable name in the section
+            Object.entries(outputVariableNameMap).forEach(([oldName, newName]) => {
+              const updatedSettings = updateOutputSectionVariableReferences(
+                settingsUpdated,
+                oldName,
+                newName
+              )
+              if (updatedSettings !== settingsUpdated) {
+                settingsUpdated = updatedSettings
+                hasUpdates = true
+              }
+            })
+            
+            if (hasUpdates) {
+              sectionUpdates.settings = settingsUpdated
+            }
+          }
+          
+          // If there are updates, add to the list
+          if (Object.keys(sectionUpdates).length > 0) {
+            sectionsToUpdate.push({
+              id: section.id,
+              updates: sectionUpdates
+            })
+          }
+        })
+        
+        // Update all sections that reference the changed output variables
+        for (const sectionUpdate of sectionsToUpdate) {
+          const dbUpdates: any = {}
+          if (sectionUpdate.updates.settings) {
+            dbUpdates.configuration = sectionUpdate.updates.settings
+          }
+          
+          const updateResult = await updateSection(sectionUpdate.id, dbUpdates)
+          if (!updateResult.success) {
+            console.error(`Failed to update section ${sectionUpdate.id}:`, updateResult.error)
+          }
+        }
+        
+        // Update local state for all affected sections
+        setSections(prev => prev.map(section => {
+          if (section.id === sectionId) {
+            return { ...section, ...updates, updatedAt: new Date().toISOString() }
+          }
+          
+          // Check if this section was updated due to output variable reference changes
+          const sectionUpdate = sectionsToUpdate.find(su => su.id === section.id)
+          if (sectionUpdate) {
+            return { ...section, ...sectionUpdate.updates, updatedAt: new Date().toISOString() }
+          }
+          
+          return section
+        }))
+        
+        // Show success feedback for output variable name changes
+        const changedVariables = Object.entries(outputVariableNameMap)
+          .map(([oldName, newName]) => `@${oldName} → @${newName}`)
+          .join(', ')
+        
+        if (sectionsToUpdate.length > 0) {
+          toast({
+            title: 'Output variable references updated',
+            description: `Updated ${changedVariables} in ${sectionsToUpdate.length} section(s)`,
+            duration: 3000
+          })
+        }
+      }
+      
+      // Handle normal updates (when no variable changes occurred)
+      if (!variableNameChanged && !outputVariablesChanged) {
         setSections(prev => prev.map(section => 
           section.id === sectionId 
             ? { ...section, ...updates, updatedAt: new Date().toISOString() }

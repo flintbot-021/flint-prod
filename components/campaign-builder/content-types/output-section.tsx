@@ -88,27 +88,43 @@ function getSimpleVariables(sections: CampaignSection[], currentOrder: number): 
 function getSampleValue(variableName: string): string {
   // First, try to get real AI test result
   const aiTestValue = getAITestResult(variableName)
+  console.log(`🔍 getSampleValue for "${variableName}":`, { 
+    aiTestValue, 
+    aiTestValueType: typeof aiTestValue,
+    willUseAIValue: aiTestValue !== null 
+  })
+  
   if (aiTestValue !== null) {
-    return String(aiTestValue)
+    const stringValue = String(aiTestValue)
+    console.log(`✅ Using AI test value for "${variableName}":`, stringValue)
+    return stringValue
   }
 
   // Fallback to default sample values
+  let defaultValue: string
   switch (variableName.toLowerCase()) {
     case 'recommendation':
     case 'advice':
-      return 'Based on your answers, we recommend...'
+      defaultValue = 'Based on your answers, we recommend...'
+      break
     case 'score':
     case 'rating':
-      return '85'
+      defaultValue = '85'
+      break
     case 'category':
     case 'type':
-      return 'Intermediate'
+      defaultValue = 'Intermediate'
+      break
     case 'plan':
     case 'strategy':
-      return 'Your personalized plan...'
+      defaultValue = 'Your personalized plan...'
+      break
     default:
-      return `Generated ${variableName}`
+      defaultValue = `Generated ${variableName}`
   }
+  
+  console.log(`⚠️ Using default value for "${variableName}":`, defaultValue)
+  return defaultValue
 }
 
 // Generate sample data context - Enhanced with AI test results
@@ -138,6 +154,8 @@ function generateSampleContext(variables: SimpleVariable[]): Record<string, stri
   return context
 }
 
+
+
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
@@ -151,6 +169,8 @@ export function OutputSection({
 }: OutputSectionProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [aiTestDataTimestamp, setAiTestDataTimestamp] = useState(0)
+  
+
   
   // Local state for tracking external content changes
   const [localContent, setLocalContent] = useState('')
@@ -231,6 +251,10 @@ export function OutputSection({
     formatters: {},
     conditionalRules: []
   }
+  
+
+
+
 
   // Handle settings updates
   const updateSettings = async (newSettings: Partial<OutputSettings>) => {
@@ -330,12 +354,21 @@ export function OutputSection({
             <div className={cn('space-y-6', getAlignmentClass(textAlignment))}>
               <div className="space-y-4">
                 <h1 className="text-4xl md:text-5xl font-bold text-foreground">
-                  <VariableInterpolatedContent
-                    content={localTitle || title}
-                    context={variableContext}
-                    showPreview={true}
-                    enableRealTimeProcessing={true}
-                  />
+                  {(() => {
+                    console.log('🎯 About to render VariableInterpolatedContent for TITLE with:', {
+                      content: localTitle || title,
+                      contextVariableCount: Object.keys(variableContext.variables).length,
+                      contextVariables: variableContext.variables
+                    })
+                    return (
+                      <VariableInterpolatedContent
+                        content={localTitle || title}
+                        context={variableContext}
+                        showPreview={true}
+                        enableRealTimeProcessing={true}
+                      />
+                    )
+                  })()}
                 </h1>
                 
                 {(localSubtitle || subtitle) && (

@@ -131,4 +131,98 @@ export function getAvailableAIVariables(): string[] {
  */
 export function hasAITestResults(): boolean {
   return Object.keys(getAITestResults()).length > 0
+}
+
+/**
+ * Update a variable name in stored AI test results
+ * Called when section titles change and variable names get updated
+ */
+export function updateAITestResultVariableName(
+  oldVariableName: string,
+  newVariableName: string
+): boolean {
+  try {
+    if (typeof window === 'undefined') return false
+    if (!oldVariableName || !newVariableName || oldVariableName === newVariableName) {
+      return false
+    }
+
+    const storedResults = getAITestResults()
+    
+    // Check if the old variable name exists in stored results
+    if (!(oldVariableName in storedResults)) {
+      console.log(`🔄 Variable "${oldVariableName}" not found in stored AI test results, no update needed`)
+      return false
+    }
+
+    // Create updated results with new variable name
+    const updatedResults = { ...storedResults }
+    updatedResults[newVariableName] = updatedResults[oldVariableName]
+    delete updatedResults[oldVariableName]
+
+    // Store the updated results
+    localStorage.setItem('aiTestResults', JSON.stringify(updatedResults))
+    
+    console.log(`✅ Updated AI test results: "${oldVariableName}" → "${newVariableName}"`)
+    console.log('📊 Updated stored results:', updatedResults)
+    
+    // Dispatch custom event to notify components of the update
+    window.dispatchEvent(new CustomEvent('aiTestResultsUpdated', { 
+      detail: updatedResults 
+    }))
+    
+    return true
+  } catch (error) {
+    console.error('Failed to update AI test result variable name:', error)
+    return false
+  }
+}
+
+/**
+ * Update multiple variable names in stored AI test results
+ * Called when AI logic section output variables are renamed
+ */
+export function updateAITestResultVariableNames(
+  variableNameMap: Record<string, string>
+): boolean {
+  try {
+    if (typeof window === 'undefined') return false
+    if (!variableNameMap || Object.keys(variableNameMap).length === 0) {
+      return false
+    }
+
+    const storedResults = getAITestResults()
+    let hasChanges = false
+    const updatedResults = { ...storedResults }
+    
+    // Update each variable name mapping
+    Object.entries(variableNameMap).forEach(([oldName, newName]) => {
+      if (oldName !== newName && oldName in updatedResults) {
+        updatedResults[newName] = updatedResults[oldName]
+        delete updatedResults[oldName]
+        hasChanges = true
+        console.log(`🔄 Renaming AI test result: "${oldName}" → "${newName}"`)
+      }
+    })
+
+    if (hasChanges) {
+      // Store the updated results
+      localStorage.setItem('aiTestResults', JSON.stringify(updatedResults))
+      
+      console.log(`✅ Updated ${Object.keys(variableNameMap).length} AI test result variable names`)
+      console.log('📊 Updated stored results:', updatedResults)
+      
+      // Dispatch custom event to notify components
+      window.dispatchEvent(new CustomEvent('aiTestResultsUpdated', { 
+        detail: updatedResults 
+      }))
+      
+      return true
+    }
+    
+    return false
+  } catch (error) {
+    console.error('Error updating AI test result variable names:', error)
+    return false
+  }
 } 
