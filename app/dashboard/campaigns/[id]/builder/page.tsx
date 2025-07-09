@@ -32,6 +32,7 @@ import { EnhancedSortableCanvas } from '@/components/campaign-builder/enhanced-s
 import { DragPreview } from '@/components/campaign-builder/drag-preview'
 import { cn } from '@/lib/utils'
 import { isQuestionSection, titleToVariableName, updateAILogicVariableReferences, updateOutputSectionVariableReferences } from '@/lib/utils/section-variables'
+import { updateAITestResultVariableName } from '@/lib/utils/ai-test-storage'
 import { createVariableName } from '@/lib/utils/variable-extractor'
 
 // Helper functions to convert between database and UI types
@@ -465,6 +466,9 @@ export default function CampaignBuilderPage() {
       
       // If variable name changed, update all references in other sections
       if (variableNameChanged && oldVariableName && newVariableName) {
+        // Update stored AI test results with new variable name
+        updateAITestResultVariableName(oldVariableName, newVariableName)
+        
         const sectionsToUpdate: { id: string; updates: Partial<CampaignSection> }[] = []
         
         // Find all sections that might reference the variable
