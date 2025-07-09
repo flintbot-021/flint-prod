@@ -26,15 +26,25 @@ export function OutputSection({
   const [content, setContent] = useState('')
   const [availableVariables, setAvailableVariables] = useState<{ name: string; type: 'input' | 'ai'; example: string }[]>([])
 
-  // Initialize content from section configuration
+  // Initialize content from section configuration and keep it synced
   useEffect(() => {
     const config = section.settings as any
-    if (config?.content) {
-      setContent(config.content)
+    if (config?.content !== undefined) {
+      // Only update if the content is actually different to avoid infinite loops
+      setContent(prevContent => {
+        if (prevContent !== config.content) {
+          console.log(`🔄 Output section ${section.id} content synced:`, {
+            from: prevContent,
+            to: config.content
+          })
+          return config.content
+        }
+        return prevContent
+      })
     }
-  }, [section.settings])
+  }, [section.settings, section.id]) // Watch for any settings changes
 
-  // Build available variables
+  // Build available variables and extract AI output variables from actual AI logic sections
   useEffect(() => {
     const variables: { name: string; type: 'input' | 'ai'; example: string }[] = []
     
@@ -50,20 +60,41 @@ export function OutputSection({
       }
     })
 
-    // Add AI output variables if available
-    const mockAiResults = { recommendation: 'Sample AI output', score: '85' }
-    Object.keys(mockAiResults).forEach(key => {
-      variables.push({
-        name: key,
-        type: 'ai',
-        example: String(mockAiResults[key as keyof typeof mockAiResults]).slice(0, 30) + '...'
-      })
+    // Add AI output variables from actual AI logic sections
+    allSections.forEach(sect => {
+      if (sect.type === 'logic-ai') {
+        const aiSettings = sect.settings as any
+        if (aiSettings?.outputVariables && Array.isArray(aiSettings.outputVariables)) {
+          aiSettings.outputVariables.forEach((outputVar: any) => {
+            if (outputVar.name) {
+              variables.push({
+                name: outputVar.name,
+                type: 'ai',
+                example: outputVar.description || 'AI generated output'
+              })
+            }
+          })
+        }
+      }
     })
+
+    // Fallback: Add mock AI variables if no real ones exist
+    if (variables.filter(v => v.type === 'ai').length === 0) {
+      const mockAiResults = { recommendation: 'Sample AI output', score: '85' }
+      Object.keys(mockAiResults).forEach(key => {
+        variables.push({
+          name: key,
+          type: 'ai',
+          example: String(mockAiResults[key as keyof typeof mockAiResults]).slice(0, 30) + '...'
+        })
+      })
+    }
 
     setAvailableVariables(variables)
   }, [allSections])
 
   const handleContentChange = async (newContent: string) => {
+    // Update local state immediately for responsive UI
     setContent(newContent)
     
     try {
@@ -75,6 +106,11 @@ export function OutputSection({
       })
     } catch (error) {
       console.error('Failed to update output section:', error)
+      // Revert local state on error
+      const config = section.settings as any
+      if (config?.content !== undefined) {
+        setContent(config.content)
+      }
     }
   }
 

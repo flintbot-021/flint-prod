@@ -11,6 +11,7 @@ import { ResultsGate } from '../results-gate'
 import type { VariableInterpolationContext } from '@/lib/types/output-section'
 import { Badge } from '@/components/ui/badge'
 import { getAITestResults, hasAITestResults, getAITestResult } from '@/lib/utils/ai-test-storage'
+import { titleToVariableName, isQuestionSection } from '@/lib/utils/section-variables'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -50,16 +51,14 @@ function getSimpleVariables(sections: CampaignSection[], currentOrder: number): 
   
   precedingSections.forEach(section => {
     // Extract from question sections
-    if (section.type.includes('question-') || section.type.includes('capture')) {
+    if (isQuestionSection(section.type) && section.title) {
       const settings = section.settings as any
-      const variableName = settings?.variableName || 
-                          (typeof section.title === 'string' ? section.title.toLowerCase().replace(/\s+/g, '_') : '') || 
-                          `question_${section.order}`
+      const variableName = settings?.variableName || titleToVariableName(section.title)
       
       variables.push({
         name: variableName,
         type: 'input',
-        description: (typeof section.title === 'string' ? section.title : '') || 'User input',
+        description: section.title || 'User input',
         sampleValue: settings?.placeholder || 'Sample answer'
       })
     }
@@ -153,6 +152,11 @@ export function OutputSection({
   const [isUploading, setIsUploading] = useState(false)
   const [aiTestDataTimestamp, setAiTestDataTimestamp] = useState(0)
   
+  // Local state for tracking external content changes
+  const [localContent, setLocalContent] = useState('')
+  const [localTitle, setLocalTitle] = useState('')
+  const [localSubtitle, setLocalSubtitle] = useState('')
+  
   // Get current settings with defaults
   const settings = section.settings as OutputSettings || {}
   const {
@@ -162,6 +166,34 @@ export function OutputSection({
     image = '',
     textAlignment = 'center'
   } = settings
+
+  // Sync local state with external settings changes (e.g., from variable updates)
+  useEffect(() => {
+    setLocalTitle(title)
+  }, [title])
+  
+  useEffect(() => {
+    setLocalSubtitle(subtitle)
+  }, [subtitle])
+  
+  useEffect(() => {
+    if (settings.content !== undefined) {
+      console.log(`🔄 Content-types output section ${section.id} content updated:`, {
+        from: localContent,
+        to: settings.content
+      })
+      setLocalContent(settings.content)
+    }
+  }, [settings.content, section.id])
+  
+  // Initialize local state on mount
+  useEffect(() => {
+    setLocalTitle(title)
+    setLocalSubtitle(subtitle)
+    if (settings.content !== undefined) {
+      setLocalContent(settings.content)
+    }
+  }, [])
 
   // Extract variables from campaign sections
   const availableVariables = useMemo(() => 
@@ -203,6 +235,11 @@ export function OutputSection({
   // Handle settings updates
   const updateSettings = async (newSettings: Partial<OutputSettings>) => {
     try {
+      // Update local state immediately for responsive UI
+      if (newSettings.title !== undefined) setLocalTitle(newSettings.title)
+      if (newSettings.subtitle !== undefined) setLocalSubtitle(newSettings.subtitle)
+      if (newSettings.content !== undefined) setLocalContent(newSettings.content)
+      
       await onUpdate({
         settings: {
           ...settings,
@@ -211,6 +248,10 @@ export function OutputSection({
       })
     } catch (error) {
       console.error('Failed to update output settings:', error)
+      // Revert local state on error
+      if (newSettings.title !== undefined) setLocalTitle(title)
+      if (newSettings.subtitle !== undefined) setLocalSubtitle(subtitle)
+      if (newSettings.content !== undefined) setLocalContent(content)
       throw error
     }
   }
@@ -290,17 +331,17 @@ export function OutputSection({
               <div className="space-y-4">
                 <h1 className="text-4xl md:text-5xl font-bold text-foreground">
                   <VariableInterpolatedContent
-                    content={title}
+                    content={localTitle || title}
                     context={variableContext}
                     showPreview={true}
                     enableRealTimeProcessing={true}
                   />
                 </h1>
                 
-                {subtitle && (
+                {(localSubtitle || subtitle) && (
                   <div className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
                     <VariableInterpolatedContent
-                      content={subtitle}
+                      content={localSubtitle || subtitle}
                       context={variableContext}
                       showPreview={true}
                       enableRealTimeProcessing={true}
@@ -309,10 +350,10 @@ export function OutputSection({
                 )}
               </div>
 
-              {content && (
+              {(localContent || content) && (
                 <div className="text-lg text-foreground max-w-4xl mx-auto leading-relaxed">
                   <VariableInterpolatedContent
-                    content={content}
+                    content={localContent || content}
                     context={variableContext}
                     showPreview={true}
                     enableRealTimeProcessing={true}
@@ -378,7 +419,7 @@ export function OutputSection({
       {/* Title - Seamless inline editing */}
       <div>
         <InlineEditableText
-          value={title}
+          value={localTitle}
           onSave={(newTitle) => updateSettings({ title: newTitle })}
           autoSave={false}
           placeholder="Your Results"
@@ -392,7 +433,7 @@ export function OutputSection({
       {/* Subtitle - Seamless inline editing */}
       <div className="pt-4">
         <InlineEditableText
-          value={subtitle}
+          value={localSubtitle}
           onSave={(newSubtitle) => updateSettings({ subtitle: newSubtitle })}
           autoSave={false}
           placeholder="Based on your answers, here's what we found"
@@ -406,7 +447,7 @@ export function OutputSection({
       {/* Rich Text Content - With @ variable support */}
       <div className="pt-6">
         <InlineEditableText
-          value={content}
+          value={localContent}
           onSave={(newContent) => updateSettings({ content: newContent })}
           autoSave={false}
           placeholder="Hello @name! Your score is @score out of 100. Use @ to insert variables like @recommendation"
