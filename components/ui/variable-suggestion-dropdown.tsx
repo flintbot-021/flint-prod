@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import { Hash } from 'lucide-react'
 import { Badge } from './badge'
+import { getAITestResults } from '@/lib/utils/ai-test-storage'
 
 interface Variable {
   name: string
@@ -56,6 +57,7 @@ export function VariableSuggestionDropdown({
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [aiTestData, setAiTestData] = useState<Record<string, any>>({})
   
   // Auto-resize textarea
   const autoResize = useCallback(() => {
@@ -79,8 +81,44 @@ export function VariableSuggestionDropdown({
     autoResize()
   }, [autoResize])
   
+  // Load AI test data
+  useEffect(() => {
+    const loadTestData = () => {
+      const testResults = getAITestResults()
+      setAiTestData(testResults)
+    }
+    
+    loadTestData()
+    
+    // Listen for storage changes to update when AI test data changes
+    const handleStorageChange = () => {
+      loadTestData()
+    }
+    
+    window.addEventListener('storage', handleStorageChange)
+    // Also listen for custom event (in case data changes in same tab)
+    window.addEventListener('aiTestResultsUpdated', handleStorageChange)
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('aiTestResultsUpdated', handleStorageChange)
+    }
+  }, [])
+  
+    // Get actual sample value for a variable
+  const getSampleValue = (variable: Variable): string => {
+    // aiTestData is a flat object containing both input and output variables
+    const sampleValue = aiTestData[variable.name]
+    
+    if (sampleValue !== undefined && sampleValue !== null) {
+      return String(sampleValue)
+    }
+    
+    return 'No sample data'
+  }
+  
   // Filter variables based on query
-  const filteredVariables = variables.filter(variable =>
+  const filteredVariables = variables.filter(variable => 
     variable.name.toLowerCase().includes(dropdown.query.toLowerCase())
   )
   
@@ -258,7 +296,7 @@ export function VariableSuggestionDropdown({
               )}
             >
               <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 mb-1">
                   <Badge 
                     variant={variable.type === 'input' ? 'secondary' : 'default'}
                     className={cn(
@@ -270,7 +308,16 @@ export function VariableSuggestionDropdown({
                   </Badge>
                   <code className="text-sm font-mono text-orange-600">@{variable.name}</code>
                 </div>
-                <p className="text-xs text-gray-500 mt-1 truncate">{variable.description}</p>
+                <div className="text-xs text-gray-400">
+                  <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-600">
+                    {(() => {
+                      const sampleValue = getSampleValue(variable)
+                      return sampleValue.length > 40 
+                        ? `${sampleValue.substring(0, 40)}...` 
+                        : sampleValue
+                    })()}
+                  </code>
+                </div>
               </div>
             </button>
           ))}
