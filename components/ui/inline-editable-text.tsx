@@ -132,6 +132,7 @@ export const InlineEditableText = forwardRef<
           )}
           disabled={isSaving}
           autoFocus
+          {...(multiline && { autoGrow: true })}
         />
         
         {/* Save status indicator */}
@@ -193,7 +194,14 @@ export const InlineEditableText = forwardRef<
         }
       }}
     >
-      {displayValue}
+      {/* Render content with line breaks preserved */}
+      {displayValue ? (
+        <span 
+          dangerouslySetInnerHTML={{ 
+            __html: displayValue.replace(/\n/g, '<br>') 
+          }} 
+        />
+      ) : null}
       
       {/* Edit indicator */}
       {showEditIcon && (

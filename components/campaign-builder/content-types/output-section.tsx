@@ -483,7 +483,7 @@ export function OutputSection({
           value={localContent}
           onSave={(newContent) => updateSettings({ content: newContent })}
           autoSave={false}
-          placeholder="Hello @name! Your score is @score out of 100. Use @ to insert variables like @recommendation"
+          placeholder="Hello @name! Your score is @score out of 100.&#10;&#10;Use @ to insert variables like @recommendation"
           className="!text-lg text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0 !min-h-32"
           inputClassName="!text-lg !border-0 !bg-transparent !shadow-none !outline-none !ring-0 text-center text-gray-500 placeholder:text-gray-600 focus:!bg-transparent hover:!bg-transparent !min-h-32"
           showEditIcon={false}

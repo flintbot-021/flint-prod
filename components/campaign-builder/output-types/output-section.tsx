@@ -213,6 +213,7 @@ Hey @what_is_your_name! Based on your answers, here's your personalized recommen
 
 Your score: @score"
             className="min-h-[300px] font-mono text-sm"
+            autoGrow={true}
           />
           <p className="text-xs text-muted-foreground">
             Use @variable_name syntax to insert variables. Click variable badges above to insert them.
