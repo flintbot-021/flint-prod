@@ -514,6 +514,9 @@ export function AILogicSection({
     // Save to settings on blur
     const newTestInputs = { ...(settings.testInputs || {}), [variableName]: value }
     handleSettingChange('testInputs', newTestInputs)
+    
+    // Also update the stored test results so dropdown shows updated sample data immediately
+    storeAITestResults(newTestInputs)
   }, [settings.testInputs, handleSettingChange])
 
   const updateTestFile = useCallback((variableName: string, file: File | null) => {
