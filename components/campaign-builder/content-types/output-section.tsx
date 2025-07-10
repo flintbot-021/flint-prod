@@ -5,6 +5,7 @@ import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
 import { Upload, X, Hash } from 'lucide-react'
 import { InlineEditableText } from '@/components/ui/inline-editable-text'
+import { VariableSuggestionDropdown } from '@/components/ui/variable-suggestion-dropdown'
 import { VariableInterpolatedContent } from '@/components/ui/variable-interpolated-content'
 import { uploadFiles } from '@/lib/supabase/storage'
 import { ResultsGate } from '../results-gate'
@@ -449,45 +450,47 @@ export function OutputSection({
         )}
       </div>
 
-      {/* Title - Seamless inline editing */}
+      {/* Title - With variable dropdown support */}
       <div>
-        <InlineEditableText
+        <VariableSuggestionDropdown
           value={localTitle}
+          onChange={setLocalTitle}
           onSave={(newTitle) => updateSettings({ title: newTitle })}
-          autoSave={false}
+          autoSave={true}
           placeholder="Headline goes here"
-          className="!text-3xl font-bold text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0 !min-h-[3rem] !leading-tight"
+          className="w-full"
           inputClassName="!text-3xl !font-bold !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto !min-h-[3rem] !leading-tight placeholder:text-gray-600"
-          showEditIcon={false}
-          variant="heading"
+          variables={availableVariables}
+          multiline={false}
         />
       </div>
 
-      {/* Subtitle - Seamless inline editing */}
+      {/* Subtitle - With variable dropdown support */}
       <div className="pt-4">
-        <InlineEditableText
+        <VariableSuggestionDropdown
           value={localSubtitle}
+          onChange={setLocalSubtitle}
           onSave={(newSubtitle) => updateSettings({ subtitle: newSubtitle })}
-          autoSave={false}
+          autoSave={true}
           placeholder="Subheading"
-          className="!text-xl text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0 !min-h-[2rem] !leading-tight"
+          className="w-full"
           inputClassName="!text-xl !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto !min-h-[2rem] !leading-tight placeholder:text-gray-600"
-          showEditIcon={false}
-          variant="body"
+          variables={availableVariables}
+          multiline={false}
         />
       </div>
 
-      {/* Rich Text Content - With @ variable support */}
+      {/* Rich Text Content - With @ variable dropdown support */}
       <div className="pt-6">
-        <InlineEditableText
+        <VariableSuggestionDropdown
           value={localContent}
+          onChange={setLocalContent}
           onSave={(newContent) => updateSettings({ content: newContent })}
-          autoSave={false}
+          autoSave={true}
           placeholder="Paragraph"
-          className="!text-lg text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0 !min-h-32 !leading-relaxed"
+          className="w-full"
           inputClassName="!text-lg !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto !min-h-32 !leading-relaxed placeholder:text-gray-600"
-          showEditIcon={false}
-          variant="body"
+          variables={availableVariables}
           multiline={true}
         />
       </div>
