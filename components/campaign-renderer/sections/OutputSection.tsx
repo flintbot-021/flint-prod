@@ -177,35 +177,42 @@ export function OutputSection({
           <div className={cn('space-y-6', getAlignmentClass(settings.textAlignment))}>
             <div className="space-y-4">
               {settings.title && (
-                <h1 className={cn(
-                  "font-bold text-foreground",
-                  deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
-                )}>
-                  {simpleVariableReplace(settings.title, variableMap)}
-                </h1>
+                <h1 
+                  className={cn(
+                    "font-bold text-foreground",
+                    deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
+                  )}
+                  dangerouslySetInnerHTML={{ 
+                    __html: simpleVariableReplace(settings.title, variableMap).replace(/\n/g, '<br>') 
+                  }}
+                />
               )}
               
               {settings.subtitle && (
-                <div className={cn(
-                     "text-muted-foreground max-w-3xl",
-                     settings.textAlignment === 'center' ? "mx-auto" : "",
-                     deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
-                )}>
-                     {simpleVariableReplace(settings.subtitle, variableMap)}
-                   </div>
+                <div 
+                  className={cn(
+                    "text-muted-foreground max-w-3xl",
+                    settings.textAlignment === 'center' ? "mx-auto" : "",
+                    deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
+                  )}
+                  dangerouslySetInnerHTML={{ 
+                    __html: simpleVariableReplace(settings.subtitle, variableMap).replace(/\n/g, '<br>') 
+                  }}
+                />
               )}
               </div>
 
             {settings.content && (
-                             <div className={cn(
-                 "text-foreground max-w-4xl leading-relaxed",
-                 settings.textAlignment === 'center' ? "mx-auto" : "",
-                 deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
-                )}>
-                 {simpleVariableReplace(settings.content, variableMap).split('\n').map((line, i) => (
-                   <div key={i} className="mb-2">{line}</div>
-                 ))}
-              </div>
+              <div 
+                className={cn(
+                  "text-foreground max-w-4xl leading-relaxed",
+                  settings.textAlignment === 'center' ? "mx-auto" : "",
+                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                )}
+                dangerouslySetInnerHTML={{ 
+                  __html: simpleVariableReplace(settings.content, variableMap).replace(/\n/g, '<br>') 
+                }}
+              />
             )}
           </div>
 

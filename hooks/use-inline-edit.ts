@@ -111,6 +111,12 @@ export function useInlineEdit(
     setIsEditing(true)
     setOriginalValue(value)
     setError(null)
+    
+    // If value is empty and we have a placeholder, use placeholder as initial value
+    if (!value && placeholder) {
+      setValue(placeholder)
+    }
+    
     onEdit?.()
     
     // Focus input on next tick
@@ -123,7 +129,7 @@ export function useInlineEdit(
         }
       }
     }, 0)
-  }, [value, onEdit])
+  }, [value, placeholder, onEdit])
 
   const save = useCallback(async () => {
     if (error) return

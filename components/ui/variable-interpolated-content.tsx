@@ -201,12 +201,15 @@ function InterpolationDebug({ result, isVisible, onToggle }: InterpolationDebugP
 // =============================================================================
 
 function HighlightedContent({ content, highlightVariables }: { content: string; highlightVariables: boolean }) {
+  // Convert line breaks to <br> tags for proper HTML rendering
+  const contentWithBreaks = content.replace(/\n/g, '<br>')
+  
   if (!highlightVariables) {
-    return <div dangerouslySetInnerHTML={{ __html: content }} />
+    return <div dangerouslySetInnerHTML={{ __html: contentWithBreaks }} />
   }
 
   // Simple highlighting of variable placeholders or error messages
-  const highlightedContent = content
+  const highlightedContent = contentWithBreaks
     .replace(/\[@([^\]]+) not found\]/g, '<span class="bg-red-100 text-red-700 px-1 rounded text-sm">[$1 not found]</span>')
     .replace(/\[Error: ([^\]]+)\]/g, '<span class="bg-red-100 text-red-700 px-1 rounded text-sm">[Error: $1]</span>')
 

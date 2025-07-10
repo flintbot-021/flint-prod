@@ -180,9 +180,9 @@ export function OutputSection({
   // Get current settings with defaults
   const settings = section.settings as OutputSettings || {}
   const {
-    title = 'Your Results',
-    subtitle = 'Based on your answers, here\'s what we found',
-    content = 'Hello @name! Your score is @score out of 100.\n\n@recommendation\n\nThanks for taking our quiz!',
+    title = 'Headline goes here',
+    subtitle = 'Subheading',
+    content = 'Paragraph',
     image = '',
     textAlignment = 'center'
   } = settings
@@ -455,9 +455,9 @@ export function OutputSection({
           value={localTitle}
           onSave={(newTitle) => updateSettings({ title: newTitle })}
           autoSave={false}
-          placeholder="Your Results"
-          className="!text-3xl font-bold text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0"
-          inputClassName="!text-3xl font-bold !border-0 !bg-transparent !shadow-none !outline-none !ring-0 text-center text-gray-500 placeholder:text-gray-600 focus:!bg-transparent hover:!bg-transparent"
+          placeholder="Headline goes here"
+          className="!text-3xl font-bold text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0 !min-h-[3rem] !leading-tight"
+          inputClassName="!text-3xl !font-bold !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto !min-h-[3rem] !leading-tight placeholder:text-gray-600"
           showEditIcon={false}
           variant="heading"
         />
@@ -469,9 +469,9 @@ export function OutputSection({
           value={localSubtitle}
           onSave={(newSubtitle) => updateSettings({ subtitle: newSubtitle })}
           autoSave={false}
-          placeholder="Based on your answers, here's what we found"
-          className="!text-xl text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0"
-          inputClassName="!text-xl !border-0 !bg-transparent !shadow-none !outline-none !ring-0 text-center text-gray-500 placeholder:text-gray-600 focus:!bg-transparent hover:!bg-transparent"
+          placeholder="Subheading"
+          className="!text-xl text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0 !min-h-[2rem] !leading-tight"
+          inputClassName="!text-xl !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto !min-h-[2rem] !leading-tight placeholder:text-gray-600"
           showEditIcon={false}
           variant="body"
         />
@@ -483,9 +483,9 @@ export function OutputSection({
           value={localContent}
           onSave={(newContent) => updateSettings({ content: newContent })}
           autoSave={false}
-          placeholder="Hello @name! Your score is @score out of 100. Use @ to insert variables like @recommendation"
-          className="!text-lg text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0 !min-h-32"
-          inputClassName="!text-lg !border-0 !bg-transparent !shadow-none !outline-none !ring-0 text-center text-gray-500 placeholder:text-gray-600 focus:!bg-transparent hover:!bg-transparent !min-h-32"
+          placeholder="Paragraph"
+          className="!text-lg text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0 !min-h-32 !leading-relaxed"
+          inputClassName="!text-lg !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto !min-h-32 !leading-relaxed placeholder:text-gray-600"
           showEditIcon={false}
           variant="body"
           multiline={true}
