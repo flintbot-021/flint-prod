@@ -98,8 +98,7 @@ export const InlineEditableText = forwardRef<
       <div
         ref={ref}
         className={cn(
-          variantStyles[variant],
-          sizeStyles[size],
+          // Don't apply variant styles - let parent control all styling completely
           truncate && 'truncate',
           'cursor-not-allowed opacity-50',
           className
@@ -125,14 +124,13 @@ export const InlineEditableText = forwardRef<
           maxLength={maxLength}
           className={cn(
             'w-full',
-            variantStyles[variant],
-            sizeStyles[size],
+            // Don't apply variant styles - let parent control all styling completely
             error && 'border-red-500 focus:ring-red-500',
             inputClassName
           )}
           disabled={isSaving}
           autoFocus
-          {...(multiline && { autoGrow: true })}
+          {...(multiline && { autoGrow: true, style: { minHeight: 'inherit' } })}
         />
         
         {/* Save status indicator */}
@@ -176,12 +174,13 @@ export const InlineEditableText = forwardRef<
       onClick={startEdit}
       className={cn(
         'group relative cursor-text transition-colors',
-        variantStyles[variant],
-        sizeStyles[size],
+        // Don't apply variant styles - let parent control all styling completely
         truncate && 'truncate',
         isEmpty && 'text-gray-400 italic',
-        'hover:bg-muted rounded px-2 py-1 -mx-2 -my-1',
+        // Let parent component control padding - no default padding added
         'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1',
+        // Ensure consistent spacing with edit mode
+        multiline && 'min-h-[inherit] whitespace-pre-wrap',
         className
       )}
       tabIndex={0}
