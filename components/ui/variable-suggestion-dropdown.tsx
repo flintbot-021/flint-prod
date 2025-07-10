@@ -56,6 +56,7 @@ export function VariableSuggestionDropdown({
   
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [aiTestData, setAiTestData] = useState<Record<string, any>>({})
   
@@ -69,6 +70,11 @@ export function VariableSuggestionDropdown({
       // Set height based on content, with minimum of 1.5rem (24px)
       const newHeight = Math.max(textarea.scrollHeight, 24)
       textarea.style.height = newHeight + 'px'
+      
+      // Also resize the overlay to match
+      if (overlayRef.current) {
+        overlayRef.current.style.height = newHeight + 'px'
+      }
     }
   }, [multiline])
 
@@ -115,6 +121,38 @@ export function VariableSuggestionDropdown({
     }
     
     return 'No sample data'
+  }
+  
+  // Render text with highlighted @ variables
+  const renderHighlightedText = (text: string) => {
+    if (!text) return null
+    
+    // Split text by @ variables but keep the @ symbols
+    const parts = text.split(/(@\w+)/g)
+    
+    return parts.map((part, index) => {
+      if (part.startsWith('@')) {
+        // Check if this is a valid variable
+        const variableName = part.substring(1)
+        const isValidVariable = variables.some(v => v.name === variableName)
+
+                return (
+          <span
+            key={index}
+                    className={cn(
+              'px-1.5 py-0.5 rounded-md border',
+              isValidVariable 
+                ? 'bg-orange-100 border-orange-300' 
+                : 'bg-gray-100 border-gray-300'
+            )}
+            style={{ color: 'transparent' }} // Force transparent text
+          >
+            {part}
+          </span>
+        )
+      }
+      return <span key={index} style={{ color: 'transparent' }}>{part}</span>
+    })
   }
   
   // Filter variables based on query
@@ -247,9 +285,29 @@ export function VariableSuggestionDropdown({
   }, [])
   
   const InputComponent = multiline ? 'textarea' : 'input'
-  
+
   return (
     <div className={cn('relative', className)}>
+      {/* Highlighted overlay for @ variables */}
+      <div
+        ref={overlayRef}
+        className={cn(
+          'absolute inset-0 pointer-events-none whitespace-pre-wrap break-words overflow-visible',
+          'font-[inherit] text-transparent leading-relaxed', // Match input font but hide text, add more line height
+          inputClassName?.includes('text-center') ? 'text-center' : '',
+          inputClassName?.includes('text-left') ? 'text-left' : '',
+          inputClassName?.includes('text-right') ? 'text-right' : '',
+          inputClassName // Apply same styling as input
+        )}
+        style={{
+          zIndex: 1,
+          padding: '0.25rem', // Default padding, will be overridden by inputClassName
+          lineHeight: '1.8', // Extra line height to accommodate tags
+        }}
+      >
+        {renderHighlightedText(value)}
+      </div>
+      
       <InputComponent
         ref={inputRef as any}
         value={value}
@@ -258,9 +316,13 @@ export function VariableSuggestionDropdown({
         onBlur={handleBlur}
         placeholder={placeholder}
         className={cn(
-          'w-full',
+          'w-full relative z-10 bg-transparent leading-relaxed',
           inputClassName
         )}
+        style={{ 
+          backgroundColor: 'transparent',
+          lineHeight: '1.8' // Match overlay line height
+        }}
         {...(multiline ? { rows: 1 } : {})}
       />
       
@@ -297,15 +359,15 @@ export function VariableSuggestionDropdown({
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2 mb-1">
-                  <Badge 
+              <Badge 
                     variant={variable.type === 'input' ? 'secondary' : 'default'}
                     className={cn(
                       'text-xs',
                       variable.type === 'input' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
                     )}
-                  >
-                    {variable.type}
-                  </Badge>
+              >
+                {variable.type}
+              </Badge>
                   <code className="text-sm font-mono text-orange-600">@{variable.name}</code>
                 </div>
                 <div className="text-xs text-gray-400">
@@ -327,8 +389,8 @@ export function VariableSuggestionDropdown({
               No variables found for "{dropdown.query}"
             </div>
           )}
-        </div>
+      </div>
       )}
     </div>
   )
-} 
+}

@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
-import { Upload, X, Hash } from 'lucide-react'
+import { Upload, X } from 'lucide-react'
 import { InlineEditableText } from '@/components/ui/inline-editable-text'
 import { VariableSuggestionDropdown } from '@/components/ui/variable-suggestion-dropdown'
 import { VariableInterpolatedContent } from '@/components/ui/variable-interpolated-content'
@@ -495,65 +495,7 @@ export function OutputSection({
         />
       </div>
 
-      {/* Available Variables Section - Show at bottom */}
-      {availableVariables.length > 0 && (
-        <div className="pt-8 border-t border-gray-700">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Hash className="h-4 w-4 text-gray-400" />
-              <h3 className="text-sm font-medium text-gray-300">Available Variables</h3>
-            </div>
-            
-            <div className="grid grid-cols-1 gap-3">
-              {availableVariables.map((variable, index) => {
-                const hasRealData = getAITestResult(variable.name) !== null
-                
-                return (
-                  <div key={`${variable.name}-${index}`} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg border border-gray-700">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2">
-                        <Badge 
-                          variant={variable.type === 'input' ? 'secondary' : 'default'}
-                          className={cn(
-                            'text-xs',
-                            variable.type === 'input' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                          )}
-                        >
-                          {variable.type}
-                        </Badge>
-                        <code className="text-sm font-mono text-orange-400">@{variable.name}</code>
-                        {hasRealData && (
-                          <Badge className="text-xs bg-emerald-100 text-emerald-800 border-emerald-300">
-                            ✅ AI Data
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">{variable.description}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-gray-500">
-                        {hasRealData ? 'AI Result:' : 'Sample:'}
-                      </p>
-                      <p className="text-xs text-gray-300 font-mono max-w-32 truncate">{variable.sampleValue}</p>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            
-            <div className="space-y-2">
-              <p className="text-xs text-gray-500 text-center">
-                Type @ in the content above to insert these variables
-              </p>
-              {hasAITestResults() && (
-                <p className="text-xs text-emerald-400 text-center">
-                  ✅ Preview mode will show AI test results for variables marked with "AI Data"
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   )
 }
