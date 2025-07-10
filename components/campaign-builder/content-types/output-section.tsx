@@ -36,7 +36,7 @@ interface OutputSettings {
 
 interface SimpleVariable {
   name: string
-  type: 'input' | 'output'
+  type: 'input' | 'output' | 'capture'
   description: string
   sampleValue: string
 }
@@ -50,9 +50,58 @@ function getSimpleVariables(sections: CampaignSection[], currentOrder: number): 
   const variables: SimpleVariable[] = []
   const precedingSections = sections.filter(s => s.order < currentOrder)
   
+  console.log('🔍 getSimpleVariables - Processing sections:', precedingSections.map(s => ({ 
+    id: s.id, 
+    type: s.type, 
+    title: s.title,
+    order: s.order 
+  })))
+  
   precedingSections.forEach(section => {
-    // Extract from question sections
-    if (isQuestionSection(section.type) && section.title) {
+    console.log(`🔍 Processing section ${section.id} (type: ${section.type}, title: ${section.title})`)
+    
+    // Extract from capture sections FIRST (before general question processing)
+    if (section.type.includes('capture')) {
+      console.log('✅ Matched capture section logic')
+      const captureSettings = section.settings as any
+      const enabledFields = captureSettings?.enabledFields || { name: true, email: true, phone: false }
+      const fieldLabels = captureSettings?.fieldLabels || { name: 'Full Name', email: 'Email Address', phone: 'Phone Number' }
+      
+      console.log('📋 Capture settings:', { enabledFields, fieldLabels })
+      
+      if (enabledFields.name) {
+        variables.push({
+          name: 'name',
+          type: 'capture',
+          description: fieldLabels.name || 'Full Name',
+          sampleValue: 'Joe Bloggs'
+        })
+        console.log('✅ Added name variable')
+      }
+      
+      if (enabledFields.email) {
+        variables.push({
+          name: 'email',
+          type: 'capture',
+          description: fieldLabels.email || 'Email Address',
+          sampleValue: 'joe@email.com'
+        })
+        console.log('✅ Added email variable')
+      }
+      
+      if (enabledFields.phone) {
+        variables.push({
+          name: 'phone',
+          type: 'capture',
+          description: fieldLabels.phone || 'Phone Number',
+          sampleValue: '+12 345 6789'
+        })
+        console.log('✅ Added phone variable')
+      }
+    }
+    // Extract from question sections (but exclude capture sections)
+    else if (isQuestionSection(section.type) && section.title && !section.type.includes('capture')) {
+      console.log('✅ Matched question section logic')
       const settings = section.settings as any
       const variableName = settings?.variableName || titleToVariableName(section.title)
       
@@ -62,10 +111,11 @@ function getSimpleVariables(sections: CampaignSection[], currentOrder: number): 
         description: section.title || 'User input',
         sampleValue: settings?.placeholder || 'Sample answer'
       })
+      console.log(`✅ Added question variable: ${variableName}`)
     }
-    
     // Extract from AI logic sections
-    if (section.type === 'logic-ai') {
+    else if (section.type === 'logic-ai') {
+      console.log('✅ Matched AI logic section')
       const aiSettings = section.settings as any
       if (aiSettings?.outputVariables && Array.isArray(aiSettings.outputVariables)) {
         aiSettings.outputVariables.forEach((variable: any) => {
@@ -76,18 +126,32 @@ function getSimpleVariables(sections: CampaignSection[], currentOrder: number): 
               description: variable.description || 'AI generated output',
               sampleValue: getSampleValue(variable.name)
             })
+            console.log(`✅ Added AI variable: ${variable.name}`)
           }
         })
       }
+    } else {
+      console.log(`⚠️ No matching logic for section type: ${section.type}`)
     }
   })
   
+  console.log('🎯 Final extracted variables:', variables)
   return variables
 }
 
 // Generate sample values - Use AI test results if available, fallback to defaults
 function getSampleValue(variableName: string): string {
-  // First, try to get real AI test result
+  // First, check for hardcoded capture section values
+  switch (variableName.toLowerCase()) {
+    case 'name':
+      return 'Joe Bloggs'
+    case 'email':
+      return 'joe@email.com'
+    case 'phone':
+      return '+12 345 6789'
+  }
+  
+  // Then, try to get real AI test result
   const aiTestValue = getAITestResult(variableName)
   console.log(`🔍 getSampleValue for "${variableName}":`, { 
     aiTestValue, 
@@ -101,7 +165,7 @@ function getSampleValue(variableName: string): string {
     return stringValue
   }
 
-  // Fallback to default sample values
+  // Fallback to default sample values for AI outputs
   let defaultValue: string
   switch (variableName.toLowerCase()) {
     case 'recommendation':
@@ -142,9 +206,17 @@ function generateSampleContext(variables: SimpleVariable[]): Record<string, stri
   // Merge in AI test results (they take priority over defaults)
   Object.assign(context, aiTestResults)
   
+  // Always ensure capture section values are available with hardcoded samples
+  // (These will be overridden by AI test results if they exist)
+  if (!context.name) context.name = 'Joe Bloggs'
+  if (!context.email) context.email = 'joe@email.com'
+  if (!context.phone) context.phone = '+12 345 6789'
+  
   // Add defaults if no variables
   if (variables.length === 0) {
-    context.name = 'Alex Johnson'
+    context.name = 'Joe Bloggs'
+    context.email = 'joe@email.com'
+    context.phone = '+12 345 6789'
     context.score = '85'
     context.recommendation = 'Based on your answers, we recommend focusing on strength training.'
     
