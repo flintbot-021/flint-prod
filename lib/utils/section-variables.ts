@@ -150,8 +150,46 @@ export function buildVariablesFromInputs(
   console.log('📝 User inputs:', userInputs)
   
   sections.forEach(section => {
+    // Handle capture sections separately - they store individual fields directly
+    if (section.type.includes('capture')) {
+      const sectionData = userInputs[section.id] || {}
+      
+      console.log(`🎯 Processing capture section ${section.id}:`, sectionData)
+      
+      // Extract individual capture fields
+      if (sectionData.name) {
+        variables['name'] = sectionData.name
+        console.log(`✅ Capture variable "name": ${sectionData.name}`)
+      }
+      
+      if (sectionData.email) {
+        variables['email'] = sectionData.email
+        console.log(`✅ Capture variable "email": ${sectionData.email}`)
+      }
+      
+      if (sectionData.phone) {
+        variables['phone'] = sectionData.phone
+        console.log(`✅ Capture variable "phone": ${sectionData.phone}`)
+      }
+      
+      // Also check if the data was stored at the top level (legacy support)
+      if (userInputs.name && !variables['name']) {
+        variables['name'] = userInputs.name
+        console.log(`✅ Capture variable "name" (top-level): ${userInputs.name}`)
+      }
+      
+      if (userInputs.email && !variables['email']) {
+        variables['email'] = userInputs.email
+        console.log(`✅ Capture variable "email" (top-level): ${userInputs.email}`)
+      }
+      
+      if (userInputs.phone && !variables['phone']) {
+        variables['phone'] = userInputs.phone
+        console.log(`✅ Capture variable "phone" (top-level): ${userInputs.phone}`)
+      }
+    }
     // Only process question sections OR sections with sliders (for Multiple Sliders saved as 'info')
-    if (isQuestionSection(section.type) || (section.configuration as any)?.sliders) {
+    else if (isQuestionSection(section.type) || (section.configuration as any)?.sliders) {
       
       // Check if this is a Multiple Sliders section (either by type or by having sliders config)
       const isMultipleSliders = isMultipleInputSection(section.type) || 

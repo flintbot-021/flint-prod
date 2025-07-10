@@ -8,7 +8,7 @@ import { getAITestResults } from '@/lib/utils/ai-test-storage'
 
 interface Variable {
   name: string
-  type: 'input' | 'output'
+  type: 'input' | 'output' | 'capture'
   description: string
   sampleValue: string
 }
@@ -118,6 +118,11 @@ export function VariableSuggestionDropdown({
     
     if (sampleValue !== undefined && sampleValue !== null) {
       return String(sampleValue)
+    }
+    
+    // Fall back to the variable's provided sample value
+    if (variable.sampleValue && variable.sampleValue !== 'No sample data') {
+      return variable.sampleValue
     }
     
     return 'No sample data'
@@ -363,7 +368,9 @@ export function VariableSuggestionDropdown({
                     variant={variable.type === 'input' ? 'secondary' : 'default'}
                     className={cn(
                       'text-xs',
-                      variable.type === 'input' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                      variable.type === 'input' ? 'bg-blue-100 text-blue-800' : 
+                      variable.type === 'capture' ? 'bg-purple-100 text-purple-800' : 
+                      'bg-green-100 text-green-800'
                     )}
               >
                 {variable.type}
