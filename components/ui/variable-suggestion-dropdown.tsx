@@ -51,17 +51,33 @@ export function VariableSuggestionDropdown({
     atIndex: -1
   })
   
-  // Debug logging
-  console.log('🔍 VariableSuggestionDropdown received:', {
-    variablesCount: variables.length,
-    variables: variables.map(v => ({ name: v.name, type: v.type })),
-    placeholder,
-    value: value.substring(0, 20) + (value.length > 20 ? '...' : '')
-  })
+
   
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
+  
+  // Auto-resize textarea
+  const autoResize = useCallback(() => {
+    if (multiline && inputRef.current) {
+      const textarea = inputRef.current as HTMLTextAreaElement
+      // Force reset height to 0 first, then auto to properly recalculate
+      textarea.style.height = '0px'
+      textarea.style.height = 'auto'
+      // Set height based on content, with minimum of 1.5rem (24px)
+      const newHeight = Math.max(textarea.scrollHeight, 24)
+      textarea.style.height = newHeight + 'px'
+    }
+  }, [multiline])
+
+  useEffect(() => {
+    autoResize()
+  }, [value, autoResize])
+  
+  // Initial resize when component mounts
+  useEffect(() => {
+    autoResize()
+  }, [autoResize])
   
   // Filter variables based on query
   const filteredVariables = variables.filter(variable =>
@@ -73,18 +89,19 @@ export function VariableSuggestionDropdown({
     const input = inputRef.current
     if (!input) return { top: 0, left: 0 }
     
-    // Simple positioning - just below the input
     const rect = input.getBoundingClientRect()
     
-    console.log('🔍 Position calculation:', {
-      inputRect: rect,
-      calculatedTop: rect.height + 5,
-      calculatedLeft: 0
-    })
+    // For better UX, center the dropdown under the input
+    // This feels more natural than bottom-left positioning
+    const dropdownWidth = 256 // min-w-64 = 256px
+    const inputWidth = rect.width
+    const leftOffset = Math.max(0, (inputWidth - dropdownWidth) / 2)
+    
+
     
     return {
       top: rect.height + 5,
-      left: 0
+      left: leftOffset
     }
   }, [value])
   
@@ -95,24 +112,20 @@ export function VariableSuggestionDropdown({
     
     onChange(newValue)
     
+    // Auto-resize on change
+    setTimeout(() => autoResize(), 0)
+    
     // Check for @ symbol
     const textBeforeCursor = newValue.substring(0, cursorPos)
     const atMatch = textBeforeCursor.match(/@(\w*)$/)
     
-    console.log('🔍 @ detection debug:', {
-      newValue,
-      cursorPos,
-      textBeforeCursor,
-      atMatch,
-      variablesLength: variables.length,
-      shouldShow: !!(atMatch && variables.length > 0)
-    })
+
     
     if (atMatch && variables.length > 0) {
       const query = atMatch[1] || ''
       const atIndex = cursorPos - query.length - 1
       
-      console.log('🎯 Showing dropdown with:', { query, atIndex })
+
       
       setDropdown({
         show: true,
@@ -124,32 +137,17 @@ export function VariableSuggestionDropdown({
     } else {
       setDropdown(prev => ({ ...prev, show: false }))
     }
-  }, [onChange, variables.length, getCursorPosition])
+  }, [onChange, variables.length, getCursorPosition, autoResize])
   
   // Handle variable selection
   const insertVariable = useCallback((variable: Variable) => {
-    console.log('🔍 insertVariable called with:', { variable, dropdown })
-    
     const input = inputRef.current
-    if (!input) {
-      console.log('❌ No input ref found')
-      return
-    }
+    if (!input) return
     
     const cursorPos = input.selectionStart || 0
     const newValue = value.substring(0, dropdown.atIndex) + 
                     `@${variable.name}` + 
                     value.substring(cursorPos)
-    
-    console.log('🔍 Variable insertion debug:', {
-      originalValue: value,
-      atIndex: dropdown.atIndex,
-      cursorPos,
-      variableName: variable.name,
-      newValue,
-      beforeAt: value.substring(0, dropdown.atIndex),
-      afterCursor: value.substring(cursorPos)
-    })
     
     onChange(newValue)
     setDropdown(prev => ({ ...prev, show: false }))
@@ -225,13 +223,13 @@ export function VariableSuggestionDropdown({
           'w-full',
           inputClassName
         )}
-        {...(multiline ? { rows: 4 } : {})}
+        {...(multiline ? { rows: 1 } : {})}
       />
       
       {dropdown.show && filteredVariables.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-[9999] bg-white border border-gray-300 rounded-md shadow-xl max-h-48 overflow-y-auto min-w-64 border-2 border-blue-500"
+          className="absolute z-[9999] bg-white border border-gray-300 rounded-md shadow-xl max-h-48 overflow-y-auto min-w-64"
           style={{
             top: dropdown.position.top,
             left: dropdown.position.left
@@ -252,7 +250,6 @@ export function VariableSuggestionDropdown({
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                console.log('🔍 Button clicked for variable:', variable.name)
                 insertVariable(variable)
               }}
               className={cn(
