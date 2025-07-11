@@ -58,21 +58,38 @@ export class PromptGenerationService {
    */
   async generatePrompt(request: PromptGenerationRequest): Promise<PromptGenerationResponse> {
     const startTime = Date.now()
+    console.log('🎯 Starting prompt generation...')
 
     try {
+      console.log('📊 Extracting rich context...')
       // Extract rich context from sections
       const context = this.extractRichContext(request.sections, request.currentSectionOrder)
+      console.log('📊 Context extracted:', {
+        contextCount: context.length,
+        sectionTypes: context.map(c => c.type)
+      })
       
+      console.log('🔨 Building generation prompt...')
       // Build the generation prompt for GPT-4o mini
       const generationPrompt = this.buildGenerationPrompt(context, request)
+      console.log('🔨 Generation prompt built, length:', generationPrompt.length)
       
+      console.log('🤖 Calling OpenAI API...')
       // Call OpenAI API
       const response = await this.callOpenAI(generationPrompt)
+      console.log('🤖 OpenAI response received, length:', response.length)
       
+      console.log('🔍 Parsing response...')
       // Parse the response
       const parsed = this.parseGenerationResponse(response)
+      console.log('🔍 Response parsed:', {
+        hasPrompt: !!parsed.prompt,
+        promptLength: parsed.prompt?.length,
+        outputVarsCount: parsed.outputVariables?.length
+      })
       
       const processingTime = Date.now() - startTime
+      console.log('✅ Prompt generation completed in', processingTime, 'ms')
 
       return {
         success: true,
@@ -85,6 +102,7 @@ export class PromptGenerationService {
 
     } catch (error) {
       const processingTime = Date.now() - startTime
+      console.error('❌ Prompt generation failed after', processingTime, 'ms:', error)
       
       return {
         success: false,
@@ -172,72 +190,100 @@ export class PromptGenerationService {
    * Build the prompt for GPT-4o mini to generate the AI logic prompt
    */
   private buildGenerationPrompt(context: SectionContext[], request: PromptGenerationRequest): string {
-    const campaignInfo = request.campaignContext || {}
     const outputVars = request.outputVariables || []
     
     // Get rich context including subheadings and detailed content
     const richContext = extractRichContextForSection(request.sections, request.currentSectionOrder)
     
-    let prompt = `You are an expert prompt writer. A user is creating a custom form and has asked their users questions.
+    let prompt = `You are an expert prompt writer. A user is creating a custom form and has asked their users the following questions:
 
 `
 
-    // Add question context in enhanced format with proper context
-    // Match questions with their corresponding variables
-    richContext.questionContext.forEach((question, index) => {
-      const variable = richContext.variables[index]
+    // Build clean question descriptions
+    const questionDescriptions: string[] = []
+    
+    // Get sections that come before the current AI logic section
+    const precedingSections = request.sections
+      .filter(s => s.order < request.currentSectionOrder && s.type.includes('question-'))
+      .sort((a, b) => a.order - b.order)
+    
+    precedingSections.forEach((section, index) => {
+      const settings = section.settings as any
+      const questionNumber = index + 1
       
-      if (question && variable) {
-        // Find the corresponding section context for additional details
-        const sectionContext = context.find(ctx => 
-          ctx.variableName === variable || 
-          ctx.title === question ||
-          ctx.content === question
-        )
-        
-        const questionType = sectionContext?.type || 'text question'
-        
-        prompt += `Question ${index + 1} (${questionType}): "${question}"`
-        
-        // Add type-specific information
-        if (questionType.includes('slider')) {
-          const rangeInfo = sectionContext?.options?.find(opt => opt.startsWith('Range:')) || 'Range: 0 to 10'
-          prompt += ` - ${rangeInfo}`
-        } else if (questionType === 'question-multiple-choice' && sectionContext?.options?.length) {
-          prompt += ` - Options: ${sectionContext.options.join(', ')}`
+      if (section.type === 'question-slider-multiple') {
+        // Handle multiple sliders
+        if (settings.sliders && Array.isArray(settings.sliders)) {
+          settings.sliders.forEach((slider: any, sliderIndex: number) => {
+            if (slider.label && slider.variableName) {
+              const sliderNum = questionNumber + sliderIndex
+              questionDescriptions.push(
+                `Question ${sliderNum}: "${slider.label}" (Slider: ${slider.minValue || 0} to ${slider.maxValue || 10}) - Variable: @${slider.variableName}`
+              )
+            }
+          })
         }
+      } else if (section.type === 'question-slider') {
+        // Handle single slider
+        const questionText = settings?.content || settings?.questionText || section.title || 'Untitled Question'
+        const variableName = settings?.variableName || this.createVariableName(section.title) || `question_${section.order}`
+        const minValue = settings?.minValue || 0
+        const maxValue = settings?.maxValue || 10
         
-        // Add the variable name that will be used
-        prompt += ` - Variable: @${variable}`
-        prompt += `\n`
+        questionDescriptions.push(
+          `Question ${questionNumber}: "${questionText}" (Slider: ${minValue} to ${maxValue}) - Variable: @${variableName}`
+        )
+      } else if (section.type === 'question-multiple-choice') {
+        // Handle multiple choice
+        const questionText = settings?.content || settings?.questionText || section.title || 'Untitled Question'
+        const variableName = settings?.variableName || this.createVariableName(section.title) || `question_${section.order}`
+        const options = settings?.options?.map((opt: any) => opt.text || opt.label || opt) || []
+        
+        questionDescriptions.push(
+          `Question ${questionNumber}: "${questionText}" (Multiple Choice: ${options.join(', ')}) - Variable: @${variableName}`
+        )
+      } else {
+        // Handle text and other question types
+        const questionText = settings?.content || settings?.questionText || section.title || 'Untitled Question'
+        const variableName = settings?.variableName || this.createVariableName(section.title) || `question_${section.order}`
+        
+        questionDescriptions.push(
+          `Question ${questionNumber}: "${questionText}" (Text Input) - Variable: @${variableName}`
+        )
       }
     })
 
+    // Add the question descriptions to the prompt
+    questionDescriptions.forEach(desc => {
+      prompt += `${desc}\n`
+    })
+
     prompt += `
-We will then use the answers from those questions to create a custom prompt.
+Based on these questions and user responses, create an AI prompt that will process the answers and provide helpful output.
 
-Based on their inputs, what do you think a suitable prompt might be?
-
-Start with: "You are an expert [whatever you think they are trying to be] - a user has..."
-
-IMPORTANT: You MUST include the question context in your prompt using this format:
+IMPORTANT FORMAT REQUIREMENTS:
 
 For TEXT questions, use this format:
-"The user was asked '[QUESTION TEXT]' and they responded with a text answer of @[variable_name]."
+"The user was asked '[QUESTION TEXT]' and they responded with @[variable_name]."
 
 For SLIDER questions, use this format:
-"The user was asked '[QUESTION TEXT]' and they responded with a slider answer of @[variable_name] out of [max_value]."
+"The user was asked '[QUESTION TEXT]' and they rated it @[variable_name] out of [max_value]."
 
 For MULTIPLE CHOICE questions, use this format:
 "The user was asked '[QUESTION TEXT]' and they selected @[variable_name] from the available options."
 
 EXAMPLE of good prompt structure:
-"You are an expert business consultant. The user was asked 'Do we have a clear marketing strategy that supports our business goals?' and they responded with a text answer of @marketing_strategy. The user was asked 'How confident are you in your current approach?' and they responded with a slider answer of @confidence_level out of 10. Based on these responses, provide..."
+"You are an expert fitness coach. The user was asked 'What is your name?' and they responded with @name. The user was asked 'How often do you train?' and they rated it @training_frequency out of 7. The user was asked 'What is your preferred distance?' and they selected @distance from the available options."
 
-The available variables are:
-${richContext.variables.map(v => `@${v}`).join(', ')}
-
-Always include the full question text before mentioning the variable to provide proper context.
+CRITICAL RULES - FOLLOW EXACTLY:
+- Start your prompt with: "You are an expert [whatever role makes sense for this context]..."
+- Use each variable (@variable_name) exactly ONCE in the prompt
+- DO NOT ask for anything back or request specific outputs in the prompt
+- DO NOT include phrases like "Based on these responses, provide..." or "suggest..." or "recommend..."
+- DO NOT include any instructions about what to do with the information
+- The prompt should ONLY provide context about who the AI is and what information it has
+- The prompt should END after stating all the user responses - nothing more
+- Keep it conversational and clear but DO NOT request any actions or outputs
 
 ${outputVars.length > 0 ? `
 The user already has these existing outputs defined:
@@ -261,8 +307,6 @@ Return your response as JSON:
   "reasoning": "Brief explanation of your approach"
 }
 
-IMPORTANT: The "outputVariables" array should contain ONLY the NEW additional output variables you are suggesting. Do NOT include any existing outputs that were already provided above.
-
 For outputVariables, suggest exactly 2 NEW meaningful variables that the AI should generate based on the campaign context. Consider variables like:
 - recommendation, advice, plan, strategy (for personalized guidance)
 - score, rating, percentage (for numerical assessments) 
@@ -274,8 +318,7 @@ IMPORTANT:
 - Generate exactly 2 NEW output variables that are DIFFERENT from any existing outputs
 - Be creative and innovative - think of unique variables that would be valuable for this specific campaign context
 - Do NOT repeat or include any existing output variable names
-
-Make it conversational and helpful. Remember to include the @variable references in the prompt.
+- Make the prompt clear, conversational, and easy to understand
 
 Random seed: ${Math.random().toString(36).substring(7)}`
 
