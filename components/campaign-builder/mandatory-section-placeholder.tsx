@@ -84,12 +84,13 @@ export function MandatorySectionPlaceholder({
   const colors = colorClasses[section.color as keyof typeof colorClasses]
 
   const isCompact = className?.includes('compact')
+  const isThin = className?.includes('thin')
 
   return (
     <div
       className={cn(
         'relative border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer group',
-        isCompact ? 'p-3' : 'p-6',
+        isThin ? 'p-2' : isCompact ? 'p-3' : 'p-6',
         colors.border,
         colors.bg,
         className
@@ -98,14 +99,35 @@ export function MandatorySectionPlaceholder({
     >
       {/* Required badge */}
       <div className={cn(
-        'absolute bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium',
-        isCompact ? '-top-1 -right-1' : '-top-2 -right-2'
+        'absolute bg-red-600 text-white text-xs px-2 py-1 rounded-full font-semibold shadow-sm border border-red-700',
+        isThin ? '-top-1 -right-1' : isCompact ? '-top-1 -right-1' : '-top-2 -right-2'
       )}>
         Required
       </div>
 
       {/* Content */}
-      {isCompact ? (
+      {isThin ? (
+        <div className="flex items-center space-x-2">
+          <div className="w-6 h-6 flex-shrink-0 rounded-full flex items-center justify-center transition-colors bg-white/50">
+            <Icon className={cn('h-3 w-3', colors.icon)} />
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <h3 className={cn('text-xs font-medium', colors.text)}>
+              {section.name}
+            </h3>
+          </div>
+
+          {/* Add button */}
+          <div className={cn(
+            'inline-flex items-center space-x-1 text-xs font-medium transition-colors flex-shrink-0',
+            colors.button
+          )}>
+            <Plus className="h-3 w-3" />
+            <span className="hidden sm:inline">Add</span>
+          </div>
+        </div>
+      ) : isCompact ? (
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center transition-colors bg-white shadow-sm group-hover:shadow-md">
             <Icon className={cn('h-4 w-4', colors.icon)} />
