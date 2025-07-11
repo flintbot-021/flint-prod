@@ -113,7 +113,7 @@ const convertCampaignSectionToDatabase = (section: CampaignSection, campaignId: 
   }
 }
 
-export default function CampaignBuilderPage() {
+export default function ToolBuilderPage() {
   const router = useRouter()
   const params = useParams()
   const { user, loading } = useAuth()
@@ -147,7 +147,7 @@ export default function CampaignBuilderPage() {
 
   const loadCampaign = async () => {
     if (!params.id || typeof params.id !== 'string') {
-      setError('Invalid campaign ID')
+      setError('Invalid tool ID')
       setIsLoading(false)
       return
     }
@@ -159,7 +159,7 @@ export default function CampaignBuilderPage() {
       const result = await getCampaignById(params.id)
       
       if (!result.success || !result.data) {
-        throw new Error(result.error || 'Campaign not found')
+        throw new Error(result.error || 'Tool not found')
       }
       
       setCampaign(result.data)
@@ -181,7 +181,7 @@ export default function CampaignBuilderPage() {
       }
     } catch (err) {
       console.error('Error loading campaign:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load campaign'
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load tool'
       setError(errorMessage)
     } finally {
       setIsLoading(false)
@@ -199,18 +199,18 @@ export default function CampaignBuilderPage() {
 
       const result = await updateCampaign(campaign.id, { name: newName })
       if (!result.success) {
-        throw new Error(result.error || 'Failed to update campaign name')
+        throw new Error(result.error || 'Failed to update tool name')
       }
 
       setCampaign(prev => prev ? { ...prev, name: newName } : null)
       toast({
-        title: 'Campaign name updated',
-        description: 'Campaign name has been saved',
+        title: 'Tool name updated',
+        description: 'Tool name has been saved',
         duration: 2000
       })
     } catch (err) {
       console.error('Error updating campaign name:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update campaign name'
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update tool name'
       setError(errorMessage)
       toast({
         title: 'Update failed',
@@ -234,13 +234,13 @@ export default function CampaignBuilderPage() {
       // This manual save can be used for other campaign-level changes
       
       toast({
-        title: 'Campaign saved',
+        title: 'Tool saved',
         description: 'All changes have been saved successfully',
         duration: 3000
       })
     } catch (err) {
       console.error('Error saving campaign:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save campaign'
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save tool'
       setError(errorMessage)
       toast({
         title: 'Save failed',
@@ -282,7 +282,7 @@ export default function CampaignBuilderPage() {
     // Check if mandatory sections exist
     if (!mandatoryValidation.isValid) {
       toast({
-        title: 'Cannot preview campaign',
+        title: 'Cannot preview tool',
         description: `Missing required sections: ${mandatoryValidation.missing.join(', ')}`,
         variant: 'destructive'
       })
@@ -297,7 +297,7 @@ export default function CampaignBuilderPage() {
     // Check if mandatory sections exist
     if (!mandatoryValidation.isValid) {
       toast({
-        title: 'Cannot publish campaign',
+        title: 'Cannot publish tool',
         description: `Missing required sections: ${mandatoryValidation.missing.join(', ')}`,
         variant: 'destructive'
       })
@@ -310,6 +310,10 @@ export default function CampaignBuilderPage() {
   const handlePublishSuccess = (updatedCampaign: Campaign) => {
     setCampaign(updatedCampaign)
     setShowPublishModal(false)
+  }
+
+  const handlePause = () => {
+    setShowPublishModal(true)
   }
 
   const handleSectionAdd = async (sectionType: SectionType) => {
@@ -1016,7 +1020,7 @@ export default function CampaignBuilderPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading campaign builder...</p>
+          <p className="text-muted-foreground">Loading tool builder...</p>
         </div>
       </div>
     )
@@ -1036,7 +1040,7 @@ export default function CampaignBuilderPage() {
                 <div className="flex items-center space-x-3 text-red-800">
                   <AlertCircle className="h-5 w-5" />
                   <div>
-                    <p className="font-medium">Error loading campaign</p>
+                    <p className="font-medium">Error loading tool</p>
                     <p className="text-sm mt-1">{error}</p>
                     <button
                       onClick={loadCampaign}
@@ -1062,12 +1066,12 @@ export default function CampaignBuilderPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="text-center">
-                  <p className="text-muted-foreground">Campaign not found</p>
+                  <p className="text-muted-foreground">Tool not found</p>
                   <button
                     onClick={() => router.push('/dashboard')}
                     className="mt-2 text-blue-600 underline hover:no-underline"
                   >
-                    Back to Campaigns
+                    Back to Tools
                   </button>
                 </div>
               </CardContent>
@@ -1087,7 +1091,7 @@ export default function CampaignBuilderPage() {
         onDragEnd={handleDragEnd}
       >
         <div className="min-h-screen bg-background">
-          {/* Campaign Builder Top Bar */}
+          {/* Tool Builder Top Bar */}
           <CampaignBuilderTopBar
             campaignName={campaign.name}
             campaignStatus={campaign.status}
@@ -1099,6 +1103,7 @@ export default function CampaignBuilderPage() {
             onCampaignNameChange={handleCampaignNameChange}
             onPreview={handlePreview}
             onPublish={handlePublish}
+            onPause={handlePause}
           />
 
           {/* Main Content Area */}
@@ -1125,7 +1130,7 @@ export default function CampaignBuilderPage() {
                 </Card>
               )}
 
-              {/* Campaign Builder Content */}
+              {/* Tool Builder Content */}
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
                 {/* Sidebar - Sections Menu */}
                 <div className="lg:col-span-1">
@@ -1134,15 +1139,15 @@ export default function CampaignBuilderPage() {
                   </Card>
                 </div>
 
-                {/* Main Content - Builder Canvas */}
+                {/* Main Content - Tool Canvas */}
                 <div className="lg:col-span-3">
                   <Card className="h-full">
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div>
-                          <CardTitle className="text-lg">Campaign Canvas</CardTitle>
+                          <CardTitle className="text-lg">Tool Canvas</CardTitle>
                           <CardDescription>
-                            Every campaign needs a Capture section, Logic section, and Output section. Click the placeholders below to add required sections, or use the sidebar for additional sections.
+                            Every tool needs a Capture section, Logic section, and Output section. Click the placeholders below to add required sections, or use the sidebar for additional sections.
                           </CardDescription>
                         </div>
 

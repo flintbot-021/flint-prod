@@ -341,7 +341,7 @@ export default function Dashboard() {
                 className="h-9 flex items-center space-x-2"
               >
                 <Plus className="h-4 w-4" />
-                <span>New Campaign</span>
+                <span>New Tool</span>
               </Button>
             </div>
           </div>
@@ -369,15 +369,29 @@ export default function Dashboard() {
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <StatsCard
-              title="Total Campaigns"
-              value={stats.totalCampaigns}
+              title="Live Tools"
+              value={campaigns.filter(c => c.status === 'published').length}
               subtitle={
                 <span className="text-green-600">
-                  {campaigns.filter(c => c.status === 'published').length} published
+                  {stats.totalCampaigns} total tools
                 </span>
               }
-              icon={Target}
+              icon={Activity}
               iconColor="text-blue-600"
+              loading={loadingStats}
+            />
+            
+            <StatsCard
+              title="Average Conversion Rate"
+              value={`${stats.completionRate.toFixed(1)}%`}
+              subtitle={
+                <span className="text-green-600">
+                  <ArrowUpRight className="h-3 w-3 inline" />
+                  3.2% improvement
+                </span>
+              }
+              icon={TrendingUp}
+              iconColor="text-purple-600"
               loading={loadingStats}
             />
             
@@ -394,20 +408,6 @@ export default function Dashboard() {
               iconColor="text-green-600"
               loading={loadingStats}
             />
-            
-            <StatsCard
-              title="Completion Rate"
-              value={`${stats.completionRate.toFixed(1)}%`}
-              subtitle={
-                <span className="text-green-600">
-                  <ArrowUpRight className="h-3 w-3 inline" />
-                  3.2% improvement
-                </span>
-              }
-              icon={TrendingUp}
-              iconColor="text-purple-600"
-              loading={loadingStats}
-            />
           </div>
 
           {/* Main Content Grid */}
@@ -415,10 +415,10 @@ export default function Dashboard() {
             {/* Campaigns Grid */}
                     <div>
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold text-foreground">Your Campaigns</h2>
+                <h2 className="text-lg font-semibold text-foreground">Your Tools</h2>
                 {campaigns.length > 0 && (
                   <p className="text-sm text-muted-foreground">
-                    {campaigns.length} campaign{campaigns.length !== 1 ? 's' : ''} total
+                    {campaigns.length} tool{campaigns.length !== 1 ? 's' : ''} total
                   </p>
                 )}
                     </div>
@@ -462,9 +462,9 @@ export default function Dashboard() {
                 <Card className="text-center py-12">
                   <CardContent>
                     <Target className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <CardTitle className="text-xl mb-2">No campaigns yet</CardTitle>
+                    <CardTitle className="text-xl mb-2">No tools yet</CardTitle>
                     <CardDescription className="mb-6 max-w-md mx-auto">
-                      Create your first lead magnet campaign to start capturing and converting leads.
+                      Create your first lead magnet tool to start capturing and converting leads.
                     </CardDescription>
                     <div className="flex justify-center">
                       <Button 
@@ -473,7 +473,7 @@ export default function Dashboard() {
                         className="flex items-center space-x-2"
                       >
                         <Plus className="h-4 w-4" />
-                        <span>Create Your First Campaign</span>
+                        <span>Create Your First Tool</span>
                       </Button>
                     </div>
                   </CardContent>

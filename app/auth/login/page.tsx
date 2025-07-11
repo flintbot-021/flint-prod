@@ -214,7 +214,8 @@ function LoginPageContent() {
               }
             </Button>
 
-            {mode === 'login' && (
+            {/* OAuth options temporarily hidden - not yet supported */}
+            {/* {mode === 'login' && (
               <>
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
@@ -244,7 +245,7 @@ function LoginPageContent() {
                   </Button>
                 </div>
               </>
-            )}
+            )} */}
           </form>
 
           <div className="mt-6 text-center text-sm">

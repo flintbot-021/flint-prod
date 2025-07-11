@@ -449,27 +449,7 @@ export default function CreateCampaignPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="font-family">Font Family</Label>
-                <select
-                  id="font-family"
-                  value={formData.settings.theme?.font_family || 'Inter, sans-serif'}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateSettings({
-                    theme: {
-                      ...formData.settings.theme,
-                      font_family: e.target.value
-                    }
-                  })}
-                  className="w-full p-2 border border-input rounded-md"
-                >
-                  <option value="Inter, sans-serif">Inter</option>
-                  <option value="system-ui, sans-serif">System UI</option>
-                  <option value="Georgia, serif">Georgia</option>
-                  <option value="Times New Roman, serif">Times New Roman</option>
-                  <option value="Arial, sans-serif">Arial</option>
-                  <option value="Helvetica, sans-serif">Helvetica</option>
-                </select>
-              </div>
+              {/* Font family selector hidden - using Inter by default, functionality preserved for future use */}
             </div>
 
             <div className="space-y-4">
@@ -528,21 +508,7 @@ export default function CreateCampaignPage() {
                 </p>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="show-powered-by"
-                  checked={formData.settings.branding?.show_powered_by ?? true}
-                  onChange={(e) => updateSettings({
-                    branding: {
-                      ...formData.settings.branding,
-                      show_powered_by: e.target.checked
-                    }
-                  })}
-                  className="rounded"
-                />
-                <Label htmlFor="show-powered-by">Show "Powered by Flint" attribution</Label>
-              </div>
+
             </div>
           </div>
         )
@@ -550,22 +516,11 @@ export default function CreateCampaignPage() {
       case 'settings':
         return (
           <div className="space-y-6">
+            {/* Email notifications setting hidden - functionality preserved for future use */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Completion Settings</h3>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="email-notifications"
-                  checked={formData.settings.completion?.email_notifications ?? true}
-                  onChange={(e) => updateSettings({
-                    completion: {
-                      ...formData.settings.completion,
-                      email_notifications: e.target.checked
-                    }
-                  })}
-                  className="rounded"
-                />
-                <Label htmlFor="email-notifications">Send email notifications when leads complete the campaign</Label>
+              <div className="text-sm text-muted-foreground">
+                Campaign completion settings will be configured automatically.
               </div>
             </div>
           </div>
@@ -623,9 +578,7 @@ export default function CreateCampaignPage() {
                       ></div>
                       <span className="text-sm">Secondary: {formData.settings.theme?.secondary_color}</span>
                     </div>
-                    <div className="text-sm">
-                      <span className="font-medium">Font:</span> {formData.settings.theme?.font_family}
-                    </div>
+
                   </div>
                 </CardContent>
               </Card>
@@ -641,14 +594,8 @@ export default function CreateCampaignPage() {
                     <Check className="h-4 w-4 inline mr-2 text-green-600" />
                     Logo: {logoFile ? `${logoFile.name} (${(logoFile.size / 1024).toFixed(1)} KB)` : 'None'}
                   </li>
-                  <li>
-                    <Check className="h-4 w-4 inline mr-2 text-green-600" />
-                    {formData.settings.branding?.show_powered_by ? 'Show' : 'Hide'} Flint attribution
-                  </li>
-                  <li>
-                    <Check className="h-4 w-4 inline mr-2 text-green-600" />
-                    Email notifications: {formData.settings.completion?.email_notifications ? 'Enabled' : 'Disabled'}
-                  </li>
+
+
                 </ul>
               </CardContent>
             </Card>

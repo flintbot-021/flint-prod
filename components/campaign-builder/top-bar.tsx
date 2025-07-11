@@ -12,8 +12,17 @@ import {
   Edit3,
   Check,
   X,
-  Loader2
+  Loader2,
+  MoreHorizontal,
+  Pause,
+  Rocket
 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
 interface CampaignBuilderTopBarProps {
@@ -27,6 +36,7 @@ interface CampaignBuilderTopBarProps {
   onCampaignNameChange?: (name: string) => void
   onPreview?: () => void
   onPublish?: () => void
+  onPause?: () => void
   className?: string
 }
 
@@ -41,6 +51,7 @@ export function CampaignBuilderTopBar({
   onCampaignNameChange,
   onPreview,
   onPublish,
+  onPause,
   className
 }: CampaignBuilderTopBarProps) {
   const router = useRouter()
@@ -179,7 +190,7 @@ export function CampaignBuilderTopBar({
             <Badge 
               variant={isPublished ? 'default' : 'secondary'}
             >
-              {isPublished ? 'Published' : 'Draft'}
+              {isPublished ? 'Live' : 'Draft'}
             </Badge>
           </div>
 
@@ -202,21 +213,43 @@ export function CampaignBuilderTopBar({
               </Button>
             )}
 
-            {/* Publish/Published Button */}
-            {onPublish && (
+            {/* Launch/Live Button and Actions */}
+            {!isPublished && onPublish && (
               <Button
                 size="sm"
                 onClick={onPublish}
                 disabled={!canPublish || isSaving}
-                variant={isPublished ? 'secondary' : 'default'}
                 title={!canPublish && validationErrors.length > 0 
                   ? `Missing required sections: ${validationErrors.join(', ')}`
                   : undefined
                 }
               >
-                <Globe className="h-4 w-4 mr-2" />
-                {isPublished ? 'Published' : 'Publish'}
+                <Rocket className="h-4 w-4 mr-2" />
+                Launch
               </Button>
+            )}
+
+            {/* Live Tool Actions Menu */}
+            {isPublished && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isSaving}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {onPause && (
+                    <DropdownMenuItem onClick={onPause} className="flex items-center">
+                      <Pause className="h-4 w-4 mr-2" />
+                      Pause Tool
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>
