@@ -32,6 +32,11 @@ NEXT_PUBLIC_SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
 NEXT_PUBLIC_ENABLE_PERFORMANCE_TRACKING=true
 ```
 
+#### Unsplash Integration (Optional - For image search in campaign builder)
+```
+NEXT_PUBLIC_UNSPLASH_ACCESS_KEY=your-unsplash-access-key
+```
+
 #### Node Environment
 ```
 NODE_ENV=production
