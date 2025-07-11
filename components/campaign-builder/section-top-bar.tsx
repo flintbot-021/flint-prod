@@ -132,11 +132,11 @@ export function SectionTopBar({
           )}
         </div>
 
-        {/* Section Name (Editable) */}
+        {/* Section Name (Editable or Static) */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center">
-            {/* @ Symbol for question sections */}
-            {isQuestionSection(section.type) && (
+            {/* @ Symbol for question sections except capture section */}
+            {isQuestionSection(section.type) && section.type !== 'capture-details' && (
               <span className={cn(
                 "mr-1 font-mono text-sm",
                 checkVariableNameConflict(section.title) 
@@ -146,27 +146,29 @@ export function SectionTopBar({
                 @
               </span>
             )}
-            
-            <InlineEditableText
-              value={section.title}
-              onSave={handleNameChange}
-              variant="body"
-              placeholder={isQuestionSection(section.type) ? "use_underscores_for_variables" : "Section name (edit me)"}
-              className={cn(
-                "font-medium",
-                isQuestionSection(section.type) && checkVariableNameConflict(section.title)
-                  ? "text-red-600"
-                  : "text-foreground"
-              )}
-              showEditIcon={false}
-              showSaveStatus={true}
-              validation={validateName}
-              maxLength={50}
-              required={true}
-              autoSave={false}
-            />
+            {section.type === 'capture-details' ? (
+              <span className="font-medium text-foreground">Capture Details</span>
+            ) : (
+              <InlineEditableText
+                value={section.title}
+                onSave={handleNameChange}
+                variant="body"
+                placeholder={isQuestionSection(section.type) ? "use_underscores_for_variables" : "Section name (edit me)"}
+                className={cn(
+                  "font-medium",
+                  isQuestionSection(section.type) && checkVariableNameConflict(section.title)
+                    ? "text-red-600"
+                    : "text-foreground"
+                )}
+                showEditIcon={false}
+                showSaveStatus={true}
+                validation={validateName}
+                maxLength={50}
+                required={true}
+                autoSave={false}
+              />
+            )}
           </div>
-          
           {/* Error message for duplicate variable names */}
           {isQuestionSection(section.type) && checkVariableNameConflict(section.title) && (
             <div className="text-xs text-red-600 mt-1">

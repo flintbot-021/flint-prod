@@ -8,6 +8,7 @@ import { MandatorySectionPlaceholder } from './mandatory-section-placeholder'
 import { OptionalSectionPlaceholder } from './optional-section-placeholder'
 import { cn } from '@/lib/utils'
 import { Plus, Layout } from 'lucide-react'
+import React from 'react'
 
 interface SectionPersistence {
   getSectionState: (sectionId: string) => { isCollapsed: boolean }
@@ -150,24 +151,35 @@ export function EnhancedSortableCanvas({
                 <OptionalSectionPlaceholder type="hero" onAdd={onSectionAdd} className="suggestion" />
               )}
               
-              {sections.map((section) => (
-                <SectionBlock
-                  key={section.id}
-                  section={section}
-                  onUpdate={onSectionUpdate}
-                  onDelete={onSectionDelete}
-                  onDuplicate={onSectionDuplicate}
-                  onConfigure={onSectionConfigure}
-                  onTypeChange={onSectionTypeChange}
-                  isSelected={selectedSectionId === section.id}
-                  onSelect={() => onSectionSelect?.(section.id)}
-                  isCollapsible={showCollapsedSections}
-                  initiallyCollapsed={sectionPersistence?.isSectionCollapsed(section.id) ?? true}
-                  onCollapseChange={sectionPersistence?.setSectionCollapsed}
-                  allSections={sections}
-                  campaignId={campaignId}
-                />
-              ))}
+              {sections.map((section, idx) => {
+                // Insert divider above the first logic section if it's not the first section
+                const isLogicSection = section.type === 'logic-ai';
+                const isFirstLogicSection = isLogicSection &&
+                  sections.findIndex(s => s.type === 'logic-ai') === idx &&
+                  idx > 0;
+                return (
+                  <React.Fragment key={section.id}>
+                    {isFirstLogicSection && (
+                      <div className="border-t border-dashed border-border my-6" />
+                    )}
+                    <SectionBlock
+                      section={section}
+                      onUpdate={onSectionUpdate}
+                      onDelete={onSectionDelete}
+                      onDuplicate={onSectionDuplicate}
+                      onConfigure={onSectionConfigure}
+                      onTypeChange={onSectionTypeChange}
+                      isSelected={selectedSectionId === section.id}
+                      onSelect={() => onSectionSelect?.(section.id)}
+                      isCollapsible={showCollapsedSections}
+                      initiallyCollapsed={sectionPersistence?.isSectionCollapsed(section.id) ?? true}
+                      onCollapseChange={sectionPersistence?.setSectionCollapsed}
+                      allSections={sections}
+                      campaignId={campaignId}
+                    />
+                  </React.Fragment>
+                );
+              })}
               
               {/* Show Text Question suggestion below if missing and has hero */}
               {!hasTextQuestion && hasHero && (
