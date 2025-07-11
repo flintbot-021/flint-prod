@@ -225,7 +225,7 @@ export class PromptGenerationService {
         }
       } else if (section.type === 'question-slider') {
         // Handle single slider
-        const questionText = settings?.content || settings?.questionText || section.title || 'Untitled Question'
+        const questionText = settings?.question || settings?.content || settings?.questionText || section.title || 'Untitled Question'
         const variableName = settings?.variableName || this.createVariableName(section.title) || `question_${section.order}`
         const minValue = settings?.minValue || 0
         const maxValue = settings?.maxValue || 10
@@ -235,7 +235,7 @@ export class PromptGenerationService {
         )
       } else if (section.type === 'question-multiple-choice') {
         // Handle multiple choice
-        const questionText = settings?.content || settings?.questionText || section.title || 'Untitled Question'
+        const questionText = settings?.question || settings?.content || settings?.questionText || section.title || 'Untitled Question'
         const variableName = settings?.variableName || this.createVariableName(section.title) || `question_${section.order}`
         const options = settings?.options?.map((opt: any) => opt.text || opt.label || opt) || []
         
@@ -244,7 +244,7 @@ export class PromptGenerationService {
         )
       } else {
         // Handle text and other question types
-        const questionText = settings?.content || settings?.questionText || section.title || 'Untitled Question'
+        const questionText = settings?.question || settings?.content || settings?.questionText || section.title || 'Untitled Question'
         const variableName = settings?.variableName || this.createVariableName(section.title) || `question_${section.order}`
         
         questionDescriptions.push(

@@ -1523,26 +1523,6 @@ export function AILogicSection({
         </div>
       </div>
 
-      {/* Help Text */}
-      <Card className="p-6 bg-blue-50 border-blue-200">
-        <h4 className="font-medium text-blue-900 mb-3">How This Works</h4>
-        <ul className="text-sm text-blue-800 space-y-2">
-          <li>• <strong>Step 1:</strong> Add example answers and upload test files to see how your AI will work</li>
-          <li>• <strong>Step 2:</strong> Write a prompt using @variables to reference user inputs and file content</li>
-          <li>• <strong>Step 3:</strong> Define what outputs the AI should generate</li>
-          <li>• <strong>Step 4:</strong> Test to see the AI response with your examples and real uploaded files</li>
-          <li>• <strong>Final:</strong> Use output variables like @recommendation in your results section</li>
-        </ul>
-        {fileVariables.length > 0 && (
-          <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-            <p className="text-sm text-purple-800 font-medium mb-2">📄 Direct File Processing</p>
-            <p className="text-xs text-purple-700">
-              Your AI can analyze uploaded files directly! Use @{fileVariables.map(v => v.name).join(', @')} in your prompt to reference file content. All file types (PDFs, documents, images) are sent directly to OpenAI which can read and analyze them natively without any preprocessing required.
-            </p>
-          </div>
-        )}
-      </Card>
-
       {/* Knowledge Base Modal */}
       {campaignId && (
         <KnowledgeBaseModal
