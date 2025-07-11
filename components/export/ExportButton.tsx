@@ -280,10 +280,11 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
             <FileSpreadsheet className="h-4 w-4 mr-2" />
             Export as Excel
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsDialogOpen(true)}>
+          {/* Custom Export option hidden - functionality preserved for future use */}
+          {/* <DropdownMenuItem onClick={() => setIsDialogOpen(true)}>
             <Settings className="h-4 w-4 mr-2" />
             Custom Export...
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
         </DropdownMenuContent>
       </DropdownMenu>
 

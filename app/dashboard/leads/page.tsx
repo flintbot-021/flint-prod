@@ -6,12 +6,19 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { UserProfile } from '@/components/ui/user-profile'
 import { useAuth } from '@/lib/auth-context'
 import { 
   getLeads,
   getCampaigns,
   getCurrentProfile,
+  deleteLead,
   type PaginationParams
 } from '@/lib/data-access'
 import { Lead, Campaign, Profile } from '@/lib/types/database'
@@ -370,10 +377,10 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-muted-foreground">Campaign</label>
+                      <label className="text-sm font-medium text-muted-foreground">Tool</label>
                       <div className="mt-1">
                         <Badge variant="default" className="text-sm">
-                          {campaign?.name || 'Unknown Campaign'}
+                          {campaign?.name || 'Unknown Tool'}
                         </Badge>
                       </div>
                     </div>
@@ -391,7 +398,7 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                     Questions & Answers
                   </CardTitle>
                   <CardDescription>
-                    User responses to campaign questions
+                    User responses to tool questions
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -519,20 +526,20 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
               </CardContent>
             </Card>
 
-            {/* Campaign Details Card */}
+            {/* Tool Details Card */}
             {campaign && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center text-lg">
                     <Globe className="h-5 w-5 mr-2" />
-                    Campaign Details
+                    Tool Details
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium text-muted-foreground">Campaign Name</label>
+                        <label className="text-sm font-medium text-muted-foreground">Tool Name</label>
                         <p className="mt-1 text-lg font-medium">{campaign.name}</p>
                       </div>
                       <div>
@@ -549,7 +556,7 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                     </div>
                     <div className="space-y-4">
                       <div>
-                        <label className="text-sm font-medium text-muted-foreground">Campaign URL</label>
+                        <label className="text-sm font-medium text-muted-foreground">Tool URL</label>
                         <p className="mt-1 text-sm text-muted-foreground">
                           {campaign.published_url || 'Not published'}
                         </p>
@@ -646,6 +653,9 @@ export default function LeadsPage() {
   // Export data
   const [exportData, setExportData] = useState<any[]>([])
   const [loadingExportData, setLoadingExportData] = useState(false)
+
+  // Delete state
+  const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -832,6 +842,33 @@ export default function LeadsPage() {
     setSelectedLead(null)
   }
 
+  const handleDeleteLead = async (leadId: string) => {
+    if (!confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      setDeletingLeadId(leadId)
+      const result = await deleteLead(leadId)
+      
+      if (result.success) {
+        // Remove lead from local state immediately for better UX
+        setLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId))
+        setTotalLeads(prev => prev - 1)
+        
+        // Also remove from export data if present
+        setExportData(prevData => prevData.filter(item => item.id !== leadId))
+      } else {
+        setError(result.error || 'Failed to delete lead')
+      }
+    } catch (error) {
+      console.error('Error deleting lead:', error)
+      setError('Failed to delete lead')
+    } finally {
+      setDeletingLeadId(null)
+    }
+  }
+
   const getCampaignBadge = (campaign: Campaign | null) => {
     if (!campaign) {
       return <Badge variant="outline">Unknown</Badge>
@@ -844,9 +881,11 @@ export default function LeadsPage() {
     } as const
 
     return (
-      <Badge variant={colors[campaign.status] || 'outline'}>
-        {campaign.name}
-      </Badge>
+      <div className="max-w-[140px]">
+        <Badge variant={colors[campaign.status] || 'outline'} className="truncate inline-block max-w-full" title={campaign.name}>
+          {campaign.name}
+        </Badge>
+      </div>
     )
   }
 
@@ -906,14 +945,6 @@ export default function LeadsPage() {
                 <span className="font-medium text-lg text-foreground">{totalLeads}</span>
                 <span className="ml-1">total leads</span>
               </div>
-              {profile && (
-                <div className="text-sm text-muted-foreground">
-                  <span className="font-medium">
-                    {profile.monthly_leads_captured || 0} / {profile.monthly_leads_limit || 1000}
-                  </span>
-                  <span className="ml-1">leads this month</span>
-                </div>
-              )}
             </div>
             <div className="flex items-center space-x-3">
               <ExportButton
@@ -951,12 +982,12 @@ export default function LeadsPage() {
 
                 {/* Campaign Filter */}
                 <div className="w-full sm:w-64">
-                  <select
+                                          <select
                     value={selectedCampaign}
                     onChange={(e) => setSelectedCampaign(e.target.value)}
                     className="w-full border border-input rounded-md px-3 py-2 text-sm"
                   >
-                    <option value="all">All Campaigns</option>
+                    <option value="all">All Tools</option>
                     {campaigns.map(campaign => (
                       <option key={campaign.id} value={campaign.id}>
                         {campaign.name}
@@ -1057,7 +1088,7 @@ export default function LeadsPage() {
                               onClick={() => handleSort('campaign_name')}
                               className="hover:bg-accent font-medium"
                             >
-                              Campaign
+                              Tool
                               <ArrowUpDown className="ml-2 h-4 w-4" />
                             </Button>
                           </th>
@@ -1144,9 +1175,23 @@ export default function LeadsPage() {
                                   >
                                     <Eye className="h-4 w-4" />
                                   </Button>
-                                  <Button variant="ghost" size="sm">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="sm">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem
+                                        onClick={() => handleDeleteLead(lead.id)}
+                                        disabled={deletingLeadId === lead.id}
+                                        className="text-red-600 focus:text-red-600"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        {deletingLeadId === lead.id ? 'Deleting...' : 'Delete Lead'}
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 </div>
                               </td>
                             </tr>
@@ -1199,7 +1244,7 @@ export default function LeadsPage() {
                     onClick={() => router.push('/dashboard')}
                     size="sm"
                   >
-                    View Your Campaigns
+                    View Your Tools
                   </Button>
                 </div>
               )}

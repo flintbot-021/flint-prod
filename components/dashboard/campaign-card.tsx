@@ -77,26 +77,26 @@ const CampaignCard = memo(function CampaignCard({
 
     if (campaign.status === 'draft') {
       actions.push({
-        label: 'Publish Campaign',
+        label: 'Launch Tool',
         icon: Globe,
         action: () => onStatusChange(campaign.id, 'published'),
         variant: 'default' as const
       })
       actions.push({
-        label: 'Archive Campaign',
+        label: 'Archive Tool',
         icon: Archive,
         action: () => onStatusChange(campaign.id, 'archived'),
         variant: 'secondary' as const
       })
     } else if (campaign.status === 'published') {
       actions.push({
-        label: 'Unpublish (Draft)',
+        label: 'Pause Tool',
         icon: FileText,
         action: () => onStatusChange(campaign.id, 'draft'),
         variant: 'secondary' as const
       })
       actions.push({
-        label: 'Archive Campaign',
+        label: 'Archive Tool',
         icon: Archive,
         action: () => onStatusChange(campaign.id, 'archived'),
         variant: 'secondary' as const
@@ -109,7 +109,7 @@ const CampaignCard = memo(function CampaignCard({
         variant: 'secondary' as const
       })
       actions.push({
-        label: 'Publish Campaign',
+        label: 'Launch Tool',
         icon: Globe,
         action: () => onStatusChange(campaign.id, 'published'),
         variant: 'default' as const
@@ -167,17 +167,25 @@ const CampaignCard = memo(function CampaignCard({
           </div>
           <div className="flex flex-col items-end gap-2">
             {campaign.status === 'published' ? (
-              <Badge 
-                variant="default"
-                className={`text-xs font-medium ${
-                  campaign.is_active
-                    ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' 
-                    : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
-                }`}
-              >
-                <div className={`w-2 h-2 rounded-full mr-1.5 ${campaign.is_active ? 'bg-green-500' : 'bg-orange-500'}`} />
-                <span>{campaign.is_active ? 'Live' : 'Inactive'}</span>
-              </Badge>
+              campaign.is_active && campaign.published_url ? (
+                <button
+                  onClick={handleViewLiveClick}
+                  className={`inline-flex items-center text-xs font-medium px-2.5 py-1.5 rounded-full border transition-colors hover:bg-green-100 bg-green-50 text-green-700 border-green-200`}
+                  aria-label={`View live tool ${campaign.name}`}
+                >
+                  <div className="w-2 h-2 rounded-full mr-1.5 bg-green-500" />
+                  <span>Live</span>
+                  <Eye className="h-3 w-3 ml-1.5" aria-hidden="true" />
+                </button>
+              ) : (
+                <Badge 
+                  variant="default"
+                  className="text-xs font-medium bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100"
+                >
+                  <div className="w-2 h-2 rounded-full mr-1.5 bg-orange-500" />
+                  <span>Inactive</span>
+                </Badge>
+              )
             ) : (
               <Badge 
                 variant="secondary"
@@ -227,71 +235,12 @@ const CampaignCard = memo(function CampaignCard({
               size="sm"
               onClick={handleBuildClick}
               className="h-8 px-3"
-              aria-label={`Build campaign ${campaign.name}`}
+              aria-label={`Build tool ${campaign.name}`}
             >
               <Hammer className="h-3 w-3 mr-1" aria-hidden="true" />
               Build
             </Button>
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => e.stopPropagation()}
-                  className="h-8 w-8 p-0"
-                  aria-label={`More actions for ${campaign.name}`}
-                >
-                  <MoreVertical className="h-3 w-3" aria-hidden="true" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuItem
-                  onClick={handleEditClick}
-                  className="flex items-center gap-2 text-sm"
-                >
-                  <Edit className="h-4 w-4" aria-hidden="true" />
-                  <span>Edit Campaign</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {getStatusActions(campaign).map((action, index) => (
-                  <DropdownMenuItem
-                    key={index}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      action.action()
-                    }}
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <action.icon className="h-4 w-4" aria-hidden="true" />
-                    <span>{action.label}</span>
-                  </DropdownMenuItem>
-                ))}
-                {getStatusActions(campaign).length > 0 && <DropdownMenuSeparator />}
-                <DropdownMenuItem
-                  onClick={handleDeleteClick}
-                  className="flex items-center gap-2 text-sm text-red-600 focus:text-red-600"
-                >
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  <span>Delete Campaign</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          
-          {campaign.status === 'published' && campaign.published_url && (
-            <Button
-              size="sm"
-              onClick={handleViewLiveClick}
-              className="h-8 px-3"
-              aria-label={`View live campaign ${campaign.name}`}
-            >
-              <ExternalLink className="h-3 w-3 mr-1" aria-hidden="true" />
-              View Live
-            </Button>
-          )}
-          
-          {campaign.status !== 'published' && (
             <Button
               variant="outline"
               size="sm"
@@ -302,7 +251,52 @@ const CampaignCard = memo(function CampaignCard({
               <BarChart3 className="h-3 w-3 mr-1" aria-hidden="true" />
               Details
             </Button>
-          )}
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => e.stopPropagation()}
+                className="h-8 w-8 p-0"
+                aria-label={`More actions for ${campaign.name}`}
+              >
+                <MoreVertical className="h-3 w-3" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem
+                onClick={handleEditClick}
+                className="flex items-center gap-2 text-sm"
+              >
+                <Edit className="h-4 w-4" aria-hidden="true" />
+                <span>Edit Tool</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {getStatusActions(campaign).map((action, index) => (
+                <DropdownMenuItem
+                  key={index}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    action.action()
+                  }}
+                  className="flex items-center gap-2 text-sm"
+                >
+                  <action.icon className="h-4 w-4" aria-hidden="true" />
+                  <span>{action.label}</span>
+                </DropdownMenuItem>
+              ))}
+              {getStatusActions(campaign).length > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuItem
+                onClick={handleDeleteClick}
+                className="flex items-center gap-2 text-sm text-red-600 focus:text-red-600"
+              >
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                <span>Delete Tool</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardContent>
     </Card>

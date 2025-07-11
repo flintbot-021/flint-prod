@@ -221,15 +221,15 @@ export function PublishModal({
       onPublishSuccess(result.data)
       
       toast({
-        title: 'Campaign published!',
-        description: `Your campaign is now live at ${result.data.published_url}`,
+        title: 'Tool launched!',
+        description: `Your tool is now live at ${result.data.published_url}`,
         duration: 5000
       })
     } catch (error) {
       console.error('Error publishing campaign:', error)
-      const message = error instanceof Error ? error.message : 'Failed to publish campaign'
+      const message = error instanceof Error ? error.message : 'Failed to launch tool'
       toast({
-        title: 'Publishing failed',
+        title: 'Launch failed',
         description: message,
         variant: 'destructive'
       })
@@ -253,17 +253,17 @@ export function PublishModal({
       onPublishSuccess(result.data)
       
       toast({
-        title: 'Campaign unpublished',
-        description: 'Campaign unpublished (URL preserved)',
+        title: 'Tool paused',
+        description: 'Tool paused (URL preserved)',
         duration: 5000
       })
       
       onClose()
     } catch (error) {
       console.error('Error unpublishing campaign:', error)
-      const message = error instanceof Error ? error.message : 'Failed to unpublish campaign'
+      const message = error instanceof Error ? error.message : 'Failed to pause tool'
       toast({
-        title: 'Unpublish failed',
+        title: 'Pause failed',
         description: message,
         variant: 'destructive'
       })
@@ -312,19 +312,19 @@ export function PublishModal({
             {isPublished ? (
               <>
                 <Globe className="h-5 w-5 text-green-600" />
-                Manage Published Campaign
+                Manage Live Tool
               </>
             ) : (
               <>
                 <Zap className="h-5 w-5 text-blue-600" />
-                Publish Campaign
+                Launch Tool
               </>
             )}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             {isPublished 
-              ? 'Your campaign is currently live. You can update the URL or unpublish it.'
-              : 'Make your campaign public and generate a unique URL for sharing.'
+              ? 'Your tool is currently live. You can update the URL or pause it.'
+              : 'Make your tool public and generate a unique URL for sharing.'
             }
           </p>
         </div>
@@ -367,7 +367,7 @@ export function PublishModal({
                 variant={isPublished ? 'default' : 'secondary'}
                 className={isPublished ? 'bg-green-100 text-green-800' : ''}
               >
-                {isPublished ? 'Published' : 'Draft'}
+                {isPublished ? 'Live' : 'Draft'}
               </Badge>
             </div>
             <Button
@@ -390,7 +390,7 @@ export function PublishModal({
                 <Settings className="h-4 w-4" />
                 Custom URL
                 {isPublished && (
-                  <span className="text-xs text-muted-foreground">(unpublish to edit)</span>
+                  <span className="text-xs text-muted-foreground">(pause to edit)</span>
                 )}
               </Label>
               <Switch
@@ -404,7 +404,7 @@ export function PublishModal({
             {useCustomUrl && (
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <Label htmlFor="custom-url">Campaign URL</Label>
+                  <Label htmlFor="custom-url">Tool URL</Label>
                   <div className="flex">
                     <div className="flex items-center px-3 border border-r-0 border-input bg-muted rounded-l-md text-sm text-muted-foreground">
                       {typeof window !== 'undefined' ? window.location.origin : ''}/c/
@@ -463,7 +463,7 @@ export function PublishModal({
             {/* Final URL Preview */}
             {fullUrl && (
               <div className="space-y-2">
-                <Label>Public Campaign URL</Label>
+                <Label>Public Tool URL</Label>
                 <div className="flex items-center gap-2 p-3 border rounded-md bg-green-50 border-green-200">
                   <Globe className="h-4 w-4 text-green-600" />
                   <span className="flex-1 text-sm font-mono text-green-800 truncate">
@@ -505,13 +505,13 @@ export function PublishModal({
           
           {isPublished ? (
             <Button
-              variant="destructive"
+              variant="outline"
               onClick={handleUnpublish}
               disabled={isPublishing}
               className="flex items-center gap-2"
             >
               {isPublishing && <Loader2 className="h-4 w-4 animate-spin" />}
-              Unpublish Campaign
+              Pause Tool
             </Button>
           ) : (
             <Button
@@ -521,7 +521,7 @@ export function PublishModal({
             >
               {isPublishing && <Loader2 className="h-4 w-4 animate-spin" />}
               <Share2 className="h-4 w-4" />
-              Publish Campaign
+              Launch Tool
             </Button>
           )}
         </div>
