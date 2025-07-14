@@ -19,6 +19,7 @@ export interface WebVitalsData {
 class PerformanceTracker {
   private endpoint = '/api/monitoring/performance'
   private isEnabled = true
+  private hasTrackedPageLoad = false
 
   constructor() {
     // Disable tracking in development unless explicitly enabled
@@ -88,9 +89,16 @@ class PerformanceTracker {
    * Track page load times
    */
   trackPageLoad() {
-    if (!this.isEnabled || typeof window === 'undefined') return
+    if (!this.isEnabled || typeof window === 'undefined' || this.hasTrackedPageLoad) return
 
-    window.addEventListener('load', () => {
+    // Only track actual page loads, not tab switches
+    if (document.visibilityState === 'hidden') {
+      return
+    }
+
+    this.hasTrackedPageLoad = true
+
+    const trackLoadMetrics = () => {
       // Use Performance API to get accurate timing
       const perfData = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming
       
@@ -99,7 +107,15 @@ class PerformanceTracker {
         this.trackCustomMetric('dom_content_loaded', perfData.domContentLoadedEventEnd - perfData.fetchStart)
         this.trackCustomMetric('first_byte', perfData.responseStart - perfData.fetchStart)
       }
-    })
+    }
+
+    // If page is already loaded, track immediately
+    if (document.readyState === 'complete') {
+      trackLoadMetrics()
+    } else {
+      // Otherwise wait for load event
+      window.addEventListener('load', trackLoadMetrics, { once: true })
+    }
   }
 
   /**

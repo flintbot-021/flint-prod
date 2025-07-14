@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { createClient } from './auth'
 import type { User } from '@supabase/supabase-js'
 
@@ -17,6 +17,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
+  const initialized = useRef(false)
+  const lastUserId = useRef<string | null>(null)
+  const isTabActive = useRef(true)
 
   const refreshUser = async () => {
     try {
@@ -40,16 +43,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('Error signing out:', error)
       }
       setUser(null)
+      lastUserId.current = null
     } catch (error) {
       console.error('Error in signOut:', error)
     }
   }
 
   useEffect(() => {
+    // Prevent duplicate initialization
+    if (initialized.current) return
+
+    // Track tab visibility to prevent unnecessary operations
+    const handleVisibilityChange = () => {
+      isTabActive.current = !document.hidden
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
     // Get initial session
     const initializeAuth = async () => {
       await refreshUser()
       setLoading(false)
+      initialized.current = true
     }
 
     initializeAuth()
@@ -57,12 +72,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // Skip if not initialized yet
+        if (!initialized.current) return
+        
+        // Skip if tab is not active and this is just a token refresh
+        if (!isTabActive.current && event === 'TOKEN_REFRESHED') {
+          return
+        }
+        
+        // Skip if this is just a tab refocus without actual auth change
+        const newUserId = session?.user?.id || null
+        if (newUserId === lastUserId.current && event === 'TOKEN_REFRESHED') {
+          return
+        }
+        
         console.log('Auth state changed:', event, session?.user?.email)
         
-        if (session?.user) {
-          setUser(session.user)
-        } else {
-          setUser(null)
+        // Only update state if there's an actual change
+        if (newUserId !== lastUserId.current) {
+          if (session?.user) {
+            setUser(session.user)
+          } else {
+            setUser(null)
+          }
+          lastUserId.current = newUserId
         }
         
         setLoading(false)
@@ -71,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [supabase.auth])
 

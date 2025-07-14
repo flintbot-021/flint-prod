@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -125,8 +125,6 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
       const sessionResult = await fetch(`/api/sessions/${lead.session_id}`)
       if (sessionResult.ok) {
         const session = await sessionResult.json()
-        console.log('Session data:', session)
-        console.log('Session responses:', session.responses)
         setSessionData(session)
       }
 
@@ -135,7 +133,6 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
         const sectionsResult = await fetch(`/api/campaigns/${campaign.id}/sections`)
         if (sectionsResult.ok) {
           const campaignSections = await sectionsResult.json()
-          console.log('Campaign sections:', campaignSections)
           setSections(campaignSections)
         }
       }
@@ -181,8 +178,6 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
   }
 
   const formatUserAnswer = (value: any) => {
-    console.log('Formatting user answer:', value)
-    
     if (value === null || value === undefined) return 'No answer provided'
     if (typeof value === 'boolean') return value ? 'Yes' : 'No'
     if (typeof value === 'object') {
@@ -192,14 +187,11 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
       
       // Handle complex response objects - extract the actual user input
       if (value.value !== undefined) {
-        console.log('Found value field:', value.value)
         // If there's a direct value field, use that
         if (typeof value.value === 'object' && value.value.response !== undefined) {
-          console.log('Using value.response:', value.value.response)
           return String(value.value.response)
         }
         if (typeof value.value === 'string' || typeof value.value === 'number') {
-          console.log('Using direct value:', value.value)
           return String(value.value)
         }
         // For complex value objects, try to extract user input
@@ -207,7 +199,6 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
           // Look for common user input fields
           for (const key of ['input', 'answer', 'response', 'text', 'selection']) {
             if (value.value[key] !== undefined) {
-              console.log(`Using value.${key}:`, value.value[key])
               return String(value.value[key])
             }
           }
@@ -216,13 +207,11 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
       
       // Handle direct response objects
       if (value.response !== undefined) {
-        console.log('Using direct response:', value.response)
         return String(value.response)
       }
       
       // Handle processed boolean values
       if (value.processed !== undefined) {
-        console.log('Using processed value:', value.processed)
         return value.processed ? 'Yes' : 'No'
       }
       
@@ -230,13 +219,11 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
       const keys = Object.keys(value)
       for (const key of ['input', 'answer', 'text', 'content', 'selection', 'choice']) {
         if (value[key] !== undefined && typeof value[key] !== 'object') {
-          console.log(`Using fallback ${key}:`, value[key])
           return String(value[key])
         }
       }
       
       // If all else fails, show a simplified representation
-      console.log('Falling back to complex response for:', value)
       return 'Complex response'
     }
     return String(value)
@@ -296,10 +283,8 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
 
   const getQuestionTitle = (sectionId: string) => {
     const section = sections.find(s => s.id === sectionId)
-    console.log(`Getting title for section ${sectionId}:`, section)
     
     if (!section) {
-      console.log(`No section found for ID: ${sectionId}`)
       return 'Question'
     }
     
@@ -313,7 +298,6 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
            `${section.type} Section` ||
            'Question'
            
-    console.log(`Title for section ${sectionId}:`, title)
     return title
   }
 
@@ -651,9 +635,10 @@ export default function LeadsPage() {
   const [totalPages, setTotalPages] = useState(0)
   const leadsPerPage = 20
 
-  // Export data
+  // Lazy loading for export data
   const [exportData, setExportData] = useState<any[]>([])
   const [loadingExportData, setLoadingExportData] = useState(false)
+  const [hasLoadedExportData, setHasLoadedExportData] = useState(false)
 
   // Delete state
   const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null)
@@ -668,14 +653,57 @@ export default function LeadsPage() {
     if (user) {
       loadData()
     }
-  }, [user, currentPage, searchTerm, selectedCampaign, sortField, sortDirection]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, currentPage, searchTerm, selectedCampaign, sortField, sortDirection])
 
-  // Load export data whenever filters change
-  useEffect(() => {
-    if (user && profile) {
-      loadExportData()
-    }
-  }, [user, profile, searchTerm, selectedCampaign, sortField, sortDirection])
+  // Memoize sorted leads to prevent unnecessary re-sorting
+  const sortedLeads = useMemo(() => {
+    const leadsToSort = [...leads]
+    
+    leadsToSort.sort((a, b) => {
+      let aValue: string | number | Date
+      let bValue: string | number | Date
+
+      switch (sortField) {
+        case 'created_at':
+          aValue = new Date(a.created_at)
+          bValue = new Date(b.created_at)
+          break
+        case 'converted_at':
+          aValue = a.converted_at ? new Date(a.converted_at) : new Date(0)
+          bValue = b.converted_at ? new Date(b.converted_at) : new Date(0)
+          break
+        case 'email':
+          aValue = a.email || ''
+          bValue = b.email || ''
+          break
+        case 'phone':
+          aValue = a.phone || ''
+          bValue = b.phone || ''
+          break
+        case 'name':
+          aValue = a.name || ''
+          bValue = b.name || ''
+          break
+        case 'campaign_name':
+          aValue = a.campaign?.name || ''
+          bValue = b.campaign?.name || ''
+          break
+        case 'conversion_time':
+          aValue = calculateConversionTime(a.created_at, a.converted_at).seconds
+          bValue = calculateConversionTime(b.created_at, b.converted_at).seconds
+          break
+        default:
+          aValue = a.created_at
+          bValue = b.created_at
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+
+    return leadsToSort
+  }, [leads, sortField, sortDirection])
 
   const loadData = async () => {
     try {
@@ -728,50 +756,6 @@ export default function LeadsPage() {
           return { ...lead, campaign }
         }) || []
 
-        // Apply client-side sorting (since server-side filtering is now handled)
-        enrichedLeads.sort((a, b) => {
-          let aValue: string | number | Date
-          let bValue: string | number | Date
-
-          switch (sortField) {
-            case 'created_at':
-              aValue = new Date(a.created_at)
-              bValue = new Date(b.created_at)
-              break
-            case 'converted_at':
-              aValue = a.converted_at ? new Date(a.converted_at) : new Date(0)
-              bValue = b.converted_at ? new Date(b.converted_at) : new Date(0)
-              break
-            case 'email':
-              aValue = a.email || ''
-              bValue = b.email || ''
-              break
-            case 'phone':
-              aValue = a.phone || ''
-              bValue = b.phone || ''
-              break
-            case 'name':
-              aValue = a.name || ''
-              bValue = b.name || ''
-              break
-            case 'campaign_name':
-              aValue = a.campaign?.name || ''
-              bValue = b.campaign?.name || ''
-              break
-            case 'conversion_time':
-              aValue = calculateConversionTime(a.created_at, a.converted_at).seconds
-              bValue = calculateConversionTime(b.created_at, b.converted_at).seconds
-              break
-            default:
-              aValue = a.created_at
-              bValue = b.created_at
-          }
-
-          if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
-          if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
-          return 0
-        })
-
         setLeads(enrichedLeads)
         setTotalLeads(leadsResult.data.meta?.total || 0)
         setTotalPages(Math.ceil((leadsResult.data.meta?.total || 0) / leadsPerPage))
@@ -793,7 +777,10 @@ export default function LeadsPage() {
     }
   }
 
+  // Lazy load export data only when needed
   const loadExportData = async () => {
+    if (hasLoadedExportData) return
+
     try {
       setLoadingExportData(true)
       const exportResult = await getLeadsExportData({
@@ -811,6 +798,7 @@ export default function LeadsPage() {
         console.error('Failed to load export data:', exportResult.error)
         setExportData([])
       }
+      setHasLoadedExportData(true)
     } catch (error) {
       console.error('Error loading export data:', error)
       setExportData([])
@@ -820,12 +808,14 @@ export default function LeadsPage() {
   }
 
   const handleExportStart = () => {
+    if (!hasLoadedExportData) {
+      loadExportData()
+    }
     console.log('Export started...')
   }
 
   const handleExportComplete = (filename: string) => {
     console.log(`Export completed: ${filename}`)
-    // Could show a success notification here
   }
 
   const handleExportError = (error: string) => {
@@ -981,7 +971,7 @@ export default function LeadsPage() {
 
                 {/* Campaign Filter */}
                 <div className="w-full sm:w-64">
-                                          <select
+                  <select
                     value={selectedCampaign}
                     onChange={(e) => setSelectedCampaign(e.target.value)}
                     className="w-full border border-input rounded-md px-3 py-2 text-sm"
@@ -1040,7 +1030,7 @@ export default function LeadsPage() {
                     </div>
                   ))}
                 </div>
-              ) : leads.length > 0 ? (
+              ) : sortedLeads.length > 0 ? (
                 <>
                   {/* Table */}
                   <div className="overflow-x-auto">
@@ -1117,7 +1107,7 @@ export default function LeadsPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y">
-                        {leads.map((lead) => {
+                        {sortedLeads.map((lead) => {
                           const conversionTime = calculateConversionTime(lead.created_at, lead.converted_at)
                           
                           return (

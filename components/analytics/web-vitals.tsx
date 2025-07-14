@@ -1,12 +1,18 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { performanceTracker } from '@/lib/performance-tracking'
 
 export function WebVitals() {
+  const initialized = useRef(false)
+  
   useEffect(() => {
+    // Prevent duplicate initialization on tab switches
+    if (initialized.current) return
+    
     // Initialize performance tracking
     performanceTracker.trackPageLoad()
+    initialized.current = true
 
     // Track Core Web Vitals using the web-vitals library
     import('web-vitals').then(({ onCLS, onFCP, onLCP, onTTFB, onINP }) => {
