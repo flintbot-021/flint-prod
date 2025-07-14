@@ -3,11 +3,15 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
-import { Upload, X } from 'lucide-react'
+import { Upload, X, ExternalLink, Download, Link as LinkIcon } from 'lucide-react'
 import { InlineEditableText } from '@/components/ui/inline-editable-text'
 import { VariableSuggestionDropdown } from '@/components/ui/variable-suggestion-dropdown'
 import { VariableInterpolatedContent } from '@/components/ui/variable-interpolated-content'
 import { UnsplashImageSelector } from '@/components/ui/unsplash-image-selector'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { Button } from '@/components/ui/button'
 import { uploadFiles } from '@/lib/supabase/storage'
 import { ResultsGate } from '../results-gate'
 import type { VariableInterpolationContext } from '@/lib/types/output-section'
@@ -33,6 +37,17 @@ interface OutputSettings {
   content?: string
   image?: string
   textAlignment?: 'left' | 'center' | 'right'
+  // Button settings
+  showButton?: boolean
+  buttonText?: string
+  buttonType?: 'link' | 'download'
+  buttonUrl?: string
+  buttonFile?: {
+    id: string
+    name: string
+    url: string
+    size: number
+  }
 }
 
 interface SimpleVariable {
@@ -228,8 +243,6 @@ function generateSampleContext(variables: SimpleVariable[]): Record<string, stri
   return context
 }
 
-
-
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
@@ -243,8 +256,7 @@ export function OutputSection({
 }: OutputSectionProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [aiTestDataTimestamp, setAiTestDataTimestamp] = useState(0)
-  
-
+  const [isUploadingButtonFile, setIsUploadingButtonFile] = useState(false)
   
   // Local state for tracking external content changes
   const [localContent, setLocalContent] = useState('')
@@ -258,7 +270,12 @@ export function OutputSection({
     subtitle = 'Subheading',
     content = 'Paragraph',
     image = '',
-    textAlignment = 'center'
+    textAlignment = 'center',
+    showButton = false,
+    buttonText = 'Download Now',
+    buttonType = 'link',
+    buttonUrl = '',
+    buttonFile
   } = settings
 
   // Sync local state with external settings changes (e.g., from variable updates)
@@ -325,10 +342,6 @@ export function OutputSection({
     formatters: {},
     conditionalRules: []
   }
-  
-
-
-
 
   // Handle settings updates
   const updateSettings = async (newSettings: Partial<OutputSettings>) => {
@@ -392,7 +405,70 @@ export function OutputSection({
     }
   }, [])
 
+  // Handle button file upload
+  const handleButtonFileUpload = useCallback(async (files: FileList) => {
+    if (!files.length) return
 
+    const file = files[0]
+    
+    // Allow various file types for downloads
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+      'text/plain',
+      'application/zip',
+      'application/x-zip-compressed'
+    ]
+
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please select a supported file type (PDF, Word, Excel, CSV, Text, or ZIP)')
+      return
+    }
+
+    if (file.size > 50 * 1024 * 1024) { // 50MB limit for downloads
+      alert('File size must be less than 50MB')
+      return
+    }
+
+    setIsUploadingButtonFile(true)
+    
+    try {
+      // TODO: Get actual campaign ID from context
+      const campaignId = 'demo-campaign'
+      
+      const uploadedFiles = await uploadFiles(
+        [file],
+        campaignId,
+        'output-button-files'
+      )
+      
+      if (uploadedFiles.length > 0) {
+        const uploadedFile = uploadedFiles[0]
+        await updateSettings({ 
+          buttonFile: {
+            id: uploadedFile.id,
+            name: file.name,
+            url: uploadedFile.url,
+            size: file.size
+          }
+        })
+      }
+    } catch (error) {
+      console.error('File upload failed:', error)
+      alert('File upload failed. Please try again.')
+    } finally {
+      setIsUploadingButtonFile(false)
+    }
+  }, [])
+
+  // Handle button settings
+  const handleButtonSettingChange = async (setting: keyof OutputSettings, value: any) => {
+    await updateSettings({ [setting]: value })
+  }
 
   // Get text alignment class
   const getAlignmentClass = (alignment: string) => {
@@ -464,6 +540,36 @@ export function OutputSection({
                   />
                 </div>
               )}
+
+              {/* Action Button */}
+              {showButton && (
+                <div className="pt-8">
+                  <Button
+                    size="lg"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg font-medium"
+                    onClick={() => {
+                      if (buttonType === 'link' && buttonUrl) {
+                        window.open(buttonUrl, '_blank')
+                      } else if (buttonType === 'download' && buttonFile) {
+                        // Create download link
+                        const link = document.createElement('a')
+                        link.href = buttonFile.url
+                        link.download = buttonFile.name
+                        document.body.appendChild(link)
+                        link.click()
+                        document.body.removeChild(link)
+                      }
+                    }}
+                  >
+                    {buttonType === 'link' ? (
+                      <ExternalLink className="h-5 w-5 mr-2" />
+                    ) : (
+                      <Download className="h-5 w-5 mr-2" />
+                    )}
+                    {buttonText}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -471,7 +577,7 @@ export function OutputSection({
     )
   }
 
-  // Build Mode - Identical to BasicSection but with @ variable support
+  // Build Mode - Identical to BasicSection but with @ variable support and button configuration
   return (
     <div className={cn('py-16 space-y-6 max-w-2xl mx-auto', className)}>
       
@@ -529,7 +635,192 @@ export function OutputSection({
         />
       </div>
 
+      {/* Button Configuration */}
+      <div className="space-y-6 pt-8 border-t border-border">
+        <h3 className="text-sm font-medium text-foreground">Action Button</h3>
+        
+        {/* Enable Button Toggle */}
+        <div className="flex items-center justify-between p-4 bg-background border border-border rounded-lg">
+          <div className="flex items-center space-x-3">
+            <LinkIcon className="w-5 h-5 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground">Show Action Button</span>
+          </div>
+          <Switch
+            checked={showButton}
+            onCheckedChange={(checked) => handleButtonSettingChange('showButton', checked)}
+            className="scale-75"
+          />
+        </div>
 
+        {/* Button Configuration (only show if enabled) */}
+        {showButton && (
+          <div className="space-y-4">
+            {/* Button Text */}
+            <div className="space-y-2">
+              <Label htmlFor="button-text" className="text-sm font-medium text-foreground">
+                Button Text
+              </Label>
+              <Input
+                id="button-text"
+                value={buttonText}
+                onChange={(e) => handleButtonSettingChange('buttonText', e.target.value)}
+                placeholder="Download Now"
+                className="w-full"
+              />
+            </div>
+
+            {/* Button Type */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium text-foreground">Button Action</Label>
+              
+              <div className="space-y-2">
+                {/* Link Option */}
+                <div 
+                  className={cn(
+                    "flex items-center p-3 border rounded-lg cursor-pointer transition-colors",
+                    buttonType === 'link' 
+                      ? "border-blue-500 bg-blue-50" 
+                      : "border-border hover:bg-accent"
+                  )}
+                  onClick={() => handleButtonSettingChange('buttonType', 'link')}
+                >
+                  <div className="flex items-center space-x-3 flex-1">
+                    <ExternalLink className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <div className="text-sm font-medium text-foreground">Link to URL</div>
+                      <div className="text-xs text-muted-foreground">Open a website or page in new tab</div>
+                    </div>
+                  </div>
+                  <div className={cn(
+                    "w-4 h-4 border-2 rounded-full",
+                    buttonType === 'link' 
+                      ? "border-blue-500 bg-blue-500" 
+                      : "border-muted-foreground"
+                  )}>
+                    {buttonType === 'link' && (
+                      <div className="w-2 h-2 bg-white rounded-full m-0.5" />
+                    )}
+                  </div>
+                </div>
+
+                {/* Download Option */}
+                <div 
+                  className={cn(
+                    "flex items-center p-3 border rounded-lg cursor-pointer transition-colors",
+                    buttonType === 'download' 
+                      ? "border-blue-500 bg-blue-50" 
+                      : "border-border hover:bg-accent"
+                  )}
+                  onClick={() => handleButtonSettingChange('buttonType', 'download')}
+                >
+                  <div className="flex items-center space-x-3 flex-1">
+                    <Download className="w-5 h-5 text-muted-foreground" />
+                    <div>
+                      <div className="text-sm font-medium text-foreground">Download File</div>
+                      <div className="text-xs text-muted-foreground">Let users download a file (PDF, document, etc.)</div>
+                    </div>
+                  </div>
+                  <div className={cn(
+                    "w-4 h-4 border-2 rounded-full",
+                    buttonType === 'download' 
+                      ? "border-blue-500 bg-blue-500" 
+                      : "border-muted-foreground"
+                  )}>
+                    {buttonType === 'download' && (
+                      <div className="w-2 h-2 bg-white rounded-full m-0.5" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* URL Input (for link type) */}
+            {buttonType === 'link' && (
+              <div className="space-y-2">
+                <Label htmlFor="button-url" className="text-sm font-medium text-foreground">
+                  Destination URL
+                </Label>
+                <Input
+                  id="button-url"
+                  type="url"
+                  value={buttonUrl}
+                  onChange={(e) => handleButtonSettingChange('buttonUrl', e.target.value)}
+                  placeholder="https://example.com"
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Enter the URL to open when the button is clicked
+                </p>
+              </div>
+            )}
+
+            {/* File Upload (for download type) */}
+            {buttonType === 'download' && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-foreground">
+                  Download File
+                </Label>
+                
+                {!buttonFile ? (
+                  <div>
+                    <input
+                      type="file"
+                      id="button-file-upload"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip"
+                      onChange={(e) => e.target.files && handleButtonFileUpload(e.target.files)}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('button-file-upload')?.click()}
+                      disabled={isUploadingButtonFile}
+                      className="w-full"
+                    >
+                      {isUploadingButtonFile ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload File
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <Download className="w-5 h-5 text-muted-foreground" />
+                      <div>
+                        <div className="text-sm font-medium text-foreground">{buttonFile.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {(buttonFile.size / 1024 / 1024).toFixed(2)} MB
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleButtonSettingChange('buttonFile', undefined)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+                
+                <p className="text-xs text-muted-foreground">
+                  Supported formats: PDF, Word, Excel, CSV, Text, ZIP (max 50MB)
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -1,15 +1,13 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, Share2, CheckCircle } from 'lucide-react'
+import { ChevronLeft, Share2, RotateCcw, ExternalLink, Download } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses, getCampaignTheme, getCampaignButtonStyles, getCampaignTextColor } from '../utils'
 import { cn } from '@/lib/utils'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
 import { titleToVariableName, isQuestionSection, extractResponseValue, buildVariablesFromInputs } from '@/lib/utils/section-variables'
-
-
-
+import { useToast } from '@/components/ui/use-toast'
 
 interface OutputSectionConfig {
   title?: string
@@ -17,6 +15,17 @@ interface OutputSectionConfig {
   content?: string
   image?: string
   textAlignment?: 'left' | 'center' | 'right'
+  // Button settings
+  showButton?: boolean
+  buttonText?: string
+  buttonType?: 'link' | 'download'
+  buttonUrl?: string
+  buttonFile?: {
+    id: string
+    name: string
+    url: string
+    size: number
+  }
 }
 
 export function OutputSection({
@@ -28,12 +37,14 @@ export function OutputSection({
   deviceInfo,
   onPrevious,
   onSectionComplete,
+  onNavigateToSection,
   userInputs = {},
   sections = [],
   campaign,
   ...props
 }: SectionRendererProps) {
   const [isSharing, setIsSharing] = useState(false)
+  const { toast } = useToast()
 
   const outputConfig = config as OutputSectionConfig
   
@@ -43,7 +54,12 @@ export function OutputSection({
     subtitle: outputConfig?.subtitle || description || '',
     content: outputConfig?.content || '',
     image: outputConfig?.image || '',
-    textAlignment: outputConfig?.textAlignment || 'center'
+    textAlignment: outputConfig?.textAlignment || 'center',
+    showButton: outputConfig?.showButton || false,
+    buttonText: outputConfig?.buttonText || 'Download Now',
+    buttonType: outputConfig?.buttonType || 'link',
+    buttonUrl: outputConfig?.buttonUrl || '',
+    buttonFile: outputConfig?.buttonFile
   }
 
   // Simple variable replacement fallback function
@@ -88,8 +104,6 @@ export function OutputSection({
     return map
   }, [sections, userInputs])
 
-
-
   // Get text alignment class
   const getAlignmentClass = (alignment: string) => {
     switch (alignment) {
@@ -100,33 +114,85 @@ export function OutputSection({
     }
   }
 
+  // Find the previous non-AI logic section
+  const handlePreviousSkipLogic = () => {
+    if (!sections || sections.length === 0) {
+      onPrevious()
+      return
+    }
 
+    // Find the previous section that is not an AI logic section
+    for (let i = index - 1; i >= 0; i--) {
+      if (sections[i].type !== 'logic') {
+        if (onNavigateToSection) {
+          onNavigateToSection(i)
+        }
+        return
+      }
+    }
+    
+    // If no non-logic section found, just use regular previous
+    onPrevious()
+  }
 
   const handleShare = async () => {
     setIsSharing(true)
     try {
-      if (navigator.share) {
-        await navigator.share({
-          title: title || 'My Results',
-          text: description || 'Check out my personalized results!',
-          url: window.location.href
-        })
-      } else {
-        await navigator.clipboard.writeText(window.location.href)
-        alert('Link copied to clipboard!')
-      }
+      // Copy URL to clipboard
+      await navigator.clipboard.writeText(window.location.href)
+      
+      // Show toast notification
+      toast({
+        title: "Link copied to clipboard",
+        description: "You can now share this link with others",
+      })
+      
     } catch (error) {
-      console.error('Error sharing:', error)
+      console.error('Error copying to clipboard:', error)
+      toast({
+        title: "Failed to copy",
+        description: "Please try again or copy the URL manually",
+        variant: "destructive"
+      })
     } finally {
       setIsSharing(false)
     }
   }
 
-  const handleComplete = () => {
-    onSectionComplete(index, {
-      [section.id]: 'completed',
-      output_viewed: true
-    })
+  const handleTryAgain = () => {
+    // Clear any cached data/AI results
+    if (typeof window !== 'undefined') {
+      // Clear AI test results
+      localStorage.removeItem('ai_test_results')
+      // Clear any other cached data if needed
+    }
+    
+    // Navigate back to the start (section 0)
+    if (onNavigateToSection) {
+      onNavigateToSection(0)
+    }
+  }
+
+  // Handle action button click
+  const handleActionButtonClick = () => {
+    if (settings.buttonType === 'link' && settings.buttonUrl) {
+      window.open(settings.buttonUrl, '_blank')
+    } else if (settings.buttonType === 'download' && settings.buttonFile) {
+      // Create download link
+      const link = document.createElement('a')
+      link.href = settings.buttonFile.url
+      link.download = settings.buttonFile.name
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Show success toast
+      toast({
+        title: "Download started",
+        description: `${settings.buttonFile.name} is being downloaded`,
+      })
+    }
   }
 
   // Get campaign theme colors
@@ -150,27 +216,10 @@ export function OutputSection({
 
   return (
     <div 
-      className="h-full flex flex-col"
+      className="h-full flex flex-col pb-20"
       style={{ backgroundColor: theme.backgroundColor }}
     >
-      {/* Header with navigation - same as other sections */}
-      <div className="flex-shrink-0 p-6 border-b border-border">
-        <div className="flex items-center justify-between max-w-4xl mx-auto">
-          <button
-            onClick={onPrevious}
-            className="flex items-center text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ChevronLeft className="h-5 w-5 mr-1" />
-            <span className="hidden sm:inline">Previous</span>
-          </button>
-          <div className="flex items-center">
-            <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-            <span className="text-sm text-muted-foreground">Results</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content - Enhanced layout like builder preview */}
+      {/* Main Content */}
       <div className="flex-1 px-6 py-12">
         <div className="w-full max-w-4xl mx-auto space-y-12">
           {/* Image */}
@@ -213,7 +262,7 @@ export function OutputSection({
                   }}
                 />
               )}
-              </div>
+            </div>
 
             {settings.content && (
               <div 
@@ -227,35 +276,78 @@ export function OutputSection({
                 }}
               />
             )}
+
+            {/* Action Button */}
+            {settings.showButton && (settings.buttonUrl || settings.buttonFile) && (
+              <div className={cn('pt-8', getAlignmentClass(settings.textAlignment))}>
+                <button
+                  onClick={handleActionButtonClick}
+                  className={cn(
+                    "px-8 py-4 rounded-lg font-medium transition-all duration-200",
+                    "flex items-center space-x-2 shadow-lg hover:shadow-xl",
+                    "text-lg",
+                    getMobileClasses("min-h-[48px]", deviceInfo?.type),
+                    settings.textAlignment === 'center' ? "mx-auto" : ""
+                  )}
+                  style={primaryButtonStyle}
+                >
+                  {settings.buttonType === 'link' ? (
+                    <ExternalLink className="h-5 w-5" />
+                  ) : (
+                    <Download className="h-5 w-5" />
+                  )}
+                  <span>{settings.buttonText}</span>
+                </button>
+              </div>
+            )}
           </div>
+        </div>
+      </div>
+
+      {/* Bottom Navigation Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          {/* Previous Button */}
+          <button
+            onClick={handlePreviousSkipLogic}
+            className={cn(
+              "flex items-center px-4 py-2 text-muted-foreground hover:text-foreground transition-colors",
+              getMobileClasses("min-h-[44px]", deviceInfo?.type)
+            )}
+          >
+            <ChevronLeft className="h-5 w-5 mr-1" />
+            <span className="hidden sm:inline">Previous</span>
+          </button>
 
           {/* Action Buttons */}
-          <div className="flex justify-center space-x-3 pt-8">
+          <div className="flex items-center space-x-3">
+            {/* Share Button */}
             <button
               onClick={handleShare}
               disabled={isSharing}
               className={cn(
-                "px-6 py-3 rounded-lg font-medium transition-all duration-200",
+                "px-4 py-2 rounded-lg font-medium transition-all duration-200",
                 "flex items-center space-x-2",
-                getMobileClasses("", deviceInfo?.type)
+                getMobileClasses("min-h-[44px]", deviceInfo?.type)
               )}
               style={secondaryButtonStyle}
             >
               <Share2 className="h-4 w-4" />
-              <span>{isSharing ? 'Sharing...' : 'Share'}</span>
+              <span className="hidden sm:inline">Share</span>
             </button>
 
+            {/* Try Again Button */}
             <button
-              onClick={handleComplete}
+              onClick={handleTryAgain}
               className={cn(
-                "px-6 py-3 rounded-lg font-medium transition-all duration-200",
+                "px-4 py-2 rounded-lg font-medium transition-all duration-200",
                 "flex items-center space-x-2 shadow-lg hover:shadow-xl",
-                getMobileClasses("", deviceInfo?.type)
+                getMobileClasses("min-h-[44px]", deviceInfo?.type)
               )}
               style={primaryButtonStyle}
             >
-              <span>Complete</span>
-              <ChevronRight className="h-4 w-4" />
+              <RotateCcw className="h-4 w-4" />
+              <span>Try Again</span>
             </button>
           </div>
         </div>
