@@ -28,6 +28,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/use-toast'
+import { CampaignEditModal } from './campaign-edit-modal'
+import { Campaign } from '@/lib/types/database'
 
 interface CampaignBuilderTopBarProps {
   campaignName: string
@@ -35,12 +37,14 @@ interface CampaignBuilderTopBarProps {
   campaignId?: string
   campaignUserKey?: string
   campaignPublishedUrl?: string
+  campaign?: Campaign
   isPublished?: boolean
   isSaving?: boolean
   canPublish?: boolean
   canPreview?: boolean
   validationErrors?: string[]
   onCampaignNameChange?: (name: string) => void
+  onCampaignUpdate?: (updatedCampaign: Campaign) => void
   onPreview?: () => void
   onPublish?: () => void
   onPause?: () => void
@@ -53,12 +57,14 @@ export function CampaignBuilderTopBar({
   campaignId,
   campaignUserKey,
   campaignPublishedUrl,
+  campaign,
   isPublished = false,
   isSaving = false,
   canPublish = true,
   canPreview = true,
   validationErrors = [],
   onCampaignNameChange,
+  onCampaignUpdate,
   onPreview,
   onPublish,
   onPause,
@@ -68,6 +74,7 @@ export function CampaignBuilderTopBar({
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(campaignName)
   const [isSticky, setIsSticky] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const topBarRef = useRef<HTMLDivElement>(null)
 
@@ -126,9 +133,18 @@ export function CampaignBuilderTopBar({
   }
 
   const handleEditCampaign = () => {
-    if (campaignId) {
-      router.push(`/dashboard/campaigns/${campaignId}`)
+    if (campaign) {
+      setShowEditModal(true)
     }
+  }
+
+  const handleEditModalClose = () => {
+    setShowEditModal(false)
+  }
+
+  const handleEditModalSave = (updatedCampaign: Campaign) => {
+    onCampaignUpdate?.(updatedCampaign)
+    setShowEditModal(false)
   }
 
   const handleViewLive = () => {
@@ -306,7 +322,7 @@ export function CampaignBuilderTopBar({
             )}
 
             {/* Edit Button */}
-            {campaignId && (
+            {campaign && (
               <Button
                 variant="outline"
                 size="sm"
@@ -337,7 +353,15 @@ export function CampaignBuilderTopBar({
         </div>
       </div>
 
-
+      {/* Campaign Edit Modal */}
+      {campaign && (
+        <CampaignEditModal
+          campaign={campaign}
+          isOpen={showEditModal}
+          onClose={handleEditModalClose}
+          onSave={handleEditModalSave}
+        />
+      )}
     </div>
   )
 } 

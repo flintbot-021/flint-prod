@@ -1098,12 +1098,14 @@ export default function ToolBuilderPage() {
             campaignId={campaign.id}
             campaignUserKey={campaign.user_key || undefined}
             campaignPublishedUrl={campaign.published_url || undefined}
+            campaign={campaign}
             isPublished={campaign.status === 'published'}
             isSaving={isSaving}
             canPublish={mandatoryValidation.isValid}
             canPreview={mandatoryValidation.isValid}
             validationErrors={mandatoryValidation.missing}
             onCampaignNameChange={handleCampaignNameChange}
+            onCampaignUpdate={setCampaign}
             onPreview={handlePreview}
             onPublish={handlePublish}
             onPause={handlePause}

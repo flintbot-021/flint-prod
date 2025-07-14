@@ -452,15 +452,6 @@ export default function CampaignFormPage() {
         )
 
       case 'theme':
-        const backgroundOptions = [
-          { name: 'White', value: '#FFFFFF', preview: 'bg-white' },
-          { name: 'Light Gray', value: '#F8FAFC', preview: 'bg-slate-50' },
-          { name: 'Light Blue', value: '#F0F9FF', preview: 'bg-sky-50' },
-          { name: 'Light Green', value: '#F0FDF4', preview: 'bg-green-50' },
-          { name: 'Light Purple', value: '#FAF5FF', preview: 'bg-purple-50' },
-          { name: 'Light Orange', value: '#FFF7ED', preview: 'bg-orange-50' }
-        ]
-
         const currentBackground = formData.settings.theme?.background_color || '#FFFFFF'
         const currentButton = formData.settings.theme?.button_color || '#3B82F6'
         const currentText = formData.settings.theme?.text_color || '#1F2937'
@@ -468,36 +459,33 @@ export default function CampaignFormPage() {
         return (
           <div className="space-y-6">
             {/* Background Color Selection */}
-            <div className="space-y-3">
-              <Label>Background Color</Label>
-              <p className="text-sm text-muted-foreground">Choose a light background color for your campaign</p>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {backgroundOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => updateSettings({
-                      theme: {
-                        ...formData.settings.theme,
-                        background_color: option.value
-                      }
-                    })}
-                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-blue-300 ${
-                      currentBackground === option.value 
-                        ? 'border-blue-500 ring-2 ring-blue-200' 
-                        : 'border-gray-200'
-                    }`}
-                  >
-                    <div className={`w-full h-12 rounded ${option.preview} border border-gray-200`}></div>
-                    <p className="text-sm font-medium mt-2">{option.name}</p>
-                    <p className="text-xs text-muted-foreground">{option.value}</p>
-                    {currentBackground === option.value && (
-                      <div className="absolute top-2 right-2 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                        <div className="w-2 h-2 bg-white rounded-full"></div>
-                      </div>
-                    )}
-                  </button>
-                ))}
+            <div className="space-y-2">
+              <Label htmlFor="background-color">Background Color</Label>
+              <p className="text-sm text-muted-foreground">Choose any background color for your campaign</p>
+              <div className="flex items-center space-x-3">
+                <input
+                  type="color"
+                  id="background-color"
+                  value={currentBackground}
+                  onChange={(e) => updateSettings({
+                    theme: {
+                      ...formData.settings.theme,
+                      background_color: e.target.value
+                    }
+                  })}
+                  className="w-12 h-12 rounded border border-input"
+                />
+                <Input
+                  value={currentBackground}
+                  onChange={(e) => updateSettings({
+                    theme: {
+                      ...formData.settings.theme,
+                      background_color: e.target.value
+                    }
+                  })}
+                  placeholder="#FFFFFF"
+                  className="flex-1"
+                />
               </div>
             </div>
 
@@ -769,17 +757,7 @@ export default function CampaignFormPage() {
                       key={step.id}
                       className={`relative flex-1 flex flex-col items-center min-w-0 ${stepIdx !== steps.length - 1 ? 'pr-2 sm:pr-8' : ''}`}
                     >
-                      {/* Connector line */}
-                      {stepIdx !== 0 && (
-                        <div
-                          className="absolute left-0 top-4 h-0.5 w-full -z-1"
-                          style={{
-                            background: isCompleted ? '#2563EB' : '#E5E7EB',
-                            zIndex: 0,
-                            right: '50%',
-                          }}
-                        />
-                      )}
+
                       {/* Step circle */}
                       <div
                         className={`flex items-center justify-center h-8 w-8 rounded-full border-2 z-10 ${
@@ -809,17 +787,7 @@ export default function CampaignFormPage() {
                           {step.description}
                                                 </span>
                       </div>
-                      {/* Connector line to next step */}
-                      {stepIdx !== steps.length - 1 && (
-                        <div
-                          className="absolute right-0 top-4 h-0.5 w-full -z-1"
-                          style={{
-                            background: getCurrentStepIndex() > stepIdx ? '#2563EB' : '#E5E7EB',
-                            zIndex: 0,
-                            left: '50%',
-                          }}
-                        />
-                      )}
+
                     </li>
                   );
                 })}
