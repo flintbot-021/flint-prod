@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react'
 import { AlertCircle } from 'lucide-react'
-import { BaseSectionProps, SectionConfiguration, SectionRendererProps, SectionWithOptions } from './types'
+import { BaseSectionProps, SectionConfiguration, SectionRendererProps, SectionWithOptions, DeviceInfo } from './types'
 
 // Import section components
 import {
@@ -51,6 +51,7 @@ function isDateTimeQuestion(config: SectionConfiguration): boolean {
 interface SectionRendererPropsExtended extends BaseSectionProps {
   userInputs?: Record<string, any>
   sections?: SectionWithOptions[]
+  deviceInfo?: DeviceInfo // Add deviceInfo override support
 }
 
 export function SectionRenderer(props: SectionRendererPropsExtended) {
@@ -64,8 +65,14 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
 
 
 
-  // Basic device info detection (can be enhanced by pages if needed) - memoized
+  // Use provided deviceInfo or auto-detect - memoized
   const deviceInfo = useMemo(() => {
+    // If deviceInfo is provided (e.g., from preview page), use it
+    if (props.deviceInfo) {
+      return props.deviceInfo
+    }
+
+    // Otherwise, auto-detect based on window size
     if (typeof window === 'undefined') {
       return {
         type: 'desktop' as const,
@@ -94,7 +101,7 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
       userAgent: navigator.userAgent,
       pixelRatio: window.devicePixelRatio || 1
     }
-  }, []) // Empty deps - device info shouldn't change during session
+  }, [props.deviceInfo]) // Include props.deviceInfo in deps
 
   // Memoize title and description extraction
   const sectionTitle = useMemo(() => 
