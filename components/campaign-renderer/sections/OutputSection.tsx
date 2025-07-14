@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { ChevronLeft, Share2, RotateCcw } from 'lucide-react'
+import { ChevronLeft, Share2, RotateCcw, ExternalLink, Download } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses, getCampaignTheme, getCampaignButtonStyles, getCampaignTextColor } from '../utils'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,17 @@ interface OutputSectionConfig {
   content?: string
   image?: string
   textAlignment?: 'left' | 'center' | 'right'
+  // Button settings
+  showButton?: boolean
+  buttonText?: string
+  buttonType?: 'link' | 'download'
+  buttonUrl?: string
+  buttonFile?: {
+    id: string
+    name: string
+    url: string
+    size: number
+  }
 }
 
 export function OutputSection({
@@ -43,7 +54,12 @@ export function OutputSection({
     subtitle: outputConfig?.subtitle || description || '',
     content: outputConfig?.content || '',
     image: outputConfig?.image || '',
-    textAlignment: outputConfig?.textAlignment || 'center'
+    textAlignment: outputConfig?.textAlignment || 'center',
+    showButton: outputConfig?.showButton || false,
+    buttonText: outputConfig?.buttonText || 'Download Now',
+    buttonType: outputConfig?.buttonType || 'link',
+    buttonUrl: outputConfig?.buttonUrl || '',
+    buttonFile: outputConfig?.buttonFile
   }
 
   // Simple variable replacement fallback function
@@ -157,6 +173,28 @@ export function OutputSection({
     }
   }
 
+  // Handle action button click
+  const handleActionButtonClick = () => {
+    if (settings.buttonType === 'link' && settings.buttonUrl) {
+      window.open(settings.buttonUrl, '_blank')
+    } else if (settings.buttonType === 'download' && settings.buttonFile) {
+      // Create download link
+      const link = document.createElement('a')
+      link.href = settings.buttonFile.url
+      link.download = settings.buttonFile.name
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Show success toast
+      toast({
+        title: "Download started",
+        description: `${settings.buttonFile.name} is being downloaded`,
+      })
+    }
+  }
+
   // Get campaign theme colors
   const theme = getCampaignTheme(campaign)
   const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
@@ -237,6 +275,30 @@ export function OutputSection({
                   __html: simpleVariableReplace(settings.content, variableMap).replace(/\n/g, '<br>') 
                 }}
               />
+            )}
+
+            {/* Action Button */}
+            {settings.showButton && (settings.buttonUrl || settings.buttonFile) && (
+              <div className={cn('pt-8', getAlignmentClass(settings.textAlignment))}>
+                <button
+                  onClick={handleActionButtonClick}
+                  className={cn(
+                    "px-8 py-4 rounded-lg font-medium transition-all duration-200",
+                    "flex items-center space-x-2 shadow-lg hover:shadow-xl",
+                    "text-lg",
+                    getMobileClasses("min-h-[48px]", deviceInfo?.type),
+                    settings.textAlignment === 'center' ? "mx-auto" : ""
+                  )}
+                  style={primaryButtonStyle}
+                >
+                  {settings.buttonType === 'link' ? (
+                    <ExternalLink className="h-5 w-5" />
+                  ) : (
+                    <Download className="h-5 w-5" />
+                  )}
+                  <span>{settings.buttonText}</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
