@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { updateCampaign } from '@/lib/data-access'
-import { Campaign, CampaignSettings } from '@/lib/types/database'
+import { updateCampaign, createCampaignWithUsageTracking } from '@/lib/data-access'
+import { Campaign, CampaignSettings, CreateCampaign } from '@/lib/types/database'
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -23,7 +23,7 @@ import {
 import { toast } from '@/components/ui/use-toast'
 
 interface CampaignEditModalProps {
-  campaign: Campaign
+  campaign: Campaign | null // null for creation mode
   isOpen: boolean
   onClose: () => void
   onSave: (updatedCampaign: Campaign) => void
@@ -58,9 +58,9 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: Campaig
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const [formData, setFormData] = useState<CampaignFormData>({
-    name: campaign.name,
-    description: campaign.description || '',
-    settings: campaign.settings || {
+    name: campaign?.name || 'New Campaign',
+    description: campaign?.description || '',
+    settings: campaign?.settings || {
       theme: {
         primary_color: '#3B82F6',
         secondary_color: '#10B981',
@@ -97,10 +97,34 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: Campaig
           }
         }
       })
-      setCurrentStep('basic')
-      setError(null)
+    } else {
+      // Creation mode - reset to defaults
+      setFormData({
+        name: 'New Campaign',
+        description: '',
+        settings: {
+          theme: {
+            primary_color: '#3B82F6',
+            secondary_color: '#10B981',
+            background_color: '#FFFFFF',
+            font_family: 'Inter, sans-serif'
+          },
+          branding: {
+            show_powered_by: true
+          },
+          completion: {
+            email_notifications: true
+          }
+        }
+      })
     }
-  }, [campaign])
+    
+    // Reset other form state
+    setCurrentStep('basic')
+    setError(null)
+    setLogoFile(null)
+    setLogoPreview(null)
+  }, [campaign, isOpen])
 
   const updateFormData = (updates: Partial<CampaignFormData>) => {
     setFormData(prev => ({ ...prev, ...updates }))
@@ -224,45 +248,94 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: Campaig
       setIsSubmitting(true)
       setError(null)
 
-      let logoUrl = null
-      if (logoFile) {
-        logoUrl = await uploadLogo(campaign.id)
-      }
-
-      const updateData = {
-        name: formData.name.trim(),
-        description: formData.description || null,
-        settings: {
-          ...formData.settings,
-          ...(logoUrl && {
-            branding: {
-              ...formData.settings.branding,
-              logo_url: logoUrl
-            }
-          })
+      if (campaign) {
+        // Update existing campaign
+        let logoUrl = null
+        if (logoFile) {
+          logoUrl = await uploadLogo(campaign.id)
         }
+
+        const updateData = {
+          name: formData.name.trim(),
+          description: formData.description || null,
+          settings: {
+            ...formData.settings,
+            ...(logoUrl && {
+              branding: {
+                ...formData.settings.branding,
+                logo_url: logoUrl
+              }
+            })
+          }
+        }
+
+        const result = await updateCampaign(campaign.id, updateData)
+
+        if (!result.success || !result.data) {
+          throw new Error(result.error || 'Failed to update campaign')
+        }
+
+        toast({
+          title: 'Campaign updated',
+          description: 'Your campaign settings have been saved successfully',
+          duration: 3000
+        })
+
+        onSave(result.data)
+      } else {
+        // Create new campaign
+        const createData = {
+          name: formData.name.trim(),
+          description: formData.description || '',
+          status: 'draft',
+          settings: formData.settings,
+          published_at: null,
+          published_url: null,
+          is_active: true
+        } as CreateCampaign
+
+        const result = await createCampaignWithUsageTracking(createData)
+
+        if (!result.success || !result.data) {
+          throw new Error(result.error || 'Failed to create campaign')
+        }
+
+        // Upload logo after creation if there is one
+        let updatedCampaign = result.data
+        if (logoFile) {
+          const logoUrl = await uploadLogo(result.data.id)
+          if (logoUrl) {
+            const updateResult = await updateCampaign(result.data.id, {
+              settings: {
+                ...formData.settings,
+                branding: {
+                  ...formData.settings.branding,
+                  logo_url: logoUrl
+                }
+              }
+            })
+            if (updateResult.success && updateResult.data) {
+              updatedCampaign = updateResult.data
+            }
+          }
+        }
+
+        toast({
+          title: 'Campaign created',
+          description: 'Your new campaign has been created successfully',
+          duration: 3000
+        })
+
+        onSave(updatedCampaign)
       }
-
-      const result = await updateCampaign(campaign.id, updateData)
-
-      if (!result.success || !result.data) {
-        throw new Error(result.error || 'Failed to update campaign')
-      }
-
-      toast({
-        title: 'Campaign updated',
-        description: 'Your campaign settings have been saved successfully',
-        duration: 3000
-      })
-
-      onSave(result.data)
+      
       onClose()
     } catch (err) {
-      console.error('Error updating campaign:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update campaign'
+      console.error('Error saving campaign:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save campaign'
       setError(errorMessage)
       toast({
-        title: 'Update failed',
+        title: campaign ? 'Update failed' : 'Creation failed',
         description: errorMessage,
         variant: 'destructive'
       })
@@ -611,12 +684,12 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: Campaig
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      {isUploadingLogo ? 'Uploading Logo...' : 'Saving...'}
+                      {isUploadingLogo ? 'Uploading Logo...' : campaign ? 'Saving...' : 'Creating...'}
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      Save Changes
+                      {campaign ? 'Save Changes' : 'Create Campaign'}
                     </>
                   )}
                 </Button>

@@ -2,20 +2,21 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UserProfile } from '@/components/ui/user-profile'
 import { useAuth } from '@/lib/auth-context'
 import { 
-  getCampaigns, 
+  getCampaigns,
+  getCampaignById,
   getCurrentProfile,
   getBatchCampaignLeadStats,
   updateCampaign,
   publishCampaign,
-  deleteCampaign
+  deleteCampaign,
+  createCampaignWithUsageTracking
 } from '@/lib/data-access'
-import { Campaign, Profile, CampaignStatus } from '@/lib/types/database'
+import { Campaign, Profile, CampaignStatus, CreateCampaign } from '@/lib/types/database'
 import { LazyExportButton } from '@/components/export/lazy-export-button'
 import { getDashboardExportData, getDashboardExportFields } from '@/lib/export'
 import { useConfirmationDialog } from '@/components/ui/confirmation-dialog'
@@ -23,6 +24,8 @@ import { CampaignCard } from '@/components/dashboard/campaign-card'
 import type { CampaignWithStats } from '@/components/dashboard/campaign-card'
 import { StatsCard } from '@/components/dashboard/stats-card'
 import { FlintLogo } from '@/components/flint-logo'
+import { CampaignEditModal } from '@/components/campaign-builder/campaign-edit-modal'
+import { toast } from '@/components/ui/use-toast'
 import { 
   Users, 
   TrendingUp, 
@@ -77,19 +80,14 @@ export default function Dashboard() {
   const [loadingStats, setLoadingStats] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
-  // Navigation loading state
-  const [isNavigating, setIsNavigating] = useState(false)
-
   // Lazy loading for export data
   const [exportData, setExportData] = useState<any[]>([])
   const [loadingExportData, setLoadingExportData] = useState(false)
   const [hasLoadedExportData, setHasLoadedExportData] = useState(false)
 
-  // Prefetch the create campaign route on component mount
-  useEffect(() => {
-    // Prefetch the create campaign page for faster navigation
-    router.prefetch('/dashboard/campaigns/new')
-  }, [router])
+  // Modal state for campaign edit/create
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -315,18 +313,51 @@ export default function Dashboard() {
 
   const canCreateCampaign = true // No campaign limits
 
-  // Optimized navigation handler with loading state
+  // Open modal for creating new campaign
   const handleCreateCampaign = useCallback(() => {
-    setIsNavigating(true)
-    setError(null)
+    setEditingCampaign(null) // No existing campaign - creation mode
+    setShowEditModal(true)
+  }, [])
+
+  // Handle edit campaign from card
+  const handleEditCampaign = useCallback(async (campaignWithStats: CampaignWithStats) => {
+    try {
+      setError(null)
+      // Fetch full campaign data for editing
+      const result = await getCampaignById(campaignWithStats.id)
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to load campaign')
+      }
+      setEditingCampaign(result.data)
+      setShowEditModal(true)
+    } catch (err) {
+      console.error('Error loading campaign for editing:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load campaign')
+    }
+  }, [])
+
+  // Handle modal close
+  const handleModalClose = useCallback(() => {
+    setShowEditModal(false)
+    setEditingCampaign(null)
+  }, [])
+
+  // Handle modal save
+  const handleModalSave = useCallback((updatedCampaign: Campaign) => {
+    // Update campaign in our local state
+    setCampaigns(prev => prev.map(c => c.id === updatedCampaign.id ? updatedCampaign : c))
     
-    // Add a small delay to show loading state, then navigate
-    setTimeout(() => {
-      router.push('/dashboard/campaigns/new')
-      // Reset loading state after navigation starts
-      setTimeout(() => setIsNavigating(false), 100)
-    }, 50)
-  }, [router])
+    // Refresh campaigns to get updated stats
+    loadCampaigns()
+    
+    // Close modal
+    handleModalClose()
+    
+    toast({
+      title: 'Campaign updated',
+      description: 'Your campaign has been successfully updated.',
+    })
+  }, [loadCampaigns, handleModalClose])
 
   if (loading) {
     return (
@@ -410,26 +441,15 @@ export default function Dashboard() {
                 className="h-9"
               />
               {/* Optimized New Tool Button with Link prefetching */}
-              <Link href="/dashboard/campaigns/new" prefetch={true}>
-                <Button
-                  onClick={handleCreateCampaign}
-                  disabled={!canCreateCampaign || isNavigating}
-                  size="sm"
-                  className="h-9 flex items-center space-x-2"
-                >
-                  {isNavigating ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      <span>Opening...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4" />
-                      <span>New Tool</span>
-                    </>
-                  )}
-                </Button>
-              </Link>
+              <Button
+                onClick={handleCreateCampaign}
+                disabled={!canCreateCampaign}
+                size="sm"
+                className="h-9 flex items-center space-x-2"
+              >
+                <Plus className="h-4 w-4" />
+                <span>New Tool</span>
+              </Button>
             </div>
           </div>
 
@@ -539,6 +559,7 @@ export default function Dashboard() {
                       campaign={campaign}
                       onStatusChange={handleStatusChange}
                       onDelete={handleDeleteCampaign}
+                      onEdit={handleEditCampaign}
                     />
                   ))}
                 </div>
@@ -554,25 +575,14 @@ export default function Dashboard() {
                       Create your first lead magnet tool to start capturing and converting leads.
                     </CardDescription>
                     <div className="flex justify-center">
-                      <Link href="/dashboard/campaigns/new" prefetch={true}>
-                        <Button 
-                          onClick={handleCreateCampaign}
-                          disabled={!canCreateCampaign || isNavigating}
-                          className="flex items-center space-x-2"
-                        >
-                          {isNavigating ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              <span>Opening...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="h-4 w-4" />
-                              <span>Create Your First Tool</span>
-                            </>
-                          )}
-                        </Button>
-                      </Link>
+                      <Button 
+                        onClick={handleCreateCampaign}
+                        disabled={!canCreateCampaign}
+                        className="flex items-center space-x-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        <span>Create Your First Tool</span>
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -584,6 +594,15 @@ export default function Dashboard() {
       
       {/* Confirmation Dialog */}
       {ConfirmationDialog}
+      {/* Campaign Edit Modal */}
+      {showEditModal && (
+        <CampaignEditModal
+          campaign={editingCampaign}
+          onClose={handleModalClose}
+          onSave={handleModalSave}
+          isOpen={showEditModal}
+        />
+      )}
     </div>
   )
 } 
