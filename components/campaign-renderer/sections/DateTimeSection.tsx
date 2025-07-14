@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Calendar, Clock } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
-import { getMobileClasses } from '../utils'
+import { getMobileClasses, getCampaignTheme, getCampaignTextColor } from '../utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,7 +24,8 @@ export function DateTimeSection({
   onPrevious,
   onSectionComplete,
   onResponseUpdate,
-  userInputs
+  userInputs,
+  campaign
 }: SectionRendererProps) {
   // Initialize with existing response if available
   const existingResponse = userInputs?.[section.id] || ''
@@ -42,6 +43,11 @@ export function DateTimeSection({
   const includeTime = configData.includeTime ?? false
   const isRequired = configData.required ?? true
   const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
+  
+  // Theme styles
+  const theme = getCampaignTheme(campaign)
+  const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
+  const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
   
   const validateInput = (): string | null => {
     if (isRequired) {
@@ -132,23 +138,28 @@ export function DateTimeSection({
   ) : undefined
 
   return (
-    <div className="h-full bg-background flex flex-col pb-20">
+    <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           <div className="text-center space-y-4">
-            <h1 className={cn(
-              "font-bold text-foreground",
-              deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
-            )}>
+            <h1 
+              className={cn(
+                "font-bold",
+                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
+              )}
+              style={primaryTextStyle}
+            >
               {question}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </h1>
             
             {subheading && (
-              <p className={cn(
-                "text-muted-foreground",
-                deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
-              )}>
+              <p 
+                className={cn(
+                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                )}
+                style={mutedTextStyle}
+              >
                 {subheading}
               </p>
             )}
@@ -158,7 +169,7 @@ export function DateTimeSection({
             {/* Date Input - Only if includeDate is true */}
             {includeDate && (
               <div className="space-y-3">
-                <Label htmlFor={`date-${section.id}`} className="text-sm font-medium text-foreground flex items-center gap-2">
+                <Label htmlFor={`date-${section.id}`} className="text-sm font-medium flex items-center gap-2" style={primaryTextStyle}>
                   <Calendar className="h-4 w-4" />
                   Date
                 </Label>
@@ -181,7 +192,7 @@ export function DateTimeSection({
             {/* Time Input - Only if includeTime is true */}
             {includeTime && (
               <div className="space-y-3">
-                <Label htmlFor={`time-${section.id}`} className="text-sm font-medium text-foreground flex items-center gap-2">
+                <Label htmlFor={`time-${section.id}`} className="text-sm font-medium flex items-center gap-2" style={primaryTextStyle}>
                   <Clock className="h-4 w-4" />
                   Time
                 </Label>

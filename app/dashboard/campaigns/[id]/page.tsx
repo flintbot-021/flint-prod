@@ -452,30 +452,79 @@ export default function CampaignFormPage() {
         )
 
       case 'theme':
+        const backgroundOptions = [
+          { name: 'White', value: '#FFFFFF', preview: 'bg-white' },
+          { name: 'Light Gray', value: '#F8FAFC', preview: 'bg-slate-50' },
+          { name: 'Light Blue', value: '#F0F9FF', preview: 'bg-sky-50' },
+          { name: 'Light Green', value: '#F0FDF4', preview: 'bg-green-50' },
+          { name: 'Light Purple', value: '#FAF5FF', preview: 'bg-purple-50' },
+          { name: 'Light Orange', value: '#FFF7ED', preview: 'bg-orange-50' }
+        ]
+
+        const currentBackground = formData.settings.theme?.background_color || '#FFFFFF'
+        const currentButton = formData.settings.theme?.button_color || '#3B82F6'
+        const currentText = formData.settings.theme?.text_color || '#1F2937'
+
         return (
           <div className="space-y-6">
+            {/* Background Color Selection */}
+            <div className="space-y-3">
+              <Label>Background Color</Label>
+              <p className="text-sm text-muted-foreground">Choose a light background color for your campaign</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {backgroundOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => updateSettings({
+                      theme: {
+                        ...formData.settings.theme,
+                        background_color: option.value
+                      }
+                    })}
+                    className={`relative p-4 rounded-lg border-2 transition-all hover:border-blue-300 ${
+                      currentBackground === option.value 
+                        ? 'border-blue-500 ring-2 ring-blue-200' 
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    <div className={`w-full h-12 rounded ${option.preview} border border-gray-200`}></div>
+                    <p className="text-sm font-medium mt-2">{option.name}</p>
+                    <p className="text-xs text-muted-foreground">{option.value}</p>
+                    {currentBackground === option.value && (
+                      <div className="absolute top-2 right-2 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Button and Text Colors */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="primary-color">Primary Color</Label>
+                <Label htmlFor="button-color">Button Color</Label>
+                <p className="text-sm text-muted-foreground">Color for buttons and interactive elements</p>
                 <div className="flex items-center space-x-3">
                   <input
                     type="color"
-                    id="primary-color"
-                    value={formData.settings.theme?.primary_color || '#3B82F6'}
+                    id="button-color"
+                    value={currentButton}
                     onChange={(e) => updateSettings({
                       theme: {
                         ...formData.settings.theme,
-                        primary_color: e.target.value
+                        button_color: e.target.value
                       }
                     })}
                     className="w-12 h-12 rounded border border-input"
                   />
                   <Input
-                    value={formData.settings.theme?.primary_color || '#3B82F6'}
+                    value={currentButton}
                     onChange={(e) => updateSettings({
                       theme: {
                         ...formData.settings.theme,
-                        primary_color: e.target.value
+                        button_color: e.target.value
                       }
                     })}
                     placeholder="#3B82F6"
@@ -485,66 +534,60 @@ export default function CampaignFormPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="secondary-color">Secondary Color</Label>
+                <Label htmlFor="text-color">Text Color</Label>
+                <p className="text-sm text-muted-foreground">Primary text color for headings and content</p>
                 <div className="flex items-center space-x-3">
                   <input
                     type="color"
-                    id="secondary-color"
-                    value={formData.settings.theme?.secondary_color || '#10B981'}
+                    id="text-color"
+                    value={currentText}
                     onChange={(e) => updateSettings({
                       theme: {
                         ...formData.settings.theme,
-                        secondary_color: e.target.value
+                        text_color: e.target.value
                       }
                     })}
                     className="w-12 h-12 rounded border border-input"
                   />
                   <Input
-                    value={formData.settings.theme?.secondary_color || '#10B981'}
+                    value={currentText}
                     onChange={(e) => updateSettings({
                       theme: {
                         ...formData.settings.theme,
-                        secondary_color: e.target.value
+                        text_color: e.target.value
                       }
                     })}
-                    placeholder="#10B981"
+                    placeholder="#1F2937"
                     className="flex-1"
                   />
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="background-color">Background Color</Label>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="color"
-                    id="background-color"
-                    value={formData.settings.theme?.background_color || '#FFFFFF'}
-                    onChange={(e) => updateSettings({
-                      theme: {
-                        ...formData.settings.theme,
-                        background_color: e.target.value
-                      }
-                    })}
-                    className="w-12 h-12 rounded border border-input"
-                  />
-                  <Input
-                    value={formData.settings.theme?.background_color || '#FFFFFF'}
-                    onChange={(e) => updateSettings({
-                      theme: {
-                        ...formData.settings.theme,
-                        background_color: e.target.value
-                      }
-                    })}
-                    placeholder="#FFFFFF"
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-
-              {/* Font family selector hidden - using Inter by default, functionality preserved for future use */}
             </div>
 
+            {/* Preview Section */}
+            <div className="space-y-3">
+              <Label>Color Preview</Label>
+              <div 
+                className="p-6 rounded-lg border-2 border-dashed border-gray-300"
+                style={{ backgroundColor: currentBackground }}
+              >
+                <h3 style={{ color: currentText }} className="text-lg font-semibold mb-2">
+                  Sample Campaign Content
+                </h3>
+                <p style={{ color: currentText }} className="text-sm mb-4 opacity-80">
+                  This is how your text will appear on the selected background color.
+                </p>
+                <button
+                  type="button"
+                  style={{ backgroundColor: currentButton }}
+                  className="px-4 py-2 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  Sample Button
+                </button>
+              </div>
+            </div>
+
+            {/* Branding Options */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Branding Options</h3>
               

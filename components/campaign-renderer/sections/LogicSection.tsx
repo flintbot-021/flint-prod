@@ -5,6 +5,7 @@ import { Loader2, Zap, AlertCircle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getKnowledgeBaseForAI } from '@/lib/data-access/knowledge-base'
 import { cn } from '@/lib/utils'
+import { getCampaignTheme, getCampaignTextColor } from '../utils'
 import { storeAITestResults, clearAITestResults } from '@/lib/utils/ai-test-storage'
 import { buildVariablesFromInputs, extractInputVariablesWithTypes, isFileVariable } from '@/lib/utils/section-variables'
 
@@ -18,11 +19,17 @@ function LogicSectionComponent({
   campaignId,
   onSectionComplete,
   userInputs = {},
-  sections = []
+  sections = [],
+  campaign
 }: SectionRendererProps) {
   const [isProcessing, setIsProcessing] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [processingStatus, setProcessingStatus] = useState('Preparing analysis...')
+  
+  // Theme styles
+  const theme = getCampaignTheme(campaign)
+  const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
+  const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
   
   // Add processing tracking to prevent duplicates
   const isProcessingRef = useRef(false)
@@ -407,7 +414,7 @@ function LogicSectionComponent({
   }
 
   return (
-    <div className="h-full bg-background flex flex-col">
+    <div className="h-full flex flex-col" style={{ backgroundColor: theme.backgroundColor }}>
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-lg mx-auto space-y-8">
@@ -419,14 +426,17 @@ function LogicSectionComponent({
                   <AlertCircle className="h-8 w-8 text-red-600" />
                 </div>
                 <div className="space-y-2">
-                  <h1 className={cn(
-                    "font-bold text-foreground",
-                    deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
-                  )}>
+                  <h1 
+                    className={cn(
+                      "font-bold",
+                      deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
+                    )}
+                    style={primaryTextStyle}
+                  >
                     Analysis Error
                   </h1>
                   <p className="text-sm text-red-600">{error}</p>
-                  <p className="text-xs text-muted-foreground">Continuing to next section...</p>
+                  <p className="text-xs" style={mutedTextStyle}>Continuing to next section...</p>
                 </div>
               </>
             ) : isProcessing ? (
@@ -438,15 +448,18 @@ function LogicSectionComponent({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <h1 className={cn(
-                    "font-bold text-foreground",
-                    deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
-                  )}>
+                  <h1 
+                    className={cn(
+                      "font-bold",
+                      deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
+                    )}
+                    style={primaryTextStyle}
+                  >
                     {title || 'Analyzing Your Responses'}
                   </h1>
-                  <p className="text-sm text-muted-foreground">{processingStatus}</p>
+                  <p className="text-sm" style={mutedTextStyle}>{processingStatus}</p>
                   {description && (
-                    <p className="text-xs text-muted-foreground mt-4">{description}</p>
+                    <p className="text-xs mt-4" style={mutedTextStyle}>{description}</p>
                   )}
                 </div>
               </>
@@ -456,13 +469,16 @@ function LogicSectionComponent({
                   <Zap className="h-8 w-8 text-green-600" />
                 </div>
                 <div className="space-y-2">
-                  <h1 className={cn(
-                    "font-bold text-foreground",
-                    deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
-                  )}>
+                  <h1 
+                    className={cn(
+                      "font-bold",
+                      deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
+                    )}
+                    style={primaryTextStyle}
+                  >
                     Analysis Complete
                   </h1>
-                  <p className="text-sm text-muted-foreground">Your personalized results are ready!</p>
+                  <p className="text-sm" style={mutedTextStyle}>Your personalized results are ready!</p>
                 </div>
               </>
             )}

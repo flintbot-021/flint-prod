@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
-import { getMobileClasses } from '../utils'
+import { getMobileClasses, getCampaignTheme, getCampaignTextColor } from '../utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 
@@ -38,7 +38,8 @@ export function MultipleSlidersSection({
   onPrevious,
   onSectionComplete,
   onResponseUpdate,
-  userInputs
+  userInputs,
+  campaign
 }: SectionRendererProps) {
   const [values, setValues] = useState<Record<string, number>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -48,6 +49,11 @@ export function MultipleSlidersSection({
   const sliders = configData.sliders || []
   const headline = configData.headline || title || 'Rate the following'
   const subheading = configData.subheading || description || ''
+  
+  // Theme styles
+  const theme = getCampaignTheme(campaign)
+  const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
+  const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
   
   // Initialize values and expansion state with existing responses if available
   useEffect(() => {
@@ -153,28 +159,36 @@ export function MultipleSlidersSection({
   }
 
   return (
-    <div className={cn(
-      'min-h-screen flex flex-col',
-      getMobileClasses('', deviceInfo?.type)
-    )}>
+    <div 
+      className={cn(
+        'min-h-screen flex flex-col',
+        getMobileClasses('', deviceInfo?.type)
+      )}
+      style={{ backgroundColor: theme.backgroundColor }}
+    >
       {/* Main Content */}
       <div className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-2xl space-y-8">
           
           {/* Section Header */}
           <div className="text-center space-y-4">
-            <h1 className={cn(
-              'font-bold text-white leading-tight',
-              deviceInfo?.type === 'mobile' ? 'text-2xl' : 'text-4xl'
-            )}>
+            <h1 
+              className={cn(
+                'font-bold leading-tight',
+                deviceInfo?.type === 'mobile' ? 'text-2xl' : 'text-4xl'
+              )}
+              style={primaryTextStyle}
+            >
               {headline}
             </h1>
             
             {subheading && (
-              <p className={cn(
-                'text-gray-300',
-                deviceInfo?.type === 'mobile' ? 'text-base' : 'text-xl'
-              )}>
+              <p 
+                className={cn(
+                  deviceInfo?.type === 'mobile' ? 'text-base' : 'text-xl'
+                )}
+                style={mutedTextStyle}
+              >
                 {subheading}
               </p>
             )}
@@ -182,10 +196,10 @@ export function MultipleSlidersSection({
           
           {sliders.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-400 text-lg">
+              <p className="text-lg" style={primaryTextStyle}>
                 No sliders configured for this section.
               </p>
-              <p className="text-gray-500 text-sm mt-2">
+              <p className="text-sm mt-2" style={mutedTextStyle}>
                 Please configure sliders in the campaign builder.
               </p>
             </div>
@@ -218,10 +232,13 @@ export function MultipleSlidersSection({
                       )}
                       
                       {/* Label */}
-                      <h3 className={cn(
-                        'font-medium text-white',
-                        deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl'
-                      )}>
+                      <h3 
+                        className={cn(
+                          'font-medium',
+                          deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl'
+                        )}
+                        style={primaryTextStyle}
+                      >
                         {slider.label}
                         {slider.required && <span className="text-red-400 ml-1">*</span>}
                       </h3>
@@ -234,11 +251,14 @@ export function MultipleSlidersSection({
                           Required
                         </span>
                       )}
-                      <span className={cn(
-                        'font-medium text-gray-300',
-                        deviceInfo?.type === 'mobile' ? 'text-base' : 'text-lg',
-                        hasError && 'text-red-400'
-                      )}>
+                      <span 
+                        className={cn(
+                          'font-medium',
+                          deviceInfo?.type === 'mobile' ? 'text-base' : 'text-lg',
+                          hasError && 'text-red-400'
+                        )}
+                        style={hasError ? undefined : mutedTextStyle}
+                      >
                         {currentValue}
                       </span>
                     </div>
@@ -254,7 +274,7 @@ export function MultipleSlidersSection({
                     <div className="space-y-4 px-3 pb-2">
                       
                       {/* Labels */}
-                      <div className="flex justify-between text-sm text-gray-400">
+                      <div className="flex justify-between text-sm" style={mutedTextStyle}>
                         <span>{slider.minLabel}</span>
                         <span>{slider.maxLabel}</span>
                       </div>

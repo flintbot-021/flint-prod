@@ -129,6 +129,7 @@ export interface SectionRendererProps extends BaseSectionProps {
   networkState?: NetworkState
   userInputs?: Record<string, any>
   sections?: SectionWithOptions[]
+  campaign?: Campaign
 }
 
 // Campaign state management

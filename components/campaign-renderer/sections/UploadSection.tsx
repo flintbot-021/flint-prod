@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { SectionRendererProps } from '../types'
-import { getMobileClasses } from '../utils'
+import { getMobileClasses, getCampaignTheme, getCampaignTextColor, getCampaignButtonStyles } from '../utils'
 import { cn } from '@/lib/utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 import { uploadFiles, UploadedFileInfo, UploadProgress } from '@/lib/supabase/storage'
@@ -47,7 +47,8 @@ export function UploadSection({
   onPrevious,
   onSectionComplete,
   onResponseUpdate,
-  userInputs
+  userInputs,
+  campaign
 }: SectionRendererProps) {
   const supabase = createClient()
   
@@ -79,6 +80,12 @@ export function UploadSection({
   // File type configuration
   const allowedTypes = configData.allowedTypes || DEFAULT_FILE_TYPES
   const maxFileSize = Math.max(configData.maxFileSize || 10 * 1024 * 1024, 1024 * 1024) // Minimum 1MB, default 10MB
+
+  // Theme styles
+  const theme = getCampaignTheme(campaign)
+  const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
+  const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
+  const primaryButtonStyle = getCampaignButtonStyles(campaign, 'primary')
 
   // Validation functions
   const isFileTypeAllowed = (file: File): boolean => {
@@ -298,24 +305,30 @@ export function UploadSection({
   const validationText = isRequired && totalFiles === 0 ? 'Please upload at least one file to continue' : undefined
 
   return (
-    <div className="h-full bg-background flex flex-col">
+    <div className="h-full flex flex-col" style={{ backgroundColor: theme.backgroundColor }}>
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           {/* Header */}
           <div className="text-center space-y-4">
-            <h1 className={cn(
-              "font-bold text-foreground",
-              deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl lg:text-4xl"
-            )}>
+            <h1 
+              className={cn(
+                "font-bold",
+                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl lg:text-4xl"
+              )}
+              style={primaryTextStyle}
+            >
               {headline}
               {isRequired && <span className="text-destructive ml-1">*</span>}
             </h1>
             
             {subheading && (
-              <p className={cn(
-                "text-muted-foreground max-w-lg mx-auto",
-                deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
-              )}>
+              <p 
+                className={cn(
+                  "max-w-lg mx-auto",
+                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                )}
+                style={mutedTextStyle}
+              >
                 {subheading}
               </p>
             )}

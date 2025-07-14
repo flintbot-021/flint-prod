@@ -3,7 +3,7 @@
 import React from 'react'
 import { Info } from 'lucide-react'
 import { SectionRendererProps } from '../types'
-import { getMobileClasses } from '../utils'
+import { getMobileClasses, getCampaignTheme, getCampaignTextColor } from '../utils'
 import { cn } from '@/lib/utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 
@@ -15,8 +15,14 @@ export function InfoSection({
   description,
   deviceInfo,
   onPrevious,
-  onSectionComplete
+  onSectionComplete,
+  campaign
 }: SectionRendererProps) {
+  // Theme styles
+  const theme = getCampaignTheme(campaign)
+  const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
+  const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
+
   const handleContinue = () => {
     onSectionComplete(index, {
       [section.id]: 'viewed',
@@ -25,7 +31,7 @@ export function InfoSection({
   }
 
   return (
-    <div className="h-full bg-background flex flex-col pb-20">
+    <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-3xl mx-auto space-y-8">
           <div className="text-center space-y-6">
@@ -33,18 +39,24 @@ export function InfoSection({
               <Info className="h-8 w-8 text-blue-600" />
             </div>
             
-            <h1 className={cn(
-              "font-bold text-foreground",
-              deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
-            )}>
+            <h1 
+              className={cn(
+                "font-bold",
+                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
+              )}
+              style={primaryTextStyle}
+            >
               {title || 'Information'}
             </h1>
             
             {description && (
-              <div className={cn(
-                "text-muted-foreground space-y-4",
-                deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
-              )}>
+              <div 
+                className={cn(
+                  "space-y-4",
+                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                )}
+                style={mutedTextStyle}
+              >
                 {description.split('\n').map((paragraph, idx) => (
                   <p key={idx}>{paragraph}</p>
                 ))}
@@ -60,13 +72,13 @@ export function InfoSection({
               ) : (
                 <>
                   {(config as any).content && (
-                    <div className="whitespace-pre-wrap text-foreground">
+                    <div className="whitespace-pre-wrap" style={primaryTextStyle}>
                       {(config as any).content}
                     </div>
                   )}
                   
                   {(config as any).bullets && Array.isArray((config as any).bullets) && (
-                    <ul className="list-disc list-inside space-y-2 text-foreground">
+                    <ul className="list-disc list-inside space-y-2" style={primaryTextStyle}>
                       {(config as any).bullets.map((bullet: string, idx: number) => (
                         <li key={idx}>{bullet}</li>
                       ))}

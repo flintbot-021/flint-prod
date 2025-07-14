@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { Activity } from 'lucide-react'
 import { SectionRendererProps } from '../types'
-import { getMobileClasses } from '../utils'
+import { getMobileClasses, getCampaignTheme, getCampaignButtonStyles } from '../utils'
 import { cn } from '@/lib/utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 
@@ -17,7 +17,8 @@ export function SliderSection({
   onPrevious,
   onSectionComplete,
   onResponseUpdate,
-  userInputs
+  userInputs,
+  campaign
 }: SectionRendererProps) {
   // Get configuration
   const configData = config as any
@@ -55,6 +56,9 @@ export function SliderSection({
     })
   }
 
+  // Get campaign theme colors
+  const theme = getCampaignTheme(campaign)
+
 
 
   return (
@@ -83,7 +87,13 @@ export function SliderSection({
           <div className="space-y-8">
             {/* Current Value Display */}
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary text-primary-foreground text-2xl font-bold">
+              <div 
+                className="inline-flex items-center justify-center w-16 h-16 rounded-full text-2xl font-bold"
+                style={{
+                  backgroundColor: theme.buttonColor,
+                  color: theme.backgroundColor
+                }}
+              >
                 {sliderValue}
               </div>
             </div>
@@ -101,16 +111,25 @@ export function SliderSection({
                   className={cn(
                     "w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer",
                     "slider-thumb:appearance-none slider-thumb:w-6 slider-thumb:h-6",
-                    "slider-thumb:rounded-full slider-thumb:bg-primary",
+                    "slider-thumb:rounded-full",
                     "slider-thumb:cursor-pointer slider-thumb:shadow-lg",
-                    "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
+                    "focus:outline-none focus:ring-2 focus:ring-opacity-50"
                   )}
                   style={{
-                    background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${
+                    background: `linear-gradient(to right, ${theme.buttonColor} 0%, ${theme.buttonColor} ${
                       ((sliderValue - minValue) / (maxValue - minValue)) * 100
                     }%, #e5e7eb ${
                       ((sliderValue - minValue) / (maxValue - minValue)) * 100
-                    }%, #e5e7eb 100%)`
+                    }%, #e5e7eb 100%)`,
+                    // Apply theme colors to webkit slider components
+                    ['--slider-thumb-color' as any]: theme.buttonColor,
+                    ['--slider-focus-color' as any]: theme.buttonColor,
+                  }}
+                  // Additional inline styles for cross-browser slider theming
+                  onLoad={(e) => {
+                    const target = e.target as HTMLInputElement;
+                    const style = target.style;
+                    style.setProperty('--webkit-slider-thumb-background-color', theme.buttonColor);
                   }}
               />
               

@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { BaseSectionProps, SectionConfiguration, SectionRendererProps, SectionWithOptions, DeviceInfo } from './types'
+import { Campaign } from '@/lib/types/database'
 
 // Import section components
 import {
@@ -52,10 +53,11 @@ interface SectionRendererPropsExtended extends BaseSectionProps {
   userInputs?: Record<string, any>
   sections?: SectionWithOptions[]
   deviceInfo?: DeviceInfo // Add deviceInfo override support
+  campaign?: Campaign // Add campaign theme support
 }
 
 export function SectionRenderer(props: SectionRendererPropsExtended) {
-  const { section, userInputs = {}, sections } = props
+  const { section, userInputs = {}, sections, campaign } = props
 
   // Extract configuration from section - memoized
   const config: SectionConfiguration = useMemo(() => 
@@ -122,8 +124,9 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     description: sectionDescription,
     deviceInfo,
     userInputs,
-    sections
-  }), [props, config, sectionTitle, sectionDescription, deviceInfo, userInputs, sections])
+    sections,
+    campaign
+  }), [props, config, sectionTitle, sectionDescription, deviceInfo, userInputs, sections, campaign])
 
   // Route to appropriate section component based on type
   switch (section.type) {

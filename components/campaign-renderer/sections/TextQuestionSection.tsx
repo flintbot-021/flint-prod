@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { MessageSquare } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
-import { getMobileClasses } from '../utils'
+import { getMobileClasses, getCampaignTheme, getCampaignTextColor } from '../utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 
 // =============================================================================
@@ -22,7 +22,8 @@ export function TextQuestionSection({
   onPrevious,
   onSectionComplete,
   onResponseUpdate,
-  userInputs
+  userInputs,
+  campaign
 }: SectionRendererProps) {
   // Initialize with existing response if available
   const existingResponse = userInputs?.[section.id] || ''
@@ -39,6 +40,11 @@ export function TextQuestionSection({
   const minLength = configData.minLength || 1
   const maxLength = configData.maxLength || 500
   const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
+  
+  // Theme styles
+  const theme = getCampaignTheme(campaign)
+  const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
+  const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
   
   const validateInput = (value: string): string | null => {
     if (isRequired && value.trim().length === 0) {
@@ -104,23 +110,28 @@ export function TextQuestionSection({
   ) : undefined
 
   return (
-    <div className="h-full bg-background flex flex-col pb-20">
+    <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           <div className="text-center space-y-4">
-            <h1 className={cn(
-              "font-bold text-foreground",
-              deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
-            )}>
+            <h1 
+              className={cn(
+                "font-bold",
+                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
+              )}
+              style={primaryTextStyle}
+            >
               {question}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </h1>
             
             {subheading && (
-              <p className={cn(
-                "text-muted-foreground",
-                deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
-              )}>
+              <p 
+                className={cn(
+                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                )}
+                style={mutedTextStyle}
+              >
                 {subheading}
               </p>
             )}
@@ -128,7 +139,7 @@ export function TextQuestionSection({
 
           <div className="space-y-4">
             {fieldLabel && (
-              <label className="block text-sm font-medium text-foreground">
+              <label className="block text-sm font-medium" style={primaryTextStyle}>
                 {fieldLabel}
               </label>
             )}

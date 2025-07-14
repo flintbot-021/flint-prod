@@ -4,6 +4,7 @@ import React from 'react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { HeroContentConfiguration } from '@/lib/types/database'
+import { getCampaignTheme, getCampaignButtonStyles, getCampaignTextColor } from '../utils'
 
 export function HeroContentSection({
   section,
@@ -13,7 +14,8 @@ export function HeroContentSection({
   description,
   deviceInfo,
   onPrevious,
-  onSectionComplete
+  onSectionComplete,
+  campaign
 }: SectionRendererProps) {
   // Get hero configuration from section configuration
   const heroConfig = section.configuration as HeroContentConfiguration
@@ -48,6 +50,10 @@ export function HeroContentSection({
       hero_viewed: true
     })
   }
+
+  // Get campaign theme colors
+  const theme = getCampaignTheme(campaign)
+  const primaryButtonStyle = getCampaignButtonStyles(campaign, 'primary')
 
   // Convert hex color with opacity to rgba for overlay
   const getOverlayStyle = () => {
@@ -115,11 +121,12 @@ export function HeroContentSection({
             <button
               onClick={handleContinue}
               className={cn(
-                'bg-white text-gray-900 hover:bg-gray-100 font-semibold rounded-md transition-colors',
+                'font-semibold rounded-md transition-colors',
                 deviceInfo?.type === 'mobile' 
                   ? "text-sm px-5 py-2.5 mx-4" 
                   : "text-lg px-8 py-4"
               )}
+              style={primaryButtonStyle}
             >
               {settings.buttonText}
             </button>

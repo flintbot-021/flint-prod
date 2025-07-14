@@ -356,6 +356,7 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
                   isActive={true}
                   isPreview={true}
                   campaignId={campaignId}
+                  campaign={campaign}
                   userInputs={campaignRenderer.userInputs}
                   sections={sectionsData}
                   deviceInfo={{
