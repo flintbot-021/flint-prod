@@ -67,6 +67,7 @@ export {
 export {
   // Lead Analytics (the missing function)
   getCampaignLeadStats,
+  getBatchCampaignLeadStats,
   
   // Additional lead operations not covered by sessions
   searchLeads,

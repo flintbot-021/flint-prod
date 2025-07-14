@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,15 +9,13 @@ import { useAuth } from '@/lib/auth-context'
 import { 
   getCampaigns, 
   getCurrentProfile,
-  getCampaignLeads,
-  getCampaignLeadStats,
+  getBatchCampaignLeadStats,
   updateCampaign,
   publishCampaign,
   deleteCampaign
 } from '@/lib/data-access'
 import { Campaign, Profile, CampaignStatus } from '@/lib/types/database'
 import { LazyExportButton } from '@/components/export/lazy-export-button'
-import { ExportHistory } from '@/components/export/ExportHistory'
 import { getDashboardExportData, getDashboardExportFields } from '@/lib/export'
 import { useConfirmationDialog } from '@/components/ui/confirmation-dialog'
 import { CampaignCard } from '@/components/dashboard/campaign-card'
@@ -60,7 +58,13 @@ export default function Dashboard() {
   const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
   const { showConfirmation, ConfirmationDialog } = useConfirmationDialog()
-  const [campaigns, setCampaigns] = useState<CampaignWithStats[]>([])
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [campaignStats, setCampaignStats] = useState<Record<string, {
+    total: number;
+    converted: number;
+    conversion_rate: number;
+    recent_leads: any[];
+  }>>({})
   const [stats, setStats] = useState<DashboardStats>({
     totalCampaigns: 0,
     totalLeads: 0,
@@ -68,10 +72,14 @@ export default function Dashboard() {
     recentCampaigns: []
   })
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('month')
+  const [loadingCampaigns, setLoadingCampaigns] = useState(true)
   const [loadingStats, setLoadingStats] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Lazy loading for export data
   const [exportData, setExportData] = useState<any[]>([])
   const [loadingExportData, setLoadingExportData] = useState(false)
+  const [hasLoadedExportData, setHasLoadedExportData] = useState(false)
 
   useEffect(() => {
     if (!loading && !user) {
@@ -81,20 +89,33 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
-      loadDashboardData()
+      loadCampaigns()
     }
   }, [user, timeFilter])
 
-  // Load export data whenever timeFilter or profile changes
-  useEffect(() => {
-    if (user && profile) {
-      loadExportData()
-    }
-  }, [user, profile, timeFilter])
+  // Memoize campaigns with stats to prevent unnecessary recalculations
+  const campaignsWithStats = useMemo(() => {
+    return campaigns.map(campaign => {
+      const stats = campaignStats[campaign.id] || {
+        total: 0,
+        converted: 0,
+        conversion_rate: 0,
+        recent_leads: []
+      }
+      
+      return {
+        ...campaign,
+        leadCount: stats.total,
+        completionRate: stats.conversion_rate,
+        viewCount: stats.total,
+        lastActivity: campaign.updated_at
+      } as CampaignWithStats
+    })
+  }, [campaigns, campaignStats])
 
-  const loadDashboardData = async () => {
+  const loadCampaigns = async () => {
     try {
-      setLoadingStats(true)
+      setLoadingCampaigns(true)
       setError(null)
 
       // Load profile and campaigns in parallel
@@ -112,65 +133,92 @@ export default function Dashboard() {
       }
 
       setProfile(profileResult.data || null)
-
       const campaignsData = campaignsResult.data?.data || []
+      setCampaigns(campaignsData)
+
+      // Load stats for all campaigns in batch
+      if (campaignsData.length > 0) {
+        loadCampaignStats(campaignsData)
+      } else {
+        setLoadingStats(false)
+      }
+
+    } catch (err) {
+      console.error('Error loading campaigns:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred')
+      setLoadingStats(false)
+    } finally {
+      setLoadingCampaigns(false)
+    }
+  }
+
+  const loadCampaignStats = async (campaignsData: Campaign[]) => {
+    try {
+      setLoadingStats(true)
+      
+      const campaignIds = campaignsData.map(c => c.id)
+      const statsResult = await getBatchCampaignLeadStats(campaignIds)
+
+      if (!statsResult.success) {
+        throw new Error(statsResult.error || 'Failed to load campaign stats')
+      }
+
+      const batchStats = statsResult.data || {}
+      setCampaignStats(batchStats)
+
+      // Calculate overall stats
       let totalLeads = 0
       let totalCompletedLeads = 0
       let topCampaign: CampaignWithStats | undefined
 
-      // Get stats for each campaign
-      const campaignsWithStats = await Promise.all(
-        campaignsData.map(async (campaign: Campaign) => {
-          const statsResult = await getCampaignLeadStats(campaign.id)
-          if (statsResult.success && statsResult.data) {
-            const { total, converted, conversion_rate } = statsResult.data
-            totalLeads += total
-            totalCompletedLeads += converted
+      const campaignsWithStatsData = campaignsData.map(campaign => {
+        const stats = batchStats[campaign.id] || {
+          total: 0,
+          converted: 0,
+          conversion_rate: 0,
+          recent_leads: []
+        }
+        
+        totalLeads += stats.total
+        totalCompletedLeads += stats.converted
 
-            const campaignWithStats: CampaignWithStats = {
-              ...campaign,
-              leadCount: total,
-              completionRate: conversion_rate,
-              viewCount: total, // For now, using total as view count
-              lastActivity: campaign.updated_at
-            }
+        const campaignWithStats: CampaignWithStats = {
+          ...campaign,
+          leadCount: stats.total,
+          completionRate: stats.conversion_rate,
+          viewCount: stats.total,
+          lastActivity: campaign.updated_at
+        }
 
-            if (!topCampaign || total > topCampaign.leadCount) {
-              topCampaign = campaignWithStats
-            }
+        if (!topCampaign || stats.total > topCampaign.leadCount) {
+          topCampaign = campaignWithStats
+        }
 
-            return campaignWithStats
-          }
-          return {
-            ...campaign,
-            leadCount: 0,
-            completionRate: 0,
-            viewCount: 0,
-            lastActivity: campaign.updated_at
-          } as CampaignWithStats
-        })
-      )
+        return campaignWithStats
+      })
 
       const overallCompletionRate = totalLeads > 0 ? (totalCompletedLeads / totalLeads) * 100 : 0
 
-      setCampaigns(campaignsWithStats)
       setStats({
         totalCampaigns: campaignsData.length,
         totalLeads,
         completionRate: Math.round(overallCompletionRate * 100) / 100,
-        recentCampaigns: campaignsWithStats.slice(0, 5),
+        recentCampaigns: campaignsWithStatsData.slice(0, 5),
         topPerformingCampaign: topCampaign
       })
 
     } catch (err) {
-      console.error('Error loading dashboard data:', err)
+      console.error('Error loading campaign stats:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setLoadingStats(false)
     }
   }
 
+  // Lazy load export data only when needed
   const loadExportData = async () => {
+    if (hasLoadedExportData) return
+
     try {
       setLoadingExportData(true)
       const exportResult = await getDashboardExportData(timeFilter, profile)
@@ -181,6 +229,7 @@ export default function Dashboard() {
         console.error('Failed to load export data:', exportResult.error)
         setExportData([])
       }
+      setHasLoadedExportData(true)
     } catch (error) {
       console.error('Error loading export data:', error)
       setExportData([])
@@ -190,12 +239,14 @@ export default function Dashboard() {
   }
 
   const handleExportStart = () => {
+    if (!hasLoadedExportData) {
+      loadExportData()
+    }
     console.log('Export started...')
   }
 
   const handleExportComplete = (filename: string) => {
     console.log(`Export completed: ${filename}`)
-    // Could show a success notification here
   }
 
   const handleExportError = (error: string) => {
@@ -219,7 +270,8 @@ export default function Dashboard() {
         throw new Error(result.error || `Failed to ${newStatus === 'published' ? 'publish' : 'update'} campaign`)
       }
 
-      await loadDashboardData()
+      // Refresh campaigns
+      loadCampaigns()
     } catch (err) {
       console.error('Error updating campaign status:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
@@ -241,7 +293,8 @@ export default function Dashboard() {
             throw new Error(result.error || 'Failed to delete campaign')
           }
 
-          await loadDashboardData()
+          // Refresh campaigns
+          loadCampaigns()
         } catch (err) {
           console.error('Error deleting campaign:', err)
           setError(err instanceof Error ? err.message : 'An error occurred')
@@ -314,9 +367,9 @@ export default function Dashboard() {
                       : "text-muted-foreground hover:text-foreground hover:bg-background/50"
                   }`}
                 >
-                      {option.label}
+                  {option.label}
                 </Button>
-                  ))}
+              ))}
             </div>
             <div className="flex items-center space-x-3">
               <LazyExportButton
@@ -356,7 +409,7 @@ export default function Dashboard() {
                     variant="outline"
                     size="sm"
                     className="mt-2"
-                    onClick={loadDashboardData}
+                    onClick={loadCampaigns}
                   >
                     Try Again
                   </Button>
@@ -377,7 +430,7 @@ export default function Dashboard() {
               }
               icon={Activity}
               iconColor="text-blue-600"
-              loading={loadingStats}
+              loading={loadingCampaigns}
             />
             
             <StatsCard
@@ -412,7 +465,7 @@ export default function Dashboard() {
           {/* Main Content Grid */}
           <div>
             {/* Campaigns Grid */}
-                    <div>
+            <div>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold text-foreground">Your Tools</h2>
                 {campaigns.length > 0 && (
@@ -420,32 +473,32 @@ export default function Dashboard() {
                     {campaigns.length} tool{campaigns.length !== 1 ? 's' : ''} total
                   </p>
                 )}
-                    </div>
+              </div>
 
               {/* Loading State */}
-              {loadingStats && (
+              {loadingCampaigns && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {[...Array(4)].map((_, i) => (
                     <Card key={i} className="animate-pulse">
                       <CardHeader>
                         <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                         <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-3">
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
                           <div className="h-3 bg-gray-200 rounded"></div>
                           <div className="h-3 bg-gray-200 rounded w-5/6"></div>
                         </div>
                       </CardContent>
                     </Card>
-                      ))}
-                    </div>
+                  ))}
+                </div>
               )}
 
               {/* Campaigns Grid */}
-              {!loadingStats && campaigns.length > 0 && (
+              {!loadingCampaigns && campaigns.length > 0 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {campaigns.map((campaign) => (
+                  {campaignsWithStats.map((campaign) => (
                     <CampaignCard
                       key={campaign.id}
                       campaign={campaign}
@@ -457,7 +510,7 @@ export default function Dashboard() {
               )}
 
               {/* Empty State */}
-              {!loadingStats && campaigns.length === 0 && (
+              {!loadingCampaigns && campaigns.length === 0 && (
                 <Card className="text-center py-12">
                   <CardContent>
                     <Target className="h-16 w-16 text-gray-400 mx-auto mb-4" />
@@ -478,8 +531,6 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               )}
-
-
             </div>
           </div>
         </div>
