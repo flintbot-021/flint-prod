@@ -60,6 +60,7 @@ export default function CreateCampaignPage() {
   const [currentStep, setCurrentStep] = useState<Step>('basic')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [profileLoading, setProfileLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [logoFile, setLogoFile] = useState<File | null>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
@@ -97,13 +98,16 @@ export default function CreateCampaignPage() {
 
   const loadProfile = async () => {
     try {
+      setProfileLoading(true)
       const result = await getCurrentProfile()
       if (result.success && result.data) {
         setProfile(result.data)
-        // Campaign limit check removed
       }
     } catch (err) {
       console.error('Error loading profile:', err)
+      // Don't block the UI if profile loading fails
+    } finally {
+      setProfileLoading(false)
     }
   }
 
@@ -609,8 +613,36 @@ export default function CreateCampaignPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="bg-background shadow">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-6">
+              <div className="flex items-center space-x-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => router.push('/dashboard')}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+                <h1 className="text-2xl font-bold text-foreground">
+                  Create New Campaign
+                </h1>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Loading State */}
+        <main className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="px-4 py-6 sm:px-0">
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+          </div>
+        </main>
       </div>
     )
   }
@@ -639,7 +671,13 @@ export default function CreateCampaignPage() {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <UserProfile variant="compact" />
+              {profileLoading ? (
+                <div className="animate-pulse">
+                  <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                </div>
+              ) : (
+                <UserProfile variant="compact" />
+              )}
             </div>
           </div>
         </div>
@@ -768,13 +806,18 @@ export default function CreateCampaignPage() {
               ) : (
                 <Button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || isUploadingLogo || !formData.name.trim()}
+                  disabled={isSubmitting || isUploadingLogo || !formData.name.trim() || profileLoading}
                   className="min-w-[120px]"
                 >
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                       {isUploadingLogo ? 'Uploading Logo...' : 'Creating...'}
+                    </>
+                  ) : profileLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Loading...
                     </>
                   ) : (
                     <>

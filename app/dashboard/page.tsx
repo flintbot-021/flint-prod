@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UserProfile } from '@/components/ui/user-profile'
@@ -75,11 +76,20 @@ export default function Dashboard() {
   const [loadingCampaigns, setLoadingCampaigns] = useState(true)
   const [loadingStats, setLoadingStats] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Navigation loading state
+  const [isNavigating, setIsNavigating] = useState(false)
 
   // Lazy loading for export data
   const [exportData, setExportData] = useState<any[]>([])
   const [loadingExportData, setLoadingExportData] = useState(false)
   const [hasLoadedExportData, setHasLoadedExportData] = useState(false)
+
+  // Prefetch the create campaign route on component mount
+  useEffect(() => {
+    // Prefetch the create campaign page for faster navigation
+    router.prefetch('/dashboard/campaigns/create')
+  }, [router])
 
   useEffect(() => {
     if (!loading && !user) {
@@ -305,6 +315,19 @@ export default function Dashboard() {
 
   const canCreateCampaign = true // No campaign limits
 
+  // Optimized navigation handler with loading state
+  const handleCreateCampaign = useCallback(() => {
+    setIsNavigating(true)
+    setError(null)
+    
+    // Add a small delay to show loading state, then navigate
+    setTimeout(() => {
+      router.push('/dashboard/campaigns/create')
+      // Reset loading state after navigation starts
+      setTimeout(() => setIsNavigating(false), 100)
+    }, 50)
+  }, [router])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -386,15 +409,27 @@ export default function Dashboard() {
                 showDropdown={true}
                 className="h-9"
               />
-              <Button
-                onClick={() => router.push('/dashboard/campaigns/create')}
-                disabled={!canCreateCampaign}
-                size="sm"
-                className="h-9 flex items-center space-x-2"
-              >
-                <Plus className="h-4 w-4" />
-                <span>New Tool</span>
-              </Button>
+              {/* Optimized New Tool Button with Link prefetching */}
+              <Link href="/dashboard/campaigns/create" prefetch={true}>
+                <Button
+                  onClick={handleCreateCampaign}
+                  disabled={!canCreateCampaign || isNavigating}
+                  size="sm"
+                  className="h-9 flex items-center space-x-2"
+                >
+                  {isNavigating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <span>Opening...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4" />
+                      <span>New Tool</span>
+                    </>
+                  )}
+                </Button>
+              </Link>
             </div>
           </div>
 
@@ -519,14 +554,25 @@ export default function Dashboard() {
                       Create your first lead magnet tool to start capturing and converting leads.
                     </CardDescription>
                     <div className="flex justify-center">
-                      <Button 
-                        onClick={() => router.push('/dashboard/campaigns/create')}
-                        disabled={!canCreateCampaign}
-                        className="flex items-center space-x-2"
-                      >
-                        <Plus className="h-4 w-4" />
-                        <span>Create Your First Tool</span>
-                      </Button>
+                      <Link href="/dashboard/campaigns/create" prefetch={true}>
+                        <Button 
+                          onClick={handleCreateCampaign}
+                          disabled={!canCreateCampaign || isNavigating}
+                          className="flex items-center space-x-2"
+                        >
+                          {isNavigating ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              <span>Opening...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus className="h-4 w-4" />
+                              <span>Create Your First Tool</span>
+                            </>
+                          )}
+                        </Button>
+                      </Link>
                     </div>
                   </CardContent>
                 </Card>
