@@ -1,12 +1,13 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { ChevronLeft, Share2, RotateCcw, CheckCircle } from 'lucide-react'
+import { ChevronLeft, Share2, RotateCcw } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses, getCampaignTheme, getCampaignButtonStyles, getCampaignTextColor } from '../utils'
 import { cn } from '@/lib/utils'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
 import { titleToVariableName, isQuestionSection, extractResponseValue, buildVariablesFromInputs } from '@/lib/utils/section-variables'
+import { useToast } from '@/components/ui/use-toast'
 
 interface OutputSectionConfig {
   title?: string
@@ -32,6 +33,7 @@ export function OutputSection({
   ...props
 }: SectionRendererProps) {
   const [isSharing, setIsSharing] = useState(false)
+  const { toast } = useToast()
 
   const outputConfig = config as OutputSectionConfig
   
@@ -96,18 +98,47 @@ export function OutputSection({
     }
   }
 
+  // Find the previous non-AI logic section
+  const handlePreviousSkipLogic = () => {
+    if (!sections || sections.length === 0) {
+      onPrevious()
+      return
+    }
+
+    // Find the previous section that is not an AI logic section
+    for (let i = index - 1; i >= 0; i--) {
+      if (sections[i].type !== 'logic') {
+        if (onNavigateToSection) {
+          onNavigateToSection(i)
+        }
+        return
+      }
+    }
+    
+    // If no non-logic section found, just use regular previous
+    onPrevious()
+  }
+
   const handleShare = async () => {
     setIsSharing(true)
     try {
       // Copy URL to clipboard
       await navigator.clipboard.writeText(window.location.href)
       
-      // Show success feedback (you could add a toast notification here)
-      setTimeout(() => {
-        setIsSharing(false)
-      }, 1000)
+      // Show toast notification
+      toast({
+        title: "Link copied to clipboard",
+        description: "You can now share this link with others",
+      })
+      
     } catch (error) {
       console.error('Error copying to clipboard:', error)
+      toast({
+        title: "Failed to copy",
+        description: "Please try again or copy the URL manually",
+        variant: "destructive"
+      })
+    } finally {
       setIsSharing(false)
     }
   }
@@ -216,7 +247,7 @@ export function OutputSection({
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           {/* Previous Button */}
           <button
-            onClick={onPrevious}
+            onClick={handlePreviousSkipLogic}
             className={cn(
               "flex items-center px-4 py-2 text-muted-foreground hover:text-foreground transition-colors",
               getMobileClasses("min-h-[44px]", deviceInfo?.type)
@@ -225,12 +256,6 @@ export function OutputSection({
             <ChevronLeft className="h-5 w-5 mr-1" />
             <span className="hidden sm:inline">Previous</span>
           </button>
-
-          {/* Center Status */}
-          <div className="flex items-center">
-            <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-            <span className="text-sm text-muted-foreground">Results</span>
-          </div>
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-3">
@@ -246,7 +271,7 @@ export function OutputSection({
               style={secondaryButtonStyle}
             >
               <Share2 className="h-4 w-4" />
-              <span className="hidden sm:inline">{isSharing ? 'Copied!' : 'Share'}</span>
+              <span className="hidden sm:inline">Share</span>
             </button>
 
             {/* Try Again Button */}
