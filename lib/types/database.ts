@@ -93,6 +93,7 @@ export interface Profile {
 export interface Campaign {
   id: UUID;
   user_id: UUID;
+  user_key: string; // Unique key per user for URL routing (e.g., "fgeg6r")
   name: string;
   description: string | null;
   status: CampaignStatus;

@@ -276,10 +276,12 @@ export async function deleteCampaign(campaignId: string): Promise<DatabaseResult
 }
 
 /**
- * Generate a unique slug for campaign URL
+ * Generate a unique slug for campaign URL (scoped to user)
+ * Now that we use user_key + published_url uniqueness, slugs only need to be unique per user
  */
 export async function generateCampaignSlug(
   campaignName: string,
+  userKey: string,
   campaignId?: string
 ): Promise<DatabaseResult<string>> {
   const supabase = await getSupabaseClient();
@@ -305,11 +307,12 @@ export async function generateCampaignSlug(
     let attempts = 0;
     const maxAttempts = 100;
 
-    // Check for uniqueness and add suffix if needed
+    // Check for uniqueness within the user's campaigns
     while (attempts < maxAttempts) {
       let query = supabase
         .from('campaigns')
         .select('id')
+        .eq('user_key', userKey)
         .eq('published_url', slug);
 
       // Exclude current campaign if updating
@@ -323,7 +326,7 @@ export async function generateCampaignSlug(
         throw error;
       }
 
-      // If no conflicts, we found our unique slug
+      // If no conflicts within this user's campaigns, we can use the slug
       if (!existingCampaigns || existingCampaigns.length === 0) {
         return { data: slug, error: null };
       }
@@ -432,7 +435,7 @@ export async function publishCampaign(
     // Get campaign details for URL generation
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
-      .select('name, published_url')
+      .select('name, published_url, user_key')
       .eq('id', campaignId)
       .single();
 
@@ -449,10 +452,11 @@ export async function publishCampaign(
         throw new Error('Custom URL must be 3-50 characters long and contain only lowercase letters, numbers, and hyphens');
       }
 
-      // Check if custom slug is available
+      // Check if custom slug is available within this user's campaigns
       const { data: existingCampaigns, error: slugError } = await supabase
         .from('campaigns')
         .select('id')
+        .eq('user_key', campaign.user_key)
         .eq('published_url', customSlug)
         .neq('id', campaignId);
 
@@ -461,13 +465,13 @@ export async function publishCampaign(
       }
 
       if (existingCampaigns && existingCampaigns.length > 0) {
-        throw new Error('This custom URL is already taken. Please choose a different one.');
+        throw new Error('This custom URL is already taken in your account. Please choose a different one.');
       }
 
       publishedUrl = customSlug;
     } else {
-      // Generate unique slug from campaign name
-      const slugResult = await generateCampaignSlug(campaign.name, campaignId);
+      // Generate unique slug from campaign name (scoped to user)
+      const slugResult = await generateCampaignSlug(campaign.name, campaign.user_key, campaignId);
       if (!slugResult.success || !slugResult.data) {
         throw new Error(slugResult.error || 'Failed to generate unique URL');
       }
@@ -541,10 +545,11 @@ export async function unpublishCampaign(
 }
 
 /**
- * Check if URL slug is available
+ * Check if URL slug is available within a user's campaigns
  */
 export async function checkUrlAvailability(
   slug: string,
+  userKey: string,
   excludeCampaignId?: string
 ): Promise<DatabaseResult<{ available: boolean; suggestions?: string[] }>> {
   const supabase = await getSupabaseClient();
@@ -565,6 +570,7 @@ export async function checkUrlAvailability(
     let query = supabase
       .from('campaigns')
       .select('published_url')
+      .eq('user_key', userKey)
       .eq('published_url', slug);
 
     if (excludeCampaignId) {
@@ -581,12 +587,13 @@ export async function checkUrlAvailability(
 
     let suggestions: string[] = [];
     if (!isAvailable) {
-      // Generate suggestions
+      // Generate suggestions (scoped to user)
       for (let i = 1; i <= 5; i++) {
         const suggestion = `${slug}-${i}`;
         const { data: suggestionCheck } = await supabase
           .from('campaigns')
           .select('published_url')
+          .eq('user_key', userKey)
           .eq('published_url', suggestion)
           .limit(1);
 

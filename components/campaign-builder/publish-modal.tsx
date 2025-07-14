@@ -197,7 +197,9 @@ export function PublishModal({
   }, [campaign?.name])
 
   const finalUrl = useCustomUrl ? customUrl.trim() : suggestedUrl
-  const fullUrl = finalUrl && typeof window !== 'undefined' ? `${window.location.origin}/c/${finalUrl}` : ''
+  const fullUrl = finalUrl && typeof window !== 'undefined' && campaign?.user_key 
+    ? `${window.location.origin}/c/${campaign.user_key}/${finalUrl}` 
+    : ''
 
   const canPublish = campaign && 
     validationErrors.length === 0 && 
@@ -407,7 +409,10 @@ export function PublishModal({
                   <Label htmlFor="custom-url">Tool URL</Label>
                   <div className="flex">
                     <div className="flex items-center px-3 border border-r-0 border-input bg-muted rounded-l-md text-sm text-muted-foreground">
-                      {typeof window !== 'undefined' ? window.location.origin : ''}/c/
+                      {typeof window !== 'undefined' && campaign?.user_key 
+                        ? `${window.location.origin}/c/${campaign.user_key}/`
+                        : '/c/[user-key]/'
+                      }
                     </div>
                     <Input
                       id="custom-url"

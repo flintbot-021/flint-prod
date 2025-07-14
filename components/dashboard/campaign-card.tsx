@@ -38,6 +38,7 @@ interface CampaignWithStats {
   description: string | null
   status: CampaignStatus
   is_active: boolean
+  user_key: string
   published_url: string | null
   updated_at: string
   leadCount: number
@@ -139,9 +140,9 @@ const CampaignCard = memo(function CampaignCard({
 
   const handleViewLiveClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    const liveUrl = `${window.location.origin}/c/${campaign.published_url}`
+    const liveUrl = `${window.location.origin}/c/${campaign.user_key}/${campaign.published_url}`
     window.open(liveUrl, '_blank')
-  }, [campaign.published_url])
+  }, [campaign.published_url, campaign.user_key])
 
   const handleDetailsClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()

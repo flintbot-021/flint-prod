@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { notFound } from 'next/navigation'
 import { Campaign, Section, SectionWithOptions } from '@/lib/types/database'
-import { getPublishedCampaignWithSections } from '@/lib/data-access/public-campaigns'
+import { getPublishedCampaignWithSectionsByUserKey } from '@/lib/data-access/public-campaigns'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -118,6 +118,7 @@ interface DeviceInfo {
 
 export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const params = useParams()
+  const userKey = params?.userKey as string
   const slug = params?.slug as string
   
   // State
@@ -945,10 +946,10 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // =============================================================================
 
   const loadPublicCampaign = async () => {
-    console.log('🔍 Starting loadPublicCampaign for slug:', slug)
+    console.log('🔍 Starting loadPublicCampaign for userKey:', userKey, 'slug:', slug)
     
-    if (!slug || typeof slug !== 'string') {
-      console.error('❌ Invalid slug:', slug)
+    if (!userKey || typeof userKey !== 'string' || !slug || typeof slug !== 'string') {
+      console.error('❌ Invalid userKey or slug:', { userKey, slug })
       errorHandler.handleError('Invalid campaign URL. Please check the link.', 'validation')
       setIsLoading(false)
       return
@@ -958,10 +959,10 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       setIsLoading(true)
       errorHandler.clearError()
       
-      console.log('🔍 Loading published campaign with slug:', slug)
+      console.log('🔍 Loading published campaign with userKey:', userKey, 'slug:', slug)
       
       // Use new public data access function that doesn't require auth
-      const result = await getPublishedCampaignWithSections(slug)
+      const result = await getPublishedCampaignWithSectionsByUserKey(userKey, slug)
 
       if (!result.success || !result.data) {
         console.error('❌ Failed to load campaign:', result.error)
