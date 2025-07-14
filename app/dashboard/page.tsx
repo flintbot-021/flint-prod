@@ -23,6 +23,7 @@ import { useConfirmationDialog } from '@/components/ui/confirmation-dialog'
 import { CampaignCard } from '@/components/dashboard/campaign-card'
 import type { CampaignWithStats } from '@/components/dashboard/campaign-card'
 import { StatsCard } from '@/components/dashboard/stats-card'
+import { FlintLogo } from '@/components/flint-logo'
 import { 
   Users, 
   TrendingUp, 
@@ -270,9 +271,7 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-8">
-              <h1 className="text-2xl font-bold text-foreground">
-                Flint
-              </h1>
+              <FlintLogo size="lg" />
               <nav className="flex items-center space-x-6">
                 <Button
                   variant="ghost"

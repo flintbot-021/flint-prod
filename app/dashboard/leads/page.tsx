@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { UserProfile } from '@/components/ui/user-profile'
+import { FlintLogo } from '@/components/flint-logo'
 import { useAuth } from '@/lib/auth-context'
 import { 
   getLeads,
@@ -908,9 +909,7 @@ export default function LeadsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center space-x-8">
-              <h1 className="text-2xl font-bold text-foreground">
-                Flint
-              </h1>
+              <FlintLogo size="lg" />
               <nav className="flex items-center space-x-6">
                 <Button
                   variant="ghost"
