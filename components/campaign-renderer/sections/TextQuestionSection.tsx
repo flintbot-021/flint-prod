@@ -21,9 +21,12 @@ export function TextQuestionSection({
   onNext,
   onPrevious,
   onSectionComplete,
-  onResponseUpdate
+  onResponseUpdate,
+  userInputs
 }: SectionRendererProps) {
-  const [inputValue, setInputValue] = useState('')
+  // Initialize with existing response if available
+  const existingResponse = userInputs?.[section.id] || ''
+  const [inputValue, setInputValue] = useState(existingResponse)
   const [error, setError] = useState<string | null>(null)
   
   // Get configuration

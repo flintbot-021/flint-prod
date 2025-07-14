@@ -16,7 +16,8 @@ export function SliderSection({
   deviceInfo,
   onPrevious,
   onSectionComplete,
-  onResponseUpdate
+  onResponseUpdate,
+  userInputs
 }: SectionRendererProps) {
   // Get configuration
   const configData = config as any
@@ -30,7 +31,10 @@ export function SliderSection({
   const isRequired = configData.required ?? true
   const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
 
-  const [sliderValue, setSliderValue] = useState<number>(Math.floor((minValue + maxValue) / 2))
+  // Initialize with existing response if available, otherwise use default
+  const existingResponse = userInputs?.[section.id] 
+  const defaultValue = existingResponse !== undefined ? existingResponse : Math.floor((minValue + maxValue) / 2)
+  const [sliderValue, setSliderValue] = useState<number>(defaultValue)
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value)

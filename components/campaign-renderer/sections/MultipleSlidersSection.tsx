@@ -37,7 +37,8 @@ export function MultipleSlidersSection({
   onNext,
   onPrevious,
   onSectionComplete,
-  onResponseUpdate
+  onResponseUpdate,
+  userInputs
 }: SectionRendererProps) {
   const [values, setValues] = useState<Record<string, number>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -48,17 +49,22 @@ export function MultipleSlidersSection({
   const headline = configData.headline || title || 'Rate the following'
   const subheading = configData.subheading || description || ''
   
-  // Initialize default values and expansion state
+  // Initialize values and expansion state with existing responses if available
   useEffect(() => {
+    const existingResponses = userInputs?.[section.id] || {}
     const defaultValues: Record<string, number> = {}
     const defaultExpanded: Record<string, boolean> = {}
+    
     sliders.forEach(slider => {
-      defaultValues[slider.id] = slider.defaultValue
+      // Use existing response if available, otherwise use default value
+      defaultValues[slider.id] = existingResponses[slider.variableName] !== undefined 
+        ? existingResponses[slider.variableName] 
+        : slider.defaultValue
       defaultExpanded[slider.id] = true // Start with all sliders expanded
     })
     setValues(defaultValues)
     setExpandedSliders(defaultExpanded)
-  }, [sliders])
+  }, [sliders, userInputs, section.id])
 
   const handleSliderChange = (sliderId: string, value: number) => {
     setValues(prev => ({ ...prev, [sliderId]: value }))

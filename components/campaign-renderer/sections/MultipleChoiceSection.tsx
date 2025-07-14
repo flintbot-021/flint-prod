@@ -16,9 +16,12 @@ export function MultipleChoiceSection({
   deviceInfo,
   onPrevious,
   onSectionComplete,
-  onResponseUpdate
+  onResponseUpdate,
+  userInputs
 }: SectionRendererProps) {
-  const [selectedValue, setSelectedValue] = useState<string>('')
+  // Initialize with existing response if available
+  const existingResponse = userInputs?.[section.id] || ''
+  const [selectedValue, setSelectedValue] = useState<string>(existingResponse)
   
   const choices = config.options || getDefaultChoices()
   const isRequired = config.required ?? true
