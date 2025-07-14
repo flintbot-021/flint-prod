@@ -8,6 +8,7 @@ import { Upload, X, Palette } from 'lucide-react'
 import { uploadFiles, UploadedFileInfo } from '@/lib/supabase/storage'
 import { useAuth } from '@/lib/auth-context'
 import { createClient } from '@/lib/auth'
+import { UnsplashImageSelector } from '@/components/ui/unsplash-image-selector'
 
 interface HeroSectionProps {
   section: CampaignSection
@@ -154,76 +155,14 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
   return (
     <div className={cn('py-16 space-y-6 max-w-2xl mx-auto', className)}>
       
-      {/* Background Image Upload Area */}
-      {!isPreview && (
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-400">Background Image</label>
-          
-          {backgroundImage ? (
-            <div className="relative group">
-              <div className="relative h-48 rounded-lg overflow-hidden">
-                <img 
-                  src={backgroundImage}
-                  alt="Hero background"
-                  className="w-full h-full object-cover"
-                />
-                <div 
-                  className="absolute inset-0"
-                  style={getOverlayStyle()}
-                />
-                
-                {/* Hover overlay for change */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                  <div className="text-center space-y-2 text-white">
-                    <Upload className="h-6 w-6 mx-auto" />
-                    <p className="text-sm font-medium">Change image</p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Remove button */}
-              <button
-                onClick={() => updateSettings({ backgroundImage: '' })}
-                className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full transition-colors"
-              >
-                <X className="h-3 w-3" />
-              </button>
-              
-              {/* Click to change */}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-              />
-            </div>
-          ) : (
-            <label className="block">
-              <div className="h-48 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center cursor-pointer hover:border-gray-500 transition-colors">
-                {isUploading ? (
-                  <div className="text-center text-gray-400">
-                    <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-                    <p className="text-sm">Uploading...</p>
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-400">
-                    <Upload className="h-8 w-8 mx-auto mb-2" />
-                    <p className="text-sm font-medium">Click to upload background image</p>
-                    <p className="text-xs opacity-75">JPG, PNG up to 10MB</p>
-                  </div>
-                )}
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
-                className="hidden"
-                disabled={isUploading}
-              />
-            </label>
-          )}
-        </div>
-      )}
+      {/* Background Image Selector */}
+      <UnsplashImageSelector
+        onImageSelect={(imageUrl) => updateSettings({ backgroundImage: imageUrl })}
+        onUpload={handleImageUpload}
+        currentImage={backgroundImage}
+        isUploading={isUploading}
+        placeholder="Search for background images..."
+      />
 
       {/* Hero Title - Seamless inline editing */}
       <div className="pt-8">

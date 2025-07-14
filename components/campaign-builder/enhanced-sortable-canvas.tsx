@@ -5,8 +5,10 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CampaignSection, SectionType } from '@/lib/types/campaign-builder'
 import { SectionBlock } from './section-block'
 import { MandatorySectionPlaceholder } from './mandatory-section-placeholder'
+import { OptionalSectionPlaceholder } from './optional-section-placeholder'
 import { cn } from '@/lib/utils'
 import { Plus, Layout } from 'lucide-react'
+import React from 'react'
 
 interface SectionPersistence {
   getSectionState: (sectionId: string) => { isCollapsed: boolean }
@@ -57,12 +59,14 @@ export function EnhancedSortableCanvas({
   const isEmpty = sections.length === 0
   const sectionIds = sections.map(section => section.id)
   
-  // Check which mandatory sections are missing
+  // Check which sections exist
   const hasCapture = sections.some(s => s.type === 'capture-details')
   const hasLogic = sections.some(s => s.type === 'logic-ai')
   const hasOutput = sections.some(s => s.type === 'output-results' || s.type === 'output-download' || s.type === 'output-redirect' || s.type === 'output-dynamic-redirect')
+  const hasHero = sections.some(s => s.type === 'content-hero' || s.type === 'hero')
+  const hasTextQuestion = sections.some(s => s.type === 'question-text')
   
-  const showMandatoryPlaceholders = !hasCapture || !hasLogic || !hasOutput
+  const showMandatoryPlaceholders = !isEmpty && (!hasCapture || !hasLogic || !hasOutput)
 
   return (
     <div
@@ -77,89 +81,110 @@ export function EnhancedSortableCanvas({
       )}
     >
       {isEmpty ? (
-        /* Empty State with Mandatory Sections */
-        <div className="p-8">
-          <div className="text-center mb-8">
-            <div className={cn(
-              'mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors',
-              isOver ? 'bg-blue-100' : 'bg-accent'
-            )}>
-              {isOver ? (
-                <Plus className="h-8 w-8 text-blue-600" />
-              ) : (
-                <Layout className="h-8 w-8 text-gray-400" />
-              )}
+        /* Empty State - Only Optional Sections */
+        <div className="p-8 h-full flex items-center justify-center">
+          <div className="w-full max-w-md">
+            <div className="text-center mb-6">
+              <h3 className={cn(
+                'text-lg font-medium mb-2 transition-colors',
+                isOver ? 'text-blue-900' : 'text-foreground'
+              )}>
+                {isOver ? 'Drop section here' : 'Get started with common sections'}
+              </h3>
+              
+              <p className={cn(
+                'text-sm max-w-lg mx-auto transition-colors',
+                isOver ? 'text-blue-700' : 'text-muted-foreground'
+              )}>
+                {isOver 
+                  ? 'Release to add this section to your campaign'
+                  : 'Choose a section to get started, or drag from the sidebar for more options.'
+                }
+              </p>
             </div>
-            
-            <h3 className={cn(
-              'text-lg font-medium mb-2 transition-colors',
-              isOver ? 'text-blue-900' : 'text-foreground'
-            )}>
-              {isOver ? 'Drop section here' : 'Build your campaign'}
-            </h3>
-            
-            <p className={cn(
-              'text-sm max-w-lg mx-auto transition-colors',
-              isOver ? 'text-blue-700' : 'text-muted-foreground'
-            )}>
-              {isOver 
-                ? 'Release to add this section to your campaign'
-                : 'Every campaign needs these essential sections. Click to add each one in order:'
-              }
-            </p>
+
+            {/* Optional Section Cards */}
+            {!isOver && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mb-6">
+                <OptionalSectionPlaceholder type="hero" onAdd={onSectionAdd} />
+                <OptionalSectionPlaceholder type="text-question" onAdd={onSectionAdd} />
+              </div>
+            )}
+
+            {/* Drop zone for dragging */}
+            {isOver && (
+              <div className="border-2 border-blue-300 border-dashed rounded-lg p-8 bg-blue-50">
+                <div className="text-center">
+                  <Plus className="h-8 w-8 text-blue-600 mx-auto mb-4" />
+                  <div className="flex justify-center space-x-2">
+                    {[...Array(3)].map((_, i) => (
+                      <div
+                        key={i}
+                        className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
+                        style={{
+                          animationDelay: `${i * 0.1}s`
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Additional drag message */}
+            {!isOver && (
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">
+                  Or drag any section from the sidebar
+                </p>
+              </div>
+            )}
           </div>
-          
-          {/* Mandatory Section Placeholders */}
-          <div className="grid gap-4 max-w-4xl mx-auto">
-            <MandatorySectionPlaceholder type="capture" onAdd={onSectionAdd} />
-            <div className="flex justify-center">
-              <div className="w-px h-8 bg-border"></div>
-            </div>
-            <MandatorySectionPlaceholder type="logic" onAdd={onSectionAdd} />
-            <div className="flex justify-center">
-              <div className="w-px h-8 bg-border"></div>
-            </div>
-            <MandatorySectionPlaceholder type="output" onAdd={onSectionAdd} />
-          </div>
-          
-          {/* Visual drop indicators */}
-          {isOver && (
-            <div className="mt-6 flex justify-center space-x-2">
-              {[...Array(3)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
-                  style={{
-                    animationDelay: `${i * 0.1}s`
-                  }}
-                />
-              ))}
-            </div>
-          )}
         </div>
       ) : (
         /* Sections Display with Sortable Context */
         <div className="p-6">
           <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
             <div className="space-y-4">
-              {sections.map((section) => (
-                <SectionBlock
-                  key={section.id}
-                  section={section}
-                  onUpdate={onSectionUpdate}
-                  onDelete={onSectionDelete}
-                  onDuplicate={onSectionDuplicate}
-                  onConfigure={onSectionConfigure}
-                  onTypeChange={onSectionTypeChange}
-                  isSelected={selectedSectionId === section.id}
-                  onSelect={() => onSectionSelect?.(section.id)}
-                  isCollapsible={showCollapsedSections}
-                  initiallyCollapsed={sectionPersistence?.isSectionCollapsed(section.id) ?? true}
-                  onCollapseChange={sectionPersistence?.setSectionCollapsed}
-                  allSections={sections}
-                  campaignId={campaignId}
-                />
-              ))}
+              {/* Show Hero suggestion above if missing and has text questions */}
+              {!hasHero && hasTextQuestion && (
+                <OptionalSectionPlaceholder type="hero" onAdd={onSectionAdd} className="suggestion" />
+              )}
+              
+              {sections.map((section, idx) => {
+                // Insert divider above the first logic section if it's not the first section
+                const isLogicSection = section.type === 'logic-ai';
+                const isFirstLogicSection = isLogicSection &&
+                  sections.findIndex(s => s.type === 'logic-ai') === idx &&
+                  idx > 0;
+                return (
+                  <React.Fragment key={section.id}>
+                    {isFirstLogicSection && (
+                      <div className="border-t border-dashed border-border my-6" />
+                    )}
+                    <SectionBlock
+                      section={section}
+                      onUpdate={onSectionUpdate}
+                      onDelete={onSectionDelete}
+                      onDuplicate={onSectionDuplicate}
+                      onConfigure={onSectionConfigure}
+                      onTypeChange={onSectionTypeChange}
+                      isSelected={selectedSectionId === section.id}
+                      onSelect={() => onSectionSelect?.(section.id)}
+                      isCollapsible={showCollapsedSections}
+                      initiallyCollapsed={sectionPersistence?.isSectionCollapsed(section.id) ?? true}
+                      onCollapseChange={sectionPersistence?.setSectionCollapsed}
+                      allSections={sections}
+                      campaignId={campaignId}
+                    />
+                  </React.Fragment>
+                );
+              })}
+              
+              {/* Show Text Question suggestion below if missing and has hero */}
+              {!hasTextQuestion && hasHero && (
+                <OptionalSectionPlaceholder type="text-question" onAdd={onSectionAdd} className="suggestion" />
+              )}
             </div>
           </SortableContext>
           

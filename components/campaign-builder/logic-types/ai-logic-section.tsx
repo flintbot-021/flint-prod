@@ -181,6 +181,14 @@ export function AILogicSection({
     return extractedVariablesWithTypes.filter(v => v.type === 'file')
   }, [extractedVariablesWithTypes])
 
+  // Compute the longest variable name for label alignment
+  const maxLabelLength = useMemo(() => {
+    if (textVariables.length === 0) return 0;
+    return Math.max(...textVariables.map(v => v.name.length));
+  }, [textVariables]);
+  // Use ch units for monospace alignment, add 2ch for the @ and colon
+  const labelWidthCh = maxLabelLength + 2;
+
   // Collapsible state
   const [expandedSections, setExpandedSections] = useState({
     step1: true,  // Start with first section open
@@ -229,7 +237,7 @@ export function AILogicSection({
         sections: allSections,
         currentSectionOrder: section.order,
         existingPrompt: settings.prompt,
-        outputVariables: settings.outputVariables.map(v => ({
+        outputVariables: (settings.outputVariables || []).map(v => ({
           name: v.name,
           description: v.description
         }))
@@ -256,6 +264,12 @@ export function AILogicSection({
 
     } catch (error) {
       console.error('Error generating prompt:', error)
+      if (error instanceof Error) {
+        console.error('Error message:', error.message)
+        console.error('Error stack:', error.stack)
+      }
+      // Show user-friendly error message
+      alert(`Failed to generate prompt: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setIsGeneratingPrompt(false)
     }
@@ -272,7 +286,7 @@ export function AILogicSection({
 
     try {
       // Get existing outputs that have both name and description filled (to use as examples)
-      const existingValidOutputs = settings.outputVariables.filter(v => 
+      const existingValidOutputs = (settings.outputVariables || []).filter(v => 
         v.name.trim() && v.description.trim()
       )
 
@@ -327,7 +341,7 @@ export function AILogicSection({
         }))
         
         // Keep existing outputs and add new suggested ones
-        const updatedOutputVariables = [...settings.outputVariables, ...newSuggestedOutputs]
+        const updatedOutputVariables = [...(settings.outputVariables || []), ...newSuggestedOutputs]
         
         // Update both local state and settings
         setLocalOutputVariables(updatedOutputVariables)
@@ -828,7 +842,10 @@ export function AILogicSection({
                             
                             return (
                               <div key={variable.name} className="flex items-start space-x-4">
-                                <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
+                                <Label
+                                  className="text-sm font-medium text-gray-700 flex-shrink-0"
+                                  style={{ width: `${labelWidthCh}ch`, minWidth: `${labelWidthCh}ch`, maxWidth: `${labelWidthCh}ch` }}
+                                >
                                   @{variable.name}:
                                 </Label>
                                 <div className="flex-1 space-y-2">
@@ -906,7 +923,10 @@ export function AILogicSection({
                             
                             return (
                               <div key={variable.name} className="flex items-start space-x-4">
-                                <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
+                                <Label
+                                  className="text-sm font-medium text-gray-700 flex-shrink-0"
+                                  style={{ width: `${labelWidthCh}ch`, minWidth: `${labelWidthCh}ch`, maxWidth: `${labelWidthCh}ch` }}
+                                >
                                   @{variable.name}:
                                 </Label>
                                 <div className="flex-1 grid grid-cols-2 gap-2">
@@ -1016,7 +1036,10 @@ export function AILogicSection({
                             
                             return (
                               <div key={variable.name} className="flex items-start space-x-4">
-                                <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
+                                <Label
+                                  className="text-sm font-medium text-gray-700 flex-shrink-0"
+                                  style={{ width: `${labelWidthCh}ch`, minWidth: `${labelWidthCh}ch`, maxWidth: `${labelWidthCh}ch` }}
+                                >
                                   @{variable.name}:
                                 </Label>
                                 <div className="flex-1 flex space-x-4">
@@ -1043,25 +1066,27 @@ export function AILogicSection({
                                 </div>
                               </div>
                             )
-                          } else {
-                            // For regular text variables, show text input
-                            return (
-                              <div key={variable.name} className="flex items-center space-x-4">
-                                <Label className="text-sm font-medium text-gray-700 min-w-fit max-w-48 flex-shrink-0">
-                                  @{variable.name}:
-                                </Label>
-                                <Input
-                                                                value={localTestInputs[variable.name] !== undefined
-                                ? localTestInputs[variable.name]
-                                : (settings.testInputs || {})[variable.name] || ''}
-                              onChange={(e) => updateTestInput(variable.name, e.target.value)}
-                              onBlur={(e) => saveTestInput(variable.name, e.target.value)}
-                                  placeholder={`Example answer for ${variable.title}`}
-                                  className="flex-1 bg-white border-gray-300 text-gray-900 placeholder-gray-500"
-                                />
-                              </div>
-                            )
                           }
+                          // For regular text variables, show text input
+                          return (
+                            <div key={variable.name} className="flex items-center space-x-4">
+                              <Label
+                                className="text-sm font-medium text-gray-700 flex-shrink-0"
+                                style={{ width: `${labelWidthCh}ch`, minWidth: `${labelWidthCh}ch`, maxWidth: `${labelWidthCh}ch` }}
+                              >
+                                @{variable.name}:
+                              </Label>
+                              <Input
+                                value={localTestInputs[variable.name] !== undefined
+                                  ? localTestInputs[variable.name]
+                                  : (settings.testInputs || {})[variable.name] || ''}
+                                onChange={(e) => updateTestInput(variable.name, e.target.value)}
+                                onBlur={(e) => saveTestInput(variable.name, e.target.value)}
+                                placeholder={`Example answer for ${variable.title}`}
+                                className="flex-1 bg-white border-gray-300 text-gray-900 placeholder-gray-500 max-w-[200px]"
+                              />
+                            </div>
+                          )
                         })}
                       </div>
                     )}
@@ -1497,26 +1522,6 @@ export function AILogicSection({
           </Card>
         </div>
       </div>
-
-      {/* Help Text */}
-      <Card className="p-6 bg-blue-50 border-blue-200">
-        <h4 className="font-medium text-blue-900 mb-3">How This Works</h4>
-        <ul className="text-sm text-blue-800 space-y-2">
-          <li>• <strong>Step 1:</strong> Add example answers and upload test files to see how your AI will work</li>
-          <li>• <strong>Step 2:</strong> Write a prompt using @variables to reference user inputs and file content</li>
-          <li>• <strong>Step 3:</strong> Define what outputs the AI should generate</li>
-          <li>• <strong>Step 4:</strong> Test to see the AI response with your examples and real uploaded files</li>
-          <li>• <strong>Final:</strong> Use output variables like @recommendation in your results section</li>
-        </ul>
-        {fileVariables.length > 0 && (
-          <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
-            <p className="text-sm text-purple-800 font-medium mb-2">📄 Direct File Processing</p>
-            <p className="text-xs text-purple-700">
-              Your AI can analyze uploaded files directly! Use @{fileVariables.map(v => v.name).join(', @')} in your prompt to reference file content. All file types (PDFs, documents, images) are sent directly to OpenAI which can read and analyze them natively without any preprocessing required.
-            </p>
-          </div>
-        )}
-      </Card>
 
       {/* Knowledge Base Modal */}
       {campaignId && (

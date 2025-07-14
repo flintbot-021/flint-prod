@@ -7,6 +7,7 @@ import { Upload, X } from 'lucide-react'
 import { InlineEditableText } from '@/components/ui/inline-editable-text'
 import { VariableSuggestionDropdown } from '@/components/ui/variable-suggestion-dropdown'
 import { VariableInterpolatedContent } from '@/components/ui/variable-interpolated-content'
+import { UnsplashImageSelector } from '@/components/ui/unsplash-image-selector'
 import { uploadFiles } from '@/lib/supabase/storage'
 import { ResultsGate } from '../results-gate'
 import type { VariableInterpolationContext } from '@/lib/types/output-section'
@@ -391,10 +392,7 @@ export function OutputSection({
     }
   }, [])
 
-  // Handle image removal
-  const handleImageRemove = useCallback(async () => {
-    await updateSettings({ image: '' })
-  }, [])
+
 
   // Get text alignment class
   const getAlignmentClass = (alignment: string) => {
@@ -477,50 +475,14 @@ export function OutputSection({
   return (
     <div className={cn('py-16 space-y-6 max-w-2xl mx-auto', className)}>
       
-      {/* Image Upload Area (identical to BasicSection) */}
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-400">Section Image</label>
-        
-        {image ? (
-          <div className="relative group">
-            <div className="relative h-48 rounded-lg overflow-hidden">
-              <img 
-                src={image}
-                alt="Section image"
-                className="w-full h-full object-cover"
-              />
-              
-              {/* Remove button */}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                <button
-                  onClick={handleImageRemove}
-                  className="bg-red-600 hover:bg-red-700 text-white rounded-full p-2 transition-colors"
-                  disabled={isUploading}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="relative">
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => e.target.files && handleImageUpload(e.target.files)}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-              disabled={isUploading}
-            />
-            <div className="h-48 border-2 border-dashed border-gray-600 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-gray-500 hover:text-gray-400 transition-colors">
-              <Upload className="h-8 w-8 mb-2" />
-              <p className="text-sm font-medium">
-                {isUploading ? 'Uploading...' : 'Click to upload image'}
-              </p>
-              <p className="text-xs">PNG, JPG up to 10MB</p>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Image Selector with Unsplash */}
+      <UnsplashImageSelector
+        onImageSelect={(imageUrl) => updateSettings({ image: imageUrl })}
+        onUpload={handleImageUpload}
+        currentImage={image}
+        isUploading={isUploading}
+        placeholder="Search for section images..."
+      />
 
       {/* Title - With variable dropdown support */}
       <div>
