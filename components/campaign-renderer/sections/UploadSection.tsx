@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef } from 'react'
-import { Upload, FileText, AlertCircle, X, CheckCircle, File } from 'lucide-react'
+import { Upload, FileText, AlertCircle, X, CheckCircle, File, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,6 +9,8 @@ import { SectionRendererProps } from '../types'
 import { getMobileClasses } from '../utils'
 import { cn } from '@/lib/utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
+import { uploadFiles, UploadedFileInfo, UploadProgress } from '@/lib/supabase/storage'
+import { createClient } from '@/lib/supabase/client'
 
 // Type for supported file types
 interface SupportedFileType {
@@ -47,14 +49,22 @@ export function UploadSection({
   onResponseUpdate,
   userInputs
 }: SectionRendererProps) {
+  const supabase = createClient()
+  
   // Initialize with existing uploaded files if available
-  const existingFiles = userInputs?.[section.id] || []
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>(Array.isArray(existingFiles) ? existingFiles : [])
+  // Note: userInputs contains stored file metadata, not actual File objects
+  const existingFileData = userInputs?.[section.id] || []
+  const hasExistingFiles = Array.isArray(existingFileData) && existingFileData.length > 0
+  
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFileInfo[]>([])
+  const [existingFileMetadata, setExistingFileMetadata] = useState<UploadedFileInfo[]>(hasExistingFiles ? existingFileData : [])
   const [isDragging, setIsDragging] = useState(false)
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>(
-    Array.isArray(existingFiles) && existingFiles.length > 0 ? 'success' : 'idle'
+    hasExistingFiles ? 'success' : 'idle'
   )
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<Record<string, UploadProgress>>({})
+  const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Get configuration
@@ -145,57 +155,121 @@ export function UploadSection({
     }
   }
 
-  const handleFileSelection = (files: FileList) => {
+  const handleFileSelection = async (files: FileList) => {
     setErrorMessage(null)
+    setIsUploading(true)
+    setUploadStatus('uploading')
+    
     const { valid, errors } = validateFiles(files)
 
     if (errors.length > 0) {
       setErrorMessage(errors.join('. '))
       setUploadStatus('error')
+      setIsUploading(false)
       return
     }
 
     if (valid.length > 0) {
+      try {
+        console.log('📁 Uploading files to storage:', valid.map(f => f.name))
+        
+        // Upload files to Supabase storage
+        const uploadedFileInfos = await uploadFiles(
+          valid,
+          campaignId || 'preview-campaign',
+          section.id, // sectionId
+          undefined, // leadId (optional)
+          undefined, // responseId (optional)
+          (progress: UploadProgress) => {
+            setUploadProgress(prev => ({
+              ...prev,
+              [progress.fileId]: progress
+            }))
+          },
+          supabase
+        )
+        
+        console.log('✅ Files uploaded successfully:', uploadedFileInfos)
+        
+        // Add uploaded files to state
       if (allowMultiple) {
-        setUploadedFiles(prev => [...prev, ...valid])
+          setUploadedFiles(prev => [...prev, ...uploadedFileInfos])
       } else {
-        setUploadedFiles(valid)
+          setUploadedFiles(uploadedFileInfos)
       }
+        
       setUploadStatus('success')
       
-      // Report to parent component
-      onResponseUpdate(section.id, 'files', valid, {
-        inputType: 'file_upload',
-        isRequired: isRequired,
-        fileCount: valid.length
-      })
+        // Report to parent component - combine existing and new files
+        const allFiles = [...existingFileMetadata, ...uploadedFileInfos]
+        onResponseUpdate(section.id, 'files', allFiles, {
+          inputType: 'file_upload',
+          isRequired: isRequired,
+          fileCount: allFiles.length
+        })
+        
+      } catch (error) {
+        console.error('❌ File upload failed:', error)
+        setErrorMessage('Upload failed. Please try again.')
+        setUploadStatus('error')
+      }
     }
+    
+    setIsUploading(false)
+    setUploadProgress({})
   }
 
-  const removeFile = (index: number) => {
+  const removeFile = (index: number, isExisting: boolean = false) => {
+    if (isExisting) {
+      // Remove from existing file metadata
+      const newExistingFiles = existingFileMetadata.filter((_, i) => i !== index)
+      setExistingFileMetadata(newExistingFiles)
+      
+      // Update status
+      const totalFiles = newExistingFiles.length + uploadedFiles.length
+      if (totalFiles === 0) {
+        setUploadStatus('idle')
+      }
+      
+      // Update parent component
+      const allFiles = [...newExistingFiles, ...uploadedFiles]
+      onResponseUpdate(section.id, 'files', allFiles, {
+        inputType: 'file_upload',
+        isRequired: isRequired,
+        fileCount: allFiles.length
+      })
+    } else {
+      // Remove from newly uploaded files
     const newFiles = uploadedFiles.filter((_, i) => i !== index)
     setUploadedFiles(newFiles)
     
-    if (newFiles.length === 0) {
+      // Update status
+      const totalFiles = existingFileMetadata.length + newFiles.length
+      if (totalFiles === 0) {
       setUploadStatus('idle')
     }
     
     // Update parent component
-    onResponseUpdate(section.id, 'files', newFiles, {
+      const allFiles = [...existingFileMetadata, ...newFiles]
+      onResponseUpdate(section.id, 'files', allFiles, {
       inputType: 'file_upload',
       isRequired: isRequired,
-      fileCount: newFiles.length
+        fileCount: allFiles.length
     })
+    }
   }
 
   const handleContinue = () => {
-    if (isRequired && uploadedFiles.length === 0) {
+    const totalFiles = existingFileMetadata.length + uploadedFiles.length
+    if (isRequired && totalFiles === 0) {
       return
     }
 
+    // Combine existing and new files for response
+    const allFiles = [...existingFileMetadata, ...uploadedFiles]
     onSectionComplete(index, {
-      [section.id]: uploadedFiles,
-      files_uploaded: uploadedFiles.length
+      [section.id]: allFiles,
+      files_uploaded: totalFiles
     })
   }
 
@@ -217,10 +291,11 @@ export function UploadSection({
     .flatMap((type: SupportedFileType) => type.extensions.map(ext => `.${ext}`))
     .join(',')
 
-  const canContinue = !isRequired || uploadedFiles.length > 0
+  const totalFiles = existingFileMetadata.length + uploadedFiles.length
+  const canContinue = !isRequired || totalFiles > 0
 
   // Generate validation text for bottom bar
-  const validationText = isRequired && uploadedFiles.length === 0 ? 'Please upload at least one file to continue' : undefined
+  const validationText = isRequired && totalFiles === 0 ? 'Please upload at least one file to continue' : undefined
 
   return (
     <div className="h-full bg-background flex flex-col">
@@ -280,13 +355,17 @@ export function UploadSection({
                   "mx-auto w-16 h-16 rounded-full flex items-center justify-center transition-colors",
                   uploadStatus === 'success' 
                     ? "bg-green-100" 
+                    : uploadStatus === 'uploading'
+                    ? "bg-blue-100"
                     : uploadStatus === 'error'
                     ? "bg-destructive/10"
                     : isDragging
                     ? "bg-primary/10"
                     : "bg-muted"
                 )}>
-                  {uploadStatus === 'success' ? (
+                  {uploadStatus === 'uploading' ? (
+                    <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
+                  ) : uploadStatus === 'success' ? (
                     <CheckCircle className="h-8 w-8 text-green-600" />
                   ) : uploadStatus === 'error' ? (
                     <AlertCircle className="h-8 w-8 text-destructive" />
@@ -304,12 +383,16 @@ export function UploadSection({
                     "text-lg font-medium transition-colors",
                     uploadStatus === 'success' 
                       ? "text-green-600"
+                      : uploadStatus === 'uploading'
+                      ? "text-blue-600"
                       : isDragging 
                       ? "text-primary"
                       : "text-foreground"
                   )}>
-                    {uploadStatus === 'success' 
-                      ? `${uploadedFiles.length} file${uploadedFiles.length !== 1 ? 's' : ''} uploaded successfully`
+                    {uploadStatus === 'uploading' 
+                      ? "Uploading files..."
+                      : uploadStatus === 'success' 
+                      ? `${totalFiles} file${totalFiles !== 1 ? 's' : ''} uploaded successfully`
                       : isDragging 
                       ? "Drop your files here"
                       : "Drag and drop your files here"
@@ -351,16 +434,17 @@ export function UploadSection({
           </Card>
 
           {/* Uploaded Files List */}
-          {uploadedFiles.length > 0 && (
+          {totalFiles > 0 && (
             <Card>
               <CardContent className="p-6">
                 <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-4">
-                  Uploaded Files ({uploadedFiles.length})
+                  Selected Files ({totalFiles})
                 </h3>
                 <div className="space-y-3">
-                  {uploadedFiles.map((file, index) => (
+                  {/* Existing Files */}
+                  {existingFileMetadata.map((fileData, index) => (
                     <div
-                      key={index}
+                      key={`existing-${index}`}
                       className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 transition-colors hover:bg-muted"
                     >
                       <div className="flex items-center space-x-3 min-w-0 flex-1">
@@ -369,10 +453,10 @@ export function UploadSection({
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-foreground truncate">
-                            {file.name}
+                            {fileData.name || `File ${index + 1}`}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {formatFileSize(file.size)}
+                            {fileData.size ? formatFileSize(fileData.size) : 'Previously uploaded'}
                           </p>
                         </div>
                       </div>
@@ -381,7 +465,40 @@ export function UploadSection({
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation()
-                          removeFile(index)
+                          removeFile(index, true)
+                        }}
+                        className="flex-shrink-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  
+                  {/* Newly Uploaded Files */}
+                  {uploadedFiles.map((fileInfo, index) => (
+                    <div
+                      key={`new-${index}`}
+                      className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 transition-colors hover:bg-muted"
+                    >
+                      <div className="flex items-center space-x-3 min-w-0 flex-1">
+                        <div className="flex-shrink-0">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {fileInfo.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatFileSize(fileInfo.size)} • Uploaded successfully
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeFile(index, false)
                         }}
                         className="flex-shrink-0 text-muted-foreground hover:text-destructive"
                       >

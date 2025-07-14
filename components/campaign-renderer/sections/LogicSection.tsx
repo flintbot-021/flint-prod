@@ -115,7 +115,21 @@ function LogicSectionComponent({
       const fileVariables = variablesWithTypes.filter(v => v.type === 'file')
       const hasFileVariables = fileVariables.length > 0
       
-      console.log('📁 File variables detected:', fileVariables.map(v => v.name))
+      console.log('📁 File variables detected:', fileVariables.map(v => ({ 
+        name: v.name, 
+        title: v.title,
+        sectionId: v.section.id,
+        sectionType: v.section.type,
+        isFileVariable: v.type === 'file'
+      })))
+      console.log('📁 Total sections before logic:', sections.length)
+      console.log('📁 All sections details:', sections.map(s => ({ 
+        id: s.id, 
+        title: s.title, 
+        type: s.type,
+        hasConfig: !!s.configuration,
+        isFileVariable: s.type === 'upload_question' || isFileVariable(s as any)
+      })))
 
       setProcessingStatus(hasFileVariables ? 'Processing uploaded files...' : 'Generating your results...')
 
@@ -197,10 +211,11 @@ function LogicSectionComponent({
           console.log(`🔍 Full userInputs structure:`, JSON.stringify(userInputs, null, 2))
           
           // Check different possible keys where files might be stored
+          // PRIORITY ORDER: Most likely to least likely locations
           const possibleKeys = [
-            fileVariable.section.id,                    // Direct section ID
+            fileVariable.section.id,                    // 🎯 PRIMARY: Direct section ID (where UploadSection stores files)
+            fileVariable.name,                          // 🎯 SECONDARY: Variable name (where buildVariablesFromInputs maps them)
             `${fileVariable.section.id}_files`,         // Section ID + _files
-            fileVariable.name,                          // Variable name
             `${fileVariable.section.id}_${fileVariable.name}`, // Combined
             `${fileVariable.section.id}_file_upload`,   // Section ID + file_upload
             'file_upload',                              // Just file_upload
