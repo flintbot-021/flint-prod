@@ -106,18 +106,28 @@ export function SectionTopBar({
     onPreviewToggle()
   }
 
+  // Handle clicking anywhere on the header to toggle collapse
+  const handleHeaderClick = (e: React.MouseEvent) => {
+    // Toggle collapse when clicking anywhere on the header
+    // stopPropagation on interactive elements prevents unwanted toggles
+    onCollapseToggle()
+  }
+
   return (
     <div className={cn(
       'flex items-center justify-between p-3 bg-background border-b border-border',
-      'hover:bg-gray-100 transition-colors group',
+      'hover:bg-gray-100 transition-colors group cursor-pointer',
       className
-    )}>
+    )}
+    onClick={handleHeaderClick}
+    >
       {/* Left Side - Drag Handle, Icon, Name */}
-      <div className="flex items-center space-x-3 flex-1 min-w-0">
+      <div className="flex items-center space-x-3 flex-1 min-w-0" onClick={handleHeaderClick}>
         {/* Drag Handle */}
         <button
           {...dragHandleProps}
           className="text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing transition-colors"
+          onClick={(e) => e.stopPropagation()}
         >
           <GripVertical className="h-4 w-4" />
         </button>
@@ -149,24 +159,26 @@ export function SectionTopBar({
             {section.type === 'capture-details' ? (
               <span className="font-medium text-foreground">Capture Details</span>
             ) : (
-              <InlineEditableText
-                value={section.title}
-                onSave={handleNameChange}
-                variant="body"
-                placeholder={isQuestionSection(section.type) ? "use_underscores_for_variables" : "Section name (edit me)"}
-                className={cn(
-                  "font-medium",
-                  isQuestionSection(section.type) && checkVariableNameConflict(section.title)
-                    ? "text-red-600"
-                    : "text-foreground"
-                )}
-                showEditIcon={false}
-                showSaveStatus={true}
-                validation={validateName}
-                maxLength={50}
-                required={true}
-                autoSave={false}
-              />
+              <div onClick={(e) => e.stopPropagation()}>
+                <InlineEditableText
+                  value={section.title}
+                  onSave={handleNameChange}
+                  variant="body"
+                  placeholder={isQuestionSection(section.type) ? "use_underscores_for_variables" : "Section name (edit me)"}
+                  className={cn(
+                    "font-medium",
+                    isQuestionSection(section.type) && checkVariableNameConflict(section.title)
+                      ? "text-red-600"
+                      : "text-foreground"
+                  )}
+                  showEditIcon={false}
+                  showSaveStatus={true}
+                  validation={validateName}
+                  maxLength={50}
+                  required={true}
+                  autoSave={false}
+                />
+              </div>
             )}
           </div>
           {/* Error message for duplicate variable names */}
@@ -179,7 +191,7 @@ export function SectionTopBar({
       </div>
 
       {/* Right Side - Controls */}
-      <div className="flex items-center space-x-3 ml-4">
+      <div className="flex items-center space-x-3 ml-4" onClick={(e) => e.stopPropagation()}>
         {/* Preview Toggle - Hidden for AI Logic sections */}
         {!isAILogicSection && (
           <div className="flex items-center space-x-2">

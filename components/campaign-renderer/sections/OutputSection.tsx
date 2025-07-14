@@ -139,7 +139,7 @@ export function OutputSection({
     setIsSharing(true)
     try {
       // Copy URL to clipboard
-      await navigator.clipboard.writeText(window.location.href)
+        await navigator.clipboard.writeText(window.location.href)
       
       // Show toast notification
       toast({
@@ -262,7 +262,7 @@ export function OutputSection({
                   }}
                 />
               )}
-            </div>
+              </div>
 
             {settings.content && (
               <div 
