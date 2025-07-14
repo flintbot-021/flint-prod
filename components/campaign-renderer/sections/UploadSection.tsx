@@ -44,11 +44,16 @@ export function UploadSection({
   campaignId,
   onPrevious,
   onSectionComplete,
-  onResponseUpdate
+  onResponseUpdate,
+  userInputs
 }: SectionRendererProps) {
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
+  // Initialize with existing uploaded files if available
+  const existingFiles = userInputs?.[section.id] || []
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>(Array.isArray(existingFiles) ? existingFiles : [])
   const [isDragging, setIsDragging] = useState(false)
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>(
+    Array.isArray(existingFiles) && existingFiles.length > 0 ? 'success' : 'idle'
+  )
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 

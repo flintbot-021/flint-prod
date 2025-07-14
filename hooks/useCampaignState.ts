@@ -138,22 +138,19 @@ export function useCampaignState(
   }, [])
 
   const completeSection = useCallback(async (sectionIndex: number, data: any) => {
-    // Prevent duplicate completion
-    if (completedSections.has(sectionIndex)) {
-      console.log(`Section ${sectionIndex} already completed, skipping`)
-      return
-    }
+    // Allow re-completion of sections - don't prevent users from going forward after going back
+    // The old logic prevented navigation when users modified responses in completed sections
     
-    // Update user inputs with section data
+    // Always update user inputs with the latest section data
     const updatedInputs = { ...userInputs, ...data }
     setUserInputs(updatedInputs)
     
-    // Mark section as completed
+    // Mark section as completed (will be a no-op if already completed)
     const newCompletedSections = new Set(completedSections)
     newCompletedSections.add(sectionIndex)
     setCompletedSectionsArray(Array.from(newCompletedSections))
     
-    // Handle lead creation for capture sections
+    // Handle lead creation for capture sections (only if not already created)
     if (sections[sectionIndex]?.type === 'capture' && !leadId && onLeadCreate) {
       try {
         const newLeadId = await onLeadCreate(data)
@@ -165,7 +162,8 @@ export function useCampaignState(
       }
     }
     
-    // Move to next section automatically
+    // Always allow navigation to the next section when user clicks continue
+    // This ensures users can move forward after modifying responses in completed sections
     if (sectionIndex === currentSection) {
       const nextIndex = sectionIndex + 1
       if (nextIndex < sections.length) {

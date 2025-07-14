@@ -67,7 +67,8 @@ export function CaptureSection({
   deviceInfo,
   onPrevious,
   onSectionComplete,
-  onResponseUpdate
+  onResponseUpdate,
+  userInputs
 }: SectionRendererProps) {
   // Get current settings with defaults
   const configData = config as any
@@ -99,14 +100,21 @@ export function CaptureSection({
     marketingConsent: configData.marketingConsent ?? false
   }
 
-  // Dynamic form data based on enabled fields
+  // Initialize form data with existing responses if available
+  const existingData = userInputs?.[section.id] || {}
   const [formData, setFormData] = useState<{
     name?: string
     email?: string
     phone?: string
     gdprConsent?: boolean
     marketingConsent?: boolean
-  }>({})
+  }>({
+    name: existingData.name || '',
+    email: existingData.email || '',
+    phone: existingData.phone || '',
+    gdprConsent: existingData.gdprConsent || false,
+    marketingConsent: existingData.marketingConsent || false
+  })
   
   const [errors, setErrors] = useState<{ 
     name?: string

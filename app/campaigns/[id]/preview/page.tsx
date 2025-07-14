@@ -358,6 +358,17 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
                   campaignId={campaignId}
                   userInputs={campaignRenderer.userInputs}
                   sections={sectionsData}
+                  deviceInfo={{
+                    type: currentDevice,
+                    screenSize: { 
+                      width: DEVICE_CONFIGS[currentDevice].width, 
+                      height: DEVICE_CONFIGS[currentDevice].height 
+                    },
+                    orientation: 'portrait',
+                    touchCapable: currentDevice !== 'desktop',
+                    userAgent: typeof window !== 'undefined' ? navigator.userAgent : '',
+                    pixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+                  }}
                   onNext={handleNext}
                   onPrevious={handlePrevious}
                   onNavigateToSection={(index: number) => {

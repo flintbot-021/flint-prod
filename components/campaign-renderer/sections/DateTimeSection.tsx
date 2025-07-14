@@ -23,10 +23,15 @@ export function DateTimeSection({
   onNext,
   onPrevious,
   onSectionComplete,
-  onResponseUpdate
+  onResponseUpdate,
+  userInputs
 }: SectionRendererProps) {
-  const [selectedDate, setSelectedDate] = useState('')
-  const [selectedTime, setSelectedTime] = useState('')
+  // Initialize with existing response if available
+  const existingResponse = userInputs?.[section.id] || ''
+  // Parse existing response (could be combined date/time or separate values)
+  const existingData = userInputs?.[section.id] as any
+  const [selectedDate, setSelectedDate] = useState(existingData?.date || (typeof existingResponse === 'string' && existingResponse.includes('-') ? existingResponse.split(' ')[0] : ''))
+  const [selectedTime, setSelectedTime] = useState(existingData?.time || (typeof existingResponse === 'string' && existingResponse.includes(':') ? existingResponse.split(' ')[1] : ''))
   const [error, setError] = useState<string | null>(null)
   
   // Get configuration

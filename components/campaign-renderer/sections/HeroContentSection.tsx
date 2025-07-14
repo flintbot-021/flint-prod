@@ -61,7 +61,10 @@ export function HeroContentSection({
   }
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center">
+    <div className={cn(
+      "relative w-full overflow-hidden flex items-center justify-center",
+      deviceInfo?.type === 'mobile' ? "min-h-full" : "min-h-screen"
+    )}>
       {/* Background Image */}
       {settings.backgroundImage ? (
         <div 
@@ -79,11 +82,16 @@ export function HeroContentSection({
       />
       
       {/* Content */}
-      <div className="relative z-10 text-center space-y-8 px-6 max-w-4xl">
+      <div className={cn(
+        "relative z-10 text-center max-w-4xl mx-auto",
+        deviceInfo?.type === 'mobile' 
+          ? "space-y-4 px-3 py-6" 
+          : "space-y-8 px-6"
+      )}>
         <h1 className={cn(
           "font-bold text-white leading-tight",
           deviceInfo?.type === 'mobile' 
-            ? "text-4xl md:text-5xl" 
+            ? "text-2xl" 
             : "text-5xl md:text-6xl lg:text-7xl"
         )}>
           {settings.title}
@@ -91,20 +99,26 @@ export function HeroContentSection({
         
         {settings.subtitle && (
           <p className={cn(
-            "text-white/90 max-w-3xl mx-auto leading-relaxed",
-            deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
+            "text-white/90 mx-auto leading-relaxed",
+            deviceInfo?.type === 'mobile' 
+              ? "text-base max-w-sm px-1" 
+              : "text-xl md:text-2xl max-w-3xl"
           )}>
             {settings.subtitle}
           </p>
         )}
 
         {settings.showButton && (
-          <div className="pt-4">
+          <div className={cn(
+            deviceInfo?.type === 'mobile' ? "pt-3" : "pt-4"
+          )}>
             <button
               onClick={handleContinue}
               className={cn(
                 'bg-white text-gray-900 hover:bg-gray-100 font-semibold rounded-md transition-colors',
-                deviceInfo?.type === 'mobile' ? "text-base px-6 py-3" : "text-lg px-8 py-4"
+                deviceInfo?.type === 'mobile' 
+                  ? "text-sm px-5 py-2.5 mx-4" 
+                  : "text-lg px-8 py-4"
               )}
             >
               {settings.buttonText}
