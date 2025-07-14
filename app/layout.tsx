@@ -14,6 +14,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "Flint Lead Magnet Tool",
   description: "Create powerful lead magnets with interactive campaigns and capture valuable leads",
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
 };
 
 const geistSans = Geist({
