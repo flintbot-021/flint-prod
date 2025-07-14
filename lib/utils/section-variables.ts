@@ -19,7 +19,7 @@ export function titleToVariableName(title: string): string {
 export function isQuestionSection(sectionType: string): boolean {
   return sectionType.includes('question-') || 
          sectionType.includes('capture') ||
-         ['text_question', 'multiple_choice', 'slider'].includes(sectionType)
+         ['text_question', 'upload_question', 'multiple_choice', 'slider'].includes(sectionType)
 }
 
 /**
@@ -48,6 +48,9 @@ export function isUploadQuestion(config: any): boolean {
  * Check if section should be treated as a file variable for AI processing
  */
 export function isFileVariable(section: SectionWithOptions): boolean {
+  if (section.type === 'upload_question') {
+    return true
+  }
   if (section.type === 'text_question') {
     return isUploadQuestion(section.configuration || {})
   }
@@ -102,6 +105,11 @@ export function extractResponseValue(response: any, section: SectionWithOptions)
   // Handle nested response objects
   if (typeof response === 'object' && response !== null && response.response) {
     value = response.response
+  }
+  
+  // For file upload sections, return files as-is (they should be UploadedFileInfo arrays)
+  if (isFileVariable(section) && Array.isArray(value) && value.length > 0 && value[0]?.url) {
+    return value // Return file metadata array unchanged
   }
   
   // For multiple choice sections, resolve option IDs to actual values
@@ -229,6 +237,15 @@ export function buildVariablesFromInputs(
         variables[variableName] = resolvedValue
         
         console.log(`✅ Variable "${variableName}": ${userResponse} → ${resolvedValue}`)
+        
+        // Special handling for file uploads - ensure files are accessible by both section ID and variable name
+        if (isFileVariable(section) && Array.isArray(userResponse) && userResponse.length > 0 && userResponse[0]?.url) {
+          console.log(`📁 File variable "${variableName}" mapped from section ${section.id}:`, userResponse)
+          // Store files under both keys for flexible access
+          variables[variableName] = userResponse // Variable name access
+          variables[section.id] = userResponse    // Section ID access (for backward compatibility)
+        }
+        
         if (section.type === 'multiple_choice' && section.configuration) {
           const config = section.configuration as any
           if (config.options && Array.isArray(config.options)) {

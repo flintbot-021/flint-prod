@@ -103,6 +103,9 @@ export async function uploadFile(
   })
 
   try {
+    // Ensure storage bucket exists with proper configuration
+    await ensureStorageBucket()
+    
     // Report upload start
     onProgress?.({
       fileId,

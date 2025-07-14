@@ -17,6 +17,7 @@ export type CampaignStatus = 'draft' | 'published' | 'archived';
 
 export type SectionType = 
   | 'text_question'
+  | 'upload_question'
   | 'date_time_question'
   | 'multiple_choice' 
   | 'slider'
@@ -419,11 +420,25 @@ export interface BasicContentConfiguration extends BaseSectionConfiguration {
   textAlignment?: 'left' | 'center' | 'right';
 }
 
+export interface UploadQuestionConfiguration extends BaseSectionConfiguration {
+  allowImages?: boolean;
+  allowDocuments?: boolean;
+  allowAudio?: boolean;
+  allowVideo?: boolean;
+  maxFileSize?: number; // in MB
+  maxFiles?: number;
+  allowMultiple?: boolean;
+  buttonText?: string;
+  content?: string;
+  subheading?: string;
+}
+
 /**
  * Union type for all section configurations
  */
 export type SectionConfiguration = 
   | TextQuestionConfiguration
+  | UploadQuestionConfiguration
   | MultipleChoiceConfiguration
   | SliderConfiguration
   | InfoConfiguration

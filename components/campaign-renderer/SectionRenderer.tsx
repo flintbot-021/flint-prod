@@ -141,6 +141,9 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
       }
       return <TextQuestionSection {...enhancedProps} />
     
+    case 'upload_question':
+      return <UploadSection {...enhancedProps} />
+    
     case 'date_time_question':
       return <DateTimeSection {...enhancedProps} />
     
