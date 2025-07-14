@@ -192,14 +192,14 @@ export function UploadSection({
         console.log('✅ Files uploaded successfully:', uploadedFileInfos)
         
         // Add uploaded files to state
-        if (allowMultiple) {
+      if (allowMultiple) {
           setUploadedFiles(prev => [...prev, ...uploadedFileInfos])
-        } else {
+      } else {
           setUploadedFiles(uploadedFileInfos)
-        }
+      }
         
-        setUploadStatus('success')
-        
+      setUploadStatus('success')
+      
         // Report to parent component - combine existing and new files
         const allFiles = [...existingFileMetadata, ...uploadedFileInfos]
         onResponseUpdate(section.id, 'files', allFiles, {
@@ -240,22 +240,22 @@ export function UploadSection({
       })
     } else {
       // Remove from newly uploaded files
-      const newFiles = uploadedFiles.filter((_, i) => i !== index)
-      setUploadedFiles(newFiles)
-      
+    const newFiles = uploadedFiles.filter((_, i) => i !== index)
+    setUploadedFiles(newFiles)
+    
       // Update status
       const totalFiles = existingFileMetadata.length + newFiles.length
       if (totalFiles === 0) {
-        setUploadStatus('idle')
-      }
-      
-      // Update parent component
+      setUploadStatus('idle')
+    }
+    
+    // Update parent component
       const allFiles = [...existingFileMetadata, ...newFiles]
       onResponseUpdate(section.id, 'files', allFiles, {
-        inputType: 'file_upload',
-        isRequired: isRequired,
+      inputType: 'file_upload',
+      isRequired: isRequired,
         fileCount: allFiles.length
-      })
+    })
     }
   }
 
