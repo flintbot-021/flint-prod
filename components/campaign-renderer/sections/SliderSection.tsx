@@ -161,6 +161,7 @@ export function SliderSection({
           onClick: handleContinue
         }}
         deviceInfo={deviceInfo}
+        campaign={campaign}
       />
     </div>
   )

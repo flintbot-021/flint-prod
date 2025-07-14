@@ -347,6 +347,7 @@ export function MultipleSlidersSection({
             : undefined
         }
         deviceInfo={deviceInfo}
+        campaign={campaign}
       />
     </div>
   )

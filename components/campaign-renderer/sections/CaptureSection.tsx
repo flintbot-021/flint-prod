@@ -426,6 +426,7 @@ export function CaptureSection({
           disabled: !isFormValid()
         }}
         deviceInfo={deviceInfo}
+        campaign={campaign}
       />
     </div>
   )

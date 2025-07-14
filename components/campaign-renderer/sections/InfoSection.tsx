@@ -110,6 +110,7 @@ export function InfoSection({
           onClick: handleContinue
         }}
         deviceInfo={deviceInfo}
+        campaign={campaign}
       />
     </div>
   )

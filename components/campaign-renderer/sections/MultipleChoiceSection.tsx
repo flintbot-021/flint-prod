@@ -156,6 +156,7 @@ export function MultipleChoiceSection({
           disabled: !canContinue
         }}
         deviceInfo={deviceInfo}
+        campaign={campaign}
       />
     </div>
   )

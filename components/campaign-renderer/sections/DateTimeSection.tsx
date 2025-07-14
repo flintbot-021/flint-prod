@@ -234,6 +234,7 @@ export function DateTimeSection({
           disabled: !canContinue
         }}
         deviceInfo={deviceInfo}
+        campaign={campaign}
       />
     </div>
   )

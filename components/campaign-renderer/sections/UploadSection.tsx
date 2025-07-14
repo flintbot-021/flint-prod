@@ -550,6 +550,7 @@ export function UploadSection({
           disabled: !canContinue
         }}
         deviceInfo={deviceInfo}
+        campaign={campaign}
       />
     </div>
   )

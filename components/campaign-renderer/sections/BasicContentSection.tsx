@@ -136,6 +136,7 @@ export function BasicContentSection({
           onClick: handleContinue
         }}
         deviceInfo={deviceInfo}
+        campaign={campaign}
       />
     </div>
   )

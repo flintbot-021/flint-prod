@@ -1095,6 +1095,9 @@ export default function ToolBuilderPage() {
           <CampaignBuilderTopBar
             campaignName={campaign.name}
             campaignStatus={campaign.status}
+            campaignId={campaign.id}
+            campaignUserKey={campaign.user_key || undefined}
+            campaignPublishedUrl={campaign.published_url || undefined}
             isPublished={campaign.status === 'published'}
             isSaving={isSaving}
             canPublish={mandatoryValidation.isValid}

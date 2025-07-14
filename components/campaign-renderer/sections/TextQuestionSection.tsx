@@ -194,6 +194,7 @@ export function TextQuestionSection({
           disabled: !canContinue
         }}
         deviceInfo={deviceInfo}
+        campaign={campaign}
       />
     </div>
   )
