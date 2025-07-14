@@ -88,7 +88,7 @@ export default function Dashboard() {
   // Prefetch the create campaign route on component mount
   useEffect(() => {
     // Prefetch the create campaign page for faster navigation
-    router.prefetch('/dashboard/campaigns/create')
+    router.prefetch('/dashboard/campaigns/new')
   }, [router])
 
   useEffect(() => {
@@ -322,7 +322,7 @@ export default function Dashboard() {
     
     // Add a small delay to show loading state, then navigate
     setTimeout(() => {
-      router.push('/dashboard/campaigns/create')
+      router.push('/dashboard/campaigns/new')
       // Reset loading state after navigation starts
       setTimeout(() => setIsNavigating(false), 100)
     }, 50)
@@ -410,7 +410,7 @@ export default function Dashboard() {
                 className="h-9"
               />
               {/* Optimized New Tool Button with Link prefetching */}
-              <Link href="/dashboard/campaigns/create" prefetch={true}>
+              <Link href="/dashboard/campaigns/new" prefetch={true}>
                 <Button
                   onClick={handleCreateCampaign}
                   disabled={!canCreateCampaign || isNavigating}
@@ -554,7 +554,7 @@ export default function Dashboard() {
                       Create your first lead magnet tool to start capturing and converting leads.
                     </CardDescription>
                     <div className="flex justify-center">
-                      <Link href="/dashboard/campaigns/create" prefetch={true}>
+                      <Link href="/dashboard/campaigns/new" prefetch={true}>
                         <Button 
                           onClick={handleCreateCampaign}
                           disabled={!canCreateCampaign || isNavigating}

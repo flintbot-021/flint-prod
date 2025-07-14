@@ -135,7 +135,7 @@ const CampaignCard = memo(function CampaignCard({
 
   const handleEditClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    router.push(`/dashboard/campaigns/${campaign.id}/edit`)
+    router.push(`/dashboard/campaigns/${campaign.id}`)
   }, [router, campaign.id])
 
   const handleViewLiveClick = useCallback((e: React.MouseEvent) => {
