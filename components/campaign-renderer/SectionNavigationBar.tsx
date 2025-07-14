@@ -3,7 +3,8 @@
 import React from 'react'
 import { ChevronLeft, ArrowLeft, ArrowRight, Loader2, CheckCircle, WifiOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getMobileClasses } from './utils'
+import { getMobileClasses, getCampaignButtonStyles } from './utils'
+import { Campaign } from '@/lib/types/database'
 
 interface SectionNavigationBarProps {
   // Navigation
@@ -83,6 +84,9 @@ interface SectionNavigationBarProps {
   
   // Layout variants
   variant?: 'simple' | 'full' // simple = basic section usage, full = public page usage
+  
+  // Campaign for theme support
+  campaign?: Campaign
 }
 
 export function SectionNavigationBar({
@@ -102,7 +106,8 @@ export function SectionNavigationBar({
   actionButtons,
   deviceInfo,
   className,
-  variant = 'simple'
+  variant = 'simple',
+  campaign
 }: SectionNavigationBarProps) {
   const isFull = variant === 'full'
   const actions = actionButtons || (actionButton ? [actionButton] : [])
@@ -279,26 +284,27 @@ export function SectionNavigationBar({
             </button>
           ) : actions.length > 0 ? (
             <div className="flex items-center space-x-2">
-              {actions.map((action, index) => (
-                <button
-                  key={index}
-                  onClick={action.onClick}
-                  disabled={action.disabled}
-                  className={cn(
-                    "px-6 py-2 rounded-lg font-medium transition-all duration-200",
-                    "flex items-center space-x-2",
-                    action.variant === 'secondary'
-                      ? "bg-muted text-muted-foreground hover:bg-muted/80"
-                      : action.disabled
-                      ? "bg-muted text-muted-foreground cursor-not-allowed"
-                      : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md hover:shadow-lg",
-                    getMobileClasses("", deviceInfo?.type)
-                  )}
-                >
-                  {action.icon && action.icon}
-                  <span>{action.label}</span>
-                </button>
-              ))}
+              {actions.map((action, index) => {
+                const buttonStyles = getCampaignButtonStyles(campaign, action.variant === 'secondary' ? 'secondary' : 'primary')
+                
+                return (
+                  <button
+                    key={index}
+                    onClick={action.onClick}
+                    disabled={action.disabled}
+                    className={cn(
+                      "px-6 py-2 rounded-lg font-medium transition-all duration-200",
+                      "flex items-center space-x-2 shadow-md hover:shadow-lg",
+                      action.disabled && "cursor-not-allowed opacity-50",
+                      getMobileClasses("", deviceInfo?.type)
+                    )}
+                    style={action.disabled ? { backgroundColor: '#e5e7eb', color: '#6b7280' } : buttonStyles}
+                  >
+                    {action.icon && action.icon}
+                    <span>{action.label}</span>
+                  </button>
+                )
+              })}
             </div>
           ) : (
             <div className="w-20"></div> // Spacer to maintain layout

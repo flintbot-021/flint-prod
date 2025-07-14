@@ -4,6 +4,7 @@ import React, { useEffect, useMemo } from 'react'
 import { Code2 } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
+import { getCampaignTheme } from '../utils'
 import { buildVariablesFromInputs } from '@/lib/utils/section-variables'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
 
@@ -21,9 +22,13 @@ export function HtmlEmbedSection({
   deviceInfo,
   onSectionComplete,
   userInputs = {},
-  sections = []
+  sections = [],
+  campaign
 }: SectionRendererProps) {
   const embedConfig = config as HtmlEmbedConfig
+  
+  // Theme styles
+  const theme = getCampaignTheme(campaign)
   
   const settings = {
     htmlContent: embedConfig?.htmlContent || '',
@@ -109,7 +114,7 @@ export function HtmlEmbedSection({
 
   // Render the processed HTML
   return (
-    <div className="h-full bg-background">
+    <div className="h-full" style={{ backgroundColor: theme.backgroundColor }}>
       <div 
         className="w-full"
         dangerouslySetInnerHTML={{ __html: processedHtml }}

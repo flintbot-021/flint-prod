@@ -51,12 +51,14 @@ interface CampaignCardProps {
   campaign: CampaignWithStats
   onStatusChange: (campaignId: string, newStatus: CampaignStatus) => Promise<void>
   onDelete: (campaignId: string, campaignName: string) => Promise<void>
+  onEdit: (campaign: CampaignWithStats) => void
 }
 
 const CampaignCard = memo(function CampaignCard({ 
   campaign, 
   onStatusChange, 
-  onDelete 
+  onDelete, 
+  onEdit 
 }: CampaignCardProps) {
   const router = useRouter()
 
@@ -135,8 +137,8 @@ const CampaignCard = memo(function CampaignCard({
 
   const handleEditClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    router.push(`/dashboard/campaigns/${campaign.id}/edit`)
-  }, [router, campaign.id])
+    onEdit(campaign)
+  }, [onEdit, campaign])
 
   const handleViewLiveClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -239,7 +241,7 @@ const CampaignCard = memo(function CampaignCard({
               aria-label={`Build tool ${campaign.name}`}
             >
               <Hammer className="h-3 w-3 mr-1" aria-hidden="true" />
-              Build
+              Builder
             </Button>
             
             <Button
@@ -247,10 +249,19 @@ const CampaignCard = memo(function CampaignCard({
               size="sm"
               onClick={handleDetailsClick}
               className="h-8 px-3"
-              aria-label={`View details for ${campaign.name}`}
+              aria-label={`${campaign.status === 'published' && campaign.is_active ? 'View live campaign' : 'Preview campaign'} ${campaign.name}`}
             >
-              <BarChart3 className="h-3 w-3 mr-1" aria-hidden="true" />
-              Details
+              {campaign.status === 'published' && campaign.is_active ? (
+                <>
+                  <Eye className="h-3 w-3 mr-1" aria-hidden="true" />
+                  View Live
+                </>
+              ) : (
+                <>
+                  <FileText className="h-3 w-3 mr-1" aria-hidden="true" />
+                  Preview
+                </>
+              )}
             </Button>
           </div>
           

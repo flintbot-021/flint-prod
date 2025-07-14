@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { Globe, ExternalLink, Loader2 } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
+import { getCampaignTheme, getCampaignTextColor, getCampaignButtonStyles } from '../utils'
 import { buildVariablesFromInputs } from '@/lib/utils/section-variables'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
 
@@ -23,13 +24,20 @@ export function DynamicRedirectSection({
   deviceInfo,
   onSectionComplete,
   userInputs = {},
-  sections = []
+  sections = [],
+  campaign
 }: SectionRendererProps) {
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const hasRedirectedRef = useRef(false)
 
   const redirectConfig = config as DynamicRedirectConfig
+  
+  // Theme styles
+  const theme = getCampaignTheme(campaign)
+  const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
+  const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
+  const primaryButtonStyle = getCampaignButtonStyles(campaign, 'primary')
   
   const settings = {
     targetUrl: redirectConfig?.targetUrl || '',
@@ -233,21 +241,24 @@ export function DynamicRedirectSection({
 
   if (error) {
     return (
-      <div className="h-full bg-background flex flex-col">
+      <div className="h-full flex flex-col" style={{ backgroundColor: theme.backgroundColor }}>
         <div className="flex-1 flex items-center justify-center px-6 py-12">
           <div className="w-full max-w-lg mx-auto text-center space-y-6">
             <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
               <ExternalLink className="h-8 w-8 text-red-600" />
             </div>
             <div className="space-y-2">
-              <h1 className={cn(
-                "font-bold text-foreground",
-                deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
-              )}>
+              <h1 
+                className={cn(
+                  "font-bold",
+                  deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
+                )}
+                style={primaryTextStyle}
+              >
                 Redirect Error
               </h1>
               <p className="text-sm text-red-600">{error}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs" style={mutedTextStyle}>
                 Please contact support or try again later.
               </p>
             </div>
@@ -258,7 +269,7 @@ export function DynamicRedirectSection({
   }
 
   return (
-    <div className="h-full bg-background flex flex-col">
+    <div className="h-full flex flex-col" style={{ backgroundColor: theme.backgroundColor }}>
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-lg mx-auto text-center space-y-8">
           
@@ -273,19 +284,22 @@ export function DynamicRedirectSection({
 
           {/* Content */}
           <div className="space-y-4">
-            <h1 className={cn(
-              "font-bold text-foreground",
-              deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
-            )}>
+            <h1 
+              className={cn(
+                "font-bold",
+                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
+              )}
+              style={primaryTextStyle}
+            >
               {title || settings.preloaderMessage}
             </h1>
             
             {description && (
-              <p className="text-muted-foreground">{description}</p>
+              <p style={mutedTextStyle}>{description}</p>
             )}
 
             {isRedirecting && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm" style={mutedTextStyle}>
                 Taking you to your personalized page...
               </p>
             )}

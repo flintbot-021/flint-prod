@@ -1410,6 +1410,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
             isActive={true}
             isPreview={false}
             campaignId={campaign?.id}
+            campaign={campaign}
             userInputs={campaignRenderer.userInputs}
             sections={sections}
             onNext={handleNext}

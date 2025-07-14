@@ -3,6 +3,7 @@
 // =============================================================================
 
 import { VariableContext } from './types'
+import { Campaign } from '@/lib/types/database'
 
 /**
  * Process variable content using the advanced variable interpolation engine
@@ -44,6 +45,116 @@ export function interpolateTextSimple(
   })
   
   return result
+}
+
+// =============================================================================
+// THEME UTILITIES
+// =============================================================================
+
+/**
+ * Default theme colors used when campaign doesn't specify custom colors
+ */
+export const DEFAULT_THEME = {
+  background_color: '#FFFFFF',
+  button_color: '#3B82F6',
+  text_color: '#1F2937'
+}
+
+/**
+ * Extract theme colors from campaign settings with fallbacks
+ */
+export function getCampaignTheme(campaign?: Campaign) {
+  const themeSettings = campaign?.settings?.theme
+  
+  return {
+    backgroundColor: themeSettings?.background_color || DEFAULT_THEME.background_color,
+    buttonColor: themeSettings?.button_color || DEFAULT_THEME.button_color,
+    textColor: themeSettings?.text_color || DEFAULT_THEME.text_color,
+    // Keep legacy colors for backward compatibility
+    primaryColor: themeSettings?.primary_color || themeSettings?.button_color || DEFAULT_THEME.button_color,
+    secondaryColor: themeSettings?.secondary_color || themeSettings?.text_color || DEFAULT_THEME.text_color
+  }
+}
+
+/**
+ * Generate CSS style object for campaign theme
+ */
+export function getCampaignThemeStyles(campaign?: Campaign) {
+  const theme = getCampaignTheme(campaign)
+  
+  return {
+    backgroundColor: theme.backgroundColor,
+    color: theme.textColor,
+    '--button-color': theme.buttonColor,
+    '--text-color': theme.textColor,
+    '--background-color': theme.backgroundColor
+  } as React.CSSProperties
+}
+
+/**
+ * Get button styles for campaign theme
+ */
+export function getCampaignButtonStyles(campaign?: Campaign, variant: 'primary' | 'secondary' = 'primary') {
+  const theme = getCampaignTheme(campaign)
+  
+  if (variant === 'primary') {
+    return {
+      backgroundColor: theme.buttonColor,
+      color: getContrastColor(theme.buttonColor),
+      border: `1px solid ${theme.buttonColor}`
+    } as React.CSSProperties
+  } else {
+    return {
+      backgroundColor: 'transparent',
+      color: theme.buttonColor,
+      border: `1px solid ${theme.buttonColor}`
+    } as React.CSSProperties
+  }
+}
+
+/**
+ * Get text color classes for campaign theme
+ */
+export function getCampaignTextColor(campaign?: Campaign, intensity: 'primary' | 'muted' = 'primary') {
+  const theme = getCampaignTheme(campaign)
+  
+  if (intensity === 'primary') {
+    return { color: theme.textColor }
+  } else {
+    // For muted text, use a lighter version of the text color
+    return { color: `${theme.textColor}CC` } // 80% opacity
+  }
+}
+
+/**
+ * Simple contrast color calculation (black or white based on background brightness)
+ */
+function getContrastColor(hexColor: string): string {
+  // Remove # if present
+  const hex = hexColor.replace('#', '')
+  
+  // Convert to RGB
+  const r = parseInt(hex.substr(0, 2), 16)
+  const g = parseInt(hex.substr(2, 2), 16)
+  const b = parseInt(hex.substr(4, 2), 16)
+  
+  // Calculate brightness
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000
+  
+  // Return black or white based on brightness
+  return brightness > 128 ? '#000000' : '#FFFFFF'
+}
+
+/**
+ * Apply theme to background sections (like hero sections)
+ */
+export function getThemedBackgroundStyles(campaign?: Campaign, overlayOpacity = 0.4) {
+  const theme = getCampaignTheme(campaign)
+  
+  return {
+    backgroundColor: theme.backgroundColor,
+    '--overlay-color': `${theme.textColor}${Math.round(overlayOpacity * 255).toString(16).padStart(2, '0')}`
+  } as React.CSSProperties
 }
 
 /**

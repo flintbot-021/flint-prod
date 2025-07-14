@@ -13,9 +13,12 @@ import {
   Check,
   X,
   Loader2,
-  MoreHorizontal,
-  Pause,
-  Rocket
+  Rocket,
+  Settings,
+  ExternalLink,
+  ChevronDown,
+  Copy,
+  PauseCircle
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -24,16 +27,24 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
+import { toast } from '@/components/ui/use-toast'
+import { CampaignEditModal } from './campaign-edit-modal'
+import { Campaign } from '@/lib/types/database'
 
 interface CampaignBuilderTopBarProps {
   campaignName: string
   campaignStatus: 'draft' | 'published' | 'archived'
+  campaignId?: string
+  campaignUserKey?: string
+  campaignPublishedUrl?: string
+  campaign?: Campaign
   isPublished?: boolean
   isSaving?: boolean
   canPublish?: boolean
   canPreview?: boolean
   validationErrors?: string[]
   onCampaignNameChange?: (name: string) => void
+  onCampaignUpdate?: (updatedCampaign: Campaign) => void
   onPreview?: () => void
   onPublish?: () => void
   onPause?: () => void
@@ -43,12 +54,17 @@ interface CampaignBuilderTopBarProps {
 export function CampaignBuilderTopBar({
   campaignName,
   campaignStatus,
+  campaignId,
+  campaignUserKey,
+  campaignPublishedUrl,
+  campaign,
   isPublished = false,
   isSaving = false,
   canPublish = true,
   canPreview = true,
   validationErrors = [],
   onCampaignNameChange,
+  onCampaignUpdate,
   onPreview,
   onPublish,
   onPause,
@@ -58,6 +74,7 @@ export function CampaignBuilderTopBar({
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(campaignName)
   const [isSticky, setIsSticky] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const topBarRef = useRef<HTMLDivElement>(null)
 
@@ -113,6 +130,49 @@ export function CampaignBuilderTopBar({
 
   const handleBackToCampaigns = () => {
     router.push('/dashboard')
+  }
+
+  const handleEditCampaign = () => {
+    if (campaign) {
+      setShowEditModal(true)
+    }
+  }
+
+  const handleEditModalClose = () => {
+    setShowEditModal(false)
+  }
+
+  const handleEditModalSave = (updatedCampaign: Campaign) => {
+    onCampaignUpdate?.(updatedCampaign)
+    setShowEditModal(false)
+  }
+
+  const handleViewLive = () => {
+    if (campaignUserKey && campaignPublishedUrl) {
+      const liveUrl = `${window.location.origin}/c/${campaignUserKey}/${campaignPublishedUrl}`
+      window.open(liveUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  const copyLiveLink = async () => {
+    if (campaignUserKey && campaignPublishedUrl) {
+      const liveUrl = `${window.location.origin}/c/${campaignUserKey}/${campaignPublishedUrl}`
+      try {
+        await navigator.clipboard.writeText(liveUrl)
+        toast({
+          title: 'Link copied!',
+          description: 'The live tool link has been copied to your clipboard',
+          duration: 3000
+        })
+      } catch (error) {
+        console.error('Error copying link:', error)
+        toast({
+          title: 'Copy failed',
+          description: 'Unable to copy link to clipboard',
+          variant: 'destructive'
+        })
+      }
+    }
   }
 
   return (
@@ -189,15 +249,63 @@ export function CampaignBuilderTopBar({
             {/* Status Badge */}
             <Badge 
               variant={isPublished ? 'default' : 'secondary'}
+              className={isPublished ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}
             >
-              {isPublished ? 'Live' : 'Draft'}
+              {isPublished ? (
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  Live
+                </div>
+              ) : (
+                'Draft'
+              )}
             </Badge>
           </div>
 
           {/* Right Section - Actions */}
           <div className="flex items-center space-x-3">
-            {/* Preview Button */}
-            {onPreview && (
+            {/* Preview Button (for drafts) or View Live Split Button (for published) */}
+            {isPublished && campaignUserKey && campaignPublishedUrl ? (
+              <div className="flex items-center">
+                {/* Main View Live Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleViewLive}
+                  disabled={isSaving}
+                  className="rounded-r-none border-r-0"
+                >
+                  <Globe className="h-4 w-4 mr-2" />
+                  View Live
+                </Button>
+                
+                {/* Dropdown Menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isSaving}
+                      className="rounded-l-none px-2"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={copyLiveLink} className="flex items-center">
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy Link
+                    </DropdownMenuItem>
+                    {onPause && (
+                      <DropdownMenuItem onClick={onPause} className="flex items-center">
+                        <PauseCircle className="h-4 w-4 mr-2" />
+                        Unpublish
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ) : onPreview && (
               <Button
                 variant="outline"
                 size="sm"
@@ -213,7 +321,20 @@ export function CampaignBuilderTopBar({
               </Button>
             )}
 
-            {/* Launch/Live Button and Actions */}
+            {/* Edit Button */}
+            {campaign && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleEditCampaign}
+                disabled={isSaving}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+            )}
+
+            {/* Launch Button (for drafts only) */}
             {!isPublished && onPublish && (
               <Button
                 size="sm"
@@ -228,34 +349,19 @@ export function CampaignBuilderTopBar({
                 Launch
               </Button>
             )}
-
-            {/* Live Tool Actions Menu */}
-            {isPublished && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isSaving}
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {onPause && (
-                    <DropdownMenuItem onClick={onPause} className="flex items-center">
-                      <Pause className="h-4 w-4 mr-2" />
-                      Pause Tool
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
           </div>
         </div>
       </div>
 
-
+      {/* Campaign Edit Modal */}
+      {campaign && (
+        <CampaignEditModal
+          campaign={campaign}
+          isOpen={showEditModal}
+          onClose={handleEditModalClose}
+          onSave={handleEditModalSave}
+        />
+      )}
     </div>
   )
 } 

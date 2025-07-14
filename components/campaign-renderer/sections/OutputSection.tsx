@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, Share2, CheckCircle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
-import { getMobileClasses } from '../utils'
+import { getMobileClasses, getCampaignTheme, getCampaignButtonStyles, getCampaignTextColor } from '../utils'
 import { cn } from '@/lib/utils'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
 import { titleToVariableName, isQuestionSection, extractResponseValue, buildVariablesFromInputs } from '@/lib/utils/section-variables'
@@ -30,6 +30,7 @@ export function OutputSection({
   onSectionComplete,
   userInputs = {},
   sections = [],
+  campaign,
   ...props
 }: SectionRendererProps) {
   const [isSharing, setIsSharing] = useState(false)
@@ -128,6 +129,13 @@ export function OutputSection({
     })
   }
 
+  // Get campaign theme colors
+  const theme = getCampaignTheme(campaign)
+  const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
+  const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
+  const primaryButtonStyle = getCampaignButtonStyles(campaign, 'primary')
+  const secondaryButtonStyle = getCampaignButtonStyles(campaign, 'secondary')
+
   // Show fallback if no content is configured
   if (!settings.title && !settings.subtitle && !settings.content && !settings.image) {
     return (
@@ -141,7 +149,10 @@ export function OutputSection({
   }
 
   return (
-    <div className="h-full bg-background flex flex-col">
+    <div 
+      className="h-full flex flex-col"
+      style={{ backgroundColor: theme.backgroundColor }}
+    >
       {/* Header with navigation - same as other sections */}
       <div className="flex-shrink-0 p-6 border-b border-border">
         <div className="flex items-center justify-between max-w-4xl mx-auto">
@@ -179,9 +190,10 @@ export function OutputSection({
               {settings.title && (
                 <h1 
                   className={cn(
-                    "font-bold text-foreground",
+                    "font-bold",
                     deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
                   )}
+                  style={primaryTextStyle}
                   dangerouslySetInnerHTML={{ 
                     __html: simpleVariableReplace(settings.title, variableMap).replace(/\n/g, '<br>') 
                   }}
@@ -191,10 +203,11 @@ export function OutputSection({
               {settings.subtitle && (
                 <div 
                   className={cn(
-                    "text-muted-foreground max-w-3xl",
+                    "max-w-3xl",
                     settings.textAlignment === 'center' ? "mx-auto" : "",
                     deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
                   )}
+                  style={mutedTextStyle}
                   dangerouslySetInnerHTML={{ 
                     __html: simpleVariableReplace(settings.subtitle, variableMap).replace(/\n/g, '<br>') 
                   }}
@@ -223,10 +236,10 @@ export function OutputSection({
               disabled={isSharing}
               className={cn(
                 "px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                "flex items-center space-x-2 border border-border",
-                "bg-background hover:bg-gray-50 text-muted-foreground hover:text-foreground",
+                "flex items-center space-x-2",
                 getMobileClasses("", deviceInfo?.type)
               )}
+              style={secondaryButtonStyle}
             >
               <Share2 className="h-4 w-4" />
               <span>{isSharing ? 'Sharing...' : 'Share'}</span>
@@ -236,10 +249,10 @@ export function OutputSection({
               onClick={handleComplete}
               className={cn(
                 "px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                "flex items-center space-x-2",
-                "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl",
+                "flex items-center space-x-2 shadow-lg hover:shadow-xl",
                 getMobileClasses("", deviceInfo?.type)
               )}
+              style={primaryButtonStyle}
             >
               <span>Complete</span>
               <ChevronRight className="h-4 w-4" />

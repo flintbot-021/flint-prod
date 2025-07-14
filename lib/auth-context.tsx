@@ -90,10 +90,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Only update state if there's an actual change
         if (newUserId !== lastUserId.current) {
-          if (session?.user) {
-            setUser(session.user)
-          } else {
-            setUser(null)
+        if (session?.user) {
+          setUser(session.user)
+        } else {
+          setUser(null)
           }
           lastUserId.current = newUserId
         }

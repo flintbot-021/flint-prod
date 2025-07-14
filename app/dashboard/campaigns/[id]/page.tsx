@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,19 +9,20 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { UserProfile } from '@/components/ui/user-profile'
 import { useAuth } from '@/lib/auth-context'
-import { createCampaignWithUsageTracking, getCurrentProfile } from '@/lib/data-access'
-import { Profile, CampaignSettings, CreateCampaign } from '@/lib/types/database'
+import { getCampaignById, updateCampaign, createCampaignWithUsageTracking, getCurrentProfile } from '@/lib/data-access'
+import { Profile, Campaign, CampaignSettings, CreateCampaign } from '@/lib/types/database'
 import { 
   ArrowLeft, 
   ArrowRight, 
   Check, 
+  Building,
+  Palette,
   Save,
   AlertCircle,
+  Loader2,
   Upload,
   X
 } from 'lucide-react'
-
-// Import logo upload functionality
 
 interface CampaignFormData {
   name: string
@@ -29,7 +30,7 @@ interface CampaignFormData {
   settings: CampaignSettings
 }
 
-type Step = 'basic' | 'theme' | 'settings' | 'review'
+type Step = 'basic' | 'theme'
 
 const steps: { id: Step; title: string; description: string }[] = [
   {
@@ -41,24 +42,20 @@ const steps: { id: Step; title: string; description: string }[] = [
     id: 'theme',
     title: 'Theme & Branding',
     description: 'Customize the look and feel of your campaign'
-  },
-  {
-    id: 'settings',
-    title: 'Campaign Settings',
-    description: 'Configure completion and notification settings'
-  },
-  {
-    id: 'review',
-    title: 'Review & Create',
-    description: 'Review your campaign settings and create'
   }
 ]
 
-export default function CreateCampaignPage() {
+export default function CampaignFormPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const params = useParams()
+  const campaignId = params?.id as string
+  const isCreateMode = campaignId === 'new'
+
+  const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [currentStep, setCurrentStep] = useState<Step>('basic')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoading, setIsLoading] = useState(!isCreateMode)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [profileLoading, setProfileLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -92,9 +89,13 @@ export default function CreateCampaignPage() {
 
   useEffect(() => {
     if (user) {
-      loadProfile()
+      if (isCreateMode) {
+        loadProfile()
+      } else {
+        loadCampaignAndProfile()
+      }
     }
-  }, [user])
+  }, [user, isCreateMode])
 
   const loadProfile = async () => {
     try {
@@ -105,8 +106,66 @@ export default function CreateCampaignPage() {
       }
     } catch (err) {
       console.error('Error loading profile:', err)
-      // Don't block the UI if profile loading fails
     } finally {
+      setProfileLoading(false)
+    }
+  }
+
+  const loadCampaignAndProfile = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      const [campaignResult, profileResult] = await Promise.all([
+        getCampaignById(campaignId),
+        getCurrentProfile()
+      ])
+
+      if (!campaignResult.success) {
+        throw new Error(campaignResult.error || 'Failed to load campaign')
+      }
+
+      if (!profileResult.success) {
+        throw new Error(profileResult.error || 'Failed to load profile')
+      }
+
+      if (!campaignResult.data) {
+        throw new Error('Campaign not found')
+      }
+
+      setCampaign(campaignResult.data)
+      setProfile(profileResult.data || null)
+
+      // Pre-populate form with existing campaign data
+      setFormData({
+        name: campaignResult.data.name,
+        description: campaignResult.data.description || '',
+        settings: campaignResult.data.settings || {
+          theme: {
+            primary_color: '#3B82F6',
+            secondary_color: '#10B981',
+            background_color: '#FFFFFF',
+            font_family: 'Inter, sans-serif'
+          },
+          branding: {
+            show_powered_by: true
+          },
+          completion: {
+            email_notifications: true
+          }
+        }
+      })
+
+      // Set existing logo preview if available
+      const existingLogoUrl = campaignResult.data.settings?.branding?.logo_url
+      if (existingLogoUrl) {
+        setLogoPreview(existingLogoUrl)
+      }
+    } catch (err) {
+      console.error('Error loading campaign:', err)
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setIsLoading(false)
       setProfileLoading(false)
     }
   }
@@ -145,9 +204,6 @@ export default function CreateCampaignPage() {
       case 'basic':
         return formData.name.trim().length > 0
       case 'theme':
-      case 'settings':
-        return true
-      case 'review':
         return false
       default:
         return false
@@ -250,77 +306,110 @@ export default function CreateCampaignPage() {
   const handleSubmit = async () => {
     if (!profile) return
 
-    // Campaign limit check removed
-
     try {
       setIsSubmitting(true)
       setError(null)
 
-      // First create the campaign
-      const result = await createCampaignWithUsageTracking({
-        name: formData.name,
-        description: formData.description,
-        status: 'draft',
-        settings: formData.settings,
-        published_at: null,
-        published_url: null,
-        is_active: true
-      } as CreateCampaign)
+      if (isCreateMode) {
+        // Create new campaign
+        const result = await createCampaignWithUsageTracking({
+          name: formData.name,
+          description: formData.description,
+          status: 'draft',
+          settings: formData.settings,
+          published_at: null,
+          published_url: null,
+          is_active: true
+        } as CreateCampaign)
 
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create campaign')
-      }
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to create campaign')
+        }
 
-      const campaignId = result.data?.id
-      if (!campaignId) {
-        throw new Error('Campaign created but ID not returned')
-      }
+        const newCampaignId = result.data?.id
+        if (!newCampaignId) {
+          throw new Error('Campaign created but ID not returned')
+        }
 
-      // Upload logo if one was selected
-      if (logoFile) {
-        try {
-          console.log('Starting logo upload for campaign:', campaignId)
-          const logoUrl = await uploadLogo(campaignId)
-          if (logoUrl) {
-            console.log('Logo uploaded successfully, updating campaign settings...')
-            // Update campaign settings with logo URL
-            const updatedSettings = {
-              ...formData.settings,
-              branding: {
-                ...formData.settings.branding,
-                logo_url: logoUrl
+        // Upload logo if one was selected
+        if (logoFile) {
+          try {
+            console.log('Starting logo upload for campaign:', newCampaignId)
+            const logoUrl = await uploadLogo(newCampaignId)
+            if (logoUrl) {
+              console.log('Logo uploaded successfully, updating campaign settings...')
+              // Update campaign settings with logo URL
+              const updatedSettings = {
+                ...formData.settings,
+                branding: {
+                  ...formData.settings.branding,
+                  logo_url: logoUrl
+                }
+              }
+
+              // Update the campaign with logo URL
+              const { updateCampaign } = await import('@/lib/data-access')
+              const updateResult = await updateCampaign(newCampaignId, {
+                settings: updatedSettings
+              })
+
+              if (!updateResult.success) {
+                console.error('Failed to save logo URL to campaign:', updateResult.error)
+                setError('Campaign created successfully, but there was an issue saving the logo. You can upload it again later in the campaign builder.')
+              } else {
+                console.log('Logo uploaded and saved successfully to campaign settings')
+              }
+            } else {
+              console.warn('Logo upload returned no URL')
+              setError('Campaign created successfully, but logo upload failed. You can add a logo later in the campaign builder.')
+            }
+          } catch (logoError) {
+            console.error('Logo upload failed:', logoError)
+            const errorMessage = logoError instanceof Error ? logoError.message : 'Unknown error occurred'
+            setError(`Campaign created successfully, but logo upload failed: ${errorMessage}. You can add a logo later in the campaign builder.`)
+          }
+        }
+
+        // Redirect to the campaign builder
+        router.push(`/dashboard/campaigns/${newCampaignId}/builder`)
+      } else {
+        // Update existing campaign
+        let finalSettings = { ...formData.settings }
+
+        // Upload logo if a new one was selected
+        if (logoFile) {
+          try {
+            const logoUrl = await uploadLogo(campaignId)
+            if (logoUrl) {
+              finalSettings = {
+                ...finalSettings,
+                branding: {
+                  ...finalSettings.branding,
+                  logo_url: logoUrl
+                }
               }
             }
-
-            // Update the campaign with logo URL
-            const { updateCampaign } = await import('@/lib/data-access')
-            const updateResult = await updateCampaign(campaignId, {
-              settings: updatedSettings
-            })
-
-            if (!updateResult.success) {
-              console.error('Failed to save logo URL to campaign:', updateResult.error)
-              // Don't fail the entire flow, just show a warning
-              setError('Campaign created successfully, but there was an issue saving the logo. You can upload it again later in the campaign builder.')
-            } else {
-              console.log('Logo uploaded and saved successfully to campaign settings')
-            }
-          } else {
-            console.warn('Logo upload returned no URL')
-            setError('Campaign created successfully, but logo upload failed. You can add a logo later in the campaign builder.')
+          } catch (logoError) {
+            console.error('Logo upload failed:', logoError)
+            setError('Campaign updated successfully, but logo upload failed. Please try uploading the logo again.')
           }
-        } catch (logoError) {
-          console.error('Logo upload failed:', logoError)
-          // Don't fail the entire campaign creation for logo upload failure
-          const errorMessage = logoError instanceof Error ? logoError.message : 'Unknown error occurred'
-          setError(`Campaign created successfully, but logo upload failed: ${errorMessage}. You can add a logo later in the campaign builder.`)
         }
-      }
 
-      // Redirect to the campaign builder
-      router.push(`/dashboard/campaigns/${campaignId}/builder`)
+        const result = await updateCampaign(campaignId, {
+          name: formData.name,
+          description: formData.description,
+          settings: finalSettings
+        })
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to update campaign')
+        }
+
+        // Redirect back to dashboard
+        router.push('/dashboard')
+      }
     } catch (err) {
-      console.error('Error creating campaign:', err)
+      console.error('Error submitting campaign:', err)
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
       setIsSubmitting(false)
@@ -363,30 +452,67 @@ export default function CreateCampaignPage() {
         )
 
       case 'theme':
+        const currentBackground = formData.settings.theme?.background_color || '#FFFFFF'
+        const currentButton = formData.settings.theme?.button_color || '#3B82F6'
+        const currentText = formData.settings.theme?.text_color || '#1F2937'
+
         return (
           <div className="space-y-6">
+            {/* Background Color Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="background-color">Background Color</Label>
+              <p className="text-sm text-muted-foreground">Choose any background color for your campaign</p>
+              <div className="flex items-center space-x-3">
+                <input
+                  type="color"
+                  id="background-color"
+                  value={currentBackground}
+                  onChange={(e) => updateSettings({
+                    theme: {
+                      ...formData.settings.theme,
+                      background_color: e.target.value
+                    }
+                  })}
+                  className="w-12 h-12 rounded border border-input"
+                />
+                <Input
+                  value={currentBackground}
+                  onChange={(e) => updateSettings({
+                    theme: {
+                      ...formData.settings.theme,
+                      background_color: e.target.value
+                    }
+                  })}
+                  placeholder="#FFFFFF"
+                  className="flex-1"
+                />
+              </div>
+            </div>
+
+            {/* Button and Text Colors */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="primary-color">Primary Color</Label>
+                <Label htmlFor="button-color">Button Color</Label>
+                <p className="text-sm text-muted-foreground">Color for buttons and interactive elements</p>
                 <div className="flex items-center space-x-3">
                   <input
                     type="color"
-                    id="primary-color"
-                    value={formData.settings.theme?.primary_color || '#3B82F6'}
+                    id="button-color"
+                    value={currentButton}
                     onChange={(e) => updateSettings({
                       theme: {
                         ...formData.settings.theme,
-                        primary_color: e.target.value
+                        button_color: e.target.value
                       }
                     })}
                     className="w-12 h-12 rounded border border-input"
                   />
                   <Input
-                    value={formData.settings.theme?.primary_color || '#3B82F6'}
+                    value={currentButton}
                     onChange={(e) => updateSettings({
                       theme: {
                         ...formData.settings.theme,
-                        primary_color: e.target.value
+                        button_color: e.target.value
                       }
                     })}
                     placeholder="#3B82F6"
@@ -396,66 +522,60 @@ export default function CreateCampaignPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="secondary-color">Secondary Color</Label>
+                <Label htmlFor="text-color">Text Color</Label>
+                <p className="text-sm text-muted-foreground">Primary text color for headings and content</p>
                 <div className="flex items-center space-x-3">
                   <input
                     type="color"
-                    id="secondary-color"
-                    value={formData.settings.theme?.secondary_color || '#10B981'}
+                    id="text-color"
+                    value={currentText}
                     onChange={(e) => updateSettings({
                       theme: {
                         ...formData.settings.theme,
-                        secondary_color: e.target.value
+                        text_color: e.target.value
                       }
                     })}
                     className="w-12 h-12 rounded border border-input"
                   />
                   <Input
-                    value={formData.settings.theme?.secondary_color || '#10B981'}
+                    value={currentText}
                     onChange={(e) => updateSettings({
                       theme: {
                         ...formData.settings.theme,
-                        secondary_color: e.target.value
+                        text_color: e.target.value
                       }
                     })}
-                    placeholder="#10B981"
+                    placeholder="#1F2937"
                     className="flex-1"
                   />
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="background-color">Background Color</Label>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="color"
-                    id="background-color"
-                    value={formData.settings.theme?.background_color || '#FFFFFF'}
-                    onChange={(e) => updateSettings({
-                      theme: {
-                        ...formData.settings.theme,
-                        background_color: e.target.value
-                      }
-                    })}
-                    className="w-12 h-12 rounded border border-input"
-                  />
-                  <Input
-                    value={formData.settings.theme?.background_color || '#FFFFFF'}
-                    onChange={(e) => updateSettings({
-                      theme: {
-                        ...formData.settings.theme,
-                        background_color: e.target.value
-                      }
-                    })}
-                    placeholder="#FFFFFF"
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-
-              {/* Font family selector hidden - using Inter by default, functionality preserved for future use */}
             </div>
 
+            {/* Preview Section */}
+            <div className="space-y-3">
+              <Label>Color Preview</Label>
+              <div 
+                className="p-6 rounded-lg border-2 border-dashed border-gray-300"
+                style={{ backgroundColor: currentBackground }}
+              >
+                <h3 style={{ color: currentText }} className="text-lg font-semibold mb-2">
+                  Sample Campaign Content
+                </h3>
+                <p style={{ color: currentText }} className="text-sm mb-4 opacity-80">
+                  This is how your text will appear on the selected background color.
+                </p>
+                <button
+                  type="button"
+                  style={{ backgroundColor: currentButton }}
+                  className="px-4 py-2 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  Sample Button
+                </button>
+              </div>
+            </div>
+
+            {/* Branding Options */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Branding Options</h3>
               
@@ -517,104 +637,31 @@ export default function CreateCampaignPage() {
           </div>
         )
 
-      case 'settings':
-        return (
-          <div className="space-y-6">
-            {/* Email notifications setting hidden - functionality preserved for future use */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Completion Settings</h3>
-              <div className="text-sm text-muted-foreground">
-                Campaign completion settings will be configured automatically.
-              </div>
-            </div>
-          </div>
-        )
-
-      case 'review':
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Campaign Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div>
-                    <span className="font-medium">Name:</span> {formData.name}
-                  </div>
-                  <div>
-                    <span className="font-medium">Description:</span> {formData.description || 'No description'}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Theme Preview</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {/* Logo Preview */}
-                    {logoPreview && (
-                      <div>
-                        <span className="text-sm font-medium">Logo:</span>
-                        <div className="mt-1 p-2 bg-gray-50 border rounded flex items-center justify-center h-16">
-                          <img 
-                            src={logoPreview} 
-                            alt="Logo preview" 
-                            className="max-h-12 max-w-32 object-contain"
-                          />
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center space-x-2">
-                      <div 
-                        className="w-6 h-6 rounded border"
-                        style={{ backgroundColor: formData.settings.theme?.primary_color }}
-                      ></div>
-                      <span className="text-sm">Primary: {formData.settings.theme?.primary_color}</span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <div 
-                        className="w-6 h-6 rounded border"
-                        style={{ backgroundColor: formData.settings.theme?.secondary_color }}
-                      ></div>
-                      <span className="text-sm">Secondary: {formData.settings.theme?.secondary_color}</span>
-                    </div>
-
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Settings Summary</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-1 text-sm">
-                  <li>
-                    <Check className="h-4 w-4 inline mr-2 text-green-600" />
-                    Logo: {logoFile ? `${logoFile.name} (${(logoFile.size / 1024).toFixed(1)} KB)` : 'None'}
-                  </li>
-
-
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-        )
-
       default:
         return null
     }
   }
 
-  if (loading) {
+  if (loading || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">
+            {isCreateMode ? 'Loading...' : 'Loading campaign...'}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null
+  }
+
+  if (error && !isCreateMode) {
     return (
       <div className="min-h-screen bg-background">
-        {/* Header */}
         <header className="bg-background shadow">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-6">
@@ -628,27 +675,39 @@ export default function CreateCampaignPage() {
                   Back to Dashboard
                 </Button>
                 <h1 className="text-2xl font-bold text-foreground">
-                  Create New Campaign
+                  {isCreateMode ? 'Create New Campaign' : 'Edit Campaign'}
                 </h1>
               </div>
+              <UserProfile variant="compact" />
             </div>
           </div>
         </header>
 
-        {/* Loading State */}
         <main className="max-w-4xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="pt-6">
+                <div className="flex items-center space-x-3 text-red-800">
+                  <AlertCircle className="h-5 w-5" />
+                  <div>
+                    <p className="font-medium">Error loading campaign</p>
+                    <p className="text-sm mt-1">{error}</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={loadCampaignAndProfile}
+                    >
+                      Try Again
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </main>
       </div>
     )
-  }
-
-  if (!user) {
-    return null
   }
 
   return (
@@ -667,7 +726,7 @@ export default function CreateCampaignPage() {
                 Back to Dashboard
               </Button>
               <h1 className="text-2xl font-bold text-foreground">
-                Create New Campaign
+                {isCreateMode ? 'Create New Campaign' : `Edit Campaign: ${campaign?.name}`}
               </h1>
             </div>
             <div className="flex items-center space-x-4">
@@ -693,23 +752,12 @@ export default function CreateCampaignPage() {
                 {steps.map((step, stepIdx) => {
                   const isCompleted = getCurrentStepIndex() > stepIdx;
                   const isActive = getCurrentStepIndex() === stepIdx;
-                  const isUpcoming = getCurrentStepIndex() < stepIdx;
                   return (
                     <li
                       key={step.id}
                       className={`relative flex-1 flex flex-col items-center min-w-0 ${stepIdx !== steps.length - 1 ? 'pr-2 sm:pr-8' : ''}`}
                     >
-                      {/* Connector line */}
-                      {stepIdx !== 0 && (
-                        <div
-                          className="absolute left-0 top-4 h-0.5 w-full -z-1"
-                          style={{
-                            background: isCompleted ? '#2563EB' : '#E5E7EB',
-                            zIndex: 0,
-                            right: '50%',
-                          }}
-                        />
-                      )}
+
                       {/* Step circle */}
                       <div
                         className={`flex items-center justify-center h-8 w-8 rounded-full border-2 z-10 ${
@@ -737,19 +785,9 @@ export default function CreateCampaignPage() {
                           isCompleted || isActive ? 'text-gray-600' : 'text-gray-400'
                         }`}>
                           {step.description}
-                        </span>
+                                                </span>
                       </div>
-                      {/* Connector line to next step */}
-                      {stepIdx !== steps.length - 1 && (
-                        <div
-                          className="absolute right-0 top-4 h-0.5 w-full -z-1"
-                          style={{
-                            background: getCurrentStepIndex() > stepIdx ? '#2563EB' : '#E5E7EB',
-                            zIndex: 0,
-                            left: '50%',
-                          }}
-                        />
-                      )}
+
                     </li>
                   );
                 })}
@@ -764,7 +802,9 @@ export default function CreateCampaignPage() {
                 <div className="flex items-start space-x-3 text-red-800">
                   <AlertCircle className="h-5 w-5 mt-0.5" />
                   <div>
-                    <p className="font-medium">Error creating campaign</p>
+                    <p className="font-medium">
+                      {isCreateMode ? 'Error creating campaign' : 'Error updating campaign'}
+                    </p>
                     <p className="text-sm mt-1">{error}</p>
                   </div>
                 </div>
@@ -775,7 +815,11 @@ export default function CreateCampaignPage() {
           {/* Step Content */}
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle>{steps[getCurrentStepIndex()].title}</CardTitle>
+              <CardTitle className="flex items-center space-x-2">
+                {currentStep === 'basic' && <Building className="h-5 w-5" />}
+                {currentStep === 'theme' && <Palette className="h-5 w-5" />}
+                <span>{steps[getCurrentStepIndex()].title}</span>
+              </CardTitle>
               <CardDescription>{steps[getCurrentStepIndex()].description}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -795,7 +839,7 @@ export default function CreateCampaignPage() {
             </Button>
 
             <div className="flex space-x-3">
-              {currentStep !== 'review' ? (
+              {currentStep !== 'theme' ? (
                 <Button
                   onClick={goToNextStep}
                   disabled={!canProceedToNextStep()}
@@ -812,7 +856,7 @@ export default function CreateCampaignPage() {
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      {isUploadingLogo ? 'Uploading Logo...' : 'Creating...'}
+                      {isUploadingLogo ? 'Uploading Logo...' : (isCreateMode ? 'Creating...' : 'Saving...')}
                     </>
                   ) : profileLoading ? (
                     <>
@@ -822,15 +866,13 @@ export default function CreateCampaignPage() {
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      Create Campaign
+                      {isCreateMode ? 'Create Campaign' : 'Save Changes'}
                     </>
                   )}
                 </Button>
               )}
             </div>
           </div>
-
-
         </div>
       </main>
     </div>

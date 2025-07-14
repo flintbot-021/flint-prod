@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 import { BasicContentConfiguration } from '@/lib/types/database'
 import { FileText } from 'lucide-react'
+import { getCampaignTheme, getCampaignTextColor } from '../utils'
 
 export function BasicContentSection({
   section,
@@ -15,7 +16,8 @@ export function BasicContentSection({
   description,
   deviceInfo,
   onPrevious,
-  onSectionComplete
+  onSectionComplete,
+  campaign
 }: SectionRendererProps) {
   // Get basic configuration from section configuration
   const basicConfig = section.configuration as BasicContentConfiguration
@@ -59,8 +61,16 @@ export function BasicContentSection({
     })
   }
 
+  // Get campaign theme colors
+  const theme = getCampaignTheme(campaign)
+  const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
+  const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
+
   return (
-    <div className="h-full bg-background flex flex-col">
+    <div 
+      className="h-full flex flex-col"
+      style={{ backgroundColor: theme.backgroundColor }}
+    >
       {/* Main Content Area */}
       <div className="flex-1 py-16 px-6">
         <div className="max-w-4xl mx-auto space-y-12">
@@ -78,29 +88,37 @@ export function BasicContentSection({
           {/* Content Stack: Title -> Subtitle -> Content */}
           <div className={cn('space-y-6', getAlignmentClass(settings.textAlignment))}>
             {/* Title */}
-            <h1 className={cn(
-              "font-bold text-white",
-              deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
-            )}>
+            <h1 
+              className={cn(
+                "font-bold",
+                deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
+              )}
+              style={primaryTextStyle}
+            >
               {settings.title}
             </h1>
             
             {/* Subtitle */}
             {settings.subtitle && (
-              <p className={cn(
-                "text-gray-300",
-                deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
-              )}>
+              <p 
+                className={cn(
+                  deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
+                )}
+                style={mutedTextStyle}
+              >
                 {settings.subtitle}
               </p>
             )}
 
             {/* Content Paragraph */}
             {settings.content && (
-              <div className={cn(
-                "text-gray-400 leading-relaxed whitespace-pre-wrap",
-                deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
-              )}>
+              <div 
+                className={cn(
+                  "leading-relaxed whitespace-pre-wrap",
+                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                )}
+                style={mutedTextStyle}
+              >
                 {settings.content}
               </div>
             )}
@@ -118,6 +136,7 @@ export function BasicContentSection({
           onClick: handleContinue
         }}
         deviceInfo={deviceInfo}
+        campaign={campaign}
       />
     </div>
   )

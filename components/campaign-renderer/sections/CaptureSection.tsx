@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { CheckCircle, Target, Zap, Clock, User, Mail, Phone, AlertCircle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
-import { getMobileClasses, isValidEmail } from '../utils'
+import { getMobileClasses, isValidEmail, getCampaignTheme, getCampaignTextColor } from '../utils'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -68,7 +68,8 @@ export function CaptureSection({
   onPrevious,
   onSectionComplete,
   onResponseUpdate,
-  userInputs
+  userInputs,
+  campaign
 }: SectionRendererProps) {
   // Get current settings with defaults
   const configData = config as any
@@ -99,6 +100,11 @@ export function CaptureSection({
     gdprConsent: configData.gdprConsent ?? false,
     marketingConsent: configData.marketingConsent ?? false
   }
+
+  // Theme styles
+  const theme = getCampaignTheme(campaign)
+  const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
+  const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
 
   // Initialize form data with existing responses if available
   const existingData = userInputs?.[section.id] || {}
@@ -256,22 +262,27 @@ export function CaptureSection({
   }
 
     return (
-    <div className="h-full bg-background flex flex-col pb-20">
+    <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           {/* Header */}
           <div className="text-center space-y-4">
-            <h1 className={cn(
-              "font-bold text-foreground",
-              deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
-            )}>
+            <h1 
+              className={cn(
+                "font-bold",
+                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
+              )}
+              style={primaryTextStyle}
+            >
               {settings.content}
             </h1>
             
-            <p className={cn(
-              "text-muted-foreground",
-              deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
-            )}>
+            <p 
+              className={cn(
+                deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+              )}
+              style={mutedTextStyle}
+            >
               {settings.subheading}
             </p>
           </div>
@@ -281,7 +292,7 @@ export function CaptureSection({
             {/* Name Field */}
             {settings.enabledFields?.name && (
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium text-foreground">
+                <Label htmlFor="name" className="text-sm font-medium" style={primaryTextStyle}>
                   {settings.fieldLabels?.name}
                   {settings.requiredFields?.name && <span className="text-destructive ml-1">*</span>}
                 </Label>
@@ -308,7 +319,7 @@ export function CaptureSection({
             {/* Email Field */}
             {settings.enabledFields?.email && (
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                <Label htmlFor="email" className="text-sm font-medium" style={primaryTextStyle}>
                   {settings.fieldLabels?.email}
                   {settings.requiredFields?.email && <span className="text-destructive ml-1">*</span>}
                 </Label>
@@ -415,6 +426,7 @@ export function CaptureSection({
           disabled: !isFormValid()
         }}
         deviceInfo={deviceInfo}
+        campaign={campaign}
       />
     </div>
   )
