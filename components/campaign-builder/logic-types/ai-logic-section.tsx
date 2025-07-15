@@ -18,6 +18,59 @@ import { KnowledgeBaseModal } from '@/components/ui/knowledge-base-modal'
 import { KnowledgeBaseSettings } from '@/lib/types/knowledge-base'
 import { getKnowledgeBaseEntries, getKnowledgeBaseForAI } from '@/lib/data-access/knowledge-base'
 
+// Custom hook for cycling loading messages
+const useCyclingLoadingMessage = (messages: string[], isLoading: boolean, interval: number = 2000) => {
+  const [currentMessageIndex, setCurrentMessageIndex] = useState<number>(0)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    if (isLoading && messages.length > 1) {
+      intervalRef.current = setInterval(() => {
+        setCurrentMessageIndex((prev) => (prev + 1) % messages.length)
+      }, interval)
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+      setCurrentMessageIndex(0)
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+    }
+  }, [isLoading, messages.length, interval])
+
+  return messages[currentMessageIndex] || messages[0]
+}
+
+// Loading message arrays for different states
+const AI_PROCESSING_MESSAGES = [
+  "Analyzing your inputs...",
+  "Generating personalized results...",
+  "Processing your unique profile...",
+  "Crafting tailored recommendations...",
+  "Evaluating your responses...",
+  "Creating custom insights...",
+  "Personalizing your experience...",
+  "Optimizing your results..."
+]
+
+const PROMPT_GENERATION_MESSAGES = [
+  "Crafting your AI prompt...",
+  "Analyzing your campaign structure...",
+  "Optimizing prompt effectiveness...",
+  "Tailoring AI instructions..."
+]
+
+const OUTPUT_GENERATION_MESSAGES = [
+  "Generating output variables...",
+  "Creating result structure...",
+  "Designing personalization fields...",
+  "Optimizing output format..."
+]
+
 interface OutputVariable {
   id: string
   name: string
@@ -131,6 +184,11 @@ export function AILogicSection({
   const [isTestRunning, setIsTestRunning] = useState(false)
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
   const [isGeneratingOutputs, setIsGeneratingOutputs] = useState(false)
+  
+  // Use cycling loading messages for better UX
+  const testLoadingMessage = useCyclingLoadingMessage(AI_PROCESSING_MESSAGES, isTestRunning)
+  const promptLoadingMessage = useCyclingLoadingMessage(PROMPT_GENERATION_MESSAGES, isGeneratingPrompt)
+  const outputLoadingMessage = useCyclingLoadingMessage(OUTPUT_GENERATION_MESSAGES, isGeneratingOutputs)
   
   // Local state for immediate UI updates (before onBlur persistence)
   const [localTestInputs, setLocalTestInputs] = useState<Record<string, string>>({})
@@ -1180,7 +1238,7 @@ export function AILogicSection({
                         {isGeneratingPrompt ? (
                           <>
                             <div className="animate-spin h-3 w-3 mr-1 border border-purple-700 border-t-transparent rounded-full" />
-                            Generating...
+                            {promptLoadingMessage}
                           </>
                         ) : (
                           <>
@@ -1404,7 +1462,7 @@ export function AILogicSection({
                           {isGeneratingOutputs ? (
                             <>
                               <div className="animate-spin h-4 w-4 mr-2 border-2 border-purple-700 border-t-transparent rounded-full" />
-                              Generating...
+                              {outputLoadingMessage}
                             </>
                           ) : (
                             <>
@@ -1461,7 +1519,7 @@ export function AILogicSection({
                     {isTestRunning ? (
                       <>
                         <div className="animate-spin h-5 w-5 mr-3 border-2 border-white border-t-transparent rounded-full" />
-                        Testing AI Logic...
+                        {testLoadingMessage}
                       </>
                     ) : (
                       <>

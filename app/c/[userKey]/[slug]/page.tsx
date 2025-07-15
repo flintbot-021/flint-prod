@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { notFound } from 'next/navigation'
 import { Campaign, Section, SectionWithOptions } from '@/lib/types/database'
 import { getPublishedCampaignWithSectionsByUserKey } from '@/lib/data-access/public-campaigns'
-import { cn } from '@/lib/utils'
+import { cn, applySectionOrdering } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -993,7 +993,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         throw new Error('This campaign has no content to display')
       }
 
-      setSections(sectionsData)
+      setSections(applySectionOrdering(sectionsData))
       
               // Initialize campaign state - renderer starts with empty state by default
         console.log('✅ Campaign renderer initialized with empty state')

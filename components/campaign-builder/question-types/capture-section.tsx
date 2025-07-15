@@ -90,8 +90,8 @@ export function CaptureSection({
   // Get current settings with defaults
   const settings = section.settings as CaptureSettings || {}
   const {
-    content = '',
-    subheading = '',
+    content = 'Get Your Results',
+    subheading = 'Enter your information to unlock your personalized results',
     enabledFields = { name: true, email: true, phone: false },
     requiredFields = { name: true, email: true, phone: false },
     fieldLabels = { name: 'Full Name', email: 'Email Address', phone: 'Phone Number' },
@@ -146,6 +146,23 @@ export function CaptureSection({
       setIsSaving(false)
     }
   }
+
+  // Save default content and subheading if they're empty (only in edit mode)
+  useEffect(() => {
+    if (!isPreview) {
+      const currentSettings = section.settings as CaptureSettings || {}
+      const needsUpdate = !currentSettings.content || !currentSettings.subheading
+      
+      if (needsUpdate) {
+        updateSettings({
+          content: currentSettings.content || 'Get Your Results',
+          subheading: currentSettings.subheading || 'Enter your information to unlock your personalized results'
+        }).catch(error => {
+          console.error('Failed to save default content:', error)
+        })
+      }
+    }
+  }, [isPreview, section.settings, updateSettings])
 
   // Handle content change
   const handleContentChange = async (newContent: string) => {

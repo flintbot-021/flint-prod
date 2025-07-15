@@ -9,6 +9,47 @@ import { getCampaignTheme, getCampaignTextColor } from '../utils'
 import { storeAITestResults, clearAITestResults } from '@/lib/utils/ai-test-storage'
 import { buildVariablesFromInputs, extractInputVariablesWithTypes, isFileVariable } from '@/lib/utils/section-variables'
 
+// Custom hook for cycling loading messages
+const useCyclingLoadingMessage = (messages: string[], isLoading: boolean, interval: number = 3000) => {
+  const [currentMessageIndex, setCurrentMessageIndex] = useState<number>(0)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    if (isLoading && messages.length > 1) {
+      intervalRef.current = setInterval(() => {
+        setCurrentMessageIndex((prev) => (prev + 1) % messages.length)
+      }, interval)
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+      setCurrentMessageIndex(0)
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+      }
+    }
+  }, [isLoading, messages.length, interval])
+
+  return messages[currentMessageIndex] || messages[0]
+}
+
+// Engaging loading messages for the public-facing campaign
+const AI_PROCESSING_MESSAGES = [
+  "Analyzing your inputs...",
+  "Generating personalized results...",
+  "Processing your unique profile...",
+  "Crafting tailored recommendations...",
+  "Evaluating your responses...",
+  "Creating custom insights...",
+  "Personalizing your experience...",
+  "Optimizing your results...",
+  "Finalizing your analysis...",
+  "Preparing your insights..."
+]
+
 function LogicSectionComponent({
   section,
   index,
@@ -25,6 +66,9 @@ function LogicSectionComponent({
   const [isProcessing, setIsProcessing] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [processingStatus, setProcessingStatus] = useState('Preparing analysis...')
+  
+  // Use cycling loading messages for better UX
+  const cyclingMessage = useCyclingLoadingMessage(AI_PROCESSING_MESSAGES, isProcessing)
   
   // Theme styles
   const theme = getCampaignTheme(campaign)
@@ -74,7 +118,7 @@ function LogicSectionComponent({
         return
       }
 
-      setProcessingStatus('Analyzing your responses...')
+      // processingStatus is now handled by cycling messages
       
       // ✅ SUPER SIMPLE APPROACH - Use new helper functions
       
@@ -138,7 +182,7 @@ function LogicSectionComponent({
         isFileVariable: s.type === 'upload_question' || isFileVariable(s as any)
       })))
 
-      setProcessingStatus(hasFileVariables ? 'Processing uploaded files...' : 'Generating your results...')
+      // Main processing phase uses cycling messages
 
       // Prepare knowledge base context and files if enabled
       let knowledgeBaseContext = ''
@@ -185,7 +229,7 @@ function LogicSectionComponent({
       
       if (hasFileVariables) {
         // For file variables, we send files directly to OpenAI via our API
-        setProcessingStatus('Analyzing uploaded files...')
+        // File processing phase uses cycling messages
         
         const formData = new FormData()
         formData.append('prompt', aiRequest.prompt)
@@ -332,7 +376,7 @@ function LogicSectionComponent({
           }
         }
         
-        setProcessingStatus('Finalizing analysis...')
+        // Final phase uses cycling messages
         
         response = await fetch(apiEndpoint, {
           method: 'POST',
@@ -394,7 +438,7 @@ function LogicSectionComponent({
     } catch (error) {
       console.error('❌ AI Logic processing error:', error)
       setError(error instanceof Error ? error.message : 'Analysis failed')
-              setProcessingStatus('Analysis error occurred')
+              // Error state is handled separately in the UI
       
       // Fallback: complete the section anyway after showing error
       setTimeout(() => {
@@ -455,9 +499,9 @@ function LogicSectionComponent({
                     )}
                     style={primaryTextStyle}
                   >
-                    {title || 'Analyzing Your Responses'}
+                    Analyzing Your Responses
                   </h1>
-                  <p className="text-sm" style={mutedTextStyle}>{processingStatus}</p>
+                  <p className="text-sm" style={mutedTextStyle}>{cyclingMessage}</p>
                   {description && (
                     <p className="text-xs mt-4" style={mutedTextStyle}>{description}</p>
                   )}

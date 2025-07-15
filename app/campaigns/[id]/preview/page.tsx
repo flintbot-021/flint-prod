@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { Campaign } from '@/lib/types/database'
 import { getCampaignById, getCampaignSections } from '@/lib/data-access'
-import { cn } from '@/lib/utils'
+import { cn, applySectionOrdering } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -137,7 +137,8 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
         throw new Error(sectionsResult.error || 'Failed to load campaign sections')
       }
 
-      setSectionsData(sectionsResult.data || [])
+      const sectionsData = sectionsResult.data || []
+      setSectionsData(applySectionOrdering(sectionsData))
 
     } catch (err) {
       console.error('Error loading campaign:', err)

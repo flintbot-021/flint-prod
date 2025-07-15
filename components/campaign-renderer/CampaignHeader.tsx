@@ -54,7 +54,14 @@ export function CampaignHeader({ campaign, className, showPoweredBy = true }: Ca
             {shouldShowPoweredBy && (
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <span>Powered by</span>
-                <span className="font-semibold text-primary">Flint</span>
+                <a 
+                  href="https://launch.useflint.co/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="font-semibold text-primary hover:text-primary/80 transition-colors"
+                >
+                  Flint
+                </a>
               </div>
             )}
           </div>

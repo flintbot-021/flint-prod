@@ -33,6 +33,7 @@ interface SectionTopBarProps {
   onCollapseToggle: () => void
   className?: string
   dragHandleProps?: Record<string, any>
+  showDragHandle?: boolean // Controls whether the drag handle is visible
 }
 
 export function SectionTopBar({
@@ -49,7 +50,8 @@ export function SectionTopBar({
   onConfigure,
   onCollapseToggle,
   className,
-  dragHandleProps
+  dragHandleProps,
+  showDragHandle = true
 }: SectionTopBarProps) {
   const [isChangingType, setIsChangingType] = useState(false)
   
@@ -123,14 +125,16 @@ export function SectionTopBar({
     >
       {/* Left Side - Drag Handle, Icon, Name */}
       <div className="flex items-center space-x-3 flex-1 min-w-0" onClick={handleHeaderClick}>
-        {/* Drag Handle */}
-        <button
-          {...dragHandleProps}
-          className="text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing transition-colors"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
+        {/* Drag Handle - Only show if showDragHandle is true */}
+        {showDragHandle && (
+          <button
+            {...dragHandleProps}
+            className="text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+        )}
 
         {/* Section Icon */}
         <div className={cn(
