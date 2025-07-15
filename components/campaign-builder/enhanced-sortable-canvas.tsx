@@ -62,9 +62,9 @@ export function EnhancedSortableCanvas({
   const mandatorySectionTypes = ['capture-details', 'logic-ai', 'output-results', 'output-download', 'output-redirect', 'output-dynamic-redirect']
   const outputSectionTypes = ['output-results', 'output-download', 'output-redirect', 'output-dynamic-redirect']
   
-  // Split sections into mandatory and optional
-  const mandatorySections = sections.filter(s => mandatorySectionTypes.includes(s.type))
+  // Split sections into optional and mandatory
   const optionalSections = sections.filter(s => !mandatorySectionTypes.includes(s.type))
+  const mandatorySections = sections.filter(s => mandatorySectionTypes.includes(s.type))
   
   // Sort mandatory sections in the correct order: capture -> logic -> output
   const sortedMandatorySections = mandatorySections.sort((a, b) => {
@@ -171,9 +171,8 @@ export function EnhancedSortableCanvas({
               <OptionalSectionPlaceholder type="hero" onAdd={onSectionAdd} className="suggestion" />
             )}
             
-            {/* Render sections in proper order: optional sections first, then mandatory sections */}
+            {/* Render optional sections first (sortable) */}
             <SortableContext items={sortableSectionIds} strategy={verticalListSortingStrategy}>
-              {/* Render optional sections (sortable) */}
               {optionalSections.map((section) => (
                 <SectionBlock
                   key={section.id}
@@ -190,6 +189,7 @@ export function EnhancedSortableCanvas({
                   onCollapseChange={sectionPersistence?.setSectionCollapsed}
                   allSections={sections}
                   campaignId={campaignId}
+                  showDragHandle={true}
                 />
               ))}
             </SortableContext>
@@ -199,7 +199,7 @@ export function EnhancedSortableCanvas({
               <div className="border-t border-dashed border-border my-6" />
             )}
             
-            {/* Render mandatory sections (non-sortable, fixed order) */}
+            {/* Render mandatory sections at the end (non-sortable, fixed order) */}
             {sortedMandatorySections.map((section) => (
               <SectionBlock
                 key={section.id}
@@ -219,7 +219,7 @@ export function EnhancedSortableCanvas({
                 showDragHandle={false}
               />
             ))}
-            
+
             {/* Show Text Question suggestion below if missing and has hero */}
             {!hasTextQuestion && hasHero && (
               <OptionalSectionPlaceholder type="text-question" onAdd={onSectionAdd} className="suggestion" />
