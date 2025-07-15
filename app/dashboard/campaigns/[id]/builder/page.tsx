@@ -1151,17 +1151,17 @@ export default function ToolBuilderPage() {
               )}
 
               {/* Tool Builder Content */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
-                {/* Sidebar - Sections Menu */}
-                <div className="lg:col-span-1">
-                  <Card className="h-full">
+              <div className="flex gap-6">
+                {/* Sidebar - Sections Menu (Fixed) */}
+                <div className="w-80 flex-shrink-0 sticky top-28 h-fit">
+                  <Card>
                     <SectionsMenu onSectionAdd={handleSectionAdd} />
                   </Card>
                 </div>
 
-                {/* Main Content - Tool Canvas */}
-                <div className="lg:col-span-3">
-                  <Card className="h-full">
+                {/* Main Content - Tool Canvas (Scrollable) */}
+                <div className="flex-1 min-w-0">
+                  <Card>
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div>
@@ -1173,7 +1173,7 @@ export default function ToolBuilderPage() {
 
                       </div>
                     </CardHeader>
-                    <CardContent className="h-[calc(100%-140px)]">
+                    <CardContent>
                       <EnhancedSortableCanvas
                         sections={sections}
                         onSectionUpdate={handleSectionUpdate}
@@ -1184,7 +1184,7 @@ export default function ToolBuilderPage() {
                         onSectionAdd={handleSectionAdd}
                         selectedSectionId={selectedSectionId}
                         onSectionSelect={setSelectedSectionId}
-                        className="h-full"
+                        className=""
                         showCollapsedSections={true}
                         campaignId={campaign?.id}
                         sectionPersistence={sectionPersistence}
