@@ -57,12 +57,33 @@ export function EnhancedSortableCanvas({
   })
 
   const isEmpty = sections.length === 0
-  const sectionIds = sections.map(section => section.id)
+  
+  // Define mandatory section types and their order
+  const mandatorySectionTypes = ['capture-details', 'logic-ai', 'output-results', 'output-download', 'output-redirect', 'output-dynamic-redirect']
+  const outputSectionTypes = ['output-results', 'output-download', 'output-redirect', 'output-dynamic-redirect']
+  
+  // Split sections into mandatory and optional
+  const mandatorySections = sections.filter(s => mandatorySectionTypes.includes(s.type))
+  const optionalSections = sections.filter(s => !mandatorySectionTypes.includes(s.type))
+  
+  // Sort mandatory sections in the correct order: capture -> logic -> output
+  const sortedMandatorySections = mandatorySections.sort((a, b) => {
+    const getOrder = (type: string) => {
+      if (type === 'capture-details') return 1
+      if (type === 'logic-ai') return 2
+      if (outputSectionTypes.includes(type)) return 3
+      return 999
+    }
+    return getOrder(a.type) - getOrder(b.type)
+  })
+  
+  // Only optional sections can be sorted
+  const sortableSectionIds = optionalSections.map(section => section.id)
   
   // Check which sections exist
   const hasCapture = sections.some(s => s.type === 'capture-details')
   const hasLogic = sections.some(s => s.type === 'logic-ai')
-  const hasOutput = sections.some(s => s.type === 'output-results' || s.type === 'output-download' || s.type === 'output-redirect' || s.type === 'output-dynamic-redirect')
+  const hasOutput = sections.some(s => outputSectionTypes.includes(s.type))
   const hasHero = sections.some(s => s.type === 'content-hero' || s.type === 'hero')
   const hasTextQuestion = sections.some(s => s.type === 'question-text')
   
@@ -144,49 +165,65 @@ export function EnhancedSortableCanvas({
       ) : (
         /* Sections Display with Sortable Context */
         <div className="p-6">
-          <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
-            <div className="space-y-4">
-              {/* Show Hero suggestion above if missing and has text questions */}
-              {!hasHero && hasTextQuestion && (
-                <OptionalSectionPlaceholder type="hero" onAdd={onSectionAdd} className="suggestion" />
-              )}
-              
-              {sections.map((section, idx) => {
-                // Insert divider above the first logic section if it's not the first section
-                const isLogicSection = section.type === 'logic-ai';
-                const isFirstLogicSection = isLogicSection &&
-                  sections.findIndex(s => s.type === 'logic-ai') === idx &&
-                  idx > 0;
-                return (
-                  <React.Fragment key={section.id}>
-                    {isFirstLogicSection && (
-                      <div className="border-t border-dashed border-border my-6" />
-                    )}
-                    <SectionBlock
-                      section={section}
-                      onUpdate={onSectionUpdate}
-                      onDelete={onSectionDelete}
-                      onDuplicate={onSectionDuplicate}
-                      onConfigure={onSectionConfigure}
-                      onTypeChange={onSectionTypeChange}
-                      isSelected={selectedSectionId === section.id}
-                      onSelect={() => onSectionSelect?.(section.id)}
-                      isCollapsible={showCollapsedSections}
-                      initiallyCollapsed={sectionPersistence?.isSectionCollapsed(section.id) ?? true}
-                      onCollapseChange={sectionPersistence?.setSectionCollapsed}
-                      allSections={sections}
-                      campaignId={campaignId}
-                    />
-                  </React.Fragment>
-                );
-              })}
-              
-              {/* Show Text Question suggestion below if missing and has hero */}
-              {!hasTextQuestion && hasHero && (
-                <OptionalSectionPlaceholder type="text-question" onAdd={onSectionAdd} className="suggestion" />
-              )}
-            </div>
-          </SortableContext>
+          <div className="space-y-4">
+            {/* Show Hero suggestion above if missing and has text questions */}
+            {!hasHero && hasTextQuestion && (
+              <OptionalSectionPlaceholder type="hero" onAdd={onSectionAdd} className="suggestion" />
+            )}
+            
+            {/* Render sections in proper order: optional sections first, then mandatory sections */}
+            <SortableContext items={sortableSectionIds} strategy={verticalListSortingStrategy}>
+              {/* Render optional sections (sortable) */}
+              {optionalSections.map((section) => (
+                <SectionBlock
+                  key={section.id}
+                  section={section}
+                  onUpdate={onSectionUpdate}
+                  onDelete={onSectionDelete}
+                  onDuplicate={onSectionDuplicate}
+                  onConfigure={onSectionConfigure}
+                  onTypeChange={onSectionTypeChange}
+                  isSelected={selectedSectionId === section.id}
+                  onSelect={() => onSectionSelect?.(section.id)}
+                  isCollapsible={showCollapsedSections}
+                  initiallyCollapsed={sectionPersistence?.isSectionCollapsed(section.id) ?? true}
+                  onCollapseChange={sectionPersistence?.setSectionCollapsed}
+                  allSections={sections}
+                  campaignId={campaignId}
+                />
+              ))}
+            </SortableContext>
+            
+            {/* Divider before mandatory sections if there are optional sections */}
+            {optionalSections.length > 0 && sortedMandatorySections.length > 0 && (
+              <div className="border-t border-dashed border-border my-6" />
+            )}
+            
+            {/* Render mandatory sections (non-sortable, fixed order) */}
+            {sortedMandatorySections.map((section) => (
+              <SectionBlock
+                key={section.id}
+                section={section}
+                onUpdate={onSectionUpdate}
+                onDelete={onSectionDelete}
+                onDuplicate={onSectionDuplicate}
+                onConfigure={onSectionConfigure}
+                onTypeChange={onSectionTypeChange}
+                isSelected={selectedSectionId === section.id}
+                onSelect={() => onSectionSelect?.(section.id)}
+                isCollapsible={showCollapsedSections}
+                initiallyCollapsed={sectionPersistence?.isSectionCollapsed(section.id) ?? true}
+                onCollapseChange={sectionPersistence?.setSectionCollapsed}
+                allSections={sections}
+                campaignId={campaignId}
+              />
+            ))}
+            
+            {/* Show Text Question suggestion below if missing and has hero */}
+            {!hasTextQuestion && hasHero && (
+              <OptionalSectionPlaceholder type="text-question" onAdd={onSectionAdd} className="suggestion" />
+            )}
+          </div>
           
           {/* Show missing mandatory sections at bottom if any are missing */}
           {showMandatoryPlaceholders && (
