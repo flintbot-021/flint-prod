@@ -339,7 +339,7 @@ export function UploadSection({
             isDragging
               ? "border-blue-400 bg-blue-50"
               : uploadStatus === 'success'
-              ? "bg-green-100"
+              ? "border-green-300 bg-green-50/30"
               : "border-gray-300 hover:border-gray-400"
           }`}>
             <CardContent className="p-8">
@@ -352,177 +352,161 @@ export function UploadSection({
                 onChange={handleFileInputChange}
               />
 
-              <div
-                className={cn(
-                  "text-center space-y-6 cursor-pointer transition-all duration-200",
-                  isDragging && "scale-105"
-                )}
-                onDragEnter={handleDragEnter}
-                onDragLeave={handleDragLeave}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                onClick={openFileDialog}
-              >
-                {/* Upload Icon */}
-                <div className={cn(
-                  "mx-auto w-16 h-16 rounded-full flex items-center justify-center transition-colors",
-                  uploadStatus === 'success' 
-                    ? "bg-green-100" 
-                    : uploadStatus === 'uploading'
-                    ? "bg-blue-100"
-                    : uploadStatus === 'error'
-                    ? "bg-destructive/10"
-                    : isDragging
-                    ? "bg-primary/10"
-                    : "bg-muted"
-                )}>
+              {uploadStatus === 'success' ? (
+                /* Success State - Clean and Simple */
+                <div className="text-center space-y-4">
+                  <div className="flex items-center justify-center space-x-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <p className="text-sm font-medium text-green-700">
+                      {totalFiles} file{totalFiles !== 1 ? 's' : ''} uploaded successfully
+                    </p>
+                  </div>
+                  
+                  {/* Show uploaded files inline */}
+                  <div className="space-y-2">
+                    {/* Existing Files */}
+                    {existingFileMetadata.map((fileData, index) => (
+                      <div
+                        key={`existing-${index}`}
+                        className="flex items-center justify-between p-2 rounded-lg bg-white border border-gray-200"
+                      >
+                        <div className="flex items-center space-x-3 min-w-0 flex-1">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {fileData.name || `File ${index + 1}`}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {fileData.size ? formatFileSize(fileData.size) : 'Previously uploaded'}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeFile(index, true)
+                          }}
+                          className="flex-shrink-0 text-gray-400 hover:text-red-500"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    
+                    {/* Newly Uploaded Files */}
+                    {uploadedFiles.map((fileInfo, index) => (
+                      <div
+                        key={`new-${index}`}
+                        className="flex items-center justify-between p-2 rounded-lg bg-white border border-gray-200"
+                      >
+                        <div className="flex items-center space-x-3 min-w-0 flex-1">
+                          <FileText className="h-4 w-4 text-gray-500" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {fileInfo.name}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {formatFileSize(fileInfo.size)}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeFile(index, false)
+                          }}
+                          className="flex-shrink-0 text-gray-400 hover:text-red-500"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Add more files button */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={openFileDialog}
+                    className="text-sm"
+                  >
+                    Add more files
+                  </Button>
+                </div>
+              ) : (
+                /* Upload State - Clean and Simple */
+                <div
+                  className={cn(
+                    "text-center space-y-4 cursor-pointer transition-all duration-200",
+                    isDragging && "scale-[1.02]"
+                  )}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onClick={openFileDialog}
+                >
+                  {/* Upload Icon - Simple and Clean */}
                   {uploadStatus === 'uploading' ? (
-                    <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
-                  ) : uploadStatus === 'success' ? (
-                    <CheckCircle className="h-8 w-8 text-green-600" />
+                    <Loader2 className="h-10 w-10 text-blue-600 animate-spin mx-auto" />
                   ) : uploadStatus === 'error' ? (
-                    <AlertCircle className="h-8 w-8 text-destructive" />
+                    <AlertCircle className="h-10 w-10 text-destructive mx-auto" />
                   ) : (
                     <Upload className={cn(
-                      "h-8 w-8 transition-colors",
+                      "h-10 w-10 mx-auto transition-colors",
                       isDragging ? "text-primary" : "text-muted-foreground"
                     )} />
                   )}
-                </div>
 
-                {/* Upload Text */}
-                <div className="space-y-2">
-                  <p className={cn(
-                    "text-lg font-medium transition-colors",
-                    uploadStatus === 'success' 
-                      ? "text-green-600"
-                      : uploadStatus === 'uploading'
-                      ? "text-blue-600"
-                      : isDragging 
-                      ? "text-primary"
-                      : "text-foreground"
-                  )}>
-                    {uploadStatus === 'uploading' 
-                      ? "Uploading files..."
-                      : uploadStatus === 'success' 
-                      ? `${totalFiles} file${totalFiles !== 1 ? 's' : ''} uploaded successfully`
-                      : isDragging 
-                      ? "Drop your files here"
-                      : "Drag and drop your files here"
-                    }
-                  </p>
-                  
-                  {uploadStatus !== 'success' && (
-                    <div className="space-y-1">
-                      <p className="text-muted-foreground">or</p>
-                      <Button variant="outline" className="pointer-events-none">
-                        <File className="h-4 w-4 mr-2" />
-                        Browse Files
-                      </Button>
-                    </div>
-                  )}
-                </div>
-
-                {/* File Requirements */}
-                                  <div className="space-y-2">
-                    <div className="flex flex-wrap justify-center gap-2">
-                      {allowedTypes.map((type: SupportedFileType, index: number) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {type.description}
-                        </Badge>
-                      ))}
-                    <Badge variant="outline" className="text-xs">
-                      Max {(maxFileSize / (1024 * 1024)).toFixed(0)}MB
-                    </Badge>
-                  </div>
-                  
-                  {allowMultiple && (
-                    <p className="text-xs text-muted-foreground">
-                      Upload up to {maxFiles} files
+                  {/* Upload Text - Simplified */}
+                  <div className="space-y-2">
+                    <p className={cn(
+                      "text-base font-medium transition-colors",
+                      uploadStatus === 'uploading'
+                        ? "text-blue-600"
+                        : isDragging 
+                        ? "text-primary"
+                        : "text-foreground"
+                    )}>
+                      {uploadStatus === 'uploading' 
+                        ? "Uploading files..."
+                        : isDragging 
+                        ? "Drop your files here"
+                        : "Drag and drop your files here"
+                      }
                     </p>
-                  )}
+                    
+                    <p className="text-sm text-muted-foreground">or</p>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="pointer-events-auto"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        openFileDialog()
+                      }}
+                    >
+                      <File className="h-4 w-4 mr-2" />
+                      Browse Files
+                    </Button>
+                  </div>
+
+                  {/* File Requirements - Simplified */}
+                  <div className="pt-2 border-t border-dashed border-gray-200">
+                    <p className="text-xs text-muted-foreground">
+                      {allowedTypes.map((type: SupportedFileType) => type.description).join(', ')} • Max {(maxFileSize / (1024 * 1024)).toFixed(0)}MB
+                      {allowMultiple && ` • Up to ${maxFiles} files`}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
-
-          {/* Uploaded Files List */}
-          {totalFiles > 0 && (
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide mb-4">
-                  Selected Files ({totalFiles})
-                </h3>
-                <div className="space-y-3">
-                  {/* Existing Files */}
-                  {existingFileMetadata.map((fileData, index) => (
-                    <div
-                      key={`existing-${index}`}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 transition-colors hover:bg-muted"
-                    >
-                      <div className="flex items-center space-x-3 min-w-0 flex-1">
-                        <div className="flex-shrink-0">
-                          <FileText className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {fileData.name || `File ${index + 1}`}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {fileData.size ? formatFileSize(fileData.size) : 'Previously uploaded'}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          removeFile(index, true)
-                        }}
-                        className="flex-shrink-0 text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  
-                  {/* Newly Uploaded Files */}
-                  {uploadedFiles.map((fileInfo, index) => (
-                    <div
-                      key={`new-${index}`}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 transition-colors hover:bg-muted"
-                    >
-                      <div className="flex items-center space-x-3 min-w-0 flex-1">
-                        <div className="flex-shrink-0">
-                          <FileText className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {fileInfo.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatFileSize(fileInfo.size)} • Uploaded successfully
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          removeFile(index, false)
-                        }}
-                        className="flex-shrink-0 text-muted-foreground hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Error Message */}
           {errorMessage && (
