@@ -218,7 +218,7 @@ export function MultipleSlidersSection({
                       'cursor-pointer select-none',
                       'flex items-center justify-between',
                       'p-3 rounded-lg transition-colors duration-200',
-                      'hover:bg-gray-800/50',
+                      'hover:bg-gray-50',
                       hasError && 'ring-1 ring-red-500/50 bg-red-900/10'
                     )}
                     onClick={() => toggleSliderExpansion(slider.id)}

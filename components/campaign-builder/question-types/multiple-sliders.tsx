@@ -117,13 +117,24 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
   if (isPreview) {
     return (
       <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-8', className)}>
+        <style>
+          {`
+            .slider-hide-value [data-radix-tooltip-content],
+            .slider-hide-value [role="tooltip"],
+            .slider-hide-value .slider-tooltip,
+            .slider-hide-value [data-tooltip] {
+              display: none !important;
+              visibility: hidden !important;
+            }
+          `}
+        </style>
         {/* Section Header */}
         <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold text-white">
+          <h1 className="text-4xl font-bold text-gray-900">
             {settings.headline}
           </h1>
           {settings.subheading && (
-            <p className="text-xl text-gray-300">
+            <p className="text-xl text-gray-600">
               {settings.subheading}
             </p>
           )}
@@ -134,13 +145,14 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
           {settings.sliders.map((slider) => (
             <div key={slider.id} className="space-y-3">
               <div className="text-left">
-                <label className="text-lg font-medium text-white">
+                <label className="text-lg font-medium text-gray-900">
                   {slider.label}
                   {slider.required && <span className="text-red-400 ml-1">*</span>}
                 </label>
               </div>
               
-              <div className="space-y-2">
+                          <div className="space-y-2">
+              <div className={slider.showValue ? '' : 'slider-hide-value'}>
                 <Slider
                   value={getSliderValue(slider.id, slider.defaultValue)}
                   onValueChange={(value) => setSliderValue(slider.id, value)}
@@ -149,15 +161,16 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
                   step={slider.step}
                   className="w-full"
                 />
-                <div className="flex justify-between text-sm text-gray-400">
-                  <span>{slider.minLabel}</span>
-                  <span>{slider.maxLabel}</span>
-                </div>
               </div>
+              <div className="flex justify-between text-sm text-gray-400">
+                <span>{slider.minLabel}</span>
+                <span>{slider.maxLabel}</span>
+              </div>
+            </div>
               
               {slider.showValue && (
                 <div className="text-center">
-                  <span className="text-lg font-bold text-blue-400">
+                  <span className="text-2xl font-bold text-blue-400">
                     {getSliderValue(slider.id, slider.defaultValue)[0]}
                   </span>
                 </div>
@@ -246,14 +259,13 @@ function SliderConfigCard({
   onSliderValueChange: (value: number[]) => void
 }) {
   return (
-    <div className="space-y-6 p-6 border border-gray-700 rounded-lg bg-gray-900/50">
+    <div className="space-y-6 p-6 border border-gray-100 rounded-lg bg-gray-50">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <GripVertical className="h-4 w-4 text-gray-500" />
           <span className="text-sm font-medium text-gray-400">Slider {index + 1}</span>
         </div>
-        
         <div className="flex items-center space-x-3">
           {canDelete && (
             <Button
@@ -267,7 +279,6 @@ function SliderConfigCard({
           )}
         </div>
       </div>
-
       {/* Label and Variable Name */}
       <div className="space-y-4">
         <div className="flex items-start justify-between">
@@ -285,7 +296,6 @@ function SliderConfigCard({
               autoSave={false}
             />
           </div>
-          
           <Badge variant="secondary" className="font-mono text-xs bg-gray-800 text-gray-300 ml-4 min-w-32 flex-shrink-0 flex items-center">
             <span className="text-gray-400">@</span>
             <InlineEditableText
@@ -302,7 +312,6 @@ function SliderConfigCard({
           </Badge>
         </div>
       </div>
-
       {/* Slider Preview */}
       <div className="space-y-4 pt-4">
         <div className="space-y-2">
@@ -351,7 +360,7 @@ function SliderConfigCard({
                 variant="caption"
                 placeholder="100"
                 className="text-sm text-gray-400 text-right hover:bg-transparent rounded-none px-0 py-0"
-                inputClassName="!text-sm !text-gray-400 !text-right !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+                inputClassName="!text-sm !text-gray-400 !text-right !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
                 showEditIcon={false}
                 showSaveStatus={false}
                 autoSave={false}
@@ -359,16 +368,8 @@ function SliderConfigCard({
             </div>
           </div>
         </div>
-        
-        {slider.showValue && (
-          <div className="text-center">
-            <span className="text-xl font-bold text-blue-400">
-              {sliderValue[0]}
-            </span>
-          </div>
-        )}
+        {/* Remove divider and toggles below */}
       </div>
-
       {/* Labels */}
       <div className="flex justify-between items-center text-sm">
         <div className="text-center">
@@ -379,7 +380,7 @@ function SliderConfigCard({
             variant="caption"
             placeholder="Low"
             className="text-sm text-gray-400 hover:bg-transparent rounded-none px-0 py-0"
-            inputClassName="!text-sm !text-gray-400 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+            inputClassName="!text-sm !text-gray-400 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
             showEditIcon={false}
             showSaveStatus={false}
             autoSave={false}
@@ -393,32 +394,14 @@ function SliderConfigCard({
             variant="caption"
             placeholder="High"
             className="text-sm text-gray-400 hover:bg-transparent rounded-none px-0 py-0"
-            inputClassName="!text-sm !text-gray-400 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
+            inputClassName="!text-sm !text-gray-400 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
             showEditIcon={false}
             showSaveStatus={false}
             autoSave={false}
           />
         </div>
       </div>
-
-      {/* Options */}
-      <div className="flex items-center justify-between pt-4 border-t border-gray-700">
-        <div className="flex items-center space-x-2">
-          <Switch
-            checked={slider.required}
-            onCheckedChange={(checked) => onUpdate({ required: checked })}
-          />
-          <span className="text-sm text-gray-400">Required</span>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <Switch
-            checked={slider.showValue}
-            onCheckedChange={(checked) => onUpdate({ showValue: checked })}
-          />
-          <span className="text-sm text-gray-400">Show Value</span>
-        </div>
-      </div>
+      {/* End of card, no toggles or divider */}
     </div>
   )
 } 
