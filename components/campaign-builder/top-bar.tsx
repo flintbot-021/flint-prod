@@ -18,7 +18,8 @@ import {
   ExternalLink,
   ChevronDown,
   Copy,
-  PauseCircle
+  PauseCircle,
+  Home
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -192,58 +193,18 @@ export function CampaignBuilderTopBar({
               variant="ghost"
               size="sm"
               onClick={handleBackToCampaigns}
+              aria-label="Back to Dashboard"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
+              <Home className="h-5 w-5" />
             </Button>
 
             <div className="h-6 w-px bg-border" />
 
-            {/* Campaign Name - Editable */}
-            <div className="flex items-center space-x-2">
-              {isEditingName ? (
-                <div className="flex items-center space-x-2">
-                  <Input
-                    ref={inputRef}
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    onKeyDown={handleKeyPress}
-                    onBlur={handleNameSave}
-                    className="h-8 text-lg font-semibold min-w-[200px]"
-                    placeholder="Campaign name"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleNameSave}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleNameCancel}
-                    className="h-8 w-8 p-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <h1 className="text-lg font-semibold text-foreground">
-                    {campaignName}
-                  </h1>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleNameEdit}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Edit3 className="h-3 w-3" />
-                  </Button>
-                </div>
-              )}
+            {/* Campaign Name - Plain Text Only */}
+            <div className="flex items-center">
+              <h1 className="text-lg font-semibold text-foreground">
+                {campaignName}
+              </h1>
             </div>
 
             {/* Status Badge */}
