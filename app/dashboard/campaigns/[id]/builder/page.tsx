@@ -1039,6 +1039,149 @@ export default function ToolBuilderPage() {
     }
   }
 
+  // Helper to create template sections
+  const handleCreateTemplate = async () => {
+    if (!campaign) return;
+    setIsSaving(true);
+    try {
+      // 1. Text Question: name
+      const textType = getSectionTypeById('question-text');
+      const textSection = await createSection({
+        campaign_id: campaign.id,
+        type: 'text_question',
+        title: 'name',
+        description: null,
+        order_index: 1,
+        configuration: {
+          ...textType?.defaultSettings,
+          title: 'What is your name?',
+          input_type: 'text',
+          placeholder: 'Enter your name',
+          required: true,
+        },
+        required: true,
+      });
+
+      // 2. Multiple Choice: business
+      const mcType = getSectionTypeById('question-multiple-choice');
+      const mcSection = await createSection({
+        campaign_id: campaign.id,
+        type: 'multiple_choice',
+        title: 'business',
+        description: null,
+        order_index: 2,
+        configuration: {
+          ...mcType?.defaultSettings,
+          title: 'What business are you in?',
+          allow_multiple: false,
+          display_type: 'radio',
+          options: [
+            { id: 'option-1', text: 'Design', order: 1 },
+            { id: 'option-2', text: 'Marketing Agency', order: 2 },
+            { id: 'option-3', text: 'SaaS/Tech', order: 3 },
+            { id: 'option-4', text: 'Other', order: 4 },
+          ],
+          required: true,
+        },
+        required: true,
+      });
+
+      // 3. Slider: size
+      const sliderType = getSectionTypeById('question-slider');
+      const sliderSection = await createSection({
+        campaign_id: campaign.id,
+        type: 'slider',
+        title: 'size',
+        description: null,
+        order_index: 3,
+        configuration: {
+          ...sliderType?.defaultSettings,
+          title: 'How big is your audience?',
+          min_value: 1,
+          max_value: 100000,
+          default_value: 1000,
+          step: 1,
+          labels: { min: '1', max: '100,000' },
+          required: true,
+        },
+        required: true,
+      });
+
+      // 4. Logic: prompt
+      const logicType = getSectionTypeById('logic-ai');
+      const logicSection = await createSection({
+        campaign_id: campaign.id,
+        type: 'logic',
+        title: 'logic',
+        description: null,
+        order_index: 4,
+        configuration: {
+          ...logicType?.defaultSettings,
+          title: 'AI Marketing Idea',
+          variable_access: ['name', 'business', 'size'],
+          prompt_template: 'A user named @name has a business that is a @business with an audience of @size. Suggest a marketing idea and next steps.',
+          output_variable: 'idea',
+          ai_provider: 'openai',
+          model: 'gpt-4',
+          max_tokens: 500,
+          temperature: 0.7,
+        },
+        required: true,
+      });
+
+      // 5. Capture: standard
+      const captureType = getSectionTypeById('capture-details');
+      const captureSection = await createSection({
+        campaign_id: campaign.id,
+        type: 'capture',
+        title: 'capture',
+        description: null,
+        order_index: 5,
+        configuration: {
+          ...captureType?.defaultSettings,
+        },
+        required: true,
+      });
+
+      // 6. Output: uses all variables
+      const outputType = getSectionTypeById('output-results');
+      const outputSection = await createSection({
+        campaign_id: campaign.id,
+        type: 'output',
+        title: 'output',
+        description: null,
+        order_index: 6,
+        configuration: {
+          ...outputType?.defaultSettings,
+          title: 'Your Marketing Idea',
+          template: `Hi @name! Here’s a marketing idea for your @business with an audience of @size:\n@idea\n\nNext steps:\n@next_steps`,
+          variables: ['name', 'business', 'size', 'idea', 'next_steps'],
+          format: 'text',
+          download_enabled: false,
+        },
+        required: true,
+      });
+
+      // Reload sections from DB
+      await loadCampaign();
+      setShowOnboarding(false);
+      toast({
+        title: 'Template added!',
+        description: 'A marketing ideas lead magnet template has been added to your campaign.',
+        duration: 4000,
+      });
+    } catch (err) {
+      setError('Failed to create template sections.');
+      toast({
+        title: 'Error',
+        description: 'Failed to create template sections.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1112,7 +1255,7 @@ export default function ToolBuilderPage() {
         <OnboardingCarousel
           isOpen={showOnboarding}
           onClose={() => setShowOnboarding(false)}
-          onTemplateClick={() => { /* TODO: implement template logic */ }}
+          onTemplateClick={handleCreateTemplate}
         />
       )}
       <CaptureProvider campaignId={campaign.id}>
