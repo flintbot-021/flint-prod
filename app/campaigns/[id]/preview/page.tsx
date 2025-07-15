@@ -138,7 +138,13 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
       }
 
       const sectionsData = sectionsResult.data || []
-      setSectionsData(applySectionOrdering(sectionsData))
+      // Filter out hidden sections for preview mode
+      const visibleSections = sectionsData.filter(section => {
+        // Check if isVisible property exists in configuration and is not false
+        const config = (section.configuration as any) || {}
+        return config.isVisible !== false
+      })
+      setSectionsData(applySectionOrdering(visibleSections))
 
     } catch (err) {
       console.error('Error loading campaign:', err)

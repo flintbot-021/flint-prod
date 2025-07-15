@@ -993,7 +993,13 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         throw new Error('This campaign has no content to display')
       }
 
-      setSections(applySectionOrdering(sectionsData))
+      // Filter out hidden sections for public campaign view
+      const visibleSections = sectionsData.filter(section => {
+        // Check if isVisible property exists in configuration and is not false
+        const config = (section.configuration as any) || {}
+        return config.isVisible !== false
+      })
+      setSections(applySectionOrdering(visibleSections))
       
               // Initialize campaign state - renderer starts with empty state by default
         console.log('✅ Campaign renderer initialized with empty state')

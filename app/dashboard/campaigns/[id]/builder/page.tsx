@@ -89,13 +89,18 @@ const mapDatabaseTypeToCampaignBuilder = (dbType: string): string => {
 }
 
 const convertDatabaseSectionToCampaignSection = (dbSection: SectionWithOptions): CampaignSection => {
+  const config = (dbSection.configuration as any) || {}
+  
   return {
     id: dbSection.id,
     type: mapDatabaseTypeToCampaignBuilder(dbSection.type),
     title: dbSection.title || '',
-    settings: (dbSection.configuration as unknown) as Record<string, unknown>,
+    settings: (() => {
+      const { isVisible, ...settings } = config
+      return settings
+    })(),
     order: dbSection.order_index,
-    isVisible: true, // This could be stored in configuration if needed
+    isVisible: config.isVisible !== undefined ? config.isVisible : true, // Read from configuration, default to true
     createdAt: dbSection.created_at,
     updatedAt: dbSection.updated_at
   }
@@ -108,7 +113,10 @@ const convertCampaignSectionToDatabase = (section: CampaignSection, campaignId: 
     title: section.title,
     description: null,
     order_index: section.order,
-    configuration: section.settings,
+    configuration: {
+      ...section.settings,
+      isVisible: section.isVisible // Store visibility in configuration
+    },
     required: false // This could be determined from settings
   }
 }
@@ -480,6 +488,13 @@ export default function ToolBuilderPage() {
       if (updates.title !== undefined) dbUpdates.title = updates.title
       if (updates.settings !== undefined) dbUpdates.configuration = updates.settings
       if (updates.order !== undefined) dbUpdates.order_index = updates.order
+      if (updates.isVisible !== undefined) {
+        // Store isVisible in configuration
+        dbUpdates.configuration = {
+          ...dbUpdates.configuration,
+          isVisible: updates.isVisible
+        }
+      }
       
       // Update in database
       const result = await updateSection(sectionId, dbUpdates)
