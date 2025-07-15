@@ -264,8 +264,25 @@ export function CampaignBuilderTopBar({
 
           {/* Right Section - Actions */}
           <div className="flex items-center space-x-3">
-            {/* Preview Button (for drafts) or View Live Split Button (for published) */}
-            {isPublished && campaignUserKey && campaignPublishedUrl ? (
+            {/* Preview Button - Always show if onPreview is available */}
+            {onPreview && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onPreview}
+                disabled={!canPreview || isSaving}
+                title={!canPreview && validationErrors.length > 0 
+                  ? `Missing required sections: ${validationErrors.join(', ')}`
+                  : undefined
+                }
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </Button>
+            )}
+
+            {/* View Live Button (for published campaigns only) */}
+            {isPublished && campaignUserKey && campaignPublishedUrl && (
               <div className="flex items-center">
                 {/* Main View Live Button */}
                 <Button
@@ -305,20 +322,6 @@ export function CampaignBuilderTopBar({
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-            ) : onPreview && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onPreview}
-                disabled={!canPreview || isSaving}
-                title={!canPreview && validationErrors.length > 0 
-                  ? `Missing required sections: ${validationErrors.join(', ')}`
-                  : undefined
-                }
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </Button>
             )}
 
             {/* Edit Button */}

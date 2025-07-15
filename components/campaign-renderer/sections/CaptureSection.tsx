@@ -71,11 +71,12 @@ export function CaptureSection({
   userInputs,
   campaign
 }: SectionRendererProps) {
-  // Get current settings with defaults
+  // Get current settings with defaults - data is stored in section.configuration (which comes as config prop)
   const configData = config as any
+  
   const settings: CaptureSettings = {
-    content: configData.content || title || 'Get Your Personalized Results',
-    subheading: configData.subheading || description || 'Enter your information to unlock AI-powered personalized insights.',
+    content: configData.content || 'Get Your Results',
+    subheading: configData.subheading || 'Enter your information to unlock your personalized results',
     enabledFields: {
       name: configData.enabledFields?.name ?? true,
       email: configData.enabledFields?.email ?? true,
