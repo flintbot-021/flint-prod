@@ -82,6 +82,59 @@ export async function createLead(
 }
 
 /**
+ * Public: Create a lead from the capture form (no auth required, RLS-safe)
+ */
+export async function createPublicLead(
+  leadData: CreateLead
+): Promise<DatabaseResult<Lead>> {
+  // Validate required fields
+  const validationErrors = validateRequiredFields(leadData, [
+    'campaign_id',
+    'email',
+    'session_id'
+  ]);
+  if (validationErrors.length > 0) {
+    return {
+      success: false,
+      error: 'Validation failed',
+      validation_errors: validationErrors
+    };
+  }
+
+  // Validate UUID format
+  if (!isValidUUID(leadData.campaign_id)) {
+    return {
+      success: false,
+      error: 'Invalid campaign ID format'
+    };
+  }
+
+  // Validate email format
+  if (!isValidEmail(leadData.email)) {
+    return {
+      success: false,
+      error: 'Invalid email format',
+      validation_errors: [{
+        field: 'email',
+        message: 'Please provide a valid email address',
+        code: 'INVALID_EMAIL',
+        value: leadData.email
+      }]
+    };
+  }
+
+  const supabase = await getSupabaseClient();
+
+  return withErrorHandling(async () => {
+    return await supabase
+      .from('leads')
+      .insert(leadData)
+      .select()
+      .single();
+  });
+}
+
+/**
  * Get lead by ID
  */
 export async function getLeadById(
