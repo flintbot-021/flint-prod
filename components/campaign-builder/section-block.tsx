@@ -28,6 +28,7 @@ interface SectionBlockProps {
   onCollapseChange?: (sectionId: string, isCollapsed: boolean) => void
   allSections?: CampaignSection[]
   campaignId: string
+  showDragHandle?: boolean // Controls whether the drag handle is visible
 }
 
 export function SectionBlock({
@@ -44,7 +45,8 @@ export function SectionBlock({
   initiallyCollapsed = true,
   onCollapseChange,
   allSections,
-  campaignId
+  campaignId,
+  showDragHandle = true
 }: SectionBlockProps) {
   const [isPreview, setIsPreview] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(initiallyCollapsed)
@@ -418,6 +420,7 @@ export function SectionBlock({
         }}
         dragHandleProps={{ ...attributes, ...listeners }}
         allSections={allSections}
+        showDragHandle={showDragHandle}
       />
 
       {/* Content Area */}

@@ -216,6 +216,7 @@ export function EnhancedSortableCanvas({
                 onCollapseChange={sectionPersistence?.setSectionCollapsed}
                 allSections={sections}
                 campaignId={campaignId}
+                showDragHandle={false}
               />
             ))}
             
