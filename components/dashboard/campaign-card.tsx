@@ -148,8 +148,8 @@ const CampaignCard = memo(function CampaignCard({
 
   const handleDetailsClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    router.push(`/dashboard/campaigns/${campaign.id}`)
-  }, [router, campaign.id])
+    window.open(`/campaigns/${campaign.id}/preview`, '_blank')
+  }, [campaign.id])
 
   const handleDeleteClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
