@@ -39,8 +39,8 @@ interface CaptureSettings {
     phone: string
   }
   submitButtonText?: string
-  gdprConsent?: boolean
-  marketingConsent?: boolean
+  businessName?: string
+  privacyPolicyLink?: string
 }
 
 // Validation functions (use existing utils for email)
@@ -98,8 +98,8 @@ export function CaptureSection({
       phone: configData.fieldPlaceholders?.phone ?? 'Enter your phone number'
     },
     submitButtonText: configData.submitButtonText || configData.buttonText || config.buttonLabel || 'Generate My Results',
-    gdprConsent: configData.gdprConsent ?? false,
-    marketingConsent: configData.marketingConsent ?? false
+    businessName: configData.businessName || '',
+    privacyPolicyLink: configData.privacyPolicyLink || ''
   }
 
   // Theme styles
@@ -113,21 +113,21 @@ export function CaptureSection({
     name?: string
     email?: string
     phone?: string
-    gdprConsent?: boolean
     marketingConsent?: boolean
+    flintTermsConsent?: boolean
   }>({
     name: existingData.name || '',
     email: existingData.email || '',
     phone: existingData.phone || '',
-    gdprConsent: existingData.gdprConsent || false,
-    marketingConsent: existingData.marketingConsent || false
+    marketingConsent: existingData.marketingConsent || false,
+    flintTermsConsent: existingData.flintTermsConsent || false,
   })
   
   const [errors, setErrors] = useState<{ 
     name?: string
     email?: string
     phone?: string
-    gdprConsent?: string
+    flintTermsConsent?: string
   }>({})
 
   // Handle form field changes
@@ -176,9 +176,9 @@ export function CaptureSection({
       }
     }
 
-    // Validate GDPR consent
-    if (settings.gdprConsent && !formData.gdprConsent) {
-      newErrors.gdprConsent = 'You must accept the privacy policy to continue'
+    // Validate Flint T&C
+    if (!formData.flintTermsConsent) {
+      newErrors.flintTermsConsent = 'You must accept Flint\'s Terms & Conditions to continue'
     }
 
     setErrors(newErrors)
@@ -205,13 +205,8 @@ export function CaptureSection({
         responseData.phone = formData.phone.trim()
       }
       
-      if (settings.gdprConsent) {
-        responseData.gdprConsent = formData.gdprConsent
-      }
-      
-      if (settings.marketingConsent) {
-        responseData.marketingConsent = formData.marketingConsent
-      }
+      responseData.marketingConsent = formData.marketingConsent
+      responseData.flintTermsConsent = formData.flintTermsConsent
 
       onSectionComplete(index, {
         ...responseData,
@@ -246,10 +241,11 @@ export function CaptureSection({
       }
     }
     
-    if (settings.gdprConsent && !formData.gdprConsent) {
+    // Check Flint T&C
+    if (!formData.flintTermsConsent) {
       isValid = false
     }
-    
+
     return isValid
   }
   
@@ -372,43 +368,48 @@ export function CaptureSection({
             )}
 
             {/* Consent Checkboxes */}
-            {(settings.gdprConsent || settings.marketingConsent) && (
-              <div className="space-y-3 pt-2">
-                {settings.gdprConsent && (
-                  <div className="flex items-start space-x-3">
-                    <Checkbox
-                      id="gdpr-consent"
-                      checked={formData.gdprConsent || false}
-                      onCheckedChange={(checked) => handleFieldChange('gdprConsent', checked)}
-                      className="mt-1"
-                    />
-                    <Label htmlFor="gdpr-consent" className="text-sm text-foreground leading-relaxed cursor-pointer">
-                      I agree to the privacy policy and terms of service
-                      <span className="text-destructive ml-1">*</span>
-                    </Label>
-                  </div>
-                )}
-                
-                {settings.marketingConsent && (
-                  <div className="flex items-start space-x-3">
-                    <Checkbox
-                      id="marketing-consent"
-                      checked={formData.marketingConsent || false}
-                      onCheckedChange={(checked) => handleFieldChange('marketingConsent', checked)}
-                      className="mt-1"
-                    />
-                    <Label htmlFor="marketing-consent" className="text-sm text-foreground leading-relaxed cursor-pointer">
-                      I would like to receive marketing emails and updates
-                    </Label>
-                  </div>
-                )}
+            <div className="space-y-3 pt-2">
+              {/* Flint T&C */}
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="flint-terms-consent"
+                  checked={formData.flintTermsConsent || false}
+                  onCheckedChange={(checked) => handleFieldChange('flintTermsConsent', !!checked)}
+                  className="mt-1"
+                />
+                <Label htmlFor="flint-terms-consent" className="text-sm text-foreground leading-relaxed cursor-pointer">
+                  I agree to Flint’s <a href="https://launch.useflint.co/terms-conditions" target="_blank" rel="noopener noreferrer" className="underline">Terms & Conditions</a>
+                  <span className="text-destructive ml-1">*</span>
+                </Label>
               </div>
-            )}
 
-            {errors.gdprConsent && (
+              {/* Marketing Consent */}
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="marketing-consent"
+                  checked={formData.marketingConsent || false}
+                  onCheckedChange={(checked) => handleFieldChange('marketingConsent', !!checked)}
+                  className="mt-1"
+                />
+                <Label htmlFor="marketing-consent" className="text-sm text-foreground leading-relaxed cursor-pointer">
+                  I agree to receive relevant marketing communications from {settings.businessName || 'this business'} in accordance with their{' '}
+                  {settings.privacyPolicyLink ? (
+                    <a href={settings.privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline">
+                      Privacy Policy
+                    </a>
+                  ) : (
+                    'Privacy Policy'
+                  )}
+                  .
+                </Label>
+              </div>
+            </div>
+
+
+            {errors.flintTermsConsent && (
               <div className="flex items-center space-x-1 text-destructive text-sm">
                 <AlertCircle className="h-4 w-4" />
-                <span>{errors.gdprConsent}</span>
+                <span>{errors.flintTermsConsent}</span>
               </div>
             )}
           </div>

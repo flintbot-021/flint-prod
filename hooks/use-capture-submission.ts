@@ -8,8 +8,8 @@ export interface CaptureFormData {
   name?: string
   email?: string
   phone?: string
-  gdprConsent?: boolean
   marketingConsent?: boolean
+  flintTermsConsent?: boolean
 }
 
 export interface CaptureSubmissionOptions {

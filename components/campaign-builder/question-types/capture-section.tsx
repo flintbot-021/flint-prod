@@ -46,15 +46,15 @@ interface CaptureSettings {
     phone: string
   }
   submitButtonText?: string
-  gdprConsent?: boolean
-  marketingConsent?: boolean
+  businessName?: string
+  privacyPolicyLink?: string
 }
 
 interface CaptureValidationErrors {
   name?: string
   email?: string
   phone?: string
-  gdprConsent?: string
+  flintTermsConsent?: string
 }
 
 // Validation functions
@@ -97,9 +97,21 @@ export function CaptureSection({
     fieldLabels = { name: 'Full Name', email: 'Email Address', phone: 'Phone Number' },
     fieldPlaceholders = { name: 'Enter your full name', email: 'your@email.com', phone: 'Enter your phone number' },
     submitButtonText = 'Get my results',
-    gdprConsent = false,
-    marketingConsent = false
+    businessName = '',
+    privacyPolicyLink = ''
   } = settings
+
+  const [localBusinessName, setLocalBusinessName] = useState(businessName)
+  const [localPrivacyPolicyLink, setLocalPrivacyPolicyLink] = useState(privacyPolicyLink)
+
+  useEffect(() => {
+    setLocalBusinessName(businessName)
+  }, [businessName])
+
+  useEffect(() => {
+    setLocalPrivacyPolicyLink(privacyPolicyLink)
+  }, [privacyPolicyLink])
+
 
   // Capture hooks
   const { markCaptureCompleted, setCaptureRequired } = useCapture()
@@ -187,15 +199,6 @@ export function CaptureSection({
     }
   }
 
-  // Handle consent settings change
-  const handleConsentChange = async (type: 'gdpr' | 'marketing', value: boolean) => {
-    if (type === 'gdpr') {
-      await updateSettings({ gdprConsent: value })
-    } else {
-      await updateSettings({ marketingConsent: value })
-    }
-  }
-
   // Handle form field change
   const handleFieldChange = (field: keyof CaptureFormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -238,9 +241,9 @@ export function CaptureSection({
       }
     }
 
-    // Validate GDPR consent
-    if (gdprConsent && !formData.gdprConsent) {
-      errors.gdprConsent = 'You must accept the privacy policy to continue'
+    // Validate Flint T&C
+    if (!formData.flintTermsConsent) {
+      errors.flintTermsConsent = 'You must accept Flint\'s Terms & Conditions to continue.'
     }
 
     setValidationErrors(errors)
@@ -385,42 +388,48 @@ export function CaptureSection({
               )}
 
               {/* Consent Checkboxes */}
-              {(gdprConsent || marketingConsent) && (
-                <div className="space-y-3 pt-2">
-                  {gdprConsent && (
-                    <div className="flex items-start space-x-2">
-                      <Checkbox
-                        id="gdpr-consent"
-                        checked={formData.gdprConsent || false}
-                        onCheckedChange={(checked) => handleFieldChange('gdprConsent', checked)}
-                        className="mt-1"
-                      />
-                      <Label htmlFor="gdpr-consent" className="text-sm text-gray-300 leading-relaxed">
-                        I agree to the privacy policy and terms of service *
-                      </Label>
-                    </div>
-                  )}
-                  
-                  {marketingConsent && (
-                    <div className="flex items-start space-x-2">
-                      <Checkbox
-                        id="marketing-consent"
-                        checked={formData.marketingConsent || false}
-                        onCheckedChange={(checked) => handleFieldChange('marketingConsent', checked)}
-                        className="mt-1"
-                      />
-                      <Label htmlFor="marketing-consent" className="text-sm text-gray-300 leading-relaxed">
-                        I would like to receive marketing emails and updates
-                      </Label>
-                    </div>
-                  )}
+              <div className="space-y-3 pt-2">
+                {/* Flint T&C */}
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="flint-terms-consent"
+                    checked={!!formData.flintTermsConsent}
+                    onCheckedChange={(checked) => handleFieldChange('flintTermsConsent', !!checked)}
+                    className="mt-1"
+                  />
+                  <Label htmlFor="flint-terms-consent" className="text-sm text-gray-300 leading-relaxed">
+                    I agree to Flint’s <a href="https://launch.useflint.co/terms-conditions" target="_blank" rel="noopener noreferrer" className="underline">Terms & Conditions</a>*
+                  </Label>
                 </div>
-              )}
+                
+                {/* Marketing Consent */}
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    id="marketing-consent"
+                    checked={!!formData.marketingConsent}
+                    onCheckedChange={(checked) => handleFieldChange('marketingConsent', !!checked)}
+                    className="mt-1"
+                  />
+                  <Label htmlFor="marketing-consent" className="text-sm text-gray-300 leading-relaxed">
+                    I agree to receive relevant marketing communications from {businessName || 'this business'} in accordance with their{' '}
+                    {privacyPolicyLink ? (
+                      <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline">
+                        Privacy Policy
+                      </a>
+                    ) : (
+                      'Privacy Policy'
+                    )}
+                    .
+                  </Label>
+                </div>
+                
+              </div>
 
-              {validationErrors.gdprConsent && (
+
+              {validationErrors.flintTermsConsent && (
                 <div className="flex items-center space-x-1 text-red-400 text-sm">
                   <AlertCircle className="h-4 w-4" />
-                  <span>{validationErrors.gdprConsent}</span>
+                  <span>{validationErrors.flintTermsConsent}</span>
                 </div>
               )}
 
@@ -564,26 +573,40 @@ export function CaptureSection({
           </div>
         </div>
 
-        {/* Consent Options */}
+        {/* Marketing Consent Configuration */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-foreground">Consent Options</h3>
+          <h3 className="text-sm font-medium text-foreground">Marketing Consent</h3>
+          <p className="text-xs text-muted-foreground">
+            The marketing consent checkbox is always displayed. Configure its content below.
+          </p>
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
-              <span className="text-sm text-foreground">Require GDPR consent checkbox</span>
-              <Switch
-                checked={gdprConsent}
-                onCheckedChange={(checked) => handleConsentChange('gdpr', checked)}
-                className="scale-75"
-              />
-            </div>
-            
-            <div className="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
-              <span className="text-sm text-foreground">Show marketing consent checkbox</span>
-              <Switch
-                checked={marketingConsent}
-                onCheckedChange={(checked) => handleConsentChange('marketing', checked)}
-                className="scale-75"
-              />
+            <div className="p-4 bg-background border border-border rounded-lg space-y-3">
+              <div>
+                <Label htmlFor="businessName" className="text-sm font-medium text-foreground">
+                  Business Name (Required)
+                </Label>
+                <Input
+                  id="businessName"
+                  placeholder="Your Company Name"
+                  value={localBusinessName}
+                  onChange={(e) => setLocalBusinessName(e.target.value)}
+                  onBlur={() => updateSettings({ businessName: localBusinessName })}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="privacyPolicyLink" className="text-sm font-medium text-foreground">
+                  Privacy Policy Link (Optional)
+                </Label>
+                <Input
+                  id="privacyPolicyLink"
+                  placeholder="https://yourcompany.com/privacy"
+                  value={localPrivacyPolicyLink}
+                  onChange={(e) => setLocalPrivacyPolicyLink(e.target.value)}
+                  onBlur={() => updateSettings({ privacyPolicyLink: localPrivacyPolicyLink })}
+                  className="mt-1"
+                />
+              </div>
             </div>
           </div>
         </div>
