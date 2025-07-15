@@ -59,6 +59,39 @@ interface SectionRendererPropsExtended extends BaseSectionProps {
 export function SectionRenderer(props: SectionRendererPropsExtended) {
   const { section, userInputs = {}, sections, campaign } = props
 
+  // Check if section is hidden (check both direct property and configuration)
+  const isHidden = ('isVisible' in section && section.isVisible === false) || 
+                   (section.configuration && (section.configuration as any).isVisible === false)
+  
+  // In public campaign view, completely skip hidden sections
+  if (isHidden && !props.isPreview) {
+    return null
+  }
+  
+  // In builder preview, show hidden sections with a placeholder
+  if (isHidden && props.isPreview) {
+    return (
+      <div className="h-full bg-muted/30 flex items-center justify-center border-2 border-dashed border-muted-foreground/20">
+        <div className="text-center max-w-md mx-auto p-8">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L8.464 8.464M18.535 18.535l-4.242-4.242M18.535 18.535L19.95 17.121m-1.414 1.414L16.95 16.95M4.929 4.929L7.05 7.05M2.05 2.05l20 20" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-muted-foreground mb-2">
+            Section Hidden
+          </h3>
+          <p className="text-sm text-muted-foreground/80 mb-4">
+            This section is hidden and won't appear in the live campaign. Use the dropdown menu to show it again.
+          </p>
+          <div className="text-xs text-muted-foreground/60">
+            Section: {section.title || 'Untitled'}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Extract configuration from section - memoized
   const config: SectionConfiguration = useMemo(() => 
     (section.configuration || {}) as SectionConfiguration, 

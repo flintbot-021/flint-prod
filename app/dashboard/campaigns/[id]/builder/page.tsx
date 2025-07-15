@@ -89,13 +89,18 @@ const mapDatabaseTypeToCampaignBuilder = (dbType: string): string => {
 }
 
 const convertDatabaseSectionToCampaignSection = (dbSection: SectionWithOptions): CampaignSection => {
+  const config = (dbSection.configuration as any) || {}
+  
   return {
     id: dbSection.id,
     type: mapDatabaseTypeToCampaignBuilder(dbSection.type),
     title: dbSection.title || '',
-    settings: (dbSection.configuration as unknown) as Record<string, unknown>,
+    settings: (() => {
+      const { isVisible, ...settings } = config
+      return settings
+    })(),
     order: dbSection.order_index,
-    isVisible: true, // This could be stored in configuration if needed
+    isVisible: config.isVisible !== undefined ? config.isVisible : true, // Read from configuration, default to true
     createdAt: dbSection.created_at,
     updatedAt: dbSection.updated_at
   }
@@ -108,7 +113,10 @@ const convertCampaignSectionToDatabase = (section: CampaignSection, campaignId: 
     title: section.title,
     description: null,
     order_index: section.order,
-    configuration: section.settings,
+    configuration: {
+      ...section.settings,
+      isVisible: section.isVisible // Store visibility in configuration
+    },
     required: false // This could be determined from settings
   }
 }
@@ -480,6 +488,13 @@ export default function ToolBuilderPage() {
       if (updates.title !== undefined) dbUpdates.title = updates.title
       if (updates.settings !== undefined) dbUpdates.configuration = updates.settings
       if (updates.order !== undefined) dbUpdates.order_index = updates.order
+      if (updates.isVisible !== undefined) {
+        // Store isVisible in configuration
+        dbUpdates.configuration = {
+          ...dbUpdates.configuration,
+          isVisible: updates.isVisible
+        }
+      }
       
       // Update in database
       const result = await updateSection(sectionId, dbUpdates)
@@ -1136,17 +1151,17 @@ export default function ToolBuilderPage() {
               )}
 
               {/* Tool Builder Content */}
-              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-200px)]">
-                {/* Sidebar - Sections Menu */}
-                <div className="lg:col-span-1">
-                  <Card className="h-full">
+              <div className="flex gap-6">
+                {/* Sidebar - Sections Menu (Fixed) */}
+                <div className="w-80 flex-shrink-0 sticky top-28 h-fit">
+                  <Card>
                     <SectionsMenu onSectionAdd={handleSectionAdd} />
                   </Card>
                 </div>
 
-                {/* Main Content - Tool Canvas */}
-                <div className="lg:col-span-3">
-                  <Card className="h-full">
+                {/* Main Content - Tool Canvas (Scrollable) */}
+                <div className="flex-1 min-w-0">
+                  <Card>
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <div>
@@ -1158,7 +1173,7 @@ export default function ToolBuilderPage() {
 
                       </div>
                     </CardHeader>
-                    <CardContent className="h-[calc(100%-140px)]">
+                    <CardContent>
                       <EnhancedSortableCanvas
                         sections={sections}
                         onSectionUpdate={handleSectionUpdate}
@@ -1169,7 +1184,7 @@ export default function ToolBuilderPage() {
                         onSectionAdd={handleSectionAdd}
                         selectedSectionId={selectedSectionId}
                         onSectionSelect={setSelectedSectionId}
-                        className="h-full"
+                        className=""
                         showCollapsedSections={true}
                         campaignId={campaign?.id}
                         sectionPersistence={sectionPersistence}

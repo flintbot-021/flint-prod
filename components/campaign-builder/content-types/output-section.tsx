@@ -262,6 +262,7 @@ export function OutputSection({
   const [localContent, setLocalContent] = useState('')
   const [localTitle, setLocalTitle] = useState('')
   const [localSubtitle, setLocalSubtitle] = useState('')
+  const [localButtonText, setLocalButtonText] = useState('')
   
   // Get current settings with defaults
   const settings = section.settings as OutputSettings || {}
@@ -297,10 +298,16 @@ export function OutputSection({
     }
   }, [settings.content, section.id])
   
+  // Sync local button text state with external changes
+  useEffect(() => {
+    setLocalButtonText(buttonText)
+  }, [buttonText])
+
   // Initialize local state on mount
   useEffect(() => {
     setLocalTitle(title)
     setLocalSubtitle(subtitle)
+    setLocalButtonText(buttonText)
     if (settings.content !== undefined) {
       setLocalContent(settings.content)
     }
@@ -350,6 +357,7 @@ export function OutputSection({
       if (newSettings.title !== undefined) setLocalTitle(newSettings.title)
       if (newSettings.subtitle !== undefined) setLocalSubtitle(newSettings.subtitle)
       if (newSettings.content !== undefined) setLocalContent(newSettings.content)
+      if (newSettings.buttonText !== undefined) setLocalButtonText(newSettings.buttonText)
       
       await onUpdate({
         settings: {
@@ -363,6 +371,7 @@ export function OutputSection({
       if (newSettings.title !== undefined) setLocalTitle(title)
       if (newSettings.subtitle !== undefined) setLocalSubtitle(subtitle)
       if (newSettings.content !== undefined) setLocalContent(content)
+      if (newSettings.buttonText !== undefined) setLocalButtonText(buttonText)
       throw error
     }
   }
@@ -662,8 +671,9 @@ export function OutputSection({
               </Label>
               <Input
                 id="button-text"
-                value={buttonText}
-                onChange={(e) => handleButtonSettingChange('buttonText', e.target.value)}
+                value={localButtonText}
+                onChange={(e) => setLocalButtonText(e.target.value)}
+                onBlur={() => handleButtonSettingChange('buttonText', localButtonText)}
                 placeholder="Download Now"
                 className="w-full"
               />

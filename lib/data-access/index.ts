@@ -266,8 +266,8 @@ export async function createLeadFromCapture(
     name?: string;
     email?: string;
     phone?: string;
-    gdprConsent?: boolean;
     marketingConsent?: boolean;
+    flintTermsConsent?: boolean;
   },
   conversionSectionId?: string,
   metadata?: {
@@ -306,8 +306,8 @@ export async function createLeadFromCapture(
     conversion_section_id: conversionSectionId || null,
     metadata: {
       capture_form: true,
-      gdpr_consent: captureData.gdprConsent || false,
       marketing_consent: captureData.marketingConsent || false,
+      flint_terms_consent: captureData.flintTermsConsent || false,
       capture_timestamp: new Date().toISOString(),
       // Store tracking metadata in the metadata field
       tracking: {

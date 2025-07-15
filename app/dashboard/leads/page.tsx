@@ -48,7 +48,8 @@ import {
   Globe,
   Hash,
   CheckCircle,
-  Activity
+  Activity,
+  LogOut
 } from 'lucide-react'
 
 interface LeadWithCampaign extends Lead {
@@ -897,10 +898,11 @@ export default function LeadsPage() {
       {/* Header */}
       <header className="bg-background shadow border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div className="flex items-center space-x-8">
-              <FlintLogo size="lg" />
-              <nav className="flex items-center space-x-6">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center space-x-4">
+              <FlintLogo size="sm" showText={false} className="!h-6 !w-auto" />
+              <span className="mx-4 text-gray-300 select-none">|</span>
+              <nav className="flex items-center space-x-2">
                 <Button
                   variant="ghost"
                   onClick={() => router.push('/dashboard')}
@@ -917,8 +919,22 @@ export default function LeadsPage() {
                 </Button>
               </nav>
             </div>
-            <div className="flex items-center space-x-4">
-              <UserProfile variant="compact" />
+            {/* Avatar dropdown only */}
+            <div className="relative ml-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <span className="text-base font-medium text-blue-600">
+                      {user?.email?.[0]?.toUpperCase() || '?'}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => {/* signOut logic here */}} className="flex items-center">
+                    <LogOut className="h-4 w-4 mr-2" /> Log Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
