@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils'
 import { isQuestionSection, titleToVariableName, updateAILogicVariableReferences, updateOutputSectionVariableReferences } from '@/lib/utils/section-variables'
 import { updateAITestResultVariableName, updateAITestResultVariableNames } from '@/lib/utils/ai-test-storage'
 import { createVariableName } from '@/lib/utils/variable-extractor'
+import { OnboardingCarousel } from '@/components/campaign-builder/OnboardingCarousel';
 
 // Helper functions to convert between database and UI types
 const mapCampaignBuilderTypeToDatabase = (builderType: string): string => {
@@ -135,6 +136,14 @@ export default function ToolBuilderPage() {
   const [showPublishModal, setShowPublishModal] = useState(false)
   const [activeDragItem, setActiveDragItem] = useState<CampaignSection | null>(null)
   const [isAutoReordering, setIsAutoReordering] = useState(false) // Track automatic reordering
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    // Only show onboarding if not dismissed
+    if (typeof window !== 'undefined' && !localStorage.getItem('flint_builder_onboarding_dismissed')) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   const sectionPersistence = useSectionPersistence(params.id as string)
 
@@ -1098,127 +1107,136 @@ export default function ToolBuilderPage() {
   }
 
   return (
-    <CaptureProvider campaignId={campaign.id}>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="min-h-screen bg-background">
-          {/* Tool Builder Top Bar */}
-          <CampaignBuilderTopBar
-            campaignName={campaign.name}
-            campaignStatus={campaign.status}
-            campaignId={campaign.id}
-            campaignUserKey={campaign.user_key || undefined}
-            campaignPublishedUrl={campaign.published_url || undefined}
-            campaign={campaign}
-            isPublished={campaign.status === 'published'}
-            isSaving={isSaving}
-            canPublish={mandatoryValidation.isValid}
-            canPreview={mandatoryValidation.isValid}
-            validationErrors={mandatoryValidation.missing}
-            onCampaignNameChange={handleCampaignNameChange}
-            onCampaignUpdate={setCampaign}
-            onPreview={handlePreview}
-            onPublish={handlePublish}
-            onPause={handlePause}
-          />
+    <>
+      {showOnboarding && (
+        <OnboardingCarousel
+          isOpen={showOnboarding}
+          onClose={() => setShowOnboarding(false)}
+          onTemplateClick={() => { /* TODO: implement template logic */ }}
+        />
+      )}
+      <CaptureProvider campaignId={campaign.id}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="min-h-screen bg-background">
+            {/* Tool Builder Top Bar */}
+            <CampaignBuilderTopBar
+              campaignName={campaign.name}
+              campaignStatus={campaign.status}
+              campaignId={campaign.id}
+              campaignUserKey={campaign.user_key || undefined}
+              campaignPublishedUrl={campaign.published_url || undefined}
+              campaign={campaign}
+              isPublished={campaign.status === 'published'}
+              isSaving={isSaving}
+              canPublish={mandatoryValidation.isValid}
+              canPreview={mandatoryValidation.isValid}
+              validationErrors={mandatoryValidation.missing}
+              onCampaignNameChange={handleCampaignNameChange}
+              onCampaignUpdate={setCampaign}
+              onPreview={handlePreview}
+              onPublish={handlePublish}
+              onPause={handlePause}
+            />
 
-          {/* Main Content Area */}
-          <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            <div className="px-4 py-6 sm:px-0">
-              {/* Error Display */}
-              {error && (
-                <Card className="mb-6 border-red-200 bg-red-50">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center space-x-3 text-red-800">
-                      <AlertCircle className="h-5 w-5" />
-                      <div>
-                        <p className="font-medium">Error</p>
-                        <p className="text-sm mt-1">{error}</p>
-                        <button
-                          onClick={() => setError(null)}
-                          className="mt-2 text-sm underline hover:no-underline"
-                        >
-                          Dismiss
-                        </button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Tool Builder Content */}
-              <div className="flex gap-6">
-                {/* Sidebar - Sections Menu (Fixed) */}
-                <div className="w-80 flex-shrink-0 sticky top-28 h-fit">
-                  <Card>
-                    <SectionsMenu onSectionAdd={handleSectionAdd} />
-                  </Card>
-                </div>
-
-                {/* Main Content - Tool Canvas (Scrollable) */}
-                <div className="flex-1 min-w-0">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
+            {/* Main Content Area */}
+            <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+              <div className="px-4 py-6 sm:px-0">
+                {/* Error Display */}
+                {error && (
+                  <Card className="mb-6 border-red-200 bg-red-50">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center space-x-3 text-red-800">
+                        <AlertCircle className="h-5 w-5" />
                         <div>
-                          <CardTitle className="text-lg">Tool Canvas</CardTitle>
-                          <CardDescription>
-                            Every tool needs a Capture section, Logic section, and Output section. Click the placeholders below to add required sections, or use the sidebar for additional sections.
-                          </CardDescription>
+                          <p className="font-medium">Error</p>
+                          <p className="text-sm mt-1">{error}</p>
+                          <button
+                            onClick={() => setError(null)}
+                            className="mt-2 text-sm underline hover:no-underline"
+                          >
+                            Dismiss
+                          </button>
                         </div>
-
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <EnhancedSortableCanvas
-                        sections={sections}
-                        onSectionUpdate={handleSectionUpdate}
-                        onSectionDelete={handleSectionDelete}
-                        onSectionDuplicate={handleSectionDuplicate}
-                        onSectionConfigure={handleSectionConfigure}
-                        onSectionTypeChange={handleSectionTypeChange}
-                        onSectionAdd={handleSectionAdd}
-                        selectedSectionId={selectedSectionId}
-                        onSectionSelect={setSelectedSectionId}
-                        className=""
-                        showCollapsedSections={true}
-                        campaignId={campaign?.id}
-                        sectionPersistence={sectionPersistence}
-                      />
                     </CardContent>
                   </Card>
+                )}
+
+                {/* Tool Builder Content */}
+                <div className="flex gap-6">
+                  {/* Sidebar - Sections Menu (Fixed) */}
+                  <div className="w-80 flex-shrink-0 sticky top-28 h-fit">
+                    <Card>
+                      <SectionsMenu onSectionAdd={handleSectionAdd} />
+                    </Card>
+                  </div>
+
+                  {/* Main Content - Tool Canvas (Scrollable) */}
+                  <div className="flex-1 min-w-0">
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-lg">Tool Canvas</CardTitle>
+                            <CardDescription>
+                              Every tool needs a Capture section, Logic section, and Output section. Click the placeholders below to add required sections, or use the sidebar for additional sections.
+                            </CardDescription>
+                          </div>
+
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <EnhancedSortableCanvas
+                          sections={sections}
+                          onSectionUpdate={handleSectionUpdate}
+                          onSectionDelete={handleSectionDelete}
+                          onSectionDuplicate={handleSectionDuplicate}
+                          onSectionConfigure={handleSectionConfigure}
+                          onSectionTypeChange={handleSectionTypeChange}
+                          onSectionAdd={handleSectionAdd}
+                          selectedSectionId={selectedSectionId}
+                          onSectionSelect={setSelectedSectionId}
+                          className=""
+                          showCollapsedSections={true}
+                          campaignId={campaign?.id}
+                          sectionPersistence={sectionPersistence}
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
               </div>
-            </div>
-          </main>
+            </main>
 
-          {/* Drag Overlay */}
-          <DragOverlay>
-            {activeDragItem && (
-              /* Campaign Section being dragged */
-              <DragPreview
-                section={activeDragItem as CampaignSection}
-                campaignId={campaign.id}
-                allSections={sections}
+            {/* Drag Overlay */}
+            <DragOverlay>
+              {activeDragItem && (
+                /* Campaign Section being dragged */
+                <DragPreview
+                  section={activeDragItem as CampaignSection}
+                  campaignId={campaign.id}
+                  allSections={sections}
+                />
+              )}
+            </DragOverlay>
+
+            {showPublishModal && (
+              <PublishModal
+                campaign={campaign}
+                isOpen={showPublishModal}
+                onClose={() => setShowPublishModal(false)}
+                onPublishSuccess={handlePublishSuccess}
+                mandatoryValidationErrors={mandatoryValidation.missing}
               />
             )}
-          </DragOverlay>
-
-          {showPublishModal && (
-            <PublishModal
-              campaign={campaign}
-              isOpen={showPublishModal}
-              onClose={() => setShowPublishModal(false)}
-              onPublishSuccess={handlePublishSuccess}
-              mandatoryValidationErrors={mandatoryValidation.missing}
-            />
-          )}
-        </div>
-      </DndContext>
-    </CaptureProvider>
+          </div>
+        </DndContext>
+      </CaptureProvider>
+    </>
   )
 } 
