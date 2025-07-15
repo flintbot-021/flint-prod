@@ -223,12 +223,18 @@ export function MultipleChoiceQuestion({
   const handleAddOption = useCallback(async () => {
     const validOrders = options.map(o => o.order || 0).filter(order => !isNaN(order))
     const newOrder = validOrders.length > 0 ? Math.max(...validOrders) + 1 : options.length + 1
+    // Defensive: ensure no string is spread as an object
     const newOption: ChoiceOption = {
       id: `option-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       text: `Option ${newOrder}`,
       order: newOrder
     }
-    await updateSettings({ options: [...options, newOption] })
+    // Only add if it's a valid object
+    if (typeof newOption.text === 'string' && typeof newOption.id === 'string' && typeof newOption.order === 'number') {
+      await updateSettings({ options: [...options, newOption] })
+    } else {
+      console.error('Attempted to add invalid option:', newOption)
+    }
   }, [options, updateSettings])
 
   // Handle drag end

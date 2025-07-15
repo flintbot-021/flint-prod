@@ -59,7 +59,11 @@ export const SECTION_TYPES: SectionType[] = [
     defaultSettings: {
       question: 'Type your question here',
       subheading: '',
-      options: ['Option goes here...', 'Option goes here...', 'Option goes here...'],
+      options: [
+        { id: 'option-1', text: 'Option 1', order: 1 },
+        { id: 'option-2', text: 'Option 2', order: 2 },
+        { id: 'option-3', text: 'Option 3', order: 3 }
+      ],
       allowMultiple: false,
       required: true,
       buttonText: 'Next'
