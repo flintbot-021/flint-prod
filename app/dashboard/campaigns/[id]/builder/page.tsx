@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils'
 import { isQuestionSection, titleToVariableName, updateAILogicVariableReferences, updateOutputSectionVariableReferences } from '@/lib/utils/section-variables'
 import { updateAITestResultVariableName, updateAITestResultVariableNames } from '@/lib/utils/ai-test-storage'
 import { createVariableName } from '@/lib/utils/variable-extractor'
+import { OnboardingCarousel } from '@/components/campaign-builder/OnboardingCarousel';
 
 // Helper functions to convert between database and UI types
 const mapCampaignBuilderTypeToDatabase = (builderType: string): string => {
@@ -135,6 +136,14 @@ export default function ToolBuilderPage() {
   const [showPublishModal, setShowPublishModal] = useState(false)
   const [activeDragItem, setActiveDragItem] = useState<CampaignSection | null>(null)
   const [isAutoReordering, setIsAutoReordering] = useState(false) // Track automatic reordering
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    // Only show onboarding if not dismissed
+    if (typeof window !== 'undefined' && !localStorage.getItem('flint_builder_onboarding_dismissed')) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   const sectionPersistence = useSectionPersistence(params.id as string)
 
@@ -1030,6 +1039,149 @@ export default function ToolBuilderPage() {
     }
   }
 
+  // Helper to create template sections
+  const handleCreateTemplate = async () => {
+    if (!campaign) return;
+    setIsSaving(true);
+    try {
+      // 1. Text Question: name
+      const textType = getSectionTypeById('question-text');
+      const textSection = await createSection({
+        campaign_id: campaign.id,
+        type: 'text_question',
+        title: 'name',
+        description: null,
+        order_index: 1,
+        configuration: {
+          ...textType?.defaultSettings,
+          title: 'What is your name?',
+          input_type: 'text',
+          placeholder: 'Enter your name',
+          required: true,
+        },
+        required: true,
+      });
+
+      // 2. Multiple Choice: business
+      const mcType = getSectionTypeById('question-multiple-choice');
+      const mcSection = await createSection({
+        campaign_id: campaign.id,
+        type: 'multiple_choice',
+        title: 'business',
+        description: null,
+        order_index: 2,
+        configuration: {
+          ...mcType?.defaultSettings,
+          title: 'What business are you in?',
+          allow_multiple: false,
+          display_type: 'radio',
+          options: [
+            { id: 'option-1', text: 'Design', order: 1 },
+            { id: 'option-2', text: 'Marketing Agency', order: 2 },
+            { id: 'option-3', text: 'SaaS/Tech', order: 3 },
+            { id: 'option-4', text: 'Other', order: 4 },
+          ],
+          required: true,
+        },
+        required: true,
+      });
+
+      // 3. Slider: size
+      const sliderType = getSectionTypeById('question-slider');
+      const sliderSection = await createSection({
+        campaign_id: campaign.id,
+        type: 'slider',
+        title: 'size',
+        description: null,
+        order_index: 3,
+        configuration: {
+          ...sliderType?.defaultSettings,
+          title: 'How big is your audience?',
+          min_value: 1,
+          max_value: 100000,
+          default_value: 1000,
+          step: 1,
+          labels: { min: '1', max: '100,000' },
+          required: true,
+        },
+        required: true,
+      });
+
+      // 4. Logic: prompt
+      const logicType = getSectionTypeById('logic-ai');
+      const logicSection = await createSection({
+        campaign_id: campaign.id,
+        type: 'logic',
+        title: 'logic',
+        description: null,
+        order_index: 4,
+        configuration: {
+          ...logicType?.defaultSettings,
+          title: 'AI Marketing Idea',
+          variable_access: ['name', 'business', 'size'],
+          prompt_template: 'A user named @name has a business that is a @business with an audience of @size. Suggest a marketing idea and next steps.',
+          output_variable: 'idea',
+          ai_provider: 'openai',
+          model: 'gpt-4',
+          max_tokens: 500,
+          temperature: 0.7,
+        },
+        required: true,
+      });
+
+      // 5. Capture: standard
+      const captureType = getSectionTypeById('capture-details');
+      const captureSection = await createSection({
+        campaign_id: campaign.id,
+        type: 'capture',
+        title: 'capture',
+        description: null,
+        order_index: 5,
+        configuration: {
+          ...captureType?.defaultSettings,
+        },
+        required: true,
+      });
+
+      // 6. Output: uses all variables
+      const outputType = getSectionTypeById('output-results');
+      const outputSection = await createSection({
+        campaign_id: campaign.id,
+        type: 'output',
+        title: 'output',
+        description: null,
+        order_index: 6,
+        configuration: {
+          ...outputType?.defaultSettings,
+          title: 'Your Marketing Idea',
+          template: `Hi @name! Here’s a marketing idea for your @business with an audience of @size:\n@idea\n\nNext steps:\n@next_steps`,
+          variables: ['name', 'business', 'size', 'idea', 'next_steps'],
+          format: 'text',
+          download_enabled: false,
+        },
+        required: true,
+      });
+
+      // Reload sections from DB
+      await loadCampaign();
+      setShowOnboarding(false);
+      toast({
+        title: 'Template added!',
+        description: 'A marketing ideas lead magnet template has been added to your campaign.',
+        duration: 4000,
+      });
+    } catch (err) {
+      setError('Failed to create template sections.');
+      toast({
+        title: 'Error',
+        description: 'Failed to create template sections.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (loading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1098,127 +1250,136 @@ export default function ToolBuilderPage() {
   }
 
   return (
-    <CaptureProvider campaignId={campaign.id}>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="min-h-screen bg-background">
-          {/* Tool Builder Top Bar */}
-          <CampaignBuilderTopBar
-            campaignName={campaign.name}
-            campaignStatus={campaign.status}
-            campaignId={campaign.id}
-            campaignUserKey={campaign.user_key || undefined}
-            campaignPublishedUrl={campaign.published_url || undefined}
-            campaign={campaign}
-            isPublished={campaign.status === 'published'}
-            isSaving={isSaving}
-            canPublish={mandatoryValidation.isValid}
-            canPreview={mandatoryValidation.isValid}
-            validationErrors={mandatoryValidation.missing}
-            onCampaignNameChange={handleCampaignNameChange}
-            onCampaignUpdate={setCampaign}
-            onPreview={handlePreview}
-            onPublish={handlePublish}
-            onPause={handlePause}
-          />
+    <>
+      {showOnboarding && (
+        <OnboardingCarousel
+          isOpen={showOnboarding}
+          onClose={() => setShowOnboarding(false)}
+          onTemplateClick={handleCreateTemplate}
+        />
+      )}
+      <CaptureProvider campaignId={campaign.id}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="min-h-screen bg-background">
+            {/* Tool Builder Top Bar */}
+            <CampaignBuilderTopBar
+              campaignName={campaign.name}
+              campaignStatus={campaign.status}
+              campaignId={campaign.id}
+              campaignUserKey={campaign.user_key || undefined}
+              campaignPublishedUrl={campaign.published_url || undefined}
+              campaign={campaign}
+              isPublished={campaign.status === 'published'}
+              isSaving={isSaving}
+              canPublish={mandatoryValidation.isValid}
+              canPreview={mandatoryValidation.isValid}
+              validationErrors={mandatoryValidation.missing}
+              onCampaignNameChange={handleCampaignNameChange}
+              onCampaignUpdate={setCampaign}
+              onPreview={handlePreview}
+              onPublish={handlePublish}
+              onPause={handlePause}
+            />
 
-          {/* Main Content Area */}
-          <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            <div className="px-4 py-6 sm:px-0">
-              {/* Error Display */}
-              {error && (
-                <Card className="mb-6 border-red-200 bg-red-50">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center space-x-3 text-red-800">
-                      <AlertCircle className="h-5 w-5" />
-                      <div>
-                        <p className="font-medium">Error</p>
-                        <p className="text-sm mt-1">{error}</p>
-                        <button
-                          onClick={() => setError(null)}
-                          className="mt-2 text-sm underline hover:no-underline"
-                        >
-                          Dismiss
-                        </button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Tool Builder Content */}
-              <div className="flex gap-6">
-                {/* Sidebar - Sections Menu (Fixed) */}
-                <div className="w-80 flex-shrink-0 sticky top-28 h-fit">
-                  <Card>
-                    <SectionsMenu onSectionAdd={handleSectionAdd} />
-                  </Card>
-                </div>
-
-                {/* Main Content - Tool Canvas (Scrollable) */}
-                <div className="flex-1 min-w-0">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
+            {/* Main Content Area */}
+            <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+              <div className="px-4 py-6 sm:px-0">
+                {/* Error Display */}
+                {error && (
+                  <Card className="mb-6 border-red-200 bg-red-50">
+                    <CardContent className="pt-6">
+                      <div className="flex items-center space-x-3 text-red-800">
+                        <AlertCircle className="h-5 w-5" />
                         <div>
-                          <CardTitle className="text-lg">Tool Canvas</CardTitle>
-                          <CardDescription>
-                            Every tool needs a Capture section, Logic section, and Output section. Click the placeholders below to add required sections, or use the sidebar for additional sections.
-                          </CardDescription>
+                          <p className="font-medium">Error</p>
+                          <p className="text-sm mt-1">{error}</p>
+                          <button
+                            onClick={() => setError(null)}
+                            className="mt-2 text-sm underline hover:no-underline"
+                          >
+                            Dismiss
+                          </button>
                         </div>
-
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <EnhancedSortableCanvas
-                        sections={sections}
-                        onSectionUpdate={handleSectionUpdate}
-                        onSectionDelete={handleSectionDelete}
-                        onSectionDuplicate={handleSectionDuplicate}
-                        onSectionConfigure={handleSectionConfigure}
-                        onSectionTypeChange={handleSectionTypeChange}
-                        onSectionAdd={handleSectionAdd}
-                        selectedSectionId={selectedSectionId}
-                        onSectionSelect={setSelectedSectionId}
-                        className=""
-                        showCollapsedSections={true}
-                        campaignId={campaign?.id}
-                        sectionPersistence={sectionPersistence}
-                      />
                     </CardContent>
                   </Card>
+                )}
+
+                {/* Tool Builder Content */}
+                <div className="flex gap-6">
+                  {/* Sidebar - Sections Menu (Fixed) */}
+                  <div className="w-80 flex-shrink-0 sticky top-28 h-fit">
+                    <Card>
+                      <SectionsMenu onSectionAdd={handleSectionAdd} />
+                    </Card>
+                  </div>
+
+                  {/* Main Content - Tool Canvas (Scrollable) */}
+                  <div className="flex-1 min-w-0">
+                    <Card>
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <CardTitle className="text-lg">Tool Canvas</CardTitle>
+                            <CardDescription>
+                              Every tool needs a Capture section, Logic section, and Output section. Click the placeholders below to add required sections, or use the sidebar for additional sections.
+                            </CardDescription>
+                          </div>
+
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <EnhancedSortableCanvas
+                          sections={sections}
+                          onSectionUpdate={handleSectionUpdate}
+                          onSectionDelete={handleSectionDelete}
+                          onSectionDuplicate={handleSectionDuplicate}
+                          onSectionConfigure={handleSectionConfigure}
+                          onSectionTypeChange={handleSectionTypeChange}
+                          onSectionAdd={handleSectionAdd}
+                          selectedSectionId={selectedSectionId}
+                          onSectionSelect={setSelectedSectionId}
+                          className=""
+                          showCollapsedSections={true}
+                          campaignId={campaign?.id}
+                          sectionPersistence={sectionPersistence}
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
                 </div>
               </div>
-            </div>
-          </main>
+            </main>
 
-          {/* Drag Overlay */}
-          <DragOverlay>
-            {activeDragItem && (
-              /* Campaign Section being dragged */
-              <DragPreview
-                section={activeDragItem as CampaignSection}
-                campaignId={campaign.id}
-                allSections={sections}
+            {/* Drag Overlay */}
+            <DragOverlay>
+              {activeDragItem && (
+                /* Campaign Section being dragged */
+                <DragPreview
+                  section={activeDragItem as CampaignSection}
+                  campaignId={campaign.id}
+                  allSections={sections}
+                />
+              )}
+            </DragOverlay>
+
+            {showPublishModal && (
+              <PublishModal
+                campaign={campaign}
+                isOpen={showPublishModal}
+                onClose={() => setShowPublishModal(false)}
+                onPublishSuccess={handlePublishSuccess}
+                mandatoryValidationErrors={mandatoryValidation.missing}
               />
             )}
-          </DragOverlay>
-
-          {showPublishModal && (
-            <PublishModal
-              campaign={campaign}
-              isOpen={showPublishModal}
-              onClose={() => setShowPublishModal(false)}
-              onPublishSuccess={handlePublishSuccess}
-              mandatoryValidationErrors={mandatoryValidation.missing}
-            />
-          )}
-        </div>
-      </DndContext>
-    </CaptureProvider>
+          </div>
+        </DndContext>
+      </CaptureProvider>
+    </>
   )
 } 
