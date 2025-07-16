@@ -1057,8 +1057,8 @@ export default function ToolBuilderPage() {
         order_index: 1,
         configuration: {
           ...textType?.defaultSettings,
-          content: 'What’s your favourite way to spend a day off?',
-        },
+          headline: 'What’s your favourite way to spend a day off?',
+        } as any,
         required: true,
       });
 
@@ -1072,7 +1072,7 @@ export default function ToolBuilderPage() {
         order_index: 2,
         configuration: {
           ...mcType?.defaultSettings,
-          content: 'On holiday, you mostly:',
+          headline: 'On holiday, you mostly:',
           allow_multiple: false,
           display_type: 'radio',
           options: [
@@ -1094,7 +1094,7 @@ export default function ToolBuilderPage() {
         order_index: 3,
         configuration: {
           ...sliderType?.defaultSettings,
-          question: 'How adventurous are you?',
+          headline: 'How adventurous are you?',
           subheading: '1 = Homebody, 10 = Daredevil',
           minValue: 1,
           maxValue: 10,

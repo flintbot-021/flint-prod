@@ -25,6 +25,8 @@ import {
 import { Lead, Campaign, Profile } from '@/lib/types/database'
 import { ExportButton } from '@/components/export'
 import { getLeadsExportData, getLeadsExportFields } from '@/lib/export'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { 
   Download,
   Search,
@@ -56,7 +58,7 @@ interface LeadWithCampaign extends Lead {
   campaign: Campaign | null
 }
 
-type SortField = 'created_at' | 'email' | 'phone' | 'campaign_name' | 'converted_at' | 'name' | 'conversion_time'
+type SortField = 'created_at' | 'email' | 'phone' | 'campaign_name' | 'converted_at' | 'name'
 type SortDirection = 'asc' | 'desc'
 
 // Utility function to calculate and format conversion time
@@ -118,6 +120,28 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
   const [sessionData, setSessionData] = useState<any>(null)
   const [sections, setSections] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
+
+  const captureResponse = useMemo(() => {
+    if (!sessionData?.responses) return null;
+
+    for (const key in sessionData.responses) {
+        const res = sessionData.responses[key];
+        // Check inside the 'value' property for consent data
+        if (res && res.value && typeof res.value === 'object' && ('marketingConsent' in res.value || 'flintTermsConsent' in res.value)) {
+            const captureSection = sections.find(s => s.id === key || (s.configuration as any)?.variable_name === key);
+            const businessName = (captureSection?.configuration as any)?.businessName || campaign?.name || 'the business';
+            const privacyPolicyLink = (captureSection?.configuration as any)?.privacyPolicyLink || null;
+
+            return {
+                marketingConsent: res.value.marketingConsent,
+                flintTermsConsent: res.value.flintTermsConsent,
+                businessName,
+                privacyPolicyLink,
+            };
+        }
+    }
+    return null;
+  }, [sessionData, sections, campaign]);
 
   const loadSessionData = async () => {
     setLoading(true)
@@ -231,80 +255,100 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
   }
 
   const formatAIResponse = (value: any) => {
-    if (value === null || value === undefined) return null
-    if (typeof value === 'object') {
-      // Extract AI outputs/summary
-      if (value.value && value.value.outputs) {
-        if (value.value.outputs.summary) {
-          return String(value.value.outputs.summary)
-        }
-        if (value.value.outputs.approve !== undefined) {
-          return `AI Assessment: ${value.value.outputs.approve === 'yes' ? 'Approved' : 'Not Approved'}`
-        }
-      }
+    if (value && value.value && typeof value.value === 'object') {
+      const outputs = value.value;
+      const formattedOutput = Object.entries(outputs)
+        .map(([key, val]) => {
+          // Format the key to be more readable (e.g., 'explanation' -> 'Explanation')
+          const title = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          
+          // Don't show keys that are just long UUIDs or internal flags
+          if (key.length === 36 || key === 'logic_processed') return null;
+
+          return `${title}:\n${String(val)}`;
+        })
+        .filter(Boolean) // Remove any null entries
+        .join('\n\n');
       
-      if (value.outputs) {
-        if (value.outputs.summary) {
-          return String(value.outputs.summary)
-        }
-        if (value.outputs.approve !== undefined) {
-          return `AI Assessment: ${value.outputs.approve === 'yes' ? 'Approved' : 'Not Approved'}`
-        }
-      }
+      return formattedOutput || null; // Return null if there's nothing to show
     }
-    return null
+    return null;
   }
+
+  const isAIResponse = (sectionId: string): boolean => {
+    // A response is from AI if its key is 'ai_outputs'.
+    if (sectionId === 'ai_outputs') {
+      return true;
+    }
+
+    const section = sections.find(s => s.id === sectionId || (s.configuration as any)?.variable_name === sectionId);
+    if (!section) return false;
+
+    // These types are exclusively for AI or logic, not direct user input.
+    const aiSectionTypes = ['ai_logic', 'output', 'dynamic_redirect'];
+    return aiSectionTypes.includes(section.type.toLowerCase());
+  };
 
   const isUserResponse = (sectionId: string, response: any) => {
-    const section = sections.find(s => s.id === sectionId)
-    // Filter out AI-only sections or responses that are purely AI-generated
-    if (!section) return true // Include unknown sections by default
-    
-    // Check if this is a user input section (not AI-only)
-    const sectionType = section.type?.toLowerCase()
-    const aiOnlyTypes = ['ai', 'analysis', 'summary', 'processing']
-    
-    // Exclude AI-only section types
-    if (aiOnlyTypes.includes(sectionType)) return false
-    
-    // Include if it has user input data
-    if (response && typeof response === 'object') {
-      // Check if there's actual user input (not just AI outputs)
-      if (response.value !== undefined || response.response !== undefined) {
-        return true
-      }
-      // If it only has outputs/summary without user input, it's likely AI-only
-      if (response.outputs && !response.value && !response.response) {
-        return false
-      }
+    // Explicitly exclude the ai_outputs key from being a user response.
+    if (sectionId === 'ai_outputs') {
+      return false;
     }
-    
-    return true // Include by default unless explicitly AI-only
-  }
+
+    const section = sections.find(s => s.id === sectionId || (s.configuration as any)?.variable_name === sectionId);
+    if (!section) {
+      // If we can't find the section definition, assume it's not a standard user response.
+      return false;
+    }
+
+    const sectionType = section.type?.toLowerCase();
+
+    // Whitelist of section types that are considered user questions.
+    const userInputSectionTypes = [
+      'date_time_question',
+      'multiple_choice',
+      'question-slider-multiple',
+      'slider',
+      'text_question',
+      'upload_question',
+    ];
+
+    // It must be a user input type AND not exclusively an AI response type.
+    return userInputSectionTypes.includes(sectionType) && !isAIResponse(sectionId);
+  };
 
   const getQuestionTitle = (sectionId: string) => {
-    const section = sections.find(s => s.id === sectionId)
-    
+    // For AI outputs, we can give it a generic title.
+    if (sectionId === 'ai_outputs') {
+      return 'AI Generated Response';
+    }
+    // The 'sectionId' from the responses object is often the variable_name.
+    // We need to find the section where its variable_name matches this ID.
+    const section = sections.find(s => 
+      s.id === sectionId || 
+      (s.configuration?.variable_name === sectionId)
+    );
+
     if (!section) {
-      return 'Question'
+      // As a fallback, format the sectionId itself to be more readable.
+      return sectionId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
     
-    // Try multiple possible field names for the question title
-    const title = section.title || 
-           section.configuration?.title || 
-           section.configuration?.question || 
-           section.configuration?.text || 
-           section.configuration?.label ||
-           section.name ||
-           `${section.type} Section` ||
-           'Question'
-           
-    return title
-  }
+    const config = section.configuration || {};
+    // Use the standardized 'headline' property
+    return config.headline || section.title || 'Untitled Question';
+  };
 
-  const getQuestionType = (sectionId: string) => {
-    const section = sections.find(s => s.id === sectionId)
-    return section?.type || 'unknown'
+  const getQuestionType = (sectionId:string) => {
+    if (sectionId === 'ai_outputs') {
+      return 'AI Logic';
+    }
+    const section = sections.find(s => 
+      s.id === sectionId || 
+      (s.configuration?.variable_name === sectionId)
+    );
+    if (!section) return 'unknown';
+    return section?.type || 'unknown';
   }
 
   const conversionTime = calculateConversionTime(lead.created_at, lead.converted_at)
@@ -372,6 +416,30 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                     </div>
                   </div>
                 </div>
+                {captureResponse && (
+                  <div className="mt-6 pt-4 border-t border-border">
+                    <h4 className="text-sm font-medium text-muted-foreground mb-3">Consents Given</h4>
+                    <div className="space-y-3">
+                      <div className="flex items-start space-x-3">
+                        <Checkbox id="flint-terms-consent-display" checked={!!captureResponse.flintTermsConsent} disabled className="mt-1" />
+                        <Label htmlFor="flint-terms-consent-display" className="text-sm font-normal text-foreground leading-relaxed">
+                          Agreed to Flint’s <a href="https://launch.useflint.co/terms-conditions" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">Terms & Conditions</a>
+                        </Label>
+                      </div>
+                      <div className="flex items-start space-x-3">
+                        <Checkbox id="marketing-consent-display" checked={!!captureResponse.marketingConsent} disabled className="mt-1" />
+                        <Label htmlFor="marketing-consent-display" className="text-sm font-normal text-foreground leading-relaxed">
+                          Agreed to receive marketing communications from {captureResponse.businessName || 'the business'}{' '}
+                          {captureResponse.privacyPolicyLink ? (
+                              <>in accordance with their <a href={captureResponse.privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">Privacy Policy</a>.</>
+                          ) : (
+                              'in accordance with their Privacy Policy.'
+                          )}
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -389,7 +457,7 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {Object.entries(sessionData.responses)
+                    {sessionData.responses && Object.entries(sessionData.responses)
                       .filter(([sectionId, response]) => isUserResponse(sectionId, response))
                       .map(([sectionId, response], index) => {
                         const questionTitle = getQuestionTitle(sectionId)
@@ -434,6 +502,55 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                           </div>
                         )
                       })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* AI & Logic Responses Card */}
+            {sessionData?.responses && Object.keys(sessionData.responses).some(isAIResponse) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center text-lg">
+                    <Activity className="h-5 w-5 mr-2" />
+                    AI & Logic Responses
+                  </CardTitle>
+                  <CardDescription>
+                    Automated outputs and logic results from the tool
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {Object.entries(sessionData.responses).map(([sectionId, response]) => {
+                      if (isAIResponse(sectionId)) {
+                        const aiResponse = formatAIResponse(response);
+                        if (aiResponse) {
+                          const questionTitle = getQuestionTitle(sectionId);
+                          const questionType = getQuestionType(sectionId);
+                          return (
+                            <div key={sectionId} className="border-l-4 border-purple-200 pl-4">
+                              <div className="flex items-start justify-between mb-2">
+                                <div>
+                                  <h4 className="font-medium text-foreground">
+                                    {questionTitle}
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground capitalize mt-1">
+                                    {questionType}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="mt-3 bg-purple-50 rounded-lg p-3 border border-purple-200">
+                                <p className="text-xs text-purple-600 mb-1">AI Response:</p>
+                                <p className="text-sm text-purple-800 whitespace-pre-wrap">
+                                  {aiResponse}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+                      }
+                      return null;
+                    })}
                   </div>
                 </CardContent>
               </Card>
@@ -688,10 +805,6 @@ export default function LeadsPage() {
         case 'campaign_name':
           aValue = a.campaign?.name || ''
           bValue = b.campaign?.name || ''
-          break
-        case 'conversion_time':
-          aValue = calculateConversionTime(a.created_at, a.converted_at).seconds
-          bValue = calculateConversionTime(b.created_at, b.converted_at).seconds
           break
         default:
           aValue = a.created_at
@@ -1106,17 +1219,6 @@ export default function LeadsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleSort('conversion_time')}
-                              className="hover:bg-accent font-medium"
-                            >
-                              Time to Convert
-                              <ArrowUpDown className="ml-2 h-4 w-4" />
-                            </Button>
-                          </th>
-                          <th className="text-left py-3 px-4">
-                            <Button
-                              variant="ghost"
-                              size="sm"
                               onClick={() => handleSort('created_at')}
                               className="hover:bg-accent font-medium"
                             >
@@ -1129,8 +1231,6 @@ export default function LeadsPage() {
                       </thead>
                       <tbody className="divide-y">
                         {sortedLeads.map((lead) => {
-                          const conversionTime = calculateConversionTime(lead.created_at, lead.converted_at)
-                          
                           return (
                             <tr key={lead.id} className="hover:bg-muted">
                               <td className="py-4 px-4">
@@ -1161,14 +1261,6 @@ export default function LeadsPage() {
                                 {getCampaignBadge(lead.campaign)}
                               </td>
                               <td className="py-4 px-4">
-                                <div className="flex items-center space-x-1 text-sm">
-                                  <Clock className="h-4 w-4 text-gray-400" />
-                                  <span className={conversionTime.seconds > 0 ? 'font-medium' : 'text-muted-foreground'}>
-                                    {conversionTime.formatted}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="py-4 px-4">
                                 <div className="flex items-center space-x-1 text-sm text-muted-foreground">
                                   <Calendar className="h-4 w-4" />
                                   <span>
@@ -1179,11 +1271,11 @@ export default function LeadsPage() {
                               <td className="py-4 px-4 text-right">
                                 <div className="flex items-center justify-end space-x-2">
                                   <Button 
-                                    variant="ghost" 
+                                    variant="outline" 
                                     size="sm"
                                     onClick={() => handleViewLeadDetails(lead)}
                                   >
-                                    <Eye className="h-4 w-4" />
+                                    View Details
                                   </Button>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>

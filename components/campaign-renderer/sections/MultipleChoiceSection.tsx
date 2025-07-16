@@ -35,8 +35,8 @@ export function MultipleChoiceSection({
   // Cast config to access additional properties
   const configData = config as any
   const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
-  const question = configData.content || configData.question || title || 'Please select an option'
-  const helpText = configData.helpText || description
+  const question = title || 'Please select an option'
+  const helpText = description
 
   const handleChoiceSelect = (value: string) => {
     setSelectedValue(value)

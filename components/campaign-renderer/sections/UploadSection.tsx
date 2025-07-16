@@ -70,8 +70,8 @@ export function UploadSection({
 
   // Get configuration
   const configData = config as any
-  const headline = configData.content || configData.question || title || 'Upload your file'
-  const subheading = configData.subheading || description
+  const headline = title || 'Upload your file'
+  const subheading = description || ''
   const isRequired = configData.required ?? true
   const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
   const allowMultiple = configData.allowMultiple ?? false

@@ -24,8 +24,8 @@ export function HeroContentSection({
   // Note: The database stores background image as 'image', not 'backgroundImage'
   const configAny = heroConfig as any
   const settings = {
-    title: heroConfig.title || title || 'Hero Title',
-    subtitle: configAny.subtitle || heroConfig.description || description || 'Hero subtitle',
+    title: title || 'Hero Title',
+    subtitle: description || 'Hero subtitle',
     backgroundImage: configAny.backgroundImage || configAny.image || '',
     overlayColor: heroConfig.overlayColor || '#000000',
     overlayOpacity: heroConfig.overlayOpacity ?? 40,

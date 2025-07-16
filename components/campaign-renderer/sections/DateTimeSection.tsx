@@ -37,8 +37,8 @@ export function DateTimeSection({
   
   // Get configuration
   const configData = config as any
-  const question = configData.content || configData.question || title || 'Select a date and time'
-  const subheading = configData.subheading || description || ''
+  const question = title || 'Select a date and time'
+  const subheading = description || ''
   const includeDate = configData.includeDate ?? true
   const includeTime = configData.includeTime ?? false
   const isRequired = configData.required ?? true

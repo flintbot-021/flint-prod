@@ -12,7 +12,7 @@ import { InlineEditableText } from '@/components/ui/inline-editable-text'
 
 interface SliderQuestionProps {
   settings: {
-    question: string
+    headline: string
     subheading?: string
     minValue: number
     maxValue: number
@@ -52,10 +52,10 @@ export function SliderQuestion({
     setEditingField(null)
   }
 
-  const handleQuestionChange = async (newQuestion: string) => {
+  const handleHeadlineChange = async (newHeadline: string) => {
     onChange?.({
       ...settings,
-      question: newQuestion
+      headline: newHeadline
     })
   }
 
@@ -73,7 +73,7 @@ export function SliderQuestion({
           {/* Question */}
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold text-gray-900">
-              {settings.question || 'Your question text here...'}
+              {settings.headline || 'Your question text here...'}
             </h1>
             {settings.subheading && (
               <p className="text-xl text-gray-600">
@@ -117,8 +117,8 @@ export function SliderQuestion({
       {/* Main Question - Large, center-aligned */}
       <div className="text-center">
         <InlineEditableText
-          value={settings.question}
-          onSave={handleQuestionChange}
+          value={settings.headline}
+          onSave={handleHeadlineChange}
           variant="body"
           placeholder="Type your question here"
           className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"

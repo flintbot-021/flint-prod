@@ -50,8 +50,8 @@ export function OutputSection({
   
   // Get settings without fallbacks - only show if actually configured
   const settings = {
-    title: outputConfig?.title || title || '',
-    subtitle: outputConfig?.subtitle || description || '',
+    title: title || '',
+    subtitle: description || '',
     content: outputConfig?.content || '',
     image: outputConfig?.image || '',
     textAlignment: outputConfig?.textAlignment || 'center',

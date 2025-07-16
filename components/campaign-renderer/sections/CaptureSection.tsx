@@ -16,7 +16,7 @@ import { SectionNavigationBar } from '../SectionNavigationBar'
 
 // Capture settings interface (matches builder component)
 interface CaptureSettings {
-  content?: string
+  headline?: string
   subheading?: string
   enabledFields?: {
     name: boolean
@@ -75,8 +75,8 @@ export function CaptureSection({
   const configData = config as any
   
   const settings: CaptureSettings = {
-    content: configData.content || 'Get Your Results',
-    subheading: configData.subheading || 'Enter your information to unlock your personalized results',
+    headline: title || 'Get Your Results',
+    subheading: description || 'Enter your information to unlock your personalized results',
     enabledFields: {
       name: configData.enabledFields?.name ?? true,
       email: configData.enabledFields?.email ?? true,
@@ -271,7 +271,7 @@ export function CaptureSection({
               )}
               style={primaryTextStyle}
             >
-              {settings.content}
+              {settings.headline}
             </h1>
             
             <p 
