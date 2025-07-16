@@ -7,25 +7,25 @@ const slides = [
     title: 'Add Sections',
     description: 'Start building your campaign by dragging in content or question blocks from the left menu onto your canvas.',
     imageAlt: 'Drag and drop sections',
-    image: '/onboarding-placeholder-1.svg', // Placeholder, swap for real later
+    image: '/1.png', // Updated to real image
   },
   {
     title: 'Define Variable Names',
     description: 'Each section has a name in its top bar. This name becomes a variable you can use in logic and outputs (e.g., @name, @age). Click the section name to edit it.',
     imageAlt: 'Edit section name',
-    image: '/onboarding-placeholder-2.svg',
+    image: '/2.png', // Updated to real image
   },
   {
     title: 'Define Logic & Output',
     description: 'Add a Logic section to build an AI prompt using variables from previous sections, and define what output you want (e.g., @score, @recommendation).',
     imageAlt: 'Logic section',
-    image: '/onboarding-placeholder-3.svg',
+    image: '/3.png', // Updated to real image
   },
   {
     title: 'Showcase Output',
     description: 'Finish with an Output section. Display personalized results using variables and AI outputs. You can use text, images, and dynamic content.',
     imageAlt: 'Output section',
-    image: '/onboarding-placeholder-4.svg',
+    image: '/4.png', // Updated to real image
   },
   {
     title: 'Get Started',
@@ -76,7 +76,7 @@ export function OnboardingCarousel({ isOpen, onClose, onTemplateClick }: { isOpe
               <img
                 src={slides[step].image}
                 alt={slides[step].imageAlt}
-                className="mb-6 w-48 h-32 object-contain bg-gray-100 rounded"
+                className="mb-6 w-full object-contain bg-gray-100 rounded"
               />
               <h2 className="text-2xl font-bold mb-2 text-center">{slides[step].title}</h2>
               <p className="text-gray-600 mb-6 text-center">{slides[step].description}</p>

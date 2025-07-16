@@ -328,7 +328,7 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
       s.id === sectionId || 
       (s.configuration?.variable_name === sectionId)
     );
-
+    
     if (!section) {
       // As a fallback, format the sectionId itself to be more readable.
       return sectionId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -550,7 +550,7 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                         }
                       }
                       return null;
-                    })}
+                      })}
                   </div>
                 </CardContent>
               </Card>

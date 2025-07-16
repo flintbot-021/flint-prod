@@ -97,15 +97,15 @@ export function BasicContentSection({
           <div className={cn('space-y-6', getAlignmentClass(settings.alignment))}>
             {/* Headline */}
             {settings.headline && (
-              <h1 
-                className={cn(
-                  "font-bold",
-                  deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
-                )}
-                style={primaryTextStyle}
-              >
+            <h1 
+              className={cn(
+                "font-bold",
+                deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
+              )}
+              style={primaryTextStyle}
+            >
                 {settings.headline}
-              </h1>
+            </h1>
             )}
             
             {/* Subheading */}
