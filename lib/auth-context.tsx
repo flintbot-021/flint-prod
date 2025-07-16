@@ -25,13 +25,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data: { user }, error } = await supabase.auth.getUser()
       if (error) {
-        console.error('Error fetching user:', error)
+        // Only log error if it's not AuthSessionMissingError
+        if (error.name !== 'AuthSessionMissingError') {
+          console.error('Error fetching user:', error)
+        }
         setUser(null)
       } else {
         setUser(user)
       }
-    } catch (error) {
-      console.error('Error in refreshUser:', error)
+    } catch (error: any) {
+      // Only log error if it's not AuthSessionMissingError
+      if (error.name !== 'AuthSessionMissingError') {
+        console.error('Error in refreshUser:', error)
+      }
       setUser(null)
     }
   }
