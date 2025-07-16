@@ -1355,6 +1355,7 @@ export default function ToolBuilderPage() {
                           onSectionConfigure={handleSectionConfigure}
                           onSectionTypeChange={handleSectionTypeChange}
                           onSectionAdd={handleSectionAdd}
+                          onTemplateClick={handleCreateTemplate}
                           selectedSectionId={selectedSectionId}
                           onSectionSelect={setSelectedSectionId}
                           className=""

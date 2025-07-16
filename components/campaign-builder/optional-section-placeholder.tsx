@@ -146,3 +146,64 @@ export function OptionalSectionPlaceholder({
     </div>
   )
 } 
+
+interface TemplatePlaceholderProps {
+  onClick: () => void
+  className?: string
+}
+
+export function TemplatePlaceholder({ 
+  onClick, 
+  className 
+}: TemplatePlaceholderProps) {
+  const Icon = Star
+
+  const colorClasses = {
+    purple: {
+      border: 'border-purple-200 hover:border-purple-300',
+      bg: 'bg-purple-50 hover:bg-purple-100',
+      icon: 'text-purple-500',
+      text: 'text-purple-700',
+      button: 'text-purple-600 hover:text-purple-700'
+    }
+  }
+
+  const colors = colorClasses.purple
+
+  return (
+    <div
+      className={cn(
+        'relative border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer group p-4',
+        colors.border,
+        colors.bg,
+        className
+      )}
+      onClick={onClick}
+    >
+      <div className="absolute text-white text-xs px-2 py-1 rounded-full font-medium bg-purple-500 -top-2 -right-2">
+        Start Fresh
+      </div>
+      <div className="text-center">
+        <div className="mx-auto w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-colors bg-white shadow-sm group-hover:shadow-md">
+          <Icon className={cn('h-5 w-5', colors.icon)} />
+        </div>
+        
+        <h3 className={cn('font-medium mb-1 text-sm', colors.text)}>
+          Start with Template
+        </h3>
+        
+        <p className={cn('text-xs mb-3 opacity-90', colors.text)}>
+          Use a pre-built holiday finder template
+        </p>
+        <div className={cn(
+          'inline-flex items-center space-x-1 text-xs font-medium transition-colors',
+          colors.button
+        )}>
+          <Plus className="h-3 w-3" />
+          <span>Use Template</span>
+        </div>
+      </div>
+      <div className="absolute inset-0 bg-white/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
+    </div>
+  )
+} 
