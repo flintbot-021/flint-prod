@@ -297,28 +297,30 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
   };
 
   const getQuestionTitle = (sectionId: string) => {
-    const section = sections.find(s => s.id === sectionId)
-    
+    // The 'sectionId' from the responses object is often the variable_name.
+    // We need to find the section where its variable_name matches this ID.
+    const section = sections.find(s => 
+      s.id === sectionId || 
+      (s.configuration?.variable_name === sectionId)
+    );
+
     if (!section) {
-      return 'Question'
+      // As a fallback, format the sectionId itself to be more readable.
+      return sectionId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
     
-    // Try multiple possible field names for the question title
-    const title = section.title || 
-           section.configuration?.title || 
-           section.configuration?.question || 
-           section.configuration?.text || 
-           section.configuration?.label ||
-           section.name ||
-           `${section.type} Section` ||
-           'Question'
-           
-    return title
-  }
+    const config = section.configuration || {};
+    // Use the standardized 'headline' property
+    return config.headline || section.title || 'Untitled Question';
+  };
 
-  const getQuestionType = (sectionId: string) => {
-    const section = sections.find(s => s.id === sectionId)
-    return section?.type || 'unknown'
+  const getQuestionType = (sectionId:string) => {
+    const section = sections.find(s => 
+      s.id === sectionId || 
+      (s.configuration?.variable_name === sectionId)
+    );
+    if (!section) return 'unknown';
+    return section?.type || 'unknown';
   }
 
   const conversionTime = calculateConversionTime(lead.created_at, lead.converted_at)
@@ -403,7 +405,7 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {Object.entries(sessionData.responses)
+                    {sessionData.responses && Object.entries(sessionData.responses)
                       .filter(([sectionId, response]) => isUserResponse(sectionId, response))
                       .map(([sectionId, response], index) => {
                         const questionTitle = getQuestionTitle(sectionId)
@@ -610,6 +612,31 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                   </div>
                 </CardContent>
               </Card>
+            )}
+            {/* AI & Logic Responses */}
+            {sessionData?.responses && (
+              <div className="p-6 border-t">
+                <h3 className="text-lg font-semibold mb-4 text-foreground">AI & Logic Responses</h3>
+                <div className="space-y-4">
+                  {Object.entries(sessionData.responses).map(([sectionId, response]) => {
+                    if (!isUserResponse(sectionId, response)) {
+                      const aiResponse = formatAIResponse(response)
+                      if (aiResponse) {
+                        return (
+                          <div key={sectionId} className="p-4 bg-muted/50 rounded-lg">
+                            <div className="flex items-center space-x-2 text-sm text-muted-foreground mb-2">
+                              {getQuestionType(sectionId)}
+                              <span>{getQuestionTitle(sectionId)}</span>
+                            </div>
+                            <p className="text-foreground whitespace-pre-wrap">{aiResponse}</p>
+                          </div>
+                        )
+                      }
+                    }
+                    return null
+                  })}
+                </div>
+              </div>
             )}
           </div>
         )}
