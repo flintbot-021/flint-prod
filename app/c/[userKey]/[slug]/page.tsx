@@ -54,12 +54,13 @@ import {
   getSession,
   updateSession,
   addResponse,
-  createLead,
   getLeadBySession,
   getResponseForSection,
   isSectionCompleted,
   generateSessionId
 } from '@/lib/data-access/sessions'
+
+import { createPublicLead } from '@/lib/data-access/leads'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -235,7 +236,17 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
         const captureSection = sections.find(section => section.type === 'capture')
         
         // Create the lead
-        const leadResult = await createLead({
+        console.log('[Lead Capture] Payload to createPublicLead:', {
+          session_id: sessionId,
+          campaign_id: campaign.id,
+          email: email,
+          name: name || null,
+          phone: phone,
+          converted_at: new Date().toISOString(),
+          conversion_section_id: captureSection?.id || null,
+          metadata: leadData
+        })
+        const leadResult = await createPublicLead({
           session_id: sessionId,
           campaign_id: campaign.id,
           email: email,
