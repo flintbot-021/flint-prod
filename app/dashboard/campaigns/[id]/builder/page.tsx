@@ -1110,7 +1110,7 @@ export default function ToolBuilderPage() {
       await createSection({
         campaign_id: campaign.id,
         type: 'logic',
-        title: 'holiday_suggestion',
+        title: 'AI Logic',
         description: null,
         order_index: 4,
         configuration: {
@@ -1158,13 +1158,13 @@ export default function ToolBuilderPage() {
       await createSection({
         campaign_id: campaign.id,
         type: 'output',
-        title: 'results',
+        title: 'Output',
         description: null,
         order_index: 6,
         configuration: {
           ...outputType?.defaultSettings,
           title: 'Hey @name',
-          subheading: 'We can see you enjoying @activity in @city.',
+          subtitle: 'We can see you enjoying @activity in @city.',
           content: '@explanation',
           showButton: true,
           buttonText: 'Ready, explore holidays now',
