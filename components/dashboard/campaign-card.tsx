@@ -247,7 +247,11 @@ const CampaignCard = memo(function CampaignCard({
             <Button
               variant="outline"
               size="sm"
-              onClick={handleDetailsClick}
+              onClick={
+                campaign.status === 'published' && campaign.is_active
+                  ? handleViewLiveClick
+                  : handleDetailsClick
+              }
               className="h-8 px-3"
               aria-label={`${campaign.status === 'published' && campaign.is_active ? 'View live campaign' : 'Preview campaign'} ${campaign.name}`}
             >
