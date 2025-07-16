@@ -256,31 +256,45 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
   }
 
   const isUserResponse = (sectionId: string, response: any) => {
-    const section = sections.find(s => s.id === sectionId)
-    // Filter out AI-only sections or responses that are purely AI-generated
-    if (!section) return true // Include unknown sections by default
-    
-    // Check if this is a user input section (not AI-only)
-    const sectionType = section.type?.toLowerCase()
-    const aiOnlyTypes = ['ai', 'analysis', 'summary', 'processing']
-    
-    // Exclude AI-only section types
-    if (aiOnlyTypes.includes(sectionType)) return false
-    
-    // Include if it has user input data
-    if (response && typeof response === 'object') {
-      // Check if there's actual user input (not just AI outputs)
-      if (response.value !== undefined || response.response !== undefined) {
-        return true
-      }
-      // If it only has outputs/summary without user input, it's likely AI-only
-      if (response.outputs && !response.value && !response.response) {
-        return false
-      }
+    const section = sections.find(s => s.id === sectionId);
+    if (!section) {
+      // If the section doesn't exist in the current campaign definition, don't show it.
+      return false;
+    }
+
+    const sectionType = section.type?.toLowerCase();
+
+    // Whitelist of section types that are considered user questions.
+    const userInputSectionTypes = [
+      'date_time_question',
+      'multiple_choice',
+      'question-slider-multiple',
+      'slider',
+      'text_question',
+      'upload_question',
+    ];
+
+    if (!userInputSectionTypes.includes(sectionType)) {
+      return false;
+    }
+
+    // Also, ensure there's a response to display.
+    if (response === null || response === undefined) {
+      return false;
     }
     
-    return true // Include by default unless explicitly AI-only
-  }
+    // Final check: if a question-type section somehow only contains AI output, hide it.
+    if (response && typeof response === 'object') {
+      const hasUserInput = response.value !== undefined || response.response !== undefined || response.input !== undefined || response.answer !== undefined;
+      const hasAiOutput = response.outputs !== undefined;
+
+      if (hasAiOutput && !hasUserInput) {
+        return false;
+      }
+    }
+
+    return true;
+  };
 
   const getQuestionTitle = (sectionId: string) => {
     const section = sections.find(s => s.id === sectionId)
