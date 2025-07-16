@@ -5,7 +5,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CampaignSection, SectionType } from '@/lib/types/campaign-builder'
 import { SectionBlock } from './section-block'
 import { MandatorySectionPlaceholder } from './mandatory-section-placeholder'
-import { OptionalSectionPlaceholder } from './optional-section-placeholder'
+import { OptionalSectionPlaceholder, TemplatePlaceholder } from './optional-section-placeholder'
 import { cn } from '@/lib/utils'
 import { Plus, Layout } from 'lucide-react'
 import React from 'react'
@@ -26,6 +26,7 @@ interface EnhancedSortableCanvasProps {
   onSectionConfigure?: (sectionId: string) => void
   onSectionTypeChange?: (sectionId: string, newType: string) => void
   onSectionAdd: (sectionType: SectionType) => Promise<void>
+  onTemplateClick?: () => void
   selectedSectionId?: string | null
   onSectionSelect?: (sectionId: string | null) => void
   className?: string
@@ -42,6 +43,7 @@ export function EnhancedSortableCanvas({
   onSectionConfigure,
   onSectionTypeChange,
   onSectionAdd,
+  onTemplateClick,
   selectedSectionId,
   onSectionSelect,
   className,
@@ -103,63 +105,37 @@ export function EnhancedSortableCanvas({
     >
       {isEmpty ? (
         /* Empty State - Only Optional Sections */
-        <div className="p-8 h-full flex items-center justify-center">
-          <div className="w-full max-w-md">
-            <div className="text-center mb-6">
-              <h3 className={cn(
-                'text-lg font-medium mb-2 transition-colors',
-                isOver ? 'text-blue-900' : 'text-foreground'
-              )}>
-                {isOver ? 'Drop section here' : 'Get started with common sections'}
-              </h3>
-              
-              <p className={cn(
-                'text-sm max-w-lg mx-auto transition-colors',
-                isOver ? 'text-blue-700' : 'text-muted-foreground'
-              )}>
-                {isOver 
-                  ? 'Release to add this section to your campaign'
-                  : 'Choose a section to get started, or drag from the sidebar for more options.'
-                }
-              </p>
-            </div>
+        <div className="text-center p-8 w-full max-w-4xl mx-auto">
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
+            Your canvas is empty
+          </h2>
+          <p className="text-gray-600 dark:text-gray-800 mb-6">
+            Add a section to get started or use a template.
+          </p>
 
-            {/* Optional Section Cards */}
-            {!isOver && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mb-6">
-                <OptionalSectionPlaceholder type="hero" onAdd={onSectionAdd} />
-                <OptionalSectionPlaceholder type="text-question" onAdd={onSectionAdd} />
-              </div>
-            )}
-
-            {/* Drop zone for dragging */}
-            {isOver && (
-              <div className="border-2 border-blue-300 border-dashed rounded-lg p-8 bg-blue-50">
-                <div className="text-center">
-                  <Plus className="h-8 w-8 text-blue-600 mx-auto mb-4" />
-                  <div className="flex justify-center space-x-2">
-                    {[...Array(3)].map((_, i) => (
-                      <div
-                        key={i}
-                        className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
-                        style={{
-                          animationDelay: `${i * 0.1}s`
-                        }}
-                      />
-                    ))}
-                  </div>
+          {/* Optional Section Cards */}
+          {!isOver && (
+            <div className="w-full mb-6">
+              {onTemplateClick && (
+                <div className="mb-4">
+                  <TemplatePlaceholder onClick={onTemplateClick} />
                 </div>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <OptionalSectionPlaceholder
+                  type="hero"
+                  onAdd={onSectionAdd}
+                />
+                <OptionalSectionPlaceholder
+                  type="text-question"
+                  onAdd={onSectionAdd}
+                />
               </div>
-            )}
-
-            {/* Additional drag message */}
-            {!isOver && (
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">
-                  Or drag any section from the sidebar
-                </p>
-              </div>
-            )}
+            </div>
+          )}
+            
+          <div className="text-center text-gray-500 dark:text-gray-400">
+            Drag and drop sections from the menu on the left.
           </div>
         </div>
       ) : (

@@ -1044,94 +1044,94 @@ export default function ToolBuilderPage() {
     if (!campaign) return;
     setIsSaving(true);
     try {
-      // 1. Text Question: name
+      // Update campaign name
+      await handleCampaignNameChange('Which Holiday Should You Take Next?');
+
+      // 1. Text Question
       const textType = getSectionTypeById('question-text');
-      const textSection = await createSection({
+      await createSection({
         campaign_id: campaign.id,
         type: 'text_question',
-        title: 'name',
+        title: 'day_off',
         description: null,
         order_index: 1,
         configuration: {
           ...textType?.defaultSettings,
-          title: 'What is your name?',
-          input_type: 'text',
-          placeholder: 'Enter your name',
-          required: true,
+          content: 'What’s your favourite way to spend a day off?',
         },
         required: true,
       });
 
-      // 2. Multiple Choice: business
+      // 2. Multiple Choice
       const mcType = getSectionTypeById('question-multiple-choice');
-      const mcSection = await createSection({
+      await createSection({
         campaign_id: campaign.id,
         type: 'multiple_choice',
-        title: 'business',
+        title: 'holiday_vibe',
         description: null,
         order_index: 2,
         configuration: {
           ...mcType?.defaultSettings,
-          title: 'What business are you in?',
+          content: 'On holiday, you mostly:',
           allow_multiple: false,
           display_type: 'radio',
           options: [
-            { id: 'option-1', text: 'Design', order: 1 },
-            { id: 'option-2', text: 'Marketing Agency', order: 2 },
-            { id: 'option-3', text: 'SaaS/Tech', order: 3 },
-            { id: 'option-4', text: 'Other', order: 4 },
+            { id: 'option-1', text: 'Chill out', order: 1 },
+            { id: 'option-2', text: 'Pack in activities', order: 2 },
+            { id: 'option-3', text: 'Mix it up', order: 3 },
           ],
-          required: true,
-        },
+        } as any,
         required: true,
       });
 
-      // 3. Slider: size
+      // 3. Slider
       const sliderType = getSectionTypeById('question-slider');
-      const sliderSection = await createSection({
+      await createSection({
         campaign_id: campaign.id,
         type: 'slider',
-        title: 'size',
+        title: 'adventurous_level',
         description: null,
         order_index: 3,
         configuration: {
           ...sliderType?.defaultSettings,
-          title: 'How big is your audience?',
-          min_value: 1,
-          max_value: 100000,
-          default_value: 1000,
+          question: 'How adventurous are you?',
+          subheading: '1 = Homebody, 10 = Daredevil',
+          minValue: 1,
+          maxValue: 10,
+          default_value: 5,
           step: 1,
-          labels: { min: '1', max: '100,000' },
-          required: true,
-        },
+          labels: { min: '1', max: '10' },
+        } as any,
         required: true,
       });
 
-      // 4. Logic: prompt
+      // 4. Logic: to generate output
       const logicType = getSectionTypeById('logic-ai');
-      const logicSection = await createSection({
+      await createSection({
         campaign_id: campaign.id,
         type: 'logic',
-        title: 'logic',
+        title: 'AI Logic',
         description: null,
         order_index: 4,
         configuration: {
           ...logicType?.defaultSettings,
-          title: 'AI Marketing Idea',
-          variable_access: ['name', 'business', 'size'],
-          prompt_template: 'A user named @name has a business that is a @business with an audience of @size. Suggest a marketing idea and next steps.',
-          output_variable: 'idea',
+          title: 'Generate Holiday Suggestion',
+          variable_access: ['day_off', 'holiday_vibe', 'adventurous_level'],
+          prompt_template: 'A user whose ideal day off is @day_off, with a holiday vibe of "@holiday_vibe" and an adventurous level of @adventurous_level out of 10, is looking for a holiday suggestion. Please provide a suitable city, an activity in that city, and a brief explanation.',
+          outputVariables: [
+            { id: '1', name: 'city', description: 'A city that is suitable' },
+            { id: '2', name: 'activity', description: 'An activity in that city that suits them' },
+            { id: '3', name: 'explanation', description: 'Why this city is suitable for them - 2 paragraphs' },
+          ],
           ai_provider: 'openai',
           model: 'gpt-4',
-          max_tokens: 500,
-          temperature: 0.7,
-        },
+        } as any,
         required: true,
       });
 
-      // 5. Capture: standard
+      // 5. Capture: to get the user's name
       const captureType = getSectionTypeById('capture-details');
-      const captureSection = await createSection({
+      await createSection({
         campaign_id: campaign.id,
         type: 'capture',
         title: 'capture',
@@ -1139,35 +1139,48 @@ export default function ToolBuilderPage() {
         order_index: 5,
         configuration: {
           ...captureType?.defaultSettings,
-        },
+          enabledFields: {
+            name: true,
+            email: true,
+            phone: false,
+          },
+          requiredFields: {
+            name: true,
+            email: true,
+            phone: false
+          }
+        } as any,
         required: true,
       });
 
-      // 6. Output: uses all variables
+      // 6. Output
       const outputType = getSectionTypeById('output-results');
-      const outputSection = await createSection({
+      await createSection({
         campaign_id: campaign.id,
         type: 'output',
-        title: 'output',
+        title: 'Output',
         description: null,
         order_index: 6,
         configuration: {
           ...outputType?.defaultSettings,
-          title: 'Your Marketing Idea',
-          template: `Hi @name! Here’s a marketing idea for your @business with an audience of @size:\n@idea\n\nNext steps:\n@next_steps`,
-          variables: ['name', 'business', 'size', 'idea', 'next_steps'],
-          format: 'text',
-          download_enabled: false,
-        },
+          title: 'Hey @name',
+          subtitle: 'We can see you enjoying @activity in @city.',
+          content: '@explanation',
+          showButton: true,
+          buttonText: 'Ready, explore holidays now',
+          buttonType: 'link',
+          buttonUrl: 'https://www.thomascook.com/',
+        } as any,
         required: true,
       });
+
 
       // Reload sections from DB
       await loadCampaign();
       setShowOnboarding(false);
       toast({
-        title: 'Template added!',
-        description: 'A marketing ideas lead magnet template has been added to your campaign.',
+        title: 'Holiday template added!',
+        description: 'A holiday recommendation template has been added to your campaign.',
         duration: 4000,
       });
     } catch (err) {
@@ -1342,6 +1355,7 @@ export default function ToolBuilderPage() {
                           onSectionConfigure={handleSectionConfigure}
                           onSectionTypeChange={handleSectionTypeChange}
                           onSectionAdd={handleSectionAdd}
+                          onTemplateClick={handleCreateTemplate}
                           selectedSectionId={selectedSectionId}
                           onSectionSelect={setSelectedSectionId}
                           className=""
