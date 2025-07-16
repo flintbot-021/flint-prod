@@ -18,7 +18,7 @@ interface DateTimeQuestionProps {
 }
 
 interface DateTimeSettings {
-  content?: string
+  headline?: string
   subheading?: string
   includeDate?: boolean
   includeTime?: boolean
@@ -39,7 +39,7 @@ export function DateTimeQuestion({
   // Get current settings with defaults
   const settings = section.settings as DateTimeSettings || {}
   const {
-    content = '',
+    headline = '',
     subheading = '',
     includeDate = true,
     includeTime = false,
@@ -66,8 +66,8 @@ export function DateTimeQuestion({
   }
 
   // Handle content change
-  const handleContentChange = async (newContent: string) => {
-    await updateSettings({ content: newContent })
+  const handleHeadlineChange = async (newHeadline: string) => {
+    await updateSettings({ headline: newHeadline })
   }
 
   // Handle subheading change
@@ -88,7 +88,7 @@ export function DateTimeQuestion({
           {/* Question Text */}
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold text-gray-900">
-              {content || 'Select a date and time'}
+              {headline || 'Select a date and time'}
               {required && <span className="text-red-500 ml-1">*</span>}
             </h1>
             
@@ -144,8 +144,8 @@ export function DateTimeQuestion({
       {/* Main Question - Large, center-aligned */}
       <div className="text-center">
         <InlineEditableText
-          value={content}
-          onSave={handleContentChange}
+          value={headline}
+          onSave={handleHeadlineChange}
           variant="body"
           placeholder="When would you like to schedule this?"
           className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"

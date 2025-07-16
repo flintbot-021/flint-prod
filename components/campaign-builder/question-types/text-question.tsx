@@ -13,7 +13,7 @@ interface TextQuestionProps {
 }
 
 interface TextQuestionSettings {
-  content?: string
+  headline?: string
   subheading?: string
   label?: string
   placeholder?: string
@@ -32,7 +32,7 @@ export function TextQuestion({
   // Get current settings with defaults
   const settings = section.settings as TextQuestionSettings || {}
   const {
-    content = '',
+    headline = '',
     subheading = '',
     label = '',
     placeholder = 'Answer will go here',
@@ -59,8 +59,8 @@ export function TextQuestion({
   }
 
   // Handle content change
-  const handleContentChange = async (newContent: string) => {
-    await updateSettings({ content: newContent })
+  const handleHeadlineChange = async (newHeadline: string) => {
+    await updateSettings({ headline: newHeadline })
   }
 
   // Handle subheading change
@@ -86,7 +86,7 @@ export function TextQuestion({
           {/* Main Question Text */}
           <div className="text-center">
             <h1 className="text-4xl font-bold text-gray-900">
-              {content || 'Your question text here...'}
+              {headline || 'Your question text here...'}
             </h1>
           </div>
 
@@ -128,8 +128,8 @@ export function TextQuestion({
       {/* Main Question - Large, center-aligned */}
       <div className="text-center">
         <InlineEditableText
-          value={content}
-          onSave={handleContentChange}
+          value={headline}
+          onSave={handleHeadlineChange}
           variant="body"
           placeholder="Type your question here"
           className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"

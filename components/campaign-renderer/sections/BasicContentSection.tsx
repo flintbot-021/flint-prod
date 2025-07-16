@@ -8,6 +8,14 @@ import { BasicContentConfiguration } from '@/lib/types/database'
 import { FileText } from 'lucide-react'
 import { getCampaignTheme, getCampaignTextColor } from '../utils'
 
+interface BasicContentSettings {
+  alignment: 'left' | 'center' | 'right',
+  headline: string,
+  subheading: string,
+  content: string,
+  image_url: string,
+}
+
 export function BasicContentSection({
   section,
   index,
@@ -24,12 +32,12 @@ export function BasicContentSection({
   
   // Use section configuration with fallbacks
   const configAny = basicConfig as any
-  const settings = {
-    title: basicConfig.title || title || 'Your Headline',
-    subtitle: configAny.subtitle || description || 'Add your subheading here',
-    content: configAny.content || 'Add your content here. You can write multiple paragraphs and create rich content that engages your audience.',
-    image: configAny.image || '',
-    textAlignment: configAny.textAlignment || 'center'
+  const settings: BasicContentSettings = {
+    alignment: configAny.alignment || 'center',
+    headline: title || 'Your Headline Here',
+    subheading: description || 'A compelling subheading to draw them in.',
+    content: configAny.content || 'This is where your main content will go. You can add more details, paragraphs, and information here to engage your audience.',
+    image_url: configAny.image_url || '',
   }
 
   // Debug logging
@@ -39,8 +47,8 @@ export function BasicContentSection({
     sectionTitle: section.title,
     basicConfig,
     settings,
-    hasImage: !!settings.image,
-    textAlignment: settings.textAlignment,
+    hasImage: !!settings.image_url,
+    textAlignment: settings.alignment,
     configKeys: Object.keys(basicConfig || {})
   })
 
@@ -75,38 +83,40 @@ export function BasicContentSection({
       <div className="flex-1 py-16 px-6">
         <div className="max-w-4xl mx-auto space-y-12">
           {/* Top Image (if provided) */}
-          {settings.image && (
+          {settings.image_url && (
             <div className="w-full">
               <img 
-                src={settings.image}
-                alt={settings.title || 'Section image'}
+                src={settings.image_url}
+                alt={settings.headline || 'Section image'}
                 className="w-full h-64 md:h-80 object-cover rounded-lg"
               />
             </div>
           )}
 
           {/* Content Stack: Title -> Subtitle -> Content */}
-          <div className={cn('space-y-6', getAlignmentClass(settings.textAlignment))}>
-            {/* Title */}
-            <h1 
-              className={cn(
-                "font-bold",
-                deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
-              )}
-              style={primaryTextStyle}
-            >
-              {settings.title}
-            </h1>
+          <div className={cn('space-y-6', getAlignmentClass(settings.alignment))}>
+            {/* Headline */}
+            {settings.headline && (
+              <h1 
+                className={cn(
+                  "font-bold",
+                  deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
+                )}
+                style={primaryTextStyle}
+              >
+                {settings.headline}
+              </h1>
+            )}
             
-            {/* Subtitle */}
-            {settings.subtitle && (
+            {/* Subheading */}
+            {settings.subheading && (
               <p 
                 className={cn(
                   deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
                 )}
                 style={mutedTextStyle}
               >
-                {settings.subtitle}
+                {settings.subheading}
               </p>
             )}
 

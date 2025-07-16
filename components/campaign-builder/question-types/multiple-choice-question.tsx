@@ -27,7 +27,7 @@ interface ChoiceOption {
 }
 
 interface MultipleChoiceSettings {
-  content?: string
+  headline?: string
   subheading?: string
   options?: ChoiceOption[]
   selectionType?: SelectionType
@@ -124,7 +124,7 @@ export function MultipleChoiceQuestion({
   // Get current settings with defaults
   const settings = section.settings as MultipleChoiceSettings || {}
   const {
-    content = '',
+    headline = '',
     subheading = '',
     options = [
       { id: 'option-1', text: 'Option 1', order: 1 },
@@ -180,8 +180,8 @@ export function MultipleChoiceQuestion({
   }, [settings, onUpdate])
 
   // Handle content change
-  const handleContentChange = useCallback(async (newContent: string) => {
-    await updateSettings({ content: newContent })
+  const handleHeadlineChange = useCallback(async (newHeadline: string) => {
+    await updateSettings({ headline: newHeadline })
   }, [updateSettings])
 
   // Handle subheading change
@@ -264,9 +264,9 @@ export function MultipleChoiceQuestion({
       <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
         <div className="space-y-6">
           {/* Question Text */}
-          <div className="text-center space-y-4">
+          <div className="text-center">
             <h1 className="text-4xl font-bold text-gray-900">
-              {content || 'Your question text here...'}
+              {headline || 'Your question text here...'}
               {required && <span className="text-red-500 ml-1">*</span>}
             </h1>
             
@@ -313,8 +313,8 @@ export function MultipleChoiceQuestion({
       {/* Main Question - Large, center-aligned */}
       <div className="text-center">
         <InlineEditableText
-          value={content}
-          onSave={handleContentChange}
+          value={headline}
+          onSave={handleHeadlineChange}
           variant="body"
           placeholder="Type your question here"
           className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"

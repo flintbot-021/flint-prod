@@ -47,8 +47,8 @@ export function MultipleSlidersSection({
   
   const configData = config as unknown as MultipleSlidersSettings
   const sliders = configData.sliders || []
-  const headline = configData.headline || title || 'Rate the following'
-  const subheading = configData.subheading || description || ''
+  const headline = title || 'Rate the following'
+  const subheading = description || ''
   
   // Theme styles
   const theme = getCampaignTheme(campaign)

@@ -32,8 +32,8 @@ export function TextQuestionSection({
   
   // Get configuration
   const configData = config as any
-  const question = configData.content || configData.question || title || 'Please enter your response'
-  const subheading = configData.subheading || description || ''
+  const question = title || 'Please enter your response'
+  const subheading = description || ''
   const fieldLabel = configData.label || configData.fieldLabel || ''
   const placeholder = configData.placeholder || 'Type your answer here...'
   const isRequired = configData.required ?? true

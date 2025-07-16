@@ -22,8 +22,8 @@ export function SliderSection({
 }: SectionRendererProps) {
   // Get configuration
   const configData = config as any
-  const question = configData.content || configData.question || title || 'Rate your response'
-  const subheading = configData.subheading || description
+  const question = title || 'Rate your response'
+  const subheading = description || ''
   const minValue = configData.minValue || 1
   const maxValue = configData.maxValue || 10
   const step = configData.step || 1

@@ -21,7 +21,7 @@ interface UploadQuestionProps {
 }
 
 interface UploadSettings {
-  content?: string
+  headline?: string
   subheading?: string
   allowImages?: boolean
   allowDocuments?: boolean
@@ -60,7 +60,7 @@ export function UploadQuestion({
   // Get current settings with defaults
   const settings = section.settings as UploadSettings || {}
   const {
-    content = '',
+    headline = '',
     subheading = '',
     allowImages = true,
     allowDocuments = true,
@@ -91,8 +91,8 @@ export function UploadQuestion({
   }
 
   // Handle content change
-  const handleContentChange = async (newContent: string) => {
-    await updateSettings({ content: newContent })
+  const handleHeadlineChange = async (newHeadline: string) => {
+    await updateSettings({ headline: newHeadline })
   }
 
   // Handle subheading change
@@ -238,7 +238,7 @@ export function UploadQuestion({
           {/* Question Text */}
           <div className="text-center space-y-4">
             <h1 className="text-4xl font-bold text-gray-900">
-              {content || 'Upload your files'}
+              {headline || 'Upload your files'}
               {required && <span className="text-red-500 ml-1">*</span>}
             </h1>
             
@@ -337,12 +337,12 @@ export function UploadQuestion({
       {/* Main Question - Large, center-aligned */}
       <div className="text-center">
         <InlineEditableText
-          value={content}
-          onSave={handleContentChange}
+          value={headline}
+          onSave={handleHeadlineChange}
           variant="body"
-          placeholder="Upload your files"
+          placeholder="Type your question here"
           className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-4xl !font-bold !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0"
+          inputClassName="!text-4xl !font-bold !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
           showEditIcon={false}
           showSaveStatus={false}
           multiline={false}
