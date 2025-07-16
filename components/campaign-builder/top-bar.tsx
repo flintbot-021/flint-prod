@@ -294,7 +294,7 @@ export function CampaignBuilderTopBar({
                 disabled={isSaving}
               >
                 <Settings className="h-4 w-4 mr-2" />
-                Edit
+                Theme
               </Button>
             )}
 
@@ -324,6 +324,8 @@ export function CampaignBuilderTopBar({
           isOpen={showEditModal}
           onClose={handleEditModalClose}
           onSave={handleEditModalSave}
+          mode="edit"
+          initialStep="theme"
         />
       )}
     </div>
