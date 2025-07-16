@@ -507,7 +507,6 @@ export default function ToolBuilderPage() {
       
       // Update in database
       const result = await updateSection(sectionId, dbUpdates)
-      
       if (!result.success) {
         throw new Error(result.error || 'Failed to update section')
       }
