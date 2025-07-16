@@ -161,7 +161,7 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave, mode = 'e
   }
 
   // Only show steps based on mode
-  const visibleSteps = mode === 'create' ? [steps[0]] : [steps[1]]
+  const visibleSteps = mode === 'create' ? steps : [steps[0]];
   const getCurrentStepIndex = () => 0 // Only one step in either mode
 
   // Navigation logic: no next/prev in single-step mode
@@ -549,12 +549,13 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave, mode = 'e
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <h2 className="text-xl font-semibold">
-            {mode === 'create' ? 'Create Tool' : 'Theme & Branding'}
+            {mode === 'create' ? 'Create Tool' : 'Edit Tool'}
           </h2>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
         </div>
+        {/* No step navigation in edit mode; only show name/description fields */}
         {/* Content */}
         <div className="p-6">
           {/* Error Message */}
@@ -571,8 +572,75 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave, mode = 'e
               </CardContent>
             </Card>
           )}
-          {/* Step Content */}
-          {renderStepContent()}
+          {/* Always render name/description fields in edit mode; in create mode, show both steps if needed */}
+          {mode === 'edit' && (
+            // Basic Info Step (edit mode)
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="name">Tool Name *</Label>
+                <Input
+                  id="name"
+                  ref={nameInputRef}
+                  value={formData.name}
+                  onChange={(e) => updateFormData({ name: e.target.value })}
+                  placeholder="Enter your tool name"
+                  className="text-lg"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Give your tool a clear, descriptive name
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => updateFormData({ description: e.target.value })}
+                  placeholder="Describe what your tool is about (optional)"
+                  rows={4}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Help your team understand the purpose of this tool
+                </p>
+              </div>
+            </div>
+          )}
+          {mode === 'create' && currentStep === 'basic' && (
+            // Basic Info Step (create mode)
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="name">Tool Name *</Label>
+                <Input
+                  id="name"
+                  ref={nameInputRef}
+                  value={formData.name}
+                  onChange={(e) => updateFormData({ name: e.target.value })}
+                  placeholder="Enter your tool name"
+                  className="text-lg"
+                />
+                <p className="text-sm text-muted-foreground">
+                  Give your tool a clear, descriptive name
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => updateFormData({ description: e.target.value })}
+                  placeholder="Describe what your tool is about (optional)"
+                  rows={4}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Help your team understand the purpose of this tool
+                </p>
+              </div>
+            </div>
+          )}
+          {mode === 'create' && currentStep === 'theme' && (
+            // Theme Step (create mode)
+            renderStepContent()
+          )}
           {/* Footer Buttons */}
           <div className="flex justify-end">
             <Button

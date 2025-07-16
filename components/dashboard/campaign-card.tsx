@@ -287,7 +287,7 @@ const CampaignCard = memo(function CampaignCard({
                 className="flex items-center gap-2 text-sm"
               >
                 <Edit className="h-4 w-4" aria-hidden="true" />
-                <span>Edit Tool</span>
+                <span>Rename</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {getStatusActions(campaign).map((action, index) => (
