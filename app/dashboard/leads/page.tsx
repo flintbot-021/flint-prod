@@ -728,6 +728,7 @@ export default function LeadsPage() {
       // Prepare pagination params
       const paginationParams: PaginationParams & {
         campaign_id?: string;
+        campaign_ids?: string[];
         search?: string;
       } = {
         page: currentPage,
@@ -737,6 +738,10 @@ export default function LeadsPage() {
       // Add filters
       if (selectedCampaign !== 'all') {
         paginationParams.campaign_id = selectedCampaign
+      } else {
+        // Only show leads for campaigns owned by the user
+        const userCampaignIds = campaignsResult.data?.data?.map((c: any) => c.id) || []
+        paginationParams.campaign_ids = userCampaignIds
       }
 
       if (searchTerm) {
@@ -753,7 +758,7 @@ export default function LeadsPage() {
       if (leadsResult.data) {
         // Enrich leads with campaign data
         const enrichedLeads: LeadWithCampaign[] = leadsResult.data.data?.map((lead: Lead) => {
-          const campaign = campaignsResult.data?.data?.find(c => c.id === lead.campaign_id) || null
+          const campaign = campaignsResult.data?.data?.find((c: any) => c.id === lead.campaign_id) || null
           return { ...lead, campaign }
         }) || []
 

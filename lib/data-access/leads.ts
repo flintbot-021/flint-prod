@@ -737,13 +737,14 @@ export async function searchLeads(
 export async function getLeads(
   params: PaginationParams & {
     campaign_id?: string;
+    campaign_ids?: string[]; // <-- add this
     completed?: boolean;
     search?: string;
   } = {}
 ): Promise<DatabaseResult<PaginatedResponse<Lead>>> {
   await requireAuth();
   const supabase = await getSupabaseClient();
-  const { campaign_id, completed, search, ...paginationParams } = params;
+  const { campaign_id, campaign_ids, completed, search, ...paginationParams } = params;
 
   return withErrorHandling(async () => {
     let query = supabase
@@ -753,8 +754,10 @@ export async function getLeads(
         campaigns!inner (*)
       `, { count: 'exact' });
 
-    // Apply filters
-    if (campaign_id) {
+    // Always filter by campaign_ids if provided
+    if (campaign_ids && campaign_ids.length > 0) {
+      query = query.in('campaign_id', campaign_ids);
+    } else if (campaign_id) {
       query = query.eq('campaign_id', campaign_id);
     }
 

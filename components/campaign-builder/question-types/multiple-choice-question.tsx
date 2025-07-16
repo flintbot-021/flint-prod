@@ -231,7 +231,7 @@ export function MultipleChoiceQuestion({
     }
     // Only add if it's a valid object
     if (typeof newOption.text === 'string' && typeof newOption.id === 'string' && typeof newOption.order === 'number') {
-      await updateSettings({ options: [...options, newOption] })
+    await updateSettings({ options: [...options, newOption] })
     } else {
       console.error('Attempted to add invalid option:', newOption)
     }

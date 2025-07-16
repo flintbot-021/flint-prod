@@ -359,7 +359,11 @@ export default function Dashboard() {
       title: 'Campaign updated',
       description: 'Your campaign has been successfully updated.',
     })
-  }, [loadCampaigns, handleModalClose])
+    if (!editingCampaign) {
+      // Redirect to builder for new tool
+      router.push(`/dashboard/campaigns/${updatedCampaign.id}/builder`)
+    }
+  }, [loadCampaigns, handleModalClose, editingCampaign, router])
 
   if (loading) {
     return (
@@ -618,6 +622,8 @@ export default function Dashboard() {
           onClose={handleModalClose}
           onSave={handleModalSave}
           isOpen={showEditModal}
+          mode={editingCampaign ? 'edit' : 'create'}
+          initialStep={editingCampaign ? 'theme' : 'basic'}
         />
       )}
     </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -18,7 +18,8 @@ import {
   AlertCircle,
   Loader2,
   Upload,
-  X
+  X,
+  Image
 } from 'lucide-react'
 import { toast } from '@/components/ui/use-toast'
 
@@ -27,6 +28,8 @@ interface CampaignEditModalProps {
   isOpen: boolean
   onClose: () => void
   onSave: (updatedCampaign: Campaign) => void
+  mode?: 'create' | 'edit' // NEW: controls modal behavior
+  initialStep?: 'basic' | 'theme' // NEW: controls which step is shown on open
 }
 
 interface CampaignFormData {
@@ -50,7 +53,7 @@ const steps: { id: Step; title: string; description: string }[] = [
   }
 ]
 
-export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: CampaignEditModalProps) {
+export function CampaignEditModal({ campaign, isOpen, onClose, onSave, mode = 'edit', initialStep }: CampaignEditModalProps) {
   const [currentStep, setCurrentStep] = useState<Step>('basic')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -75,6 +78,7 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: Campaig
       }
     }
   })
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   // Reset form when campaign changes
   useEffect(() => {
@@ -126,6 +130,25 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: Campaig
     setLogoPreview(null)
   }, [campaign, isOpen])
 
+  // Set initial step based on mode/initialStep
+  useEffect(() => {
+    if (initialStep) {
+      setCurrentStep(initialStep)
+    } else if (mode === 'create') {
+      setCurrentStep('basic')
+    } else {
+      setCurrentStep('theme')
+    }
+  }, [initialStep, mode])
+
+  // Focus tool name input when modal opens in create mode
+  useEffect(() => {
+    if (mode === 'create' && isOpen && nameInputRef.current) {
+      nameInputRef.current.focus()
+      nameInputRef.current.select()
+    }
+  }, [mode, isOpen])
+
   const updateFormData = (updates: Partial<CampaignFormData>) => {
     setFormData(prev => ({ ...prev, ...updates }))
   }
@@ -137,34 +160,14 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: Campaig
     }))
   }
 
-  const getCurrentStepIndex = () => {
-    return steps.findIndex(step => step.id === currentStep)
-  }
+  // Only show steps based on mode
+  const visibleSteps = mode === 'create' ? [steps[0]] : [steps[1]]
+  const getCurrentStepIndex = () => 0 // Only one step in either mode
 
-  const goToNextStep = () => {
-    const currentIndex = getCurrentStepIndex()
-    if (currentIndex < steps.length - 1) {
-      setCurrentStep(steps[currentIndex + 1].id)
-    }
-  }
-
-  const goToPreviousStep = () => {
-    const currentIndex = getCurrentStepIndex()
-    if (currentIndex > 0) {
-      setCurrentStep(steps[currentIndex - 1].id)
-    }
-  }
-
-  const canProceedToNextStep = () => {
-    switch (currentStep) {
-      case 'basic':
-        return formData.name.trim().length > 0
-      case 'theme':
-        return true
-      default:
-        return false
-    }
-  }
+  // Navigation logic: no next/prev in single-step mode
+  const canProceedToNextStep = () => true
+  const goToNextStep = () => {}
+  const goToPreviousStep = () => {}
 
   const handleLogoSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -328,8 +331,7 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: Campaig
 
         onSave(updatedCampaign)
       }
-      
-      onClose()
+      // Only close modal after onSave (navigation) is triggered
     } catch (err) {
       console.error('Error saving campaign:', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to save campaign'
@@ -344,85 +346,83 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: Campaig
     }
   }
 
+  // Render content based on mode
   const renderStepContent = () => {
-    switch (currentStep) {
-      case 'basic':
-        return (
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="name">Campaign Name *</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => updateFormData({ name: e.target.value })}
-                placeholder="Enter your campaign name"
-                className="text-lg"
-              />
-              <p className="text-sm text-muted-foreground">
-                Give your lead magnet campaign a clear, descriptive name
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => updateFormData({ description: e.target.value })}
-                placeholder="Describe what your campaign is about (optional)"
-                rows={4}
-              />
-              <p className="text-sm text-muted-foreground">
-                Help your team understand the purpose of this campaign
-              </p>
-            </div>
+    if (mode === 'create') {
+      // Only show name/description, no Card wrapper
+      return (
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="name">Tool Name *</Label>
+            <Input
+              id="name"
+              ref={nameInputRef}
+              value={formData.name}
+              onChange={(e) => updateFormData({ name: e.target.value })}
+              placeholder="Enter your tool name"
+              className="text-lg"
+            />
+            <p className="text-sm text-muted-foreground">
+              Give your tool a clear, descriptive name
+            </p>
           </div>
-        )
-
-      case 'theme':
-        const currentBackground = formData.settings.theme?.background_color || '#FFFFFF'
-        const currentButton = formData.settings.theme?.button_color || '#3B82F6'
-        const currentText = formData.settings.theme?.text_color || '#1F2937'
-
-        return (
-          <div className="space-y-6">
-            {/* Background Color Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="background-color">Background Color</Label>
-              <p className="text-sm text-muted-foreground">Choose any background color for your campaign</p>
-              <div className="flex items-center space-x-3">
-                <input
-                  type="color"
-                  id="background-color"
-                  value={currentBackground}
-                  onChange={(e) => updateSettings({
-                    theme: {
-                      ...formData.settings.theme,
-                      background_color: e.target.value
-                    }
-                  })}
-                  className="w-12 h-12 rounded border border-input"
-                />
-                <Input
-                  value={currentBackground}
-                  onChange={(e) => updateSettings({
-                    theme: {
-                      ...formData.settings.theme,
-                      background_color: e.target.value
-                    }
-                  })}
-                  placeholder="#FFFFFF"
-                  className="flex-1"
-                />
-              </div>
-            </div>
-
-            {/* Button and Text Colors */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="button-color">Button Color</Label>
-                <p className="text-sm text-muted-foreground">Color for buttons and interactive elements</p>
-                <div className="flex items-center space-x-3">
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => updateFormData({ description: e.target.value })}
+              placeholder="Describe what your tool is about (optional)"
+              rows={4}
+            />
+            <p className="text-sm text-muted-foreground">
+              Help your team understand the purpose of this tool
+            </p>
+          </div>
+        </div>
+      )
+    } else {
+      // Screenshot-exact: left = config, right = preview, shadcn look
+      const currentBackground = formData.settings.theme?.background_color || '#FFFFFF'
+      const currentButton = formData.settings.theme?.button_color || '#3B82F6'
+      const currentText = formData.settings.theme?.text_color || '#1F2937'
+      return (
+        <>
+          <div className="flex flex-col sm:flex-row h-full min-h-[400px]">
+            {/* Left: Configure (50%) */}
+            <div className="flex flex-col min-w-[340px] max-w-[480px] flex-1 sm:w-1/2 px-10 py-8">
+              {/* Colors Section */}
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Palette className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-base">Colors</span>
+                </div>
+                {/* Background */}
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <div className="font-medium text-base">Background</div>
+                    <div className="text-xs text-muted-foreground">Main background color</div>
+                  </div>
+                  <input
+                    type="color"
+                    id="background-color"
+                    value={currentBackground}
+                    onChange={(e) => updateSettings({
+                      theme: {
+                        ...formData.settings.theme,
+                        background_color: e.target.value
+                      }
+                    })}
+                    className="w-8 h-8 rounded border border-input shadow-sm cursor-pointer"
+                    style={{ background: currentBackground, padding: 0, width: 32, height: 32 }}
+                  />
+                </div>
+                {/* Button */}
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <div className="font-medium text-base">Primary Button</div>
+                    <div className="text-xs text-muted-foreground">Call-to-action buttons</div>
+                  </div>
                   <input
                     type="color"
                     id="button-color"
@@ -433,26 +433,16 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: Campaig
                         button_color: e.target.value
                       }
                     })}
-                    className="w-12 h-12 rounded border border-input"
-                  />
-                  <Input
-                    value={currentButton}
-                    onChange={(e) => updateSettings({
-                      theme: {
-                        ...formData.settings.theme,
-                        button_color: e.target.value
-                      }
-                    })}
-                    placeholder="#3B82F6"
-                    className="flex-1"
+                    className="w-8 h-8 rounded border border-input shadow-sm cursor-pointer"
+                    style={{ background: currentButton, padding: 0, width: 32, height: 32 }}
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="text-color">Text Color</Label>
-                <p className="text-sm text-muted-foreground">Primary text color for headings and content</p>
-                <div className="flex items-center space-x-3">
+                {/* Text */}
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <div className="font-medium text-base">Text</div>
+                    <div className="text-xs text-muted-foreground">Primary text color</div>
+                  </div>
                   <input
                     type="color"
                     id="text-color"
@@ -463,96 +453,94 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: Campaig
                         text_color: e.target.value
                       }
                     })}
-                    className="w-12 h-12 rounded border border-input"
-                  />
-                  <Input
-                    value={currentText}
-                    onChange={(e) => updateSettings({
-                      theme: {
-                        ...formData.settings.theme,
-                        text_color: e.target.value
-                      }
-                    })}
-                    placeholder="#1F2937"
-                    className="flex-1"
+                    className="w-8 h-8 rounded border border-input shadow-sm cursor-pointer"
+                    style={{ background: currentText, padding: 0, width: 32, height: 32 }}
                   />
                 </div>
               </div>
+              <hr className="my-4" />
+              {/* Logo Section */}
+              <div className="mb-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Image className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-semibold text-base">Logo</span>
+                </div>
+                <div className="font-medium text-base mb-1">Brand Logo</div>
+                {!logoPreview ? (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer min-h-[120px] flex flex-col justify-center items-center w-full"
+                       onClick={() => document.getElementById('logo-upload')?.click()}>
+                    <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground mb-0">Click to change logo</p>
+                    <input
+                      id="logo-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoSelect}
+                      className="hidden"
+                    />
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 flex flex-col items-center justify-center w-full cursor-pointer min-h-[120px]"
+                       onClick={() => document.getElementById('logo-upload')?.click()}>
+                    <img
+                      src={logoPreview}
+                      alt="Logo preview"
+                      className="max-h-16 max-w-[120px] object-contain rounded mb-2"
+                    />
+                    <p className="text-sm text-muted-foreground mb-0">Click to change logo</p>
+                    <input
+                      id="logo-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoSelect}
+                      className="hidden"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
-
-            {/* Preview Section */}
-            <div className="space-y-3">
-              <Label>Color Preview</Label>
+            {/* Divider */}
+            <div className="hidden sm:block w-px bg-gray-200 mx-0" />
+            {/* Right: Preview (50%) */}
+            <div className="flex-1 sm:w-1/2 bg-[#f5f5f5] flex flex-col items-start justify-start min-h-full px-8">
+              <div className="font-semibold text-base mb-4">Preview</div>
               <div 
-                className="p-6 rounded-lg border-2 border-dashed border-gray-300"
+                className="w-full max-w-md p-8 rounded-xl border border-gray-200 flex flex-col items-center shadow-sm bg-white mb-4"
                 style={{ backgroundColor: currentBackground }}
               >
-                <h3 style={{ color: currentText }} className="text-lg font-semibold mb-2">
-                  Sample Campaign Content
+                {logoPreview && (
+                  <img
+                    src={logoPreview}
+                    alt="Logo preview"
+                    className="max-h-12 max-w-[80px] object-contain rounded mb-3"
+                  />
+                )}
+                <h3 style={{ color: currentText }} className="text-xl font-bold mb-1">
+                  Sample Content
                 </h3>
-                <p style={{ color: currentText }} className="text-sm mb-4 opacity-80">
-                  This is how your text will appear on the selected background color.
+                <p style={{ color: currentText }} className="text-base mb-6 opacity-80 text-center">
+                  This is how your text will appear with the selected colors.
                 </p>
                 <button
                   type="button"
                   style={{ backgroundColor: currentButton }}
-                  className="px-4 py-2 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+                  className="px-5 py-2 text-white text-base font-medium rounded-lg hover:opacity-90 transition-opacity"
                 >
                   Sample Button
                 </button>
               </div>
-            </div>
-
-            {/* Logo Upload Section */}
-            <div className="space-y-3">
-              <Label>Campaign Logo</Label>
-              
-              {!logoPreview ? (
-                <div className="border-2 border-dashed border-input rounded-lg p-6 text-center hover:border-blue-400 transition-colors cursor-pointer"
-                     onClick={() => document.getElementById('logo-upload')?.click()}>
-                  <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground mb-1">Click to upload your logo</p>
-                  <p className="text-xs text-muted-foreground">PNG, JPG up to 5MB</p>
-                  <input
-                    id="logo-upload"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoSelect}
-                    className="hidden"
-                  />
-                </div>
-              ) : (
-                <div className="border border-input rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-medium">Logo Preview</p>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleLogoRemove}
-                      className="h-8 w-8 p-0"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="flex justify-center">
-                    <img
-                      src={logoPreview}
-                      alt="Logo preview"
-                      className="max-h-32 max-w-full object-contain rounded"
-                    />
-                  </div>
-                </div>
-              )}
+              <div className="w-full max-w-md bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-700">
+                <span className="font-semibold">Tip:</span> Make sure there's enough contrast between your text and background colors for accessibility.
+              </div>
             </div>
           </div>
-        )
-
-      default:
-        return null
+          <hr className="mt-0 mb-0 border-t border-gray-200" />
+        </>
+      )
     }
   }
 
+  // Modal rendering
   if (!isOpen) return null
 
   return (
@@ -560,64 +548,15 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: Campaig
       <div className="bg-background rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold">Edit Campaign</h2>
+          <h2 className="text-xl font-semibold">
+            {mode === 'create' ? 'Create Tool' : 'Theme & Branding'}
+          </h2>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
         </div>
-
         {/* Content */}
         <div className="p-6">
-          {/* Step Indicator */}
-          <div className="mb-8">
-            <nav aria-label="Progress">
-              <ol className="flex items-center justify-between relative">
-                {steps.map((step, stepIdx) => {
-                  const isCompleted = getCurrentStepIndex() > stepIdx;
-                  const isActive = getCurrentStepIndex() === stepIdx;
-                  return (
-                    <li
-                      key={step.id}
-                      className={`relative flex-1 flex flex-col items-center min-w-0 ${stepIdx !== steps.length - 1 ? 'pr-2 sm:pr-8' : ''}`}
-                    >
-
-                      {/* Step circle */}
-                      <div
-                        className={`flex items-center justify-center h-8 w-8 rounded-full border-2 z-10 ${
-                          isCompleted
-                            ? 'bg-blue-600 border-blue-600 text-white'
-                            : isActive
-                            ? 'border-blue-600 text-blue-600 bg-background'
-                            : 'border-gray-300 text-gray-400 bg-background'
-                        }`}
-                      >
-                        {isCompleted ? (
-                          <Check className="h-5 w-5" />
-                        ) : (
-                          <span className="text-sm font-medium">{stepIdx + 1}</span>
-                        )}
-                      </div>
-                      {/* Step text */}
-                      <div className="mt-2 text-center min-w-0">
-                        <span className={`block text-sm font-medium ${
-                          isCompleted || isActive ? 'text-foreground' : 'text-gray-500'
-                        }`}>
-                          {step.title}
-                        </span>
-                        <span className={`block text-xs ${
-                          isCompleted || isActive ? 'text-gray-600' : 'text-gray-400'
-                        }`}>
-                          {step.description}
-                        </span>
-                      </div>
-
-                    </li>
-                  );
-                })}
-              </ol>
-            </nav>
-          </div>
-
           {/* Error Message */}
           {error && (
             <Card className="mb-6 border-red-200 bg-red-50">
@@ -625,76 +564,41 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave }: Campaig
                 <div className="flex items-start space-x-3 text-red-800">
                   <AlertCircle className="h-5 w-5 mt-0.5" />
                   <div>
-                    <p className="font-medium">Error updating campaign</p>
+                    <p className="font-medium">{mode === 'create' ? 'Error creating tool' : 'Error updating tool'}</p>
                     <p className="text-sm mt-1">{error}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           )}
-
           {/* Step Content */}
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                {currentStep === 'basic' && <Building className="h-5 w-5" />}
-                {currentStep === 'theme' && <Palette className="h-5 w-5" />}
-                <span>{steps[getCurrentStepIndex()].title}</span>
-              </CardTitle>
-              <CardDescription>{steps[getCurrentStepIndex()].description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {renderStepContent()}
-            </CardContent>
-          </Card>
-
-          {/* Navigation */}
-          <div className="flex justify-between">
+          {renderStepContent()}
+          {/* Footer Buttons */}
+          <div className="flex justify-end">
             <Button
               variant="outline"
-              onClick={goToPreviousStep}
-              disabled={getCurrentStepIndex() === 0}
+              onClick={onClose}
+              className="mr-3"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Previous
+              Cancel
             </Button>
-
-            <div className="flex space-x-3">
-              <Button
-                variant="outline"
-                onClick={onClose}
-              >
-                Cancel
-              </Button>
-              
-              {currentStep !== 'theme' ? (
-                <Button
-                  onClick={goToNextStep}
-                  disabled={!canProceedToNextStep()}
-                >
-                  Next
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || isUploadingLogo || !formData.name.trim()}
+              className="min-w-[120px]"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  {isUploadingLogo ? (mode === 'create' ? 'Creating...' : 'Saving...') : (mode === 'create' ? 'Creating...' : 'Saving...')}
+                </>
               ) : (
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting || isUploadingLogo || !formData.name.trim()}
-                  className="min-w-[120px]"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      {isUploadingLogo ? 'Uploading Logo...' : campaign ? 'Saving...' : 'Creating...'}
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      {campaign ? 'Save Changes' : 'Create Campaign'}
-                    </>
-                  )}
-                </Button>
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  {mode === 'create' ? 'Create Tool' : 'Save'}
+                </>
               )}
-            </div>
+            </Button>
           </div>
         </div>
       </div>
