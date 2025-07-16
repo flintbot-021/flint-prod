@@ -12,7 +12,6 @@ import { useAuth } from '@/lib/auth-context'
 import { Eye, EyeOff, LogIn, UserPlus, Mail } from 'lucide-react'
 
 function LoginPageContent() {
-  const [mode, setMode] = useState<'login' | 'signup' | 'reset'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -56,28 +55,20 @@ function LoginPageContent() {
     try {
       let result
       
-      if (mode === 'login') {
-        result = await signIn(email, password)
-        if (result.success) {
-          // Redirect to intended destination
-          setMessage('Login successful! Redirecting...')
-          setTimeout(() => {
-            router.push(redirectTo)
-          }, 1000)
-        }
-      } else if (mode === 'signup') {
-        result = await signUp(email, password)
-      } else if (mode === 'reset') {
-        result = await resetPassword(email)
+      result = await signIn(email, password)
+      if (result.success) {
+        // Redirect to intended destination
+        setMessage('Login successful! Redirecting...')
+        setTimeout(() => {
+          router.push(redirectTo)
+        }, 1000)
       }
 
       if (result?.success) {
-        if (mode !== 'login') {
-          setMessage(result.message || 'Success!')
-          // Clear form for signup/reset
-          setEmail('')
-          setPassword('')
-        }
+        setMessage(result.message || 'Success!')
+        // Clear form for signup/reset
+        setEmail('')
+        setPassword('')
       } else {
         setError(result?.error || 'An error occurred')
       }
@@ -115,35 +106,21 @@ function LoginPageContent() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
-            {mode === 'login' ? (
-              <LogIn className="h-6 w-6 text-blue-600" />
-            ) : mode === 'signup' ? (
-              <UserPlus className="h-6 w-6 text-blue-600" />
-            ) : (
-              <Mail className="h-6 w-6 text-blue-600" />
-            )}
+            <LogIn className="h-6 w-6 text-blue-600" />
           </div>
-          <CardTitle className="text-2xl font-bold">
-            {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create account' : 'Reset password'}
-          </CardTitle>
+          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
           <CardDescription>
-            {mode === 'login' 
-              ? redirectedFrom 
-                ? `Please sign in to access ${redirectedFrom}` 
-                : 'Sign in to your account to continue'
-              : mode === 'signup'
-              ? 'Enter your details to create a new account'
-              : 'Enter your email to receive a password reset link'
-            }
+            {redirectedFrom 
+              ? `Please sign in to access ${redirectedFrom}` 
+              : 'Sign in to your account to continue'}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {redirectedFrom && mode === 'login' && (
+          {redirectedFrom && (
             <div className="mb-4 text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-md p-3">
               <strong>Access Required:</strong> Please sign in to continue to {redirectedFrom}
             </div>
           )}
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -156,153 +133,72 @@ function LoginPageContent() {
                 required
               />
             </div>
-
-            {mode !== 'reset' && (
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
-                    required
-                    minLength={mode === 'signup' ? 6 : undefined}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  required
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </Button>
               </div>
-            )}
-
+            </div>
             {error && (
               <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
                 {error}
               </div>
             )}
-
             {message && (
               <div className="text-sm text-green-600 bg-green-50 border border-green-200 rounded-md p-3">
                 {message}
               </div>
             )}
-
             <Button
               type="submit"
               className="w-full"
               disabled={loading}
             >
-              {loading 
-                ? 'Processing...' 
-                : mode === 'login' 
-                ? 'Sign in' 
-                : mode === 'signup'
-                ? 'Create account'
-                : 'Send reset link'
-              }
+              {loading ? 'Processing...' : 'Sign in'}
             </Button>
-
-            {/* OAuth options temporarily hidden - not yet supported */}
-            {/* {mode === 'login' && (
-              <>
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleOAuthLogin('google')}
-                    disabled={loading}
-                  >
-                    Google
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleOAuthLogin('github')}
-                    disabled={loading}
-                  >
-                    GitHub
-                  </Button>
-                </div>
-              </>
-            )} */}
           </form>
-
           <div className="mt-6 text-center text-sm">
-            {mode === 'login' ? (
-              <>
-                <p className="text-muted-foreground">
-                  Don't have an account?{' '}
-                  <button
-                    type="button"
-                    onClick={() => setMode('signup')}
-                    className="text-blue-600 hover:text-blue-500 font-medium"
-                  >
-                    Sign up
-                  </button>
-                </p>
-                <p className="mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setMode('reset')}
-                    className="text-blue-600 hover:text-blue-500"
-                  >
-                    Forgot your password?
-                  </button>
-                </p>
-              </>
-            ) : mode === 'signup' ? (
-              <p className="text-muted-foreground">
-                Already have an account?{' '}
-                <button
-                  type="button"
-                  onClick={() => setMode('login')}
-                  className="text-blue-600 hover:text-blue-500 font-medium"
-                >
-                  Sign in
-                </button>
-              </p>
-            ) : (
-              <p className="text-muted-foreground">
-                Remember your password?{' '}
-                <button
-                  type="button"
-                  onClick={() => setMode('login')}
-                  className="text-blue-600 hover:text-blue-500 font-medium"
-                >
-                  Sign in
-                </button>
-              </p>
-            )}
+            <p className="text-muted-foreground">
+              Don't have an account?{' '}
+              <Link href="/auth/sign-up" className="text-blue-600 hover:text-blue-500 font-medium">
+                Sign up
+              </Link>
+            </p>
+            <p className="mt-2">
+              <Link href="/auth/forgot-password" className="text-blue-600 hover:text-blue-500">
+                Forgot your password?
+              </Link>
+            </p>
           </div>
-
           <div className="mt-4 text-center">
-            <Link
-              href="/"
+            <a
+              href="https://launch.useflint.co/"
               className="text-sm text-muted-foreground hover:text-foreground"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               ← Back to homepage
-            </Link>
+            </a>
           </div>
         </CardContent>
       </Card>

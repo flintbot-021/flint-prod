@@ -247,7 +247,11 @@ const CampaignCard = memo(function CampaignCard({
             <Button
               variant="outline"
               size="sm"
-              onClick={handleDetailsClick}
+              onClick={
+                campaign.status === 'published' && campaign.is_active
+                  ? handleViewLiveClick
+                  : handleDetailsClick
+              }
               className="h-8 px-3"
               aria-label={`${campaign.status === 'published' && campaign.is_active ? 'View live campaign' : 'Preview campaign'} ${campaign.name}`}
             >
@@ -283,7 +287,7 @@ const CampaignCard = memo(function CampaignCard({
                 className="flex items-center gap-2 text-sm"
               >
                 <Edit className="h-4 w-4" aria-hidden="true" />
-                <span>Edit Tool</span>
+                <span>Rename</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               {getStatusActions(campaign).map((action, index) => (

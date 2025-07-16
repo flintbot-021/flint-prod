@@ -623,7 +623,7 @@ export default function Dashboard() {
           onSave={handleModalSave}
           isOpen={showEditModal}
           mode={editingCampaign ? 'edit' : 'create'}
-          initialStep={editingCampaign ? 'theme' : 'basic'}
+          initialStep={editingCampaign ? 'basic' : 'basic'}
         />
       )}
     </div>
