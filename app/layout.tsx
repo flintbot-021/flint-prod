@@ -4,6 +4,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { WebVitals } from "@/components/analytics/web-vitals";
 import { Toaster } from "@/components/ui/toaster";
+import { PostHogProvider } from "@/components/PostHogProvider";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -35,13 +36,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.className} antialiased`}>
-        <ErrorBoundary>
-          <AuthProvider>
-            <WebVitals />
-            {children}
-            <Toaster />
-          </AuthProvider>
-        </ErrorBoundary>
+        <PostHogProvider>
+          <ErrorBoundary>
+            <AuthProvider>
+              <WebVitals />
+              {children}
+              <Toaster />
+            </AuthProvider>
+          </ErrorBoundary>
+        </PostHogProvider>
       </body>
     </html>
   );

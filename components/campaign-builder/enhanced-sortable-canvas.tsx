@@ -23,15 +23,16 @@ interface EnhancedSortableCanvasProps {
   onSectionUpdate: (sectionId: string, updates: Partial<CampaignSection>) => Promise<void>
   onSectionDelete: (sectionId: string) => void
   onSectionDuplicate: (sectionId: string) => void
-  onSectionConfigure?: (sectionId: string) => void
-  onSectionTypeChange?: (sectionId: string, newType: string) => void
-  onSectionAdd: (sectionType: SectionType) => Promise<void>
+  onSectionConfigure: (sectionId: string) => void
+  onSectionTypeChange: (sectionId: string, newType: string) => void
+  onSectionAdd: (sectionType: SectionType, insertIndex?: number) => void
   onTemplateClick?: () => void
-  selectedSectionId?: string | null
-  onSectionSelect?: (sectionId: string | null) => void
+  selectedSectionId: string | null
+  onSectionSelect?: (sectionId: string) => void
   className?: string
   showCollapsedSections?: boolean
   campaignId: string
+  campaignName?: string
   sectionPersistence?: SectionPersistence
 }
 
@@ -49,6 +50,7 @@ export function EnhancedSortableCanvas({
   className,
   showCollapsedSections = true,
   campaignId,
+  campaignName,
   sectionPersistence
 }: EnhancedSortableCanvasProps) {
   const { isOver, setNodeRef } = useDroppable({
@@ -91,6 +93,9 @@ export function EnhancedSortableCanvas({
   
   const showMandatoryPlaceholders = !isEmpty && (!hasCapture || !hasLogic || !hasOutput)
 
+  // Use provided campaign name or fallback
+  const displayCampaignName = campaignName || 'New Campaign'
+
   return (
     <div
       ref={setNodeRef}
@@ -118,17 +123,25 @@ export function EnhancedSortableCanvas({
             <div className="w-full mb-6">
               {onTemplateClick && (
                 <div className="mb-4">
-                  <TemplatePlaceholder onClick={onTemplateClick} />
+                  <TemplatePlaceholder 
+                    onClick={onTemplateClick} 
+                    campaignId={campaignId}
+                    campaignName={displayCampaignName}
+                  />
                 </div>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <OptionalSectionPlaceholder
                   type="hero"
                   onAdd={onSectionAdd}
+                  campaignId={campaignId}
+                  campaignName={displayCampaignName}
                 />
                 <OptionalSectionPlaceholder
                   type="text-question"
                   onAdd={onSectionAdd}
+                  campaignId={campaignId}
+                  campaignName={displayCampaignName}
                 />
               </div>
             </div>
@@ -144,7 +157,13 @@ export function EnhancedSortableCanvas({
           <div className="space-y-4">
             {/* Show Hero suggestion above if missing and has text questions */}
             {!hasHero && hasTextQuestion && (
-              <OptionalSectionPlaceholder type="hero" onAdd={onSectionAdd} className="suggestion" />
+              <OptionalSectionPlaceholder 
+                type="hero" 
+                onAdd={onSectionAdd} 
+                className="suggestion"
+                campaignId={campaignId}
+                campaignName={displayCampaignName}
+              />
             )}
             
             {/* Render optional sections first (sortable) */}
@@ -198,7 +217,13 @@ export function EnhancedSortableCanvas({
 
             {/* Show Text Question suggestion below if missing and has hero */}
             {!hasTextQuestion && hasHero && (
-              <OptionalSectionPlaceholder type="text-question" onAdd={onSectionAdd} className="suggestion" />
+              <OptionalSectionPlaceholder 
+                type="text-question" 
+                onAdd={onSectionAdd} 
+                className="suggestion"
+                campaignId={campaignId}
+                campaignName={displayCampaignName}
+              />
             )}
           </div>
           
