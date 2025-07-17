@@ -3,7 +3,7 @@
 
    serve(async (req) => {
      const { record } = await req.json()
-     const slackWebhookUrl = Deno.env.get('https://hooks.slack.com/services/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')
+     const slackWebhookUrl = Deno.env.get('SLACK_WEBHOOK_URL')
 
      const message = {
        text: `🎉 New profile created!\nName: ${record.full_name || record.name || 'N/A'}\nEmail: ${record.email || 'N/A'}`
