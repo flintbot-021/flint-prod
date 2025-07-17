@@ -19,13 +19,16 @@ interface HeroSectionProps {
 }
 
 interface HeroSettings {
-  title?: string
-  subtitle?: string
+  headline?: string
+  subheading?: string
   backgroundImage?: string
   overlayColor?: string
   overlayOpacity?: number
   buttonText?: string
   showButton?: boolean
+  // For backward compatibility
+  title?: string
+  subtitle?: string
 }
 
 export function HeroSection({ section, campaignId, isPreview = false, onUpdate, className }: HeroSectionProps) {
@@ -35,24 +38,25 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
   
   // Get current settings with defaults
   const settings = section.settings as HeroSettings || {}
-  const {
-    title = 'Your Hero Title',
-    subtitle = 'Add your compelling subtitle here',
-    backgroundImage = '',
-    overlayColor = '#000000',
-    overlayOpacity = 40,
-    buttonText = 'Get Started',
-    showButton = true
-  } = settings
+  const headline = (settings.headline || settings.title || 'Your Hero Title') as string
+  const subheading = (settings.subheading || settings.subtitle || 'Add your compelling subtitle here') as string
+  const backgroundImage = settings.backgroundImage || ''
+  const overlayColor = settings.overlayColor || '#000000'
+  const overlayOpacity = settings.overlayOpacity ?? 40
+  const buttonText = settings.buttonText || 'Get Started'
+  const showButton = settings.showButton ?? true
 
   // Handle settings updates
   const updateSettings = async (newSettings: Partial<HeroSettings>) => {
     try {
+      // Always save as headline/subheading
+      const mappedSettings = { ...settings, ...newSettings }
+      if ('title' in mappedSettings) mappedSettings.headline = mappedSettings.title
+      if ('subtitle' in mappedSettings) mappedSettings.subheading = mappedSettings.subtitle
+      delete mappedSettings.title
+      delete mappedSettings.subtitle
       await onUpdate({
-        settings: {
-          ...settings,
-          ...newSettings
-        }
+        settings: mappedSettings
       })
     } catch (error) {
       console.error('Failed to update hero settings:', error)
@@ -132,12 +136,12 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
         {/* Content */}
         <div className="relative z-10 text-center space-y-8 px-6 max-w-4xl">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight">
-            {title}
+            {headline}
           </h1>
           
-          {subtitle && (
+          {subheading && (
             <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed">
-              {subtitle}
+              {subheading}
             </p>
           )}
 
@@ -152,6 +156,15 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
   }
 
   // Build Mode - Simple and clean like text questions
+  const handleHeadlineChange = async (newHeadline: string) => {
+    await updateSettings({ headline: newHeadline })
+  }
+
+  const handleSubheadingChange = async (newSubheading: string) => {
+    await updateSettings({ subheading: newSubheading })
+  }
+
+  // Call-to-Action Button
   return (
     <div className={cn('py-16 space-y-6 max-w-2xl mx-auto', className)}>
       
@@ -164,13 +177,13 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
         placeholder="Search for background images..."
       />
 
-      {/* Hero Title - Seamless inline editing */}
+      {/* Hero Headline - Seamless inline editing */}
       <div className="pt-8">
         <InlineEditableText
-          value={title}
-          onSave={(newTitle) => updateSettings({ title: newTitle })}
+          value={headline}
+          onSave={handleHeadlineChange}
           variant="body"
-          placeholder="Your Hero Title"
+          placeholder="Your Hero Headline"
           className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
           inputClassName="!text-4xl !font-bold !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
           showEditIcon={false}
@@ -180,13 +193,13 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
         />
       </div>
 
-      {/* Subtitle - Seamless inline editing */}
+      {/* Hero Subheading - Seamless inline editing */}
       <div className="pt-4">
         <InlineEditableText
-          value={subtitle}
-          onSave={(newSubtitle) => updateSettings({ subtitle: newSubtitle })}
+          value={subheading}
+          onSave={handleSubheadingChange}
           variant="body"
-          placeholder="Add your compelling subtitle here"
+          placeholder="Add your compelling subheading here"
           className="text-xl text-gray-500 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
           inputClassName="!text-xl !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
           showEditIcon={false}
