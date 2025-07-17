@@ -1,7 +1,7 @@
    // supabase/functions/slack-profile-alert/index.ts
-   import { serve } from 'std/server'
+   import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 
-   serve(async (req) => {
+   serve(async (req: Request) => {
      const { record } = await req.json()
      const slackWebhookUrl = Deno.env.get('SLACK_WEBHOOK_URL')
 
