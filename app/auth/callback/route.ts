@@ -5,8 +5,8 @@ import { cookies } from 'next/headers'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  // if "next" is in param, use it as the redirect URL
   const next = searchParams.get('next') ?? '/'
+  const type = searchParams.get('type') // This will be 'recovery' for password reset
 
   if (code) {
     const cookieStore = await cookies()
@@ -28,8 +28,26 @@ export async function GET(request: NextRequest) {
       }
     )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error && data?.user) {
+      // Check if this is a password reset flow (type=recovery)
+      if (type === 'recovery') {
+        // For password reset, redirect to update password page
+        const forwardedHost = request.headers.get('x-forwarded-host')
+        const isLocalEnv = process.env.NODE_ENV === 'development'
+        
+        if (isLocalEnv) {
+          return NextResponse.redirect(`${origin}/auth/update-password`)
+        } else if (forwardedHost) {
+          return NextResponse.redirect(`https://${forwardedHost}/auth/update-password`)
+        } else {
+          return NextResponse.redirect(`${origin}/auth/update-password`)
+        }
+      }
+      
+      // Normal login/signup flow - profile will be created automatically by the database trigger
+      // No need for manual profile creation here
+      
       const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
       const isLocalEnv = process.env.NODE_ENV === 'development'
       if (isLocalEnv) {

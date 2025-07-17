@@ -2,6 +2,17 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  const url = request.nextUrl.clone()
+  
+  // Debug logging for password reset flows
+  if (url.searchParams.get('type') === 'recovery' || url.searchParams.get('token')) {
+    console.log('Middleware - Password reset detected:', {
+      pathname: url.pathname,
+      searchParams: Object.fromEntries(url.searchParams.entries()),
+      fullUrl: request.url
+    })
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -57,8 +68,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const url = request.nextUrl.clone()
-
   // Define protected routes that require authentication
   const protectedRoutes = ['/dashboard', '/campaigns', '/leads', '/settings']
   
@@ -74,6 +83,12 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute = authRoutes.some(route => 
     url.pathname.startsWith(route)
   )
+
+  // Special handling for password reset flows - don't redirect to dashboard
+  if (url.searchParams.get('type') === 'recovery' || url.searchParams.get('token')) {
+    console.log('Middleware - Allowing password reset flow to continue')
+    return supabaseResponse
+  }
 
   // If user is not authenticated and trying to access protected route
   if (!user && isProtectedRoute) {

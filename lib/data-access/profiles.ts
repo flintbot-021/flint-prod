@@ -46,6 +46,8 @@ export async function getCurrentProfile(): Promise<DatabaseResult<Profile>> {
   });
 }
 
+
+
 /**
  * Get profile by ID (admin only or current user)
  */
