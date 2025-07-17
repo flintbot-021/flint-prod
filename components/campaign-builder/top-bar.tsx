@@ -15,11 +15,13 @@ import {
   Loader2,
   Rocket,
   Settings,
-  ExternalLink,
+  LifeBuoy,
   ChevronDown,
   Copy,
   PauseCircle,
-  Home
+  Home,
+  Mail,
+  BookOpen
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -49,6 +51,7 @@ interface CampaignBuilderTopBarProps {
   onPreview?: () => void
   onPublish?: () => void
   onPause?: () => void
+  onShowOnboarding?: () => void;
   className?: string
 }
 
@@ -69,6 +72,7 @@ export function CampaignBuilderTopBar({
   onPreview,
   onPublish,
   onPause,
+  onShowOnboarding,
   className
 }: CampaignBuilderTopBarProps) {
   const router = useRouter()
@@ -313,6 +317,33 @@ export function CampaignBuilderTopBar({
                 Launch
               </Button>
             )}
+
+            {/* Help Icon Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Help" className="ml-2">
+                  <LifeBuoy className="h-5 w-5 text-gray-500" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <a href="mailto:support@yourdomain.com" className="flex items-center" target="_blank" rel="noopener noreferrer">
+                    <Mail className="h-4 w-4 mr-2" />
+                    Email Support
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="https://help.yourdomain.com" className="flex items-center" target="_blank" rel="noopener noreferrer">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Help Docs
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onShowOnboarding} className="flex items-center">
+                  <Eye className="h-4 w-4 mr-2" />
+                  Show Onboarding Guide
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

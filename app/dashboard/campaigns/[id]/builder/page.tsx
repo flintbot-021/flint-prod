@@ -139,9 +139,10 @@ export default function ToolBuilderPage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
-    // Only show onboarding if not dismissed
-    if (typeof window !== 'undefined' && !localStorage.getItem('flint_builder_onboarding_dismissed')) {
+    // Only show onboarding if not seen before
+    if (typeof window !== 'undefined' && !localStorage.getItem('flint_builder_onboarding_seen')) {
       setShowOnboarding(true);
+      localStorage.setItem('flint_builder_onboarding_seen', '1');
     }
   }, []);
 
@@ -1296,6 +1297,7 @@ export default function ToolBuilderPage() {
               onPreview={handlePreview}
               onPublish={handlePublish}
               onPause={handlePause}
+              onShowOnboarding={() => setShowOnboarding(true)}
             />
 
             {/* Main Content Area */}
