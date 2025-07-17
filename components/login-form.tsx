@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { LogIn } from "lucide-react";
 
 export function LoginForm({
   className,
@@ -48,10 +49,13 @@ export function LoginForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
+    <div className={cn("flex flex-col gap-6 max-w-md mx-auto", className)} {...props}>
       <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Login</CardTitle>
+        <CardHeader className="text-center">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
+            <LogIn className="h-6 w-6 text-blue-600" />
+          </div>
+          <CardTitle className="text-2xl font-bold">Login</CardTitle>
           <CardDescription>
             Enter your email below to login to your account
           </CardDescription>

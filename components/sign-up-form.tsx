@@ -58,7 +58,7 @@ export function SignUpForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
+    <div className={cn("flex flex-col gap-6 max-w-md mx-auto", className)} {...props}>
       <Card>
         <CardHeader className="text-center">
           <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 mb-4">
@@ -106,31 +106,43 @@ export function SignUpForm({
                 />
               </div>
               {error && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
+                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-">
                   {error}
                 </div>
               )}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Creating an account..." : "Sign up"}
               </Button>
+              <div className="mt-2 text-center text-xs text-muted-foreground">
+                By creating an account, you accept Flint's{' '}
+                <a
+                  href="https://launch.useflint.co/terms-conditions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-blue-600"
+                >
+                  T's & C's
+                </a>.
+              </div>
+              <hr className="border-gray-200 border-dotted" />
+              <div className="mt-4 text-center text-sm">
+                Already have an account?{' '}
+                <Link href="/auth/login" className="text-blue-600 hover:text-blue-500 font-medium">
+                  Login
+                </Link>
+              </div>
             </div>
-            <div className="mt-4 text-center text-sm">
-              Already have an account?{' '}
-              <Link href="/auth/login" className="text-blue-600 hover:text-blue-500 font-medium">
-                Login
-              </Link>
+            <div className="mt-4 text-center">
+              <a
+                href="https://launch.useflint.co/"
+                className="text-sm text-muted-foreground hover:text-foreground"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                ← Back to homepage
+              </a>
             </div>
           </form>
-          <div className="mt-4 text-center">
-            <a
-              href="https://launch.useflint.co/"
-              className="text-sm text-muted-foreground hover:text-foreground"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              ← Back to homepage
-            </a>
-          </div>
         </CardContent>
       </Card>
     </div>
