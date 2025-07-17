@@ -3,11 +3,14 @@
 import { cn } from '@/lib/utils'
 import { Plus, FileText, Star } from 'lucide-react'
 import { SectionType } from '@/lib/types/campaign-builder'
+import { usePostHog } from 'posthog-js/react'
 
 interface OptionalSectionPlaceholderProps {
   type: 'hero' | 'text-question'
   onAdd: (sectionType: SectionType) => void
   className?: string
+  campaignId?: string
+  campaignName?: string
 }
 
 const OPTIONAL_SECTIONS = {
@@ -30,12 +33,28 @@ const OPTIONAL_SECTIONS = {
 export function OptionalSectionPlaceholder({ 
   type, 
   onAdd, 
-  className 
+  className,
+  campaignId,
+  campaignName 
 }: OptionalSectionPlaceholderProps) {
   const section = OPTIONAL_SECTIONS[type]
   const Icon = section.icon
+  const posthog = usePostHog()
 
   const handleAdd = () => {
+    // Track PostHog event based on type
+    if (posthog) {
+      const eventName = type === 'hero' ? 'start_with_hero' : 'start_with_text'
+      posthog.capture(eventName, {
+        campaign_id: campaignId,
+        campaign_name: campaignName,
+        section_type: section.id,
+        section_name: section.name,
+        interaction_type: 'empty_state_click',
+        placement: 'canvas_empty_state'
+      })
+    }
+    
     // Create a section type object that matches what onSectionAdd expects
     const sectionType: SectionType = {
       id: section.id,
@@ -150,13 +169,32 @@ export function OptionalSectionPlaceholder({
 interface TemplatePlaceholderProps {
   onClick: () => void
   className?: string
+  campaignId?: string
+  campaignName?: string
 }
 
 export function TemplatePlaceholder({ 
   onClick, 
-  className 
+  className,
+  campaignId,
+  campaignName 
 }: TemplatePlaceholderProps) {
   const Icon = Star
+  const posthog = usePostHog()
+
+  const handleClick = () => {
+    // Track PostHog event for template start
+    if (posthog) {
+      posthog.capture('start_with_template', {
+        campaign_id: campaignId,
+        campaign_name: campaignName,
+        interaction_type: 'empty_state_click',
+        placement: 'canvas_empty_state'
+      })
+    }
+    
+    onClick()
+  }
 
   const colorClasses = {
     purple: {
@@ -178,7 +216,7 @@ export function TemplatePlaceholder({
         colors.bg,
         className
       )}
-      onClick={onClick}
+      onClick={handleClick}
     >
       <div className="absolute text-white text-xs px-2 py-1 rounded-full font-medium bg-purple-500 -top-2 -right-2">
         Start Fresh

@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { createClient } from './auth'
 import type { User } from '@supabase/supabase-js'
+import { usePostHog } from 'posthog-js/react'
 
 interface AuthContextType {
   user: User | null
@@ -20,6 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const initialized = useRef(false)
   const lastUserId = useRef<string | null>(null)
   const isTabActive = useRef(true)
+  const posthog = usePostHog()
 
   const refreshUser = async () => {
     try {
@@ -32,6 +34,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null)
       } else {
         setUser(user)
+        // Identify user in PostHog when user is set
+        if (user && posthog) {
+          posthog.identify(user.id, {
+            email: user.email,
+            created_at: user.created_at,
+            last_sign_in_at: user.last_sign_in_at,
+            app_metadata: user.app_metadata,
+            user_metadata: user.user_metadata
+          })
+        }
       }
     } catch (error: any) {
       // Only log error if it's not AuthSessionMissingError
@@ -47,6 +59,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signOut()
       if (error) {
         console.error('Error signing out:', error)
+      }
+      // Reset PostHog user when signing out
+      if (posthog) {
+        posthog.reset()
       }
       setUser(null)
       lastUserId.current = null
@@ -98,8 +114,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (newUserId !== lastUserId.current) {
         if (session?.user) {
           setUser(session.user)
+          // Identify user in PostHog when user is set
+          if (session.user && posthog) {
+            posthog.identify(session.user.id, {
+              email: session.user.email,
+              created_at: session.user.created_at,
+              last_sign_in_at: session.user.last_sign_in_at,
+              app_metadata: session.user.app_metadata,
+              user_metadata: session.user.user_metadata
+            })
+          }
         } else {
           setUser(null)
+          // Reset PostHog user when signing out
+          if (posthog) {
+            posthog.reset()
+          }
           }
           lastUserId.current = newUserId
         }

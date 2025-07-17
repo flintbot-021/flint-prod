@@ -14,6 +14,7 @@ import { CaptureProvider } from '@/contexts/capture-context'
 import { toast } from '@/components/ui/use-toast'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { useSectionPersistence } from '@/hooks/use-section-persistence'
+import { usePostHog } from 'posthog-js/react'
 import { 
   DndContext, 
   DragEndEvent, 
@@ -126,6 +127,7 @@ export default function ToolBuilderPage() {
   const router = useRouter()
   const params = useParams()
   const { user, loading } = useAuth()
+  const posthog = usePostHog()
 
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [sections, setSections] = useState<CampaignSection[]>([])
@@ -307,6 +309,18 @@ export default function ToolBuilderPage() {
       return
     }
     
+    // Track preview event
+    if (posthog) {
+      posthog.capture('campaign_preview', {
+        campaign_id: campaign.id,
+        campaign_name: campaign.name,
+        sections_count: sections.length,
+        section_types: sections.map(s => s.type),
+        campaign_status: campaign.status,
+        user_id: user?.id
+      })
+    }
+    
     const previewUrl = `/campaigns/${campaign.id}/preview`
     window.open(previewUrl, '_blank', 'noopener,noreferrer')
   }
@@ -326,6 +340,19 @@ export default function ToolBuilderPage() {
   }
 
   const handlePublishSuccess = (updatedCampaign: Campaign) => {
+    // Track publish event
+    if (posthog) {
+      posthog.capture('campaign_published', {
+        campaign_id: updatedCampaign.id,
+        campaign_name: updatedCampaign.name,
+        sections_count: sections.length,
+        section_types: sections.map(s => s.type),
+        published_url: updatedCampaign.published_url,
+        user_key: updatedCampaign.user_key,
+        user_id: user?.id
+      })
+    }
+    
     setCampaign(updatedCampaign)
     setShowPublishModal(false)
   }
@@ -388,6 +415,22 @@ export default function ToolBuilderPage() {
       }
 
       const newCampaignSection = convertDatabaseSectionToCampaignSection(result.data as SectionWithOptions)
+      
+      // Track section addition event
+      if (posthog) {
+        posthog.capture('section_added', {
+          campaign_id: campaign.id,
+          campaign_name: campaign.name,
+          section_id: newCampaignSection.id,
+          section_type: sectionType.id,
+          section_name: sectionType.name,
+          section_title: sectionTitle,
+          insert_position: insertIndex,
+          was_renamed: wasRenamed,
+          total_sections: sections.length + 1,
+          user_id: user?.id
+        })
+      }
       
       // Update local state immediately
       setSections(prev => {
@@ -758,11 +801,27 @@ export default function ToolBuilderPage() {
     try {
       setIsSaving(true)
       
+      // Get section info for tracking before deletion
+      const sectionToDelete = sections.find(s => s.id === sectionId)
+      
       // Delete from database
       const result = await deleteSection(sectionId)
       
       if (!result.success) {
         throw new Error(result.error || 'Failed to delete section')
+      }
+      
+      // Track section deletion event
+      if (posthog && sectionToDelete) {
+        posthog.capture('section_deleted', {
+          campaign_id: campaign.id,
+          campaign_name: campaign.name,
+          section_id: sectionId,
+          section_type: sectionToDelete.type,
+          section_title: sectionToDelete.title,
+          sections_remaining: sections.length - 1,
+          user_id: user?.id
+        })
       }
       
       // Update local state
@@ -851,6 +910,22 @@ export default function ToolBuilderPage() {
       }
 
       const newCampaignSection = convertDatabaseSectionToCampaignSection(result.data as SectionWithOptions)
+      
+      // Track section duplication event
+      if (posthog) {
+        posthog.capture('section_duplicated', {
+          campaign_id: campaign.id,
+          campaign_name: campaign.name,
+          original_section_id: sectionId,
+          new_section_id: newCampaignSection.id,
+          section_type: sectionToDuplicate.type,
+          original_title: sectionToDuplicate.title,
+          duplicate_title: duplicateTitle,
+          insert_position: insertIndex,
+          total_sections: sections.length + 1,
+          user_id: user?.id
+        })
+      }
       
       // Update local state - insert at the correct position
       setSections(prev => {
@@ -1359,9 +1434,10 @@ export default function ToolBuilderPage() {
                           onTemplateClick={handleCreateTemplate}
                           selectedSectionId={selectedSectionId}
                           onSectionSelect={setSelectedSectionId}
-                          className=""
+                          className="min-h-[500px]"
                           showCollapsedSections={true}
                           campaignId={campaign?.id}
+                          campaignName={campaign?.name}
                           sectionPersistence={sectionPersistence}
                         />
                       </CardContent>

@@ -253,6 +253,24 @@ export async function createCampaignWithUsageTracking(
   // Increment usage counter for analytics
   await incrementCampaignUsage();
 
+  // Track campaign creation in PostHog (client-side only)
+  if (typeof window !== 'undefined' && (window as any).posthog) {
+    try {
+      (window as any).posthog.capture('campaign_created', {
+        campaign_id: campaignResult.data?.id,
+        campaign_name: campaignData.name,
+        campaign_status: campaignData.status,
+        has_description: !!campaignData.description,
+        theme_primary_color: campaignData.settings?.theme?.primary_color,
+        theme_secondary_color: campaignData.settings?.theme?.secondary_color,
+        branding_show_powered_by: campaignData.settings?.branding?.show_powered_by,
+        email_notifications_enabled: campaignData.settings?.completion?.email_notifications
+      });
+    } catch (error) {
+      console.error('Failed to track campaign creation:', error);
+    }
+  }
+
   return campaignResult;
 }
 
