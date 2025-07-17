@@ -1,16 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { createClient } from '@/lib/supabase/client'
 
-export default function Home() {
+function PasswordResetHandler({ onPasswordResetDetected }: { onPasswordResetDetected: (isReset: boolean) => void }) {
   const { user, loading } = useAuth()
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const [isPasswordReset, setIsPasswordReset] = useState(false)
-  const [sessionChecked, setSessionChecked] = useState(false)
 
   useEffect(() => {
     const checkPasswordResetSession = async () => {
@@ -34,19 +31,33 @@ export default function Home() {
                           !!searchParams.get('token') || 
                           !!searchParams.get('code')
         
-        setIsPasswordReset(isRecovery)
+        onPasswordResetDetected(isRecovery)
         console.log('Password reset detection:', { isRecovery, sessionUser: session.user.email })
+      } else {
+        onPasswordResetDetected(false)
       }
-      
-      setSessionChecked(true)
     }
 
     if (!loading && user) {
       checkPasswordResetSession()
     } else if (!loading) {
-      setSessionChecked(true)
+      onPasswordResetDetected(false)
     }
-  }, [user, loading, searchParams])
+  }, [user, loading, searchParams, onPasswordResetDetected])
+
+  return null
+}
+
+export default function Home() {
+  const { user, loading } = useAuth()
+  const router = useRouter()
+  const [isPasswordReset, setIsPasswordReset] = useState(false)
+  const [sessionChecked, setSessionChecked] = useState(false)
+
+  const handlePasswordResetDetected = (isReset: boolean) => {
+    setIsPasswordReset(isReset)
+    setSessionChecked(true)
+  }
 
   useEffect(() => {
     if (!loading && sessionChecked) {
@@ -68,6 +79,9 @@ export default function Home() {
   // Show loading spinner while determining auth state
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
+      <Suspense fallback={null}>
+        <PasswordResetHandler onPasswordResetDetected={handlePasswordResetDetected} />
+      </Suspense>
       <div className="text-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
         <p className="mt-4 text-muted-foreground">Loading...</p>
