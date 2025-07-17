@@ -140,13 +140,13 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
 
   // Memoize title and description extraction
   const sectionTitle = useMemo(() => 
-    (config as any).headline || (config as any).title || section.title || config.content || config.question || '', 
+    (config as any).headline || (config as any).title || (config as any).content || section.title || config.question || '',
     [config, section.title, config.content, config.question]
   )
   
   const sectionDescription = useMemo(() => 
-    section.description || (config as any).description || config.subheading || '', 
-    [section.description, config, config.subheading]
+    section.description || (config as any).description || (config as any).subheading || (config as any).subtitle || '',
+    [section.description, config, config.subheading, config.subtitle]
   )
 
   // Enhanced props with all required fields for SectionRendererProps - memoized

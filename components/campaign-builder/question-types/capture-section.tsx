@@ -23,7 +23,7 @@ interface CaptureSectionProps {
 }
 
 interface CaptureSettings {
-  content?: string
+  headline?: string
   subheading?: string
   enabledFields?: {
     name: boolean
@@ -48,6 +48,9 @@ interface CaptureSettings {
   submitButtonText?: string
   businessName?: string
   privacyPolicyLink?: string
+  // For backward compatibility
+  content?: string
+  title?: string
 }
 
 interface CaptureValidationErrors {
@@ -89,17 +92,15 @@ export function CaptureSection({
   
   // Get current settings with defaults
   const settings = section.settings as CaptureSettings || {}
-  const {
-    content = 'Get Your Results',
-    subheading = 'Enter your information to unlock your personalized results',
-    enabledFields = { name: true, email: true, phone: false },
-    requiredFields = { name: true, email: true, phone: false },
-    fieldLabels = { name: 'Full Name', email: 'Email Address', phone: 'Phone Number' },
-    fieldPlaceholders = { name: 'Enter your full name', email: 'your@email.com', phone: 'Enter your phone number' },
-    submitButtonText = 'Get my results',
-    businessName = '',
-    privacyPolicyLink = ''
-  } = settings
+  const headline = (settings.headline || settings.content || settings.title || 'Get Your Results') as string
+  const subheading = (settings.subheading || 'Enter your information to unlock your personalized results') as string
+  const enabledFields = settings.enabledFields || { name: true, email: true, phone: false }
+  const requiredFields = settings.requiredFields || { name: true, email: true, phone: false }
+  const fieldLabels = settings.fieldLabels || { name: 'Full Name', email: 'Email Address', phone: 'Phone Number' }
+  const fieldPlaceholders = settings.fieldPlaceholders || { name: 'Enter your full name', email: 'your@email.com', phone: 'Enter your phone number' }
+  const submitButtonText = settings.submitButtonText || 'Get my results'
+  const businessName = settings.businessName || ''
+  const privacyPolicyLink = settings.privacyPolicyLink || ''
 
   const [localBusinessName, setLocalBusinessName] = useState(businessName)
   const [localPrivacyPolicyLink, setLocalPrivacyPolicyLink] = useState(privacyPolicyLink)
@@ -145,11 +146,14 @@ export function CaptureSection({
   const updateSettings = async (newSettings: Partial<CaptureSettings>) => {
     setIsSaving(true)
     try {
+      // Always save as headline/subheading
+      const mappedSettings = { ...settings, ...newSettings }
+      if ('content' in mappedSettings) mappedSettings.headline = mappedSettings.content
+      if ('title' in mappedSettings) mappedSettings.headline = mappedSettings.title
+      delete mappedSettings.content
+      delete mappedSettings.title
       await onUpdate({
-        settings: {
-          ...settings,
-          ...newSettings
-        }
+        settings: mappedSettings
       })
     } catch (error) {
       console.error('Failed to update capture settings:', error)
@@ -159,26 +163,26 @@ export function CaptureSection({
     }
   }
 
-  // Save default content and subheading if they're empty (only in edit mode)
+  // Save default headline and subheading if they're empty (only in edit mode)
   useEffect(() => {
     if (!isPreview) {
       const currentSettings = section.settings as CaptureSettings || {}
-      const needsUpdate = !currentSettings.content || !currentSettings.subheading
+      const needsUpdate = !currentSettings.headline || !currentSettings.subheading
       
       if (needsUpdate) {
         updateSettings({
-          content: currentSettings.content || 'Get Your Results',
+          headline: currentSettings.headline || currentSettings.content || currentSettings.title || 'Get Your Results',
           subheading: currentSettings.subheading || 'Enter your information to unlock your personalized results'
         }).catch(error => {
-          console.error('Failed to save default content:', error)
+          console.error('Failed to save default headline/subheading:', error)
         })
       }
     }
   }, [isPreview, section.settings, updateSettings])
 
-  // Handle content change
-  const handleContentChange = async (newContent: string) => {
-    await updateSettings({ content: newContent })
+  // Handle headline change
+  const handleHeadlineChange = async (newHeadline: string) => {
+    await updateSettings({ headline: newHeadline })
   }
 
   // Handle subheading change
@@ -297,7 +301,7 @@ export function CaptureSection({
             {/* Question Text */}
             <div className="text-center space-y-4">
               <h1 className="text-4xl font-bold text-gray-900">
-                {content || 'Get Your Results'}
+                {headline}
               </h1>
               
               {subheading && (
@@ -452,8 +456,8 @@ export function CaptureSection({
       {/* Main Question - Large, center-aligned */}
       <div className="text-center">
         <InlineEditableText
-          value={content}
-          onSave={handleContentChange}
+          value={headline}
+          onSave={handleHeadlineChange}
           variant="body"
           placeholder="Get Your Results"
           className="text-4xl font-bold text-foreground text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
