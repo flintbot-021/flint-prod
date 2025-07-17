@@ -51,7 +51,8 @@ import {
   Hash,
   CheckCircle,
   Activity,
-  LogOut
+  LogOut,
+  Settings
 } from 'lucide-react'
 
 interface LeadWithCampaign extends Lead {
@@ -1048,6 +1049,9 @@ export default function LeadsPage() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => router.push('/dashboard/account')} className="flex items-center">
+                    <Settings className="h-4 w-4 mr-2" /> Account Settings
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {/* signOut logic here */}} className="flex items-center">
                     <LogOut className="h-4 w-4 mr-2" /> Log Out
                   </DropdownMenuItem>

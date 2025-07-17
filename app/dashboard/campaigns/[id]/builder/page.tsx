@@ -10,6 +10,7 @@ import { CampaignBuilderTopBar } from '@/components/campaign-builder/top-bar'
 import { SectionsMenu } from '@/components/campaign-builder/sections-menu'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PublishModal } from '@/components/campaign-builder/publish-modal'
+import { PaymentSetupModal } from '@/components/payment/payment-setup-modal'
 import { CaptureProvider } from '@/contexts/capture-context'
 import { toast } from '@/components/ui/use-toast'
 import { Loader2, AlertCircle } from 'lucide-react'
@@ -136,6 +137,7 @@ export default function ToolBuilderPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPublishModal, setShowPublishModal] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [activeDragItem, setActiveDragItem] = useState<CampaignSection | null>(null)
   const [isAutoReordering, setIsAutoReordering] = useState(false) // Track automatic reordering
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -325,12 +327,31 @@ export default function ToolBuilderPage() {
     window.open(previewUrl, '_blank', 'noopener,noreferrer')
   }
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     // Check if mandatory sections exist
     if (!mandatoryValidation.isValid) {
       toast({
         title: 'Cannot publish tool',
         description: `Missing required sections: ${mandatoryValidation.missing.join(', ')}`,
+        variant: 'destructive'
+      })
+      return
+    }
+    
+    // Check if user has payment method
+    try {
+      const response = await fetch('/api/stripe/payment-method')
+      const data = await response.json()
+      
+      if (!data.has_payment_method) {
+        setShowPaymentModal(true)
+        return
+      }
+    } catch (error) {
+      console.error('Error checking payment method:', error)
+      toast({
+        title: 'Payment check failed',
+        description: 'Please try again or contact support.',
         variant: 'destructive'
       })
       return
@@ -1466,6 +1487,18 @@ export default function ToolBuilderPage() {
                 onClose={() => setShowPublishModal(false)}
                 onPublishSuccess={handlePublishSuccess}
                 mandatoryValidationErrors={mandatoryValidation.missing}
+              />
+            )}
+            
+            {showPaymentModal && (
+              <PaymentSetupModal
+                isOpen={showPaymentModal}
+                onClose={() => setShowPaymentModal(false)}
+                onSuccess={() => {
+                  setShowPaymentModal(false)
+                  // After payment setup is successful, show the publish modal
+                  setShowPublishModal(true)
+                }}
               />
             )}
           </div>

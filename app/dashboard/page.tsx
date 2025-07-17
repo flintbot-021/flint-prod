@@ -414,6 +414,9 @@ export default function Dashboard() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => router.push('/dashboard/account')} className="flex items-center">
+                    <Settings className="h-4 w-4 mr-2" /> Account Settings
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={signOut} className="flex items-center">
                     <LogOut className="h-4 w-4 mr-2" /> Log Out
                   </DropdownMenuItem>

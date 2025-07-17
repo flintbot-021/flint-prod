@@ -84,6 +84,12 @@ export interface Profile {
   onboarding_completed: boolean;
   email_notifications: boolean;
   marketing_emails: boolean;
+  // Stripe payment fields
+  stripe_customer_id: string | null;
+  stripe_payment_method_id: string | null;
+  has_payment_method: boolean;
+  payment_method_last_four: string | null;
+  payment_method_brand: string | null;
   created_at: Timestamp;
   updated_at: Timestamp;
 }
