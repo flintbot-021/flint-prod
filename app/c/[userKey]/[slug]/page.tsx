@@ -561,47 +561,6 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
   }
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (isTransitioning) return
-      
-      // Don't handle keyboard navigation if user is typing in an input field
-      const target = event.target as HTMLElement
-      const isInputField = target.tagName === 'INPUT' || 
-                          target.tagName === 'TEXTAREA' || 
-                          target.tagName === 'SELECT' ||
-                          target.contentEditable === 'true'
-      
-      if (isInputField) return
-      
-      switch (event.key) {
-        case 'ArrowRight':
-        case 'ArrowDown':
-        case ' ': // Spacebar - only when not in input fields
-          event.preventDefault()
-          handleNext()
-          break
-        case 'ArrowLeft':
-        case 'ArrowUp':
-          event.preventDefault()
-          handlePrevious()
-          break
-        case 'Home':
-          event.preventDefault()
-          handleNavigateToSection(0)
-          break
-        case 'End':
-          event.preventDefault()
-          handleNavigateToSection(sections.length - 1)
-          break
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isTransitioning, sections.length])
-
   // Touch gesture handling
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
