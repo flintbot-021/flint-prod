@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
         .eq('id', user.id);
 
       // Create credit transaction record
-      await supabase
+      const { error: transactionError } = await supabase
         .from('credit_transactions')
         .insert({
           user_id: user.id,
@@ -114,6 +114,10 @@ export async function POST(request: NextRequest) {
             currency: paymentIntent.currency,
           }
         });
+
+      if (transactionError) {
+        console.error('Failed to create credit transaction:', transactionError);
+      }
     }
 
     return NextResponse.json({

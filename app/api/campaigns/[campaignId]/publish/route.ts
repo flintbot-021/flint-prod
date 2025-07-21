@@ -21,6 +21,10 @@ export async function POST(
     }
 
     const { campaignId } = await params;
+    
+    // Parse request body for slug
+    const body = await request.json();
+    const { slug } = body;
 
     // Check if user can publish (has credits)
     const { data: profile } = await supabase
@@ -39,12 +43,36 @@ export async function POST(
       );
     }
 
+    // Generate published URL slug
+    let publishedUrl = slug;
+    if (!publishedUrl) {
+      // Get campaign name to generate slug
+      const { data: existingCampaign } = await supabase
+        .from('campaigns')
+        .select('name')
+        .eq('id', campaignId)
+        .eq('user_id', user.id)
+        .single();
+      
+      if (existingCampaign?.name) {
+        publishedUrl = existingCampaign.name
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '');
+      } else {
+        publishedUrl = 'my-tool';
+      }
+    }
+
     // Start transaction: update campaign status and consume credit
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
       .update({
         status: 'published',
-        published_at: new Date().toISOString()
+        published_at: new Date().toISOString(),
+        published_url: publishedUrl
       })
       .eq('id', campaignId)
       .eq('user_id', user.id)
@@ -86,7 +114,7 @@ export async function POST(
     }
 
     // Create credit usage transaction record
-    await supabase
+    const { error: usageTransactionError } = await supabase
       .from('credit_transactions')
       .insert({
         user_id: user.id,
@@ -99,6 +127,10 @@ export async function POST(
           action: 'publish'
         }
       });
+
+    if (usageTransactionError) {
+      console.error('Failed to create usage transaction:', usageTransactionError);
+    }
 
     return NextResponse.json({
       success: true,
@@ -198,7 +230,7 @@ export async function DELETE(
       // Don't fail the unpublish operation, just log the error
     } else {
       // Create credit refund transaction record
-      await supabase
+      const { error: refundTransactionError } = await supabase
         .from('credit_transactions')
         .insert({
           user_id: user.id,
@@ -211,6 +243,10 @@ export async function DELETE(
             action: 'unpublish'
           }
         });
+
+      if (refundTransactionError) {
+        console.error('Failed to create refund transaction:', refundTransactionError);
+      }
     }
 
     return NextResponse.json({
