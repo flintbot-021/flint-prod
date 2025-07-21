@@ -124,7 +124,6 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave, mode = 'e
     }
     
     // Reset other form state
-    setCurrentStep('basic')
     setError(null)
     setLogoFile(null)
     setLogoPreview(null)
@@ -132,11 +131,15 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave, mode = 'e
 
   // Set initial step based on mode/initialStep
   useEffect(() => {
+    console.log('Modal useEffect - initialStep:', initialStep, 'mode:', mode)
     if (initialStep) {
+      console.log('Setting currentStep to:', initialStep)
       setCurrentStep(initialStep)
     } else if (mode === 'create') {
+      console.log('Setting currentStep to basic (create mode)')
       setCurrentStep('basic')
     } else {
+      console.log('Setting currentStep to theme (edit mode)')
       setCurrentStep('theme')
     }
   }, [initialStep, mode])
@@ -572,38 +575,50 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave, mode = 'e
               </CardContent>
             </Card>
           )}
-          {/* Always render name/description fields in edit mode; in create mode, show both steps if needed */}
-          {mode === 'edit' && (
+          {/* Show content based on mode and currentStep */}
+          {mode === 'edit' && currentStep === 'basic' && (
             // Basic Info Step (edit mode)
-            <div className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">Tool Name *</Label>
-                <Input
-                  id="name"
-                  ref={nameInputRef}
-                  value={formData.name}
-                  onChange={(e) => updateFormData({ name: e.target.value })}
-                  placeholder="Enter your tool name"
-                  className="text-lg"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Give your tool a clear, descriptive name
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => updateFormData({ description: e.target.value })}
-                  placeholder="Describe what your tool is about (optional)"
-                  rows={4}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Help your team understand the purpose of this tool
-                </p>
-              </div>
-            </div>
+            (() => {
+              console.log('Rendering basic content - mode:', mode, 'currentStep:', currentStep)
+              return (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Tool Name *</Label>
+                    <Input
+                      id="name"
+                      ref={nameInputRef}
+                      value={formData.name}
+                      onChange={(e) => updateFormData({ name: e.target.value })}
+                      placeholder="Enter your tool name"
+                      className="text-lg"
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Give your tool a clear, descriptive name
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => updateFormData({ description: e.target.value })}
+                      placeholder="Describe what your tool is about (optional)"
+                      rows={4}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Help your team understand the purpose of this tool
+                    </p>
+                  </div>
+                </div>
+              )
+            })()
+          )}
+          {mode === 'edit' && currentStep === 'theme' && (
+            // Theme Step (edit mode)
+            (() => {
+              console.log('Rendering theme content - mode:', mode, 'currentStep:', currentStep)
+              return renderStepContent()
+            })()
           )}
           {mode === 'create' && currentStep === 'basic' && (
             // Basic Info Step (create mode)

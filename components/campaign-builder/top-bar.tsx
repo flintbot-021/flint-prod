@@ -138,6 +138,7 @@ export function CampaignBuilderTopBar({
   }
 
   const handleEditCampaign = () => {
+    console.log('Theme button clicked - opening edit modal')
     if (campaign) {
       setShowEditModal(true)
     }
