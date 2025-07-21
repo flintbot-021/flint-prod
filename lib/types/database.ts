@@ -52,9 +52,7 @@ export type VariableSource =
   | 'external_api'
   | 'static';
 
-export type SubscriptionPlan = 'free' | 'starter' | 'pro' | 'enterprise';
 
-export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'trial';
 
 // =============================================================================
 // DATABASE TABLE TYPES
@@ -72,14 +70,6 @@ export interface Profile {
   phone: string | null;
   avatar_url: string | null;
   timezone: string;
-  subscription_plan: SubscriptionPlan;
-  subscription_status: SubscriptionStatus;
-  trial_ends_at: Timestamp | null;
-  subscription_ends_at: Timestamp | null;
-  monthly_campaign_limit: number;
-  monthly_campaigns_used: number;
-  monthly_leads_limit: number;
-  monthly_leads_captured: number;
   preferences: UserPreferences;
   onboarding_completed: boolean;
   email_notifications: boolean;
@@ -546,12 +536,182 @@ export interface LeadWithRelations extends Lead {
 export interface ProfileWithUsage extends Profile {
   total_campaigns?: number;
   total_leads?: number;
-  current_month_campaigns?: number;
-  current_month_leads?: number;
-  usage_percentage?: {
-    campaigns: number;
-    leads: number;
-  };
+}
+
+// =============================================================================
+// BILLING AND CREDIT SYSTEM TYPES
+// =============================================================================
+
+export type TransactionType = 'purchase' | 'usage' | 'refund';
+export type BillingType = 'credit_purchase' | 'subscription_charge' | 'refund';
+export type BillingStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type SubscriptionStatus = 'active' | 'inactive' | 'cancelled' | 'past_due';
+
+/**
+ * Credit transaction record
+ */
+export interface CreditTransaction {
+  id: UUID;
+  user_id: UUID;
+  transaction_type: TransactionType;
+  amount: number; // positive for purchases/refunds, negative for usage
+  description: string | null;
+  campaign_id: UUID | null; // for usage transactions
+  stripe_payment_intent_id: string | null;
+  stripe_charge_id: string | null;
+  metadata: Record<string, any>;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+/**
+ * Billing history record
+ */
+export interface BillingHistory {
+  id: UUID;
+  user_id: UUID;
+  billing_type: BillingType;
+  amount_cents: number;
+  currency: string;
+  status: BillingStatus;
+  stripe_payment_intent_id: string | null;
+  stripe_invoice_id: string | null;
+  stripe_charge_id: string | null;
+  description: string | null;
+  metadata: Record<string, any>;
+  billing_period_start: Timestamp | null;
+  billing_period_end: Timestamp | null;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+/**
+ * User subscription record
+ */
+export interface UserSubscription {
+  id: UUID;
+  user_id: UUID;
+  stripe_subscription_id: string | null;
+  stripe_customer_id: string;
+  status: SubscriptionStatus;
+  current_period_start: Timestamp | null;
+  current_period_end: Timestamp | null;
+  billing_cycle_anchor: Timestamp | null;
+  active_slots: number;
+  monthly_cost_cents: number;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+/**
+ * Create types for billing entities
+ */
+export interface CreateCreditTransaction {
+  user_id?: UUID; // Optional since it can be inferred from auth
+  transaction_type: TransactionType;
+  amount: number;
+  description?: string;
+  campaign_id?: UUID;
+  stripe_payment_intent_id?: string;
+  stripe_charge_id?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface CreateBillingHistory {
+  user_id?: UUID; // Optional since it can be inferred from auth
+  billing_type: BillingType;
+  amount_cents: number;
+  currency?: string;
+  status: BillingStatus;
+  stripe_payment_intent_id?: string;
+  stripe_invoice_id?: string;
+  stripe_charge_id?: string;
+  description?: string;
+  metadata?: Record<string, any>;
+  billing_period_start?: string;
+  billing_period_end?: string;
+}
+
+export interface CreateUserSubscription {
+  user_id?: UUID; // Optional since it can be inferred from auth
+  stripe_subscription_id?: string;
+  stripe_customer_id: string;
+  status: SubscriptionStatus;
+  current_period_start?: string;
+  current_period_end?: string;
+  billing_cycle_anchor?: string;
+  active_slots?: number;
+  monthly_cost_cents?: number;
+}
+
+/**
+ * Update types for billing entities
+ */
+export interface UpdateCreditTransaction {
+  transaction_type?: TransactionType;
+  amount?: number;
+  description?: string;
+  campaign_id?: UUID;
+  stripe_payment_intent_id?: string;
+  stripe_charge_id?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface UpdateBillingHistory {
+  billing_type?: BillingType;
+  amount_cents?: number;
+  currency?: string;
+  status?: BillingStatus;
+  stripe_payment_intent_id?: string;
+  stripe_invoice_id?: string;
+  stripe_charge_id?: string;
+  description?: string;
+  metadata?: Record<string, any>;
+  billing_period_start?: string;
+  billing_period_end?: string;
+}
+
+export interface UpdateUserSubscription {
+  stripe_subscription_id?: string;
+  stripe_customer_id?: string;
+  status?: SubscriptionStatus;
+  current_period_start?: string;
+  current_period_end?: string;
+  billing_cycle_anchor?: string;
+  active_slots?: number;
+  monthly_cost_cents?: number;
+}
+
+/**
+ * Extended profile with billing information
+ */
+export interface ProfileWithBilling extends Profile {
+  subscription?: UserSubscription;
+  total_spent?: number;
+  active_slots?: number;
+  next_billing_date?: string;
+}
+
+/**
+ * Credit purchase request
+ */
+export interface CreditPurchaseRequest {
+  quantity: number;
+  payment_method_id?: string; // If not provided, use stored payment method
+}
+
+/**
+ * Billing summary for account settings
+ */
+export interface BillingSummary {
+  credit_balance: number;
+  total_credits_owned: number;
+  currently_published: number;
+  available_credits: number;
+  active_slots: UserSubscription[];
+  monthly_cost_cents: number;
+  next_billing_date: string | null;
+  billing_history: BillingHistory[];
 }
 
 // =============================================================================
@@ -658,6 +818,21 @@ export interface Database {
         Insert: CreateLeadVariableValue;
         Update: UpdateLeadVariableValue;
       };
+      credit_transactions: {
+        Row: CreditTransaction;
+        Insert: CreateCreditTransaction;
+        Update: UpdateCreditTransaction;
+      };
+      billing_history: {
+        Row: BillingHistory;
+        Insert: CreateBillingHistory;
+        Update: UpdateBillingHistory;
+      };
+      user_subscriptions: {
+        Row: UserSubscription;
+        Insert: CreateUserSubscription;
+        Update: UpdateUserSubscription;
+      };
 
     };
     Views: {
@@ -672,8 +847,6 @@ export interface Database {
       response_type: ResponseType;
       variable_type: VariableType;
       variable_source: VariableSource;
-      subscription_plan: SubscriptionPlan;
-      subscription_status: SubscriptionStatus;
     };
   };
 } 
