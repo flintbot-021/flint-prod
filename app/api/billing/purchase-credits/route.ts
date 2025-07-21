@@ -3,9 +3,11 @@ import { createClient } from '@/lib/supabase/server';
 import { 
   createOrGetStripeCustomer, 
   createCreditPurchaseIntent,
+  chargeStoredPaymentMethod,
   updateCustomerPaymentMethod,
   getPaymentMethodDetails 
 } from '@/lib/services/stripe-service';
+import { calculateProratedAmount, getProratedDescription } from '@/lib/utils/billing-calculations';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { quantity, payment_method_id } = body;
+    const { quantity, payment_method_id, use_stored_payment_method } = body;
 
     // Validate input
     if (!quantity || quantity < 1 || quantity > 50) {
@@ -55,36 +57,60 @@ export async function POST(request: NextRequest) {
         .eq('id', user.id);
     }
 
-    // Handle payment method
-    if (payment_method_id) {
-      // Update customer's payment method
-      const paymentMethod = await updateCustomerPaymentMethod(
-        stripeCustomer.id,
-        payment_method_id
-      );
-
-      // Get payment method details for storage
-      const paymentDetails = await getPaymentMethodDetails(payment_method_id);
-
-      // Update profile with payment method info
-      await supabase
-        .from('profiles')
-        .update({
-          stripe_payment_method_id: payment_method_id,
-          has_payment_method: true,
-          payment_method_last_four: paymentDetails.last4,
-          payment_method_brand: paymentDetails.brand,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', user.id);
+    // Calculate prorated amount if user has billing anchor date
+    let proratedAmount = quantity * 9900; // Default to full price
+    let isProrated = false;
+    
+    if (profile.billing_anchor_date) {
+      proratedAmount = calculateProratedAmount(quantity, profile.billing_anchor_date);
+      isProrated = proratedAmount < (quantity * 9900);
     }
 
-    // Create payment intent
-    const paymentIntent = await createCreditPurchaseIntent(
-      stripeCustomer.id,
-      quantity,
-      payment_method_id
-    );
+    let paymentIntent;
+
+    // Check if using stored payment method
+    if (use_stored_payment_method && profile.stripe_payment_method_id) {
+      // Use stored payment method for immediate charge
+      paymentIntent = await chargeStoredPaymentMethod(
+        stripeCustomer.id,
+        profile.stripe_payment_method_id,
+        quantity,
+        proratedAmount
+      );
+    } else {
+      // Handle new payment method
+      if (payment_method_id) {
+        // Update customer's payment method
+        const paymentMethod = await updateCustomerPaymentMethod(
+          stripeCustomer.id,
+          payment_method_id
+        );
+
+        // Get payment method details for storage
+        const paymentDetails = await getPaymentMethodDetails(payment_method_id);
+
+        // Update profile with payment method info
+        await supabase
+          .from('profiles')
+          .update({
+            stripe_payment_method_id: payment_method_id,
+            has_payment_method: true,
+            payment_method_last_four: paymentDetails.last4,
+            payment_method_brand: paymentDetails.brand,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', user.id);
+      }
+
+      // Create payment intent with prorated amount
+      paymentIntent = await createCreditPurchaseIntent(
+        stripeCustomer.id,
+        quantity,
+        proratedAmount,
+        payment_method_id,
+        !profile.stripe_payment_method_id // Save payment method if this is their first
+      );
+    }
 
     // In test mode, immediately update credit balance since webhooks may not work locally
     if (paymentIntent.status === 'succeeded') {
@@ -114,13 +140,18 @@ export async function POST(request: NextRequest) {
           user_id: user.id,
           transaction_type: 'purchase',
           amount: quantity,
-          description: `Purchased ${quantity} hosting credit${quantity > 1 ? 's' : ''}`,
+          description: isProrated 
+            ? `Purchased ${quantity} hosting credit${quantity > 1 ? 's' : ''} (prorated)`
+            : `Purchased ${quantity} hosting credit${quantity > 1 ? 's' : ''}`,
           stripe_payment_intent_id: paymentIntent.id,
           stripe_charge_id: paymentIntent.latest_charge as string,
           metadata: {
             stripe_customer_id: stripeCustomer.id,
             amount_cents: paymentIntent.amount,
             currency: paymentIntent.currency,
+            is_prorated: isProrated,
+            full_price_cents: quantity * 9900,
+            stored_payment_method: use_stored_payment_method || false,
           }
         });
 
@@ -139,6 +170,10 @@ export async function POST(request: NextRequest) {
       },
       quantity,
       total_amount: paymentIntent.amount,
+      is_prorated: isProrated,
+      full_price: quantity * 9900,
+      prorated_amount: proratedAmount,
+      used_stored_payment_method: use_stored_payment_method && !!profile.stripe_payment_method_id,
     });
 
   } catch (error) {

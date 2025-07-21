@@ -10,10 +10,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-                // Get profile with credit balance, billing anchor date, and cancellation info
+                // Get profile with credit balance, billing anchor date, payment method, and cancellation info
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('credit_balance, billing_anchor_date, cancellation_scheduled_at')
+      .select('credit_balance, billing_anchor_date, cancellation_scheduled_at, payment_method_last_four, payment_method_brand')
       .eq('id', user.id)
       .single();
 
@@ -83,6 +83,9 @@ export async function GET(request: NextRequest) {
           active_slots: publishedCampaigns || [],
           monthly_cost_cents: totalCreditsOwned * 9900, // $99 per credit owned
           next_billing_date: nextBillingDate,
+          billing_anchor_date: profile.billing_anchor_date,
+          payment_method_last_four: profile.payment_method_last_four,
+          payment_method_brand: profile.payment_method_brand,
           billing_history: [],
           cancellation_scheduled_at: profile.cancellation_scheduled_at,
           subscription_ends_at: subscriptionEndsAt

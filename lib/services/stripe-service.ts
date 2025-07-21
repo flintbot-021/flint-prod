@@ -85,17 +85,19 @@ export async function updateCustomerPaymentMethod(
 // =============================================================================
 
 /**
- * Create payment intent for credit purchase
+ * Create payment intent for credit purchase (supports prorated amounts)
  */
 export async function createCreditPurchaseIntent(
   customerId: string,
   quantity: number,
-  paymentMethodId?: string
+  amount?: number, // Prorated amount in cents (optional, defaults to full price)
+  paymentMethodId?: string,
+  savePaymentMethod: boolean = false
 ): Promise<Stripe.PaymentIntent> {
-  const amount = quantity * CREDIT_PRICE_CENTS;
+  const finalAmount = amount || (quantity * CREDIT_PRICE_CENTS);
 
   const paymentIntentData: Stripe.PaymentIntentCreateParams = {
-    amount,
+    amount: finalAmount,
     currency: CURRENCY,
     customer: customerId,
     description: `Purchase ${quantity} hosting credit${quantity > 1 ? 's' : ''}`,
@@ -103,6 +105,8 @@ export async function createCreditPurchaseIntent(
       type: 'credit_purchase',
       quantity: quantity.toString(),
       price_per_credit: CREDIT_PRICE_CENTS.toString(),
+      prorated_amount: finalAmount.toString(),
+      is_prorated: amount ? 'true' : 'false',
     },
     automatic_payment_methods: {
       enabled: true,
@@ -113,10 +117,40 @@ export async function createCreditPurchaseIntent(
   if (paymentMethodId) {
     paymentIntentData.payment_method = paymentMethodId;
     paymentIntentData.confirm = true;
-    paymentIntentData.return_url = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/dashboard`;
+    paymentIntentData.return_url = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/account`;
+  } else if (savePaymentMethod) {
+    // Save new payment method for future use
+    paymentIntentData.setup_future_usage = 'off_session';
   }
 
   return await stripe.paymentIntents.create(paymentIntentData);
+}
+
+/**
+ * Charge a stored payment method for additional credits
+ */
+export async function chargeStoredPaymentMethod(
+  customerId: string,
+  paymentMethodId: string,
+  quantity: number,
+  amount: number
+): Promise<Stripe.PaymentIntent> {
+  return stripe.paymentIntents.create({
+    amount,
+    currency: CURRENCY,
+    customer: customerId,
+    payment_method: paymentMethodId,
+    confirm: true,
+    return_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/account`,
+    description: `Purchase ${quantity} hosting credit${quantity > 1 ? 's' : ''} (prorated)`,
+    metadata: {
+      type: 'credit_purchase',
+      quantity: quantity.toString(),
+      prorated_amount: amount.toString(),
+      stored_payment_method: 'true',
+      is_prorated: 'true',
+    },
+  });
 }
 
 /**

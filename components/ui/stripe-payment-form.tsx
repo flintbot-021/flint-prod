@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/components/ui/use-toast'
-import { Loader2, CreditCard } from 'lucide-react'
+import { Loader2, CreditCard, X } from 'lucide-react'
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
@@ -163,10 +163,32 @@ export function StripePaymentForm({ quantity, onSuccess, onCancel }: StripePayme
   return (
     <Elements stripe={stripePromise}>
       <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-4">
-          <CreditCard className="h-5 w-5" />
-          <h3 className="font-medium">Purchase {quantity} Credit{quantity > 1 ? 's' : ''}</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <CreditCard className="h-5 w-5" />
+            <h3 className="font-medium">Purchase {quantity} Credit{quantity > 1 ? 's' : ''}</h3>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            className="h-6 w-6 p-0 hover:bg-gray-100"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
+        
+        {/* Payment Method Storage Notice */}
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+          <p className="text-sm text-blue-800 font-medium mb-1">
+            💳 Secure Payment & Storage
+          </p>
+          <p className="text-sm text-blue-700">
+            Your card will be securely saved for future credit purchases. 
+            Additional credits can be purchased instantly without re-entering card details.
+          </p>
+        </div>
+        
         <PaymentForm
           quantity={quantity}
           onSuccess={onSuccess}

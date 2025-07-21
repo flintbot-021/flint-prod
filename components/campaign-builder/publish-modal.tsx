@@ -318,22 +318,21 @@ export function PublishModal({
 
           {/* Credit Purchase Flow */}
           {!loadingBilling && !isPublished && billingSummary && billingSummary.credit_balance < 1 && !showCreditPurchase && (
-            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-start gap-2 mb-4">
-                <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5" />
-                <div className="text-sm">
-                  <p className="text-yellow-800 font-medium">Insufficient Credits</p>
-                  <p className="text-yellow-700">Purchase credits to publish this tool.</p>
+            <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-orange-600" />
+                  <span className="text-orange-800 font-medium">No hosting credits available</span>
                 </div>
+                <Button 
+                  onClick={() => setShowCreditPurchase(true)}
+                  size="sm"
+                  variant="outline"
+                >
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Add Credits
+                </Button>
               </div>
-              <Button 
-                onClick={() => setShowCreditPurchase(true)}
-                className="w-full"
-                size="lg"
-              >
-                <DollarSign className="h-4 w-4 mr-2" />
-                Purchase Credits
-              </Button>
             </div>
           )}
 
@@ -342,7 +341,7 @@ export function PublishModal({
             <div className="mb-6 p-4 border rounded-lg">
               <div className="space-y-3 mb-4">
                 <div>
-                  <Label htmlFor="credit-quantity">Number of Credits ($10 each)</Label>
+                  <Label htmlFor="credit-quantity">Number of Credits ($99 each)</Label>
                   <Input
                     id="credit-quantity"
                     type="number"
@@ -353,7 +352,7 @@ export function PublishModal({
                   />
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  Total: ${(creditQuantity * 10).toFixed(2)}
+                  Total: ${(creditQuantity * 99).toFixed(2)}
                 </div>
               </div>
               
@@ -365,21 +364,6 @@ export function PublishModal({
                 }}
                 onCancel={() => setShowCreditPurchase(false)}
               />
-            </div>
-          )}
-
-          {/* Credit Balance (when user has credits) */}
-          {!loadingBilling && !isPublished && billingSummary && billingSummary.credit_balance >= 1 && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <span className="text-green-800 font-medium">Ready to Publish</span>
-                </div>
-                <div className="text-sm text-green-700">
-                  {billingSummary.credit_balance} credit{billingSummary.credit_balance !== 1 ? 's' : ''} available
-                </div>
-              </div>
             </div>
           )}
 
@@ -496,7 +480,7 @@ export function PublishModal({
                     size="lg"
                   >
                     {isPublishing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    Launch Tool
+                    {isPublishing ? 'Publishing...' : 'Use 1 Credit & Publish'}
                   </Button>
                 )}
                 <Button variant="outline" onClick={onClose}>

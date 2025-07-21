@@ -20,6 +20,7 @@ import {
   Settings
 } from 'lucide-react'
 import { StripePaymentForm } from '@/components/ui/stripe-payment-form'
+import { StoredPaymentPurchase } from '@/components/ui/stored-payment-purchase'
 
 interface BillingSummary {
   credit_balance: number
@@ -29,6 +30,9 @@ interface BillingSummary {
   active_slots: PublishedCampaign[]
   monthly_cost_cents: number
   next_billing_date: string | null
+  billing_anchor_date: string | null
+  payment_method_last_four: string | null
+  payment_method_brand: string | null
   billing_history: any[]
   cancellation_scheduled_at: string | null
   subscription_ends_at: string | null
@@ -51,6 +55,22 @@ export default function AccountSettingsPage() {
   const [showDowngrade, setShowDowngrade] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [newCreditAmount, setNewCreditAmount] = useState(1)
+
+  // Handle escape key to close modals
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowUpgrade(false)
+        setShowDowngrade(false)
+        setShowCancelModal(false)
+      }
+    }
+
+    if (showUpgrade || showDowngrade || showCancelModal) {
+      document.addEventListener('keydown', handleEscape)
+      return () => document.removeEventListener('keydown', handleEscape)
+    }
+  }, [showUpgrade, showDowngrade, showCancelModal])
 
   useEffect(() => {
     if (!user) {
@@ -279,20 +299,24 @@ export default function AccountSettingsPage() {
         ) : (
           /* Active Subscription State */
           <div className="space-y-6">
-            {/* Subscription Overview */}
+            {/* Hosting Subscription */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <CreditCard className="h-5 w-5" />
-                  Your Hosting Subscription
+                  <Globe className="h-5 w-5" />
+                  Hosting Subscription
                 </CardTitle>
+                <CardDescription>
+                  Your hosting credits and active campaigns
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Subscription Overview */}
+                <div className="grid grid-cols-3 gap-6 mb-6 p-4 bg-gray-50 rounded-lg">
                   <div className="text-center">
                     <div className="text-3xl font-bold text-blue-600">{monthlyCredits}</div>
-                    <p className="text-sm text-gray-600">Monthly Credits</p>
-                    <p className="text-xs text-gray-500">${monthlyCost.toFixed(2)}/month</p>
+                    <p className="text-sm text-gray-600">Total Credits</p>
+                    <p className="text-xs text-gray-500">${monthlyCost}/month</p>
                   </div>
                   <div className="text-center">
                     <div className="text-3xl font-bold text-green-600">{activeSlots.length}</div>
@@ -305,10 +329,10 @@ export default function AccountSettingsPage() {
                     <p className="text-xs text-gray-500">Ready to use</p>
                   </div>
                 </div>
-                
+
                 {/* Cancellation Notice */}
                 {billingSummary?.cancellation_scheduled_at && (
-                  <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
                     <div className="flex items-center gap-2 text-orange-800 mb-2">
                       <AlertCircle className="h-5 w-5" />
                       <span className="font-medium">Subscription Ending</span>
@@ -329,61 +353,13 @@ export default function AccountSettingsPage() {
                     </Button>
                   </div>
                 )}
-                
-                <div className="mt-6 flex justify-center gap-4">
-                  <Button 
-                    variant="outline"
-                    onClick={() => setShowUpgrade(true)}
-                    className="flex items-center gap-2"
-                    disabled={!!billingSummary?.cancellation_scheduled_at}
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add More Credits
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => setShowDowngrade(true)}
-                    className="flex items-center gap-2"
-                    disabled={!!billingSummary?.cancellation_scheduled_at}
-                  >
-                    <Minus className="h-4 w-4" />
-                    Reduce Credits
-                  </Button>
-                  {!billingSummary?.cancellation_scheduled_at ? (
-                    <Button 
-                      variant="outline"
-                      onClick={() => handleSubscriptionChange('cancel')}
-                      className="flex items-center gap-2 text-red-600 border-red-300 hover:bg-red-50"
-                    >
-                      <AlertCircle className="h-4 w-4" />
-                      Cancel Subscription
-                    </Button>
-                  ) : (
-                    <Button 
-                      variant="outline"
-                      onClick={() => handleSubscriptionChange('reactivate')}
-                      className="flex items-center gap-2 text-green-600 border-green-300 hover:bg-green-50"
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      Reactivate Subscription
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
 
-            {/* Active Campaigns */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Globe className="h-5 w-5" />
-                  Active Campaigns ({activeSlots.length}/{monthlyCredits})
-                </CardTitle>
-                <CardDescription>
-                  Campaigns currently using your hosting credits
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+                {/* Active Campaigns Section */}
+                <div className="mb-6">
+                  <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    Active Campaigns ({activeSlots.length})
+                  </h4>
                 {activeSlots.length > 0 ? (
                   <div className="space-y-4">
                     {activeSlots.map((campaign) => (
@@ -423,6 +399,48 @@ export default function AccountSettingsPage() {
                     <p className="text-sm text-gray-500">You have {monthlyCredits} available credits to use</p>
                   </div>
                 )}
+                </div>
+
+                {/* Subscription Actions */}
+                <div className="flex justify-center gap-4 pt-6 border-t border-gray-200">
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowUpgrade(true)}
+                    className="flex items-center gap-2"
+                    disabled={!!billingSummary?.cancellation_scheduled_at}
+                  >
+                    <Plus className="h-4 w-4" />
+                    {billingSummary?.payment_method_last_four ? 'Add More Credits' : 'Add Credits & Payment Method'}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowDowngrade(true)}
+                    className="flex items-center gap-2"
+                    disabled={!!billingSummary?.cancellation_scheduled_at}
+                  >
+                    <Minus className="h-4 w-4" />
+                    Reduce Credits
+                  </Button>
+                  {!billingSummary?.cancellation_scheduled_at ? (
+                    <Button 
+                      variant="outline"
+                      onClick={() => handleSubscriptionChange('cancel')}
+                      className="flex items-center gap-2 text-red-600 border-red-300 hover:bg-red-50"
+                    >
+                      <AlertCircle className="h-4 w-4" />
+                      Cancel Subscription
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="outline"
+                      onClick={() => handleSubscriptionChange('reactivate')}
+                      className="flex items-center gap-2 text-green-600 border-green-300 hover:bg-green-50"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      Reactivate Subscription
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -451,29 +469,89 @@ export default function AccountSettingsPage() {
                     <p className="text-xs text-gray-500">{monthlyCredits} credits × $99</p>
                   </div>
                 </div>
+
+                {/* Payment Method */}
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Payment Method
+                  </h4>
+                  {billingSummary?.payment_method_last_four && billingSummary?.payment_method_brand ? (
+                    <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="h-8 w-12 bg-white border rounded flex items-center justify-center">
+                        <CreditCard className="h-4 w-4 text-gray-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900">
+                          •••• •••• •••• {billingSummary.payment_method_last_four}
+                        </p>
+                        <p className="text-sm text-gray-600 capitalize">
+                          {billingSummary.payment_method_brand} • On file
+                        </p>
+                      </div>
+                      <div className="text-green-600">
+                        <CheckCircle className="h-4 w-4" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                      <p className="text-gray-600 text-sm">
+                        No payment method on file. Add credits to set up billing.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
                         {/* Upgrade Modal */}
             {showUpgrade && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Add More Hosting Credits</CardTitle>
-                  <CardDescription>
-                    Purchase additional credits to host more campaigns
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <StripePaymentForm 
-                    quantity={1}
-                    onSuccess={async () => {
-                      setShowUpgrade(false);
-                      await loadBillingSummary();
-                    }}
-                    onCancel={() => setShowUpgrade(false)}
-                  />
-                </CardContent>
-              </Card>
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+                onClick={() => setShowUpgrade(false)}
+              >
+                <div 
+                  className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Show stored payment method option if available */}
+                  {billingSummary?.billing_anchor_date && 
+                   billingSummary?.next_billing_date &&
+                   billingSummary?.payment_method_last_four && 
+                   billingSummary?.payment_method_brand ? (
+                    <StoredPaymentPurchase
+                      paymentMethodBrand={billingSummary.payment_method_brand}
+                      paymentMethodLastFour={billingSummary.payment_method_last_four}
+                      billingAnchorDate={billingSummary.billing_anchor_date}
+                      nextBillingDate={billingSummary.next_billing_date}
+                      onSuccess={async () => {
+                        setShowUpgrade(false);
+                        await loadBillingSummary();
+                      }}
+                      onCancel={() => setShowUpgrade(false)}
+                    />
+                  ) : (
+                    <Card className="border-0 shadow-none">
+                      <CardHeader>
+                        <CardTitle>Add More Hosting Credits</CardTitle>
+                        <CardDescription>
+                          Purchase additional credits to host more campaigns
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <StripePaymentForm 
+                          quantity={1}
+                          onSuccess={async () => {
+                            setShowUpgrade(false);
+                            await loadBillingSummary();
+                          }}
+                          onCancel={() => setShowUpgrade(false)}
+                        />
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </div>
             )}
 
             {/* Downgrade Modal */}
