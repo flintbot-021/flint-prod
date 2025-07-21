@@ -708,7 +708,13 @@ export interface BillingSummary {
   total_credits_owned: number;
   currently_published: number;
   available_credits: number;
-  active_slots: UserSubscription[];
+  active_slots: {
+    id: string;
+    name: string;
+    published_url: string;
+    published_at: string;
+    created_at: string;
+  }[];
   monthly_cost_cents: number;
   next_billing_date: string | null;
   billing_history: BillingHistory[];

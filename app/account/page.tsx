@@ -34,7 +34,7 @@ interface BillingSummary {
 interface PublishedCampaign {
   id: string
   name: string
-  slug: string
+  published_url: string
   published_at: string
   created_at: string
 }
@@ -229,7 +229,7 @@ export default function AccountSettingsPage() {
                                 <span className="text-sm text-green-600 font-medium">Live</span>
                               </div>
                               <div className="text-right">
-                                <p className="text-sm font-medium text-gray-900">$10/month</p>
+                                <p className="text-sm font-medium text-gray-900">1 credit used</p>
                               </div>
                                                              <Button
                                  variant="outline"
@@ -345,6 +345,78 @@ export default function AccountSettingsPage() {
                       )}
                     </CardContent>
                   </Card>
+
+                  {/* Subscription Management */}
+                  {(billingSummary?.total_credits_owned || 0) > 0 && (
+                    <Card className="border-red-200">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-red-700">
+                          <AlertCircle className="h-5 w-5" />
+                          Subscription Management
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="bg-red-50 p-4 rounded-lg">
+                          <h4 className="font-medium text-red-800 mb-2">Cancel Subscription</h4>
+                          <p className="text-sm text-red-700 mb-4">
+                            Canceling your subscription will:
+                          </p>
+                          <ul className="text-sm text-red-700 space-y-1 mb-4 ml-4">
+                            <li>• Unpublish all active campaigns immediately</li>
+                            <li>• Remove all {billingSummary?.total_credits_owned || 0} hosting credits from your account</li>
+                            <li>• Stop future billing (${((billingSummary?.monthly_cost_cents || 0) / 100).toFixed(2)}/month)</li>
+                            <li>• Cannot be undone - you'll need to repurchase credits</li>
+                          </ul>
+                          <Button 
+                            variant="outline" 
+                            className="text-red-600 border-red-300 hover:bg-red-50"
+                            onClick={async () => {
+                              const confirmed = window.confirm(
+                                `Are you sure you want to cancel your subscription?\n\n` +
+                                `This will:\n` +
+                                `• Unpublish all active campaigns\n` +
+                                `• Remove all ${billingSummary?.total_credits_owned || 0} credits\n` +
+                                `• Stop $${((billingSummary?.monthly_cost_cents || 0) / 100).toFixed(2)}/month billing\n\n` +
+                                `This action cannot be undone.`
+                              );
+                              
+                              if (confirmed) {
+                                try {
+                                  const response = await fetch('/api/billing/cancel-subscription', {
+                                    method: 'POST',
+                                  });
+                                  
+                                  const result = await response.json();
+                                  
+                                  if (!result.success) {
+                                    throw new Error(result.error || 'Failed to cancel subscription');
+                                  }
+                                  
+                                  // Refresh billing summary
+                                  await loadBillingSummary();
+                                  
+                                  toast({
+                                    title: 'Subscription Canceled',
+                                    description: 'Your subscription has been canceled and all campaigns unpublished.',
+                                    duration: 5000
+                                  });
+                                } catch (error) {
+                                  console.error('Error canceling subscription:', error);
+                                  toast({
+                                    title: 'Error',
+                                    description: error instanceof Error ? error.message : 'Failed to cancel subscription',
+                                    variant: 'destructive'
+                                  });
+                                }
+                              }
+                            }}
+                          >
+                            Cancel Subscription
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
               </div>
             )}

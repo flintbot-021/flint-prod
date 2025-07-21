@@ -90,12 +90,21 @@ export async function POST(request: NextRequest) {
     if (paymentIntent.status === 'succeeded') {
       // Update credit balance immediately
       const currentBalance = profile.credit_balance || 0;
+      const now = new Date().toISOString();
+      
+      // Set billing anchor date if this is the first credit purchase
+      const updateData: any = {
+        credit_balance: currentBalance + quantity,
+        updated_at: now
+      };
+      
+      if (!profile.billing_anchor_date) {
+        updateData.billing_anchor_date = now;
+      }
+      
       await supabase
         .from('profiles')
-        .update({
-          credit_balance: currentBalance + quantity,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', user.id);
 
       // Create credit transaction record
