@@ -17,7 +17,8 @@ import {
   Globe,
   Plus,
   Minus,
-  Settings
+  Settings,
+  Eye
 } from 'lucide-react'
 import { StripePaymentForm } from '@/components/ui/stripe-payment-form'
 import { StoredPaymentPurchase } from '@/components/ui/stored-payment-purchase'
@@ -100,45 +101,6 @@ export default function AccountSettingsPage() {
       })
     } finally {
       setLoadingBilling(false)
-    }
-  }
-
-  const handleCancelSlot = async (campaignId: string, campaignName: string) => {
-    const confirmed = window.confirm(
-      `Cancel hosting for "${campaignName}"?\n\n` +
-      `This will:\n` +
-      `• Unpublish the campaign\n` +
-      `• Free up 1 credit for other campaigns\n` +
-      `• Keep your subscription active`
-    );
-    
-    if (!confirmed) return;
-
-    try {
-      const response = await fetch(`/api/campaigns/${campaignId}/publish`, {
-        method: 'DELETE',
-      });
-      
-      const result = await response.json();
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to cancel slot');
-      }
-      
-      // Refresh billing summary
-      await loadBillingSummary();
-      
-      toast({
-        title: 'Slot Canceled',
-        description: `"${campaignName}" has been unpublished and 1 credit is now available.`,
-      });
-    } catch (error) {
-      console.error('Error canceling slot:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to cancel slot',
-        variant: 'destructive'
-      });
     }
   }
 
@@ -383,10 +345,10 @@ export default function AccountSettingsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleCancelSlot(campaign.id, campaign.name)}
-                            className="text-red-600 border-red-300 hover:bg-red-50"
+                            onClick={() => window.open(campaign.published_url, '_blank')}
+                            className="text-blue-600 border-blue-300 hover:bg-blue-50"
                           >
-                            Cancel Slot
+                            <Eye className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
