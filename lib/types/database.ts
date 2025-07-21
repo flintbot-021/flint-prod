@@ -76,6 +76,14 @@ export interface Profile {
   marketing_emails: boolean;
   created_at: Timestamp;
   updated_at: Timestamp;
+  stripe_customer_id: string | null;
+  stripe_payment_method_id: string | null;
+  has_payment_method: boolean | null;
+  payment_method_last_four: string | null;
+  payment_method_brand: string | null;
+  credit_balance: number | null;
+  billing_anchor_date: Timestamp | null;
+  cancellation_scheduled_at: Timestamp | null;
 }
 
 /**
@@ -701,6 +709,15 @@ export interface CreditPurchaseRequest {
 }
 
 /**
+ * Subscription change request (upgrade/downgrade/cancel)
+ */
+export interface SubscriptionChangeRequest {
+  action: 'upgrade' | 'downgrade' | 'cancel' | 'reactivate';
+  new_credit_amount?: number; // For upgrade/downgrade
+  effective_date?: string; // When the change should take effect (default: next billing cycle)
+}
+
+/**
  * Billing summary for account settings
  */
 export interface BillingSummary {
@@ -718,6 +735,8 @@ export interface BillingSummary {
   monthly_cost_cents: number;
   next_billing_date: string | null;
   billing_history: BillingHistory[];
+  cancellation_scheduled_at: string | null;
+  subscription_ends_at: string | null; // When the current subscription will end if canceled
 }
 
 // =============================================================================

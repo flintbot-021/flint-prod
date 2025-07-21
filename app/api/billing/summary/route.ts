@@ -10,12 +10,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-            // Get profile with credit balance and billing anchor date
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('credit_balance, billing_anchor_date')
-          .eq('id', user.id)
-          .single();
+                // Get profile with credit balance, billing anchor date, and cancellation info
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('credit_balance, billing_anchor_date, cancellation_scheduled_at')
+      .eq('id', user.id)
+      .single();
 
     if (profileError) {
       return NextResponse.json(
@@ -43,11 +43,35 @@ export async function GET(request: NextRequest) {
 
         // Calculate next billing date (1 month from billing anchor date)
         let nextBillingDate = null;
+        let subscriptionEndsAt = null;
+        
         if (profile.billing_anchor_date) {
           const anchorDate = new Date(profile.billing_anchor_date);
           const nextDate = new Date(anchorDate);
           nextDate.setMonth(nextDate.getMonth() + 1);
           nextBillingDate = nextDate.toISOString();
+          
+          // If cancellation is scheduled, subscription ends at next billing date
+          if (profile.cancellation_scheduled_at) {
+            subscriptionEndsAt = nextBillingDate;
+          }
+        } else if (totalCreditsOwned > 0) {
+          // If user has credits but no billing anchor date, set it to next month from now
+          const now = new Date();
+          const nextMonth = new Date(now);
+          nextMonth.setMonth(nextMonth.getMonth() + 1);
+          nextBillingDate = nextMonth.toISOString();
+          
+          // Update the billing anchor date in the database for future consistency
+          await supabase
+            .from('profiles')
+            .update({ billing_anchor_date: now.toISOString() })
+            .eq('id', user.id);
+          
+          // If cancellation is scheduled, subscription ends at next billing date
+          if (profile.cancellation_scheduled_at) {
+            subscriptionEndsAt = nextBillingDate;
+          }
         }
 
         // Create billing summary
@@ -59,7 +83,9 @@ export async function GET(request: NextRequest) {
           active_slots: publishedCampaigns || [],
           monthly_cost_cents: totalCreditsOwned * 9900, // $99 per credit owned
           next_billing_date: nextBillingDate,
-          billing_history: []
+          billing_history: [],
+          cancellation_scheduled_at: profile.cancellation_scheduled_at,
+          subscription_ends_at: subscriptionEndsAt
         };
 
     return NextResponse.json({
