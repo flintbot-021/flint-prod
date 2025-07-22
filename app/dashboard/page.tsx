@@ -24,8 +24,8 @@ import { useConfirmationDialog } from '@/components/ui/confirmation-dialog'
 import { CampaignCard } from '@/components/dashboard/campaign-card'
 import type { CampaignWithStats } from '@/components/dashboard/campaign-card'
 import { StatsCard } from '@/components/dashboard/stats-card'
-import { FlintLogo } from '@/components/flint-logo'
 import { CampaignEditModal } from '@/components/campaign-builder/campaign-edit-modal'
+import { PrimaryNavigation } from '@/components/primary-navigation'
 import { toast } from '@/components/ui/use-toast'
 import { 
   Users, 
@@ -41,7 +41,6 @@ import {
   FileText,
   LogOut
 } from 'lucide-react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 interface DashboardStats {
   totalCampaigns: number
@@ -381,54 +380,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-background shadow border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-4">
-              <FlintLogo size="sm" showText={false} className="!h-6 !w-auto" />
-              <span className="mx-4 text-gray-300 select-none">|</span>
-              <nav className="flex items-center space-x-2">
-                <Button
-                  variant="ghost"
-                  onClick={() => router.push('/dashboard')}
-                  className="text-sm font-medium text-primary"
-                >
-                  Dashboard
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => router.push('/dashboard/leads')}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground"
-                >
-                  Leads
-                </Button>
-              </nav>
-            </div>
-            {/* Avatar dropdown only */}
-            <div className="relative ml-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400">
-                    <span className="text-base font-medium text-blue-600">
-                      {user?.email?.[0]?.toUpperCase() || '?'}
-                    </span>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-              <Link href="/account" className="flex items-center">
-                <Settings className="h-4 w-4 mr-2" /> Account Settings
-              </Link>
-            </DropdownMenuItem>
-                  <DropdownMenuItem onClick={signOut} className="flex items-center">
-                    <LogOut className="h-4 w-4 mr-2" /> Log Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </div>
-      </header>
+      <PrimaryNavigation currentPage="dashboard" />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">

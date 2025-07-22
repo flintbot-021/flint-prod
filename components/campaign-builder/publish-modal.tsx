@@ -344,7 +344,7 @@ export function PublishModal({
                 </div>
                 {billingSummary.credit_balance < 1 && (
                   <Button 
-                    onClick={() => router.push('/account')}
+                    onClick={() => router.push('/dashboard/account')}
                     size="sm"
                     variant="outline"
                   >
