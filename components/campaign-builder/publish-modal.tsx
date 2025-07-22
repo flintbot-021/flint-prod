@@ -25,7 +25,123 @@ import {
   CreditCard,
   DollarSign
 } from 'lucide-react'
-import { StripePaymentForm } from '@/components/ui/stripe-payment-form'
+import { loadStripe } from '@stripe/stripe-js'
+import {
+  Elements,
+  CardElement,
+  useStripe,
+  useElements
+} from '@stripe/react-stripe-js'
+
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
+
+// Simple inline payment form component
+function InlinePaymentForm({ quantity, onSuccess, onCancel }: { quantity: number, onSuccess: () => void, onCancel: () => void }) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!stripe || !elements) return
+
+    setIsProcessing(true)
+    setPaymentError(null)
+
+    const cardElement = elements.getElement(CardElement)
+    if (!cardElement) {
+      setPaymentError('Card element not found')
+      setIsProcessing(false)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/billing/purchase-credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity }),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to create payment intent')
+      }
+
+      const { clientSecret } = await response.json()
+      const { error } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: { card: cardElement }
+      })
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      toast({
+        title: 'Payment Successful',
+        description: `Added ${quantity} credit${quantity > 1 ? 's' : ''} to your account`,
+      })
+      
+      onSuccess()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Payment failed'
+      setPaymentError(errorMessage)
+      toast({
+        title: 'Payment Failed',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label>Card Information</Label>
+        <div className="p-3 border rounded-md">
+          <CardElement options={{
+            style: {
+              base: {
+                fontSize: '16px',
+                color: '#424770',
+                '::placeholder': { color: '#aab7c4' },
+              },
+            },
+          }} />
+        </div>
+      </div>
+
+      {paymentError && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-sm text-red-800">{paymentError}</p>
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <Button
+          type="submit"
+          disabled={!stripe || isProcessing}
+          className="flex-1"
+        >
+          {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          Pay ${(quantity * 99).toFixed(2)}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          disabled={isProcessing}
+          className="flex-1"
+        >
+          Cancel
+        </Button>
+      </div>
+    </form>
+  )
+}
 
 interface UrlCheck {
   available: boolean
@@ -356,14 +472,16 @@ export function PublishModal({
                 </div>
               </div>
               
-              <StripePaymentForm
-                quantity={creditQuantity}
-                onSuccess={async () => {
-                  await loadBillingSummary()
-                  setShowCreditPurchase(false)
-                }}
-                onCancel={() => setShowCreditPurchase(false)}
-              />
+              <Elements stripe={stripePromise}>
+                <InlinePaymentForm
+                  quantity={creditQuantity}
+                  onSuccess={async () => {
+                    await loadBillingSummary()
+                    setShowCreditPurchase(false)
+                  }}
+                  onCancel={() => setShowCreditPurchase(false)}
+                />
+              </Elements>
             </div>
           )}
 

@@ -16,12 +16,10 @@ import {
   AlertCircle,
   Globe,
   Plus,
-  Minus,
   Settings,
   Eye
 } from 'lucide-react'
-import { StripePaymentForm } from '@/components/ui/stripe-payment-form'
-import { StoredPaymentPurchase } from '@/components/ui/stored-payment-purchase'
+import { CreditAdjustmentModal } from '@/components/ui/credit-adjustment-modal'
 
 interface BillingSummary {
   credit_balance: number
@@ -52,26 +50,23 @@ export default function AccountSettingsPage() {
   const router = useRouter()
   const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null)
   const [loadingBilling, setLoadingBilling] = useState(true)
-  const [showUpgrade, setShowUpgrade] = useState(false)
-  const [showDowngrade, setShowDowngrade] = useState(false)
+  const [showCreditAdjustment, setShowCreditAdjustment] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
-  const [newCreditAmount, setNewCreditAmount] = useState(1)
 
   // Handle escape key to close modals
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setShowUpgrade(false)
-        setShowDowngrade(false)
+        setShowCreditAdjustment(false)
         setShowCancelModal(false)
       }
     }
 
-    if (showUpgrade || showDowngrade || showCancelModal) {
+    if (showCreditAdjustment || showCancelModal) {
       document.addEventListener('keydown', handleEscape)
       return () => document.removeEventListener('keydown', handleEscape)
     }
-  }, [showUpgrade, showDowngrade, showCancelModal])
+  }, [showCreditAdjustment, showCancelModal])
 
   useEffect(() => {
     if (!user) {
@@ -237,7 +232,7 @@ export default function AccountSettingsPage() {
                   Each credit allows you to host one campaign for $99/month
                 </p>
                 <Button 
-                  onClick={() => setShowUpgrade(true)}
+                  onClick={() => setShowCreditAdjustment(true)}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -357,21 +352,12 @@ export default function AccountSettingsPage() {
                 <div className="flex justify-center gap-4 pt-6 border-t border-gray-200">
                   <Button 
                     variant="outline"
-                    onClick={() => setShowUpgrade(true)}
+                    onClick={() => setShowCreditAdjustment(true)}
                     className="flex items-center gap-2"
                     disabled={!!billingSummary?.cancellation_scheduled_at}
                   >
-                    <Plus className="h-4 w-4" />
-                    {billingSummary?.payment_method_last_four ? 'Add More Credits' : 'Add Credits & Payment Method'}
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    onClick={() => setShowDowngrade(true)}
-                    className="flex items-center gap-2"
-                    disabled={!!billingSummary?.cancellation_scheduled_at}
-                  >
-                    <Minus className="h-4 w-4" />
-                    Reduce Credits
+                    <Settings className="h-4 w-4" />
+                    Adjust Credits
                   </Button>
                   {!billingSummary?.cancellation_scheduled_at ? (
                     <Button 
@@ -467,61 +453,24 @@ export default function AccountSettingsPage() {
       </div>
 
       {/* Modals - Rendered at root level */}
-      {/* Upgrade Modal */}
-      {showUpgrade && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-          onClick={() => setShowUpgrade(false)}
-        >
-          <div 
-            className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Show stored payment method option if available */}
-            {billingSummary?.billing_anchor_date && 
-             billingSummary?.next_billing_date &&
-             billingSummary?.payment_method_last_four && 
-             billingSummary?.payment_method_brand ? (
-              <StoredPaymentPurchase
-                paymentMethodBrand={billingSummary.payment_method_brand}
-                paymentMethodLastFour={billingSummary.payment_method_last_four}
-                billingAnchorDate={billingSummary.billing_anchor_date}
-                nextBillingDate={billingSummary.next_billing_date}
-                onSuccess={async () => {
-                  setShowUpgrade(false);
-                  await loadBillingSummary();
-                }}
-                onCancel={() => setShowUpgrade(false)}
-              />
-            ) : (
-              <Card className="border-0 shadow-none">
-                <CardHeader>
-                  <CardTitle>Add More Hosting Credits</CardTitle>
-                  <CardDescription>
-                    Purchase additional credits to host more campaigns
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <StripePaymentForm 
-                    quantity={1}
-                    onSuccess={async () => {
-                      setShowUpgrade(false);
-                      await loadBillingSummary();
-                    }}
-                    onCancel={() => setShowUpgrade(false)}
-                  />
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
-      )}
+      <CreditAdjustmentModal
+        isOpen={showCreditAdjustment}
+        onClose={() => setShowCreditAdjustment(false)}
+        currentCredits={monthlyCredits}
+        maxCredits={20}
+        activeSlots={activeSlots.length}
+        billingAnchorDate={billingSummary?.billing_anchor_date || undefined}
+        nextBillingDate={billingSummary?.next_billing_date || undefined}
+        paymentMethodBrand={billingSummary?.payment_method_brand || undefined}
+        paymentMethodLastFour={billingSummary?.payment_method_last_four || undefined}
+        onSuccess={loadBillingSummary}
+      />
 
-      {/* Downgrade Modal */}
-      {showDowngrade && (
+      {/* Cancel Subscription Modal */}
+      {showCancelModal && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-          onClick={() => setShowDowngrade(false)}
+          onClick={() => setShowCancelModal(false)}
         >
           <div 
             className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
@@ -529,53 +478,38 @@ export default function AccountSettingsPage() {
           >
             <Card className="border-0 shadow-none">
               <CardHeader>
-                <CardTitle>Reduce Hosting Credits</CardTitle>
+                <CardTitle>Cancel Subscription</CardTitle>
                 <CardDescription>
-                  Changes take effect at your next billing cycle
+                  Your subscription will be cancelled at the end of your current billing cycle
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    New Credit Amount
-                  </label>
-                  <select
-                    value={newCreditAmount}
-                    onChange={(e) => setNewCreditAmount(parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value={0}>0 credits (Cancel subscription)</option>
-                    {Array.from({ length: (monthlyCredits - 1) }, (_, i) => i + 1).map(num => (
-                      <option key={num} value={num}>
-                        {num} credit{num !== 1 ? 's' : ''} (${(num * 99).toFixed(2)}/month)
-                      </option>
-                    ))}
-                  </select>
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <p className="text-sm text-yellow-800">
+                    <strong>Cancellation Date:</strong> {billingSummary?.next_billing_date 
+                      ? new Date(billingSummary.next_billing_date).toLocaleDateString()
+                      : 'End of current period'
+                    }
+                  </p>
+                  <p className="text-sm text-yellow-800 mt-1">
+                    Your campaigns will remain published until then.
+                  </p>
                 </div>
-                
-                {activeSlots.length > newCreditAmount && (
-                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                    <p className="text-sm text-yellow-800">
-                      ⚠️ You have {activeSlots.length} published campaign{activeSlots.length !== 1 ? 's' : ''} but are downgrading to {newCreditAmount} credit{newCreditAmount !== 1 ? 's' : ''}. 
-                      Please unpublish {activeSlots.length - newCreditAmount} campaign{(activeSlots.length - newCreditAmount) !== 1 ? 's' : ''} first.
-                    </p>
-                  </div>
-                )}
                 
                 <div className="flex gap-2">
                   <Button
                     onClick={() => {
-                      handleSubscriptionChange('downgrade', newCreditAmount);
-                      setShowDowngrade(false);
+                      handleSubscriptionChange('cancel');
+                      setShowCancelModal(false);
                     }}
-                    disabled={activeSlots.length > newCreditAmount}
+                    variant="destructive"
                     className="flex-1"
                   >
-                    {newCreditAmount === 0 ? 'Schedule Cancellation' : 'Schedule Downgrade'}
+                    Schedule Cancellation
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => setShowDowngrade(false)}
+                    onClick={() => setShowCancelModal(false)}
                     className="flex-1"
                   >
                     Cancel
