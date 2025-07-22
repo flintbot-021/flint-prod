@@ -122,6 +122,11 @@ function PaymentMethodForm({ onSuccess, onClose }: {
             }}
           />
         </div>
+        <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-xs text-blue-700 font-medium mb-1">Test Mode - Use test card:</p>
+          <p className="text-xs text-blue-600 font-mono">4242 4242 4242 4242</p>
+          <p className="text-xs text-blue-600">Any future date • Any 3-digit CVC</p>
+        </div>
       </div>
 
       {error && (

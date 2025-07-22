@@ -127,6 +127,11 @@ function SetupForm({ onComplete }: { onComplete: () => void }) {
         <div className="p-4 border-2 border-gray-200 rounded-lg focus-within:border-blue-500 transition-colors">
           <CardElement options={cardElementOptions} />
         </div>
+        <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-xs text-blue-700 font-medium mb-1">Test Mode - Use test card:</p>
+          <p className="text-xs text-blue-600 font-mono">4242 4242 4242 4242</p>
+          <p className="text-xs text-blue-600">Any future date • Any 3-digit CVC</p>
+        </div>
       </div>
       
       <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
