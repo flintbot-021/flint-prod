@@ -147,8 +147,8 @@ export function PublishModal({
     
     if (useCustomUrl && customUrl.trim()) {
       return customUrl.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-')
-    }
-    
+      }
+
     // Generate from campaign name
     const baseSlug = campaign.name
       .toLowerCase()
@@ -156,7 +156,7 @@ export function PublishModal({
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '')
-    
+
     return baseSlug || 'my-tool'
   }, [campaign, useCustomUrl, customUrl])
 
@@ -288,7 +288,7 @@ export function PublishModal({
         className
       )}>
         <div className="p-6">
-          {/* Header */}
+        {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 rounded-lg">
@@ -297,11 +297,11 @@ export function PublishModal({
               <div>
                 <h2 className="text-xl font-semibold">
                   {isPublished ? 'Manage Tool' : 'Launch Tool'}
-                </h2>
+          </h2>
                 <p className="text-sm text-muted-foreground">
                   {campaign.name}
-                </p>
-              </div>
+          </p>
+        </div>
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>
               ×
@@ -377,11 +377,11 @@ export function PublishModal({
                   <ul className="mt-1 list-disc list-inside text-red-700">
                     {mandatoryValidationErrors.map((error, index) => (
                       <li key={index}>{error}</li>
-                    ))}
+                  ))}
                     {validationErrors.map((error, index) => (
                       <li key={index}>{error}</li>
-                    ))}
-                  </ul>
+                  ))}
+                </ul>
                 </div>
               </div>
             </div>
@@ -395,7 +395,7 @@ export function PublishModal({
                 <div className="text-sm text-muted-foreground mb-2">
                   Your tool will be available at:
                 </div>
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                   <code className="text-sm bg-background px-2 py-1 rounded flex-1 truncate">
                     {fullUrl || 'Loading...'}
                   </code>
@@ -406,7 +406,7 @@ export function PublishModal({
                   )}
                 </div>
               </div>
-            </div>
+          </div>
 
             <div className="flex items-center space-x-2">
               <Switch
@@ -424,22 +424,22 @@ export function PublishModal({
                 <Label htmlFor="custom-url-input" className="text-sm">
                   Custom URL slug
                 </Label>
-                <Input
+                    <Input
                   id="custom-url-input"
-                  value={customUrl}
-                  onChange={(e) => setCustomUrl(e.target.value)}
+                      value={customUrl}
+                      onChange={(e) => setCustomUrl(e.target.value)}
                   placeholder="my-awesome-tool"
                   className="mt-1"
-                />
+                    />
                 <p className="text-xs text-muted-foreground mt-1">
                   Only letters, numbers, and hyphens allowed
                 </p>
-              </div>
-            )}
-          </div>
+                    </div>
+                  )}
+                </div>
 
           {/* Unpublish Notice */}
-          {isPublished && (
+                    {isPublished && (
             <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
               <div className="flex items-start gap-2">
                 <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
@@ -448,41 +448,41 @@ export function PublishModal({
                   <p className="text-green-700">
                     Unpublishing will return 1 credit to your account and make the tool inaccessible to visitors.
                   </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Action Buttons */}
           <div className="flex gap-3">
-            {isPublished ? (
+          {isPublished ? (
               <>
-                <Button
-                  variant="outline"
-                  onClick={handleUnpublish}
-                  disabled={isPublishing}
+            <Button
+              variant="outline"
+              onClick={handleUnpublish}
+              disabled={isPublishing}
                   className="flex-1"
-                >
+            >
                   {isPublishing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Unpublish Tool
                 </Button>
                 <Button variant="outline" onClick={onClose}>
                   Close
-                </Button>
+            </Button>
               </>
-            ) : (
+          ) : (
               <>
                 {!showCreditPurchase && billingSummary && billingSummary.credit_balance >= 1 && (
-                  <Button
-                    onClick={handlePublish}
-                    disabled={!canPublish || isPublishing}
+            <Button
+              onClick={handlePublish}
+              disabled={!canPublish || isPublishing}
                     className="flex-1"
                     size="lg"
-                  >
+            >
                     {isPublishing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     {isPublishing ? 'Publishing...' : 'Use 1 Credit & Publish'}
-                  </Button>
-                )}
+            </Button>
+          )}
                 <Button variant="outline" onClick={onClose}>
                   {showCreditPurchase ? 'Cancel' : 'Close'}
                 </Button>

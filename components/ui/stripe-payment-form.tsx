@@ -121,20 +121,21 @@ function PaymentForm({ quantity, onSuccess, onCancel }: PaymentFormProps) {
         </div>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex gap-2">
         <Button
           type="submit"
           disabled={!stripe || isProcessing}
           className="flex-1"
         >
           {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Pay ${(quantity * 10).toFixed(2)}
+          Pay ${(quantity * 99).toFixed(2)}
         </Button>
         <Button
           type="button"
           variant="outline"
           onClick={onCancel}
           disabled={isProcessing}
+          className="flex-1"
         >
           Cancel
         </Button>

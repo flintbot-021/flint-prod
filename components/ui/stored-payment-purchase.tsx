@@ -89,7 +89,7 @@ export function StoredPaymentPurchase({
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            Add Credits - Card on File
+            Add More Hosting Credits
           </CardTitle>
           <Button
             variant="ghost"
@@ -101,7 +101,7 @@ export function StoredPaymentPurchase({
           </Button>
         </div>
         <CardDescription>
-          Your card will be charged immediately at a prorated rate
+          Purchase additional credits using your stored payment method
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -156,7 +156,7 @@ export function StoredPaymentPurchase({
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <Button
             onClick={handlePurchase}
             disabled={isProcessing || quantity < 1 || quantity > 50}
