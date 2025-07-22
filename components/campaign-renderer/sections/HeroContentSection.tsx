@@ -20,12 +20,12 @@ export function HeroContentSection({
   // Get hero configuration from section configuration
   const heroConfig = section.configuration as HeroContentConfiguration
   
-  // Use section configuration with fallbacks
+  // Use section configuration - only use fallbacks for essential styling properties
   // Note: The database stores background image as 'image', not 'backgroundImage'
   const configAny = heroConfig as any
   const settings = {
-    title: title || 'Hero Title',
-    subtitle: description || 'Hero subtitle',
+    title: configAny.headline || configAny.title || '',
+    subtitle: configAny.subheading || configAny.subtitle || '',
     backgroundImage: configAny.backgroundImage || configAny.image || '',
     overlayColor: heroConfig.overlayColor || '#000000',
     overlayOpacity: heroConfig.overlayOpacity ?? 40,
@@ -94,14 +94,16 @@ export function HeroContentSection({
           ? "space-y-4 px-3 py-6" 
           : "space-y-8 px-6"
       )}>
-        <h1 className={cn(
-          "font-bold text-white leading-tight",
-          deviceInfo?.type === 'mobile' 
-            ? "text-2xl" 
-            : "text-5xl md:text-6xl lg:text-7xl"
-        )}>
-          {settings.title}
-        </h1>
+        {settings.title && (
+          <h1 className={cn(
+            "font-bold text-white leading-tight",
+            deviceInfo?.type === 'mobile' 
+              ? "text-2xl" 
+              : "text-5xl md:text-6xl lg:text-7xl"
+          )}>
+            {settings.title}
+          </h1>
+        )}
         
         {settings.subtitle && (
           <p className={cn(
