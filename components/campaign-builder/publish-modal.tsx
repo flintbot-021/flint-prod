@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Campaign } from '@/lib/types/database'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -25,123 +26,9 @@ import {
   CreditCard,
   DollarSign
 } from 'lucide-react'
-import { loadStripe } from '@stripe/stripe-js'
-import {
-  Elements,
-  CardElement,
-  useStripe,
-  useElements
-} from '@stripe/react-stripe-js'
 
-// Initialize Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
-// Simple inline payment form component
-function InlinePaymentForm({ quantity, onSuccess, onCancel }: { quantity: number, onSuccess: () => void, onCancel: () => void }) {
-  const stripe = useStripe()
-  const elements = useElements()
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [paymentError, setPaymentError] = useState<string | null>(null)
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
-    if (!stripe || !elements) return
-
-    setIsProcessing(true)
-    setPaymentError(null)
-
-    const cardElement = elements.getElement(CardElement)
-    if (!cardElement) {
-      setPaymentError('Card element not found')
-      setIsProcessing(false)
-      return
-    }
-
-    try {
-      const response = await fetch('/api/billing/purchase-credits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quantity }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create payment intent')
-      }
-
-      const { clientSecret } = await response.json()
-      const { error } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: { card: cardElement }
-      })
-
-      if (error) {
-        throw new Error(error.message)
-      }
-
-      toast({
-        title: 'Payment Successful',
-        description: `Added ${quantity} credit${quantity > 1 ? 's' : ''} to your account`,
-      })
-      
-      onSuccess()
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Payment failed'
-      setPaymentError(errorMessage)
-      toast({
-        title: 'Payment Failed',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-    } finally {
-      setIsProcessing(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label>Card Information</Label>
-        <div className="p-3 border rounded-md">
-          <CardElement options={{
-            style: {
-              base: {
-                fontSize: '16px',
-                color: '#424770',
-                '::placeholder': { color: '#aab7c4' },
-              },
-            },
-          }} />
-        </div>
-      </div>
-
-      {paymentError && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-800">{paymentError}</p>
-        </div>
-      )}
-
-      <div className="flex gap-2">
-        <Button
-          type="submit"
-          disabled={!stripe || isProcessing}
-          className="flex-1"
-        >
-          {isProcessing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Pay ${(quantity * 99).toFixed(2)}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isProcessing}
-          className="flex-1"
-        >
-          Cancel
-        </Button>
-      </div>
-    </form>
-  )
-}
 
 interface UrlCheck {
   available: boolean
@@ -172,6 +59,8 @@ export function PublishModal({
   mandatoryValidationErrors = [],
   className
 }: PublishModalProps) {
+  const router = useRouter()
+  
   // Form state
   const [isPublishing, setIsPublishing] = useState(false)
   const [useCustomUrl, setUseCustomUrl] = useState(false)
@@ -181,8 +70,6 @@ export function PublishModal({
   // Billing state
   const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null)
   const [loadingBilling, setLoadingBilling] = useState(true)
-  const [showCreditPurchase, setShowCreditPurchase] = useState(false)
-  const [creditQuantity, setCreditQuantity] = useState(1)
   
   // UI state
   const [urlCheck, setUrlCheck] = useState<UrlCheck>({
@@ -229,7 +116,6 @@ export function PublishModal({
       setUseCustomUrl(false)
       setValidationErrors([])
       setUrlCheck({ available: true, checking: false })
-      setShowCreditPurchase(false)
       
       // Pre-populate with existing URL if published
       if (campaign.status === 'published' && campaign.published_url) {
@@ -424,7 +310,7 @@ export function PublishModal({
             </Button>
           </div>
 
-          {/* Loading State */}
+          {/* Billing Information */}
           {loadingBilling && (
             <div className="mb-6 p-4 bg-muted rounded-lg flex items-center justify-center">
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -432,58 +318,45 @@ export function PublishModal({
             </div>
           )}
 
-          {/* Credit Purchase Flow */}
-          {!loadingBilling && !isPublished && billingSummary && billingSummary.credit_balance < 1 && !showCreditPurchase && (
-            <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+          {!loadingBilling && billingSummary && (
+            <div className={`mb-6 p-4 rounded-lg border ${
+              billingSummary.credit_balance >= 1 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-orange-50 border-orange-200'
+            }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-orange-600" />
-                  <span className="text-orange-800 font-medium">No hosting credits available</span>
+                  {billingSummary.credit_balance >= 1 ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-orange-600" />
+                  )}
+                  <span className={`font-medium ${
+                    billingSummary.credit_balance >= 1 
+                      ? 'text-green-800' 
+                      : 'text-orange-800'
+                  }`}>
+                    {billingSummary.credit_balance >= 1 
+                      ? `You have ${billingSummary.credit_balance} credit${billingSummary.credit_balance !== 1 ? 's' : ''} available`
+                      : 'No credits available'
+                    }
+                  </span>
                 </div>
-                <Button 
-                  onClick={() => setShowCreditPurchase(true)}
-                  size="sm"
-                  variant="outline"
-                >
-                  <DollarSign className="h-4 w-4 mr-2" />
-                  Add Credits
-                </Button>
+                {billingSummary.credit_balance < 1 && (
+                  <Button 
+                    onClick={() => router.push('/account')}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Manage Credits
+                  </Button>
+                )}
               </div>
             </div>
           )}
 
-          {/* Credit Purchase Modal */}
-          {showCreditPurchase && (
-            <div className="mb-6 p-4 border rounded-lg">
-              <div className="space-y-3 mb-4">
-                <div>
-                  <Label htmlFor="credit-quantity">Number of Credits ($99 each)</Label>
-                  <Input
-                    id="credit-quantity"
-                    type="number"
-                    min="1"
-                    max="50"
-                    value={creditQuantity}
-                    onChange={(e) => setCreditQuantity(parseInt(e.target.value) || 1)}
-                  />
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Total: ${(creditQuantity * 99).toFixed(2)}
-                </div>
-              </div>
-              
-              <Elements stripe={stripePromise}>
-                <InlinePaymentForm
-                  quantity={creditQuantity}
-                  onSuccess={async () => {
-                    await loadBillingSummary()
-                    setShowCreditPurchase(false)
-                  }}
-                  onCancel={() => setShowCreditPurchase(false)}
-                />
-              </Elements>
-            </div>
-          )}
+
 
           {/* Validation Errors */}
           {(validationErrors.length > 0 || mandatoryValidationErrors.length > 0) && (
@@ -590,7 +463,7 @@ export function PublishModal({
               </>
           ) : (
               <>
-                {!showCreditPurchase && billingSummary && billingSummary.credit_balance >= 1 && (
+                {billingSummary && billingSummary.credit_balance >= 1 && (
             <Button
               onClick={handlePublish}
               disabled={!canPublish || isPublishing}
@@ -602,7 +475,7 @@ export function PublishModal({
             </Button>
           )}
                 <Button variant="outline" onClick={onClose}>
-                  {showCreditPurchase ? 'Cancel' : 'Close'}
+                  Close
                 </Button>
               </>
             )}

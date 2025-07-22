@@ -240,7 +240,7 @@ export default function AccountSettingsPage() {
                   Hosting Subscription
                 </CardTitle>
                 <CardDescription>
-                  Your hosting credits and active campaigns
+                  Your credits and active campaigns
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -358,7 +358,7 @@ export default function AccountSettingsPage() {
                       <Plus className="h-6 w-6 text-blue-600" />
                     </div>
                     <p className="text-gray-900 font-medium mb-2">Ready to get started?</p>
-                    <p className="text-sm text-gray-600 mb-4">Add hosting credits to start publishing campaigns</p>
+                    <p className="text-sm text-gray-600 mb-4">Add credits to start publishing campaigns</p>
                     <Button 
                       onClick={() => setShowSimpleSetup(true)}
                       className="bg-blue-600 hover:bg-blue-700"

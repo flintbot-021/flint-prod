@@ -87,7 +87,7 @@ function SetupForm({ onComplete }: { onComplete: () => void }) {
 
       toast({
         title: 'Welcome to Flint! 🎉',
-        description: 'Your hosting is now active. You can adjust credits anytime.',
+        description: 'You now have 1 credit to host your first campaign. You can adjust credits anytime.',
         duration: 5000
       })
 
@@ -137,12 +137,12 @@ function SetupForm({ onComplete }: { onComplete: () => void }) {
       <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <div className="text-center">
           <div className="text-lg font-semibold text-blue-800 mb-2">
-            Start with 1 hosting slot
+            Start with 1 credit
           </div>
           <div className="space-y-1 text-sm text-blue-700">
-            <div>• $99/month for your first hosting slot</div>
-            <div>• Host one campaign immediately</div>
-            <div>• Add more slots anytime</div>
+            <div>• $99/month for your first credit</div>
+            <div>• Use credits to host campaigns</div>
+            <div>• Add more credits anytime</div>
             <div>• Cancel anytime, no commitment</div>
           </div>
         </div>
@@ -156,12 +156,12 @@ function SetupForm({ onComplete }: { onComplete: () => void }) {
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            Setting up your hosting...
+            Adding your first credit...
           </>
         ) : (
           <>
             <CreditCard className="h-4 w-4 mr-2" />
-            Start Hosting - $99/month
+            Add 1 Credit - $99/month
           </>
         )}
       </Button>
@@ -205,9 +205,9 @@ export function SimpleSetupModal({ isOpen, onClose, onSuccess }: SimpleSetupModa
           
           <Card className="border-0 shadow-none">
             <CardHeader className="text-center pb-4">
-              <CardTitle>Add Payment Method</CardTitle>
+              <CardTitle>Add Your First Credit</CardTitle>
               <CardDescription>
-                Start with 1 hosting slot. You can add more anytime.
+                Buy 1 credit that can be used to host a campaign. You can add more anytime.
               </CardDescription>
             </CardHeader>
             <CardContent>

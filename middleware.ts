@@ -69,7 +69,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Define protected routes that require authentication
-  const protectedRoutes = ['/dashboard', '/campaigns', '/leads', '/settings']
+  const protectedRoutes = ['/dashboard', '/campaigns', '/leads', '/settings', '/account']
   
   // Define auth routes that should redirect authenticated users
   const authRoutes = ['/auth/login', '/auth/signup']

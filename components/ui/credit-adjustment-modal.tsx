@@ -193,7 +193,7 @@ export function CreditAdjustmentModal({
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
-                Adjust Hosting Credits
+                Adjust Credits
               </CardTitle>
               <Button
                 variant="ghost"
@@ -205,7 +205,7 @@ export function CreditAdjustmentModal({
               </Button>
             </div>
             <CardDescription>
-              Adjust your hosting credits up or down to match your needs
+              Adjust your credits up or down to match your needs
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
