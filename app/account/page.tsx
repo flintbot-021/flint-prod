@@ -425,7 +425,7 @@ export default function AccountSettingsPage() {
                     <h4 className="font-medium text-gray-900 mb-2">Next Billing Date</h4>
                     <p className="text-gray-600">
                       {billingSummary?.next_billing_date 
-                        ? `${new Date(billingSummary.next_billing_date).toLocaleDateString()} (${billingSummary.next_billing_date.split('T')[0]})`
+                        ? new Date(billingSummary.next_billing_date).toLocaleDateString()
                         : 'Not set'
                       }
                     </p>

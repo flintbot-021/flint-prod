@@ -270,15 +270,15 @@ export default function Dashboard() {
     try {
       setError(null)
       
-      let result
+      // Prevent publishing from dashboard - users must use the builder
       if (newStatus === 'published') {
-        result = await publishCampaign(campaignId)
-      } else {
-        result = await updateCampaign(campaignId, { status: newStatus })
+        throw new Error('Publishing must be done from the campaign builder. Please use the "Edit" option and publish from there.')
       }
+      
+      const result = await updateCampaign(campaignId, { status: newStatus })
 
       if (!result.success) {
-        throw new Error(result.error || `Failed to ${newStatus === 'published' ? 'publish' : 'update'} campaign`)
+        throw new Error(result.error || `Failed to update campaign`)
       }
 
       // Refresh campaigns

@@ -79,12 +79,7 @@ const CampaignCard = memo(function CampaignCard({
     const actions = []
 
     if (campaign.status === 'draft') {
-      actions.push({
-        label: 'Launch Tool',
-        icon: Globe,
-        action: () => onStatusChange(campaign.id, 'published'),
-        variant: 'default' as const
-      })
+      // Only allow archiving from draft - no publishing from dashboard
       actions.push({
         label: 'Archive Tool',
         icon: Archive,
@@ -92,6 +87,7 @@ const CampaignCard = memo(function CampaignCard({
         variant: 'secondary' as const
       })
     } else if (campaign.status === 'published') {
+      // Allow pausing (unpublishing) and archiving
       actions.push({
         label: 'Pause Tool',
         icon: FileText,
@@ -105,17 +101,12 @@ const CampaignCard = memo(function CampaignCard({
         variant: 'secondary' as const
       })
     } else if (campaign.status === 'archived') {
+      // Only allow restoring to draft - no direct publishing from dashboard
       actions.push({
         label: 'Restore to Draft',
         icon: FileText,
         action: () => onStatusChange(campaign.id, 'draft'),
         variant: 'secondary' as const
-      })
-      actions.push({
-        label: 'Launch Tool',
-        icon: Globe,
-        action: () => onStatusChange(campaign.id, 'published'),
-        variant: 'default' as const
       })
     }
 
