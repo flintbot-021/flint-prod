@@ -20,6 +20,7 @@ import {
   Eye
 } from 'lucide-react'
 import { CreditAdjustmentModal } from '@/components/ui/credit-adjustment-modal'
+import { PaymentMethodModal } from '@/components/ui/payment-method-modal'
 
 interface BillingSummary {
   credit_balance: number
@@ -54,6 +55,7 @@ export default function AccountSettingsPage() {
   const [loadingBilling, setLoadingBilling] = useState(true)
   const [showCreditAdjustment, setShowCreditAdjustment] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false)
 
   // Handle escape key to close modals
   useEffect(() => {
@@ -61,14 +63,15 @@ export default function AccountSettingsPage() {
       if (e.key === 'Escape') {
         setShowCreditAdjustment(false)
         setShowCancelModal(false)
+        setShowPaymentMethodModal(false)
       }
     }
 
-    if (showCreditAdjustment || showCancelModal) {
+    if (showCreditAdjustment || showCancelModal || showPaymentMethodModal) {
       document.addEventListener('keydown', handleEscape)
       return () => document.removeEventListener('keydown', handleEscape)
     }
-  }, [showCreditAdjustment, showCancelModal])
+  }, [showCreditAdjustment, showCancelModal, showPaymentMethodModal])
 
   useEffect(() => {
     if (!user) {
@@ -441,27 +444,51 @@ export default function AccountSettingsPage() {
                     Payment Method
                   </h4>
                   {billingSummary?.payment_method_last_four && billingSummary?.payment_method_brand ? (
-                    <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="h-8 w-12 bg-white border rounded flex items-center justify-center">
-                        <CreditCard className="h-4 w-4 text-gray-600" />
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="h-8 w-12 bg-white border rounded flex items-center justify-center">
+                          <CreditCard className="h-4 w-4 text-gray-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">
+                            •••• •••• •••• {billingSummary.payment_method_last_four}
+                          </p>
+                          <p className="text-sm text-gray-600 capitalize">
+                            {billingSummary.payment_method_brand} • On file
+                          </p>
+                        </div>
+                        <div className="text-green-600">
+                          <CheckCircle className="h-4 w-4" />
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">
-                          •••• •••• •••• {billingSummary.payment_method_last_four}
-                        </p>
-                        <p className="text-sm text-gray-600 capitalize">
-                          {billingSummary.payment_method_brand} • On file
-                        </p>
-                      </div>
-                      <div className="text-green-600">
-                        <CheckCircle className="h-4 w-4" />
+                      <div className="flex justify-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowPaymentMethodModal(true)}
+                          className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                        >
+                          Update Payment Method
+                        </Button>
                       </div>
                     </div>
                   ) : (
-                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                      <p className="text-gray-600 text-sm">
-                        No payment method on file. Add credits to set up billing.
-                      </p>
+                    <div className="space-y-3">
+                      <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                        <p className="text-gray-600 text-sm">
+                          No payment method on file. Add credits to set up billing.
+                        </p>
+                      </div>
+                      <div className="flex justify-center">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowPaymentMethodModal(true)}
+                          className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                        >
+                          Add Payment Method
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -490,6 +517,16 @@ export default function AccountSettingsPage() {
         paymentMethodBrand={billingSummary?.payment_method_brand || undefined}
         paymentMethodLastFour={billingSummary?.payment_method_last_four || undefined}
         onSuccess={loadBillingSummary}
+      />
+
+      <PaymentMethodModal
+        isOpen={showPaymentMethodModal}
+        onClose={() => setShowPaymentMethodModal(false)}
+        onSuccess={loadBillingSummary}
+        currentPaymentMethod={{
+          last_four: billingSummary?.payment_method_last_four || undefined,
+          brand: billingSummary?.payment_method_brand || undefined,
+        }}
       />
 
       {/* Cancel Subscription Modal */}
