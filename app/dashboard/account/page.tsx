@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAuth } from '@/lib/auth-context'
 import { toast } from '@/components/ui/use-toast'
+import { PrimaryNavigation } from '@/components/primary-navigation'
 import { 
   ArrowLeft,
   CreditCard,
@@ -17,7 +18,8 @@ import {
   Globe,
   Plus,
   Settings,
-  Eye
+  Eye,
+  LogOut
 } from 'lucide-react'
 import { CreditAdjustmentModal } from '@/components/ui/credit-adjustment-modal'
 import { PaymentMethodModal } from '@/components/ui/payment-method-modal'
@@ -51,7 +53,7 @@ interface PublishedCampaign {
 }
 
 export default function AccountSettingsPage() {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const router = useRouter()
   const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null)
   const [loadingBilling, setLoadingBilling] = useState(true)
@@ -209,20 +211,17 @@ export default function AccountSettingsPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-background">
         {/* Header */}
-        <div className="mb-8">
-          <Link 
-            href="/dashboard" 
-            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Dashboard
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900">Account Settings</h1>
-          <p className="text-gray-600 mt-2">Manage your hosting subscription and active campaigns</p>
-        </div>
+        <PrimaryNavigation currentPage="account" />
+
+        {/* Main Content */}
+        <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+          {/* Page Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900">Account Settings</h1>
+            <p className="text-gray-600 mt-2">Manage your hosting subscription and active campaigns</p>
+          </div>
 
         {loadingBilling ? (
           <div className="text-center py-12">
@@ -491,7 +490,7 @@ export default function AccountSettingsPage() {
 
           </div>
         )}
-        </div>
+        </main>
       </div>
 
       {/* Modals - Rendered at root level */}

@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PublishModal } from '@/components/campaign-builder/publish-modal'
 import { CaptureProvider } from '@/contexts/capture-context'
 import { toast } from '@/components/ui/use-toast'
+import { PrimaryNavigation } from '@/components/primary-navigation'
 import { Loader2, AlertCircle } from 'lucide-react'
 import { useSectionPersistence } from '@/hooks/use-section-persistence'
 import { usePostHog } from 'posthog-js/react'
@@ -126,7 +127,7 @@ const convertCampaignSectionToDatabase = (section: CampaignSection, campaignId: 
 export default function ToolBuilderPage() {
   const router = useRouter()
   const params = useParams()
-  const { user, loading } = useAuth()
+  const { user, loading, signOut } = useAuth()
   const posthog = usePostHog()
 
   const [campaign, setCampaign] = useState<Campaign | null>(null)
@@ -1354,6 +1355,9 @@ export default function ToolBuilderPage() {
           onDragEnd={handleDragEnd}
         >
           <div className="min-h-screen bg-background">
+            {/* Header */}
+            <PrimaryNavigation currentPage="builder" />
+
             {/* Tool Builder Top Bar */}
             <CampaignBuilderTopBar
               campaignName={campaign.name}
