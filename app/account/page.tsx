@@ -21,6 +21,8 @@ import {
 } from 'lucide-react'
 import { CreditAdjustmentModal } from '@/components/ui/credit-adjustment-modal'
 import { PaymentMethodModal } from '@/components/ui/payment-method-modal'
+import { SimpleSetupModal } from '@/components/ui/simple-setup-modal'
+
 
 interface BillingSummary {
   credit_balance: number
@@ -56,6 +58,7 @@ export default function AccountSettingsPage() {
   const [showCreditAdjustment, setShowCreditAdjustment] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false)
+  const [showSimpleSetup, setShowSimpleSetup] = useState(false)
 
   // Handle escape key to close modals
   useEffect(() => {
@@ -64,14 +67,15 @@ export default function AccountSettingsPage() {
         setShowCreditAdjustment(false)
         setShowCancelModal(false)
         setShowPaymentMethodModal(false)
+        setShowSimpleSetup(false)
       }
     }
 
-    if (showCreditAdjustment || showCancelModal || showPaymentMethodModal) {
+    if (showCreditAdjustment || showCancelModal || showPaymentMethodModal || showSimpleSetup) {
       document.addEventListener('keydown', handleEscape)
       return () => document.removeEventListener('keydown', handleEscape)
     }
-  }, [showCreditAdjustment, showCancelModal, showPaymentMethodModal])
+  }, [showCreditAdjustment, showCancelModal, showPaymentMethodModal, showSimpleSetup])
 
   useEffect(() => {
     if (!user) {
@@ -225,34 +229,8 @@ export default function AccountSettingsPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             <p className="text-gray-600 mt-4">Loading account information...</p>
           </div>
-        ) : !hasCredits ? (
-          /* No Subscription State */
-          <Card>
-            <CardHeader className="text-center">
-              <CardTitle className="text-xl">No Active Subscription</CardTitle>
-              <CardDescription>
-                Purchase hosting credits to start publishing your campaigns
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center">
-              <div className="mb-6">
-                <p className="text-gray-600 mb-4">
-                  Each credit allows you to host one campaign for $99/month
-                </p>
-                <Button 
-                  onClick={() => setShowCreditAdjustment(true)}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Purchase Hosting Credits
-                </Button>
-              </div>
-              
-
-            </CardContent>
-          </Card>
         ) : (
-          /* Active Subscription State */
+          /* Account State - both with and without credits */
           <div className="space-y-6">
             {/* Hosting Subscription */}
             <Card>
@@ -368,11 +346,25 @@ export default function AccountSettingsPage() {
                       </div>
                     ))}
                   </div>
-                ) : (
+                ) : hasCredits ? (
                   <div className="text-center py-8">
                     <Globe className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600">No campaigns are currently published</p>
                     <p className="text-sm text-gray-500">You have {monthlyCredits} available credits to use</p>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Plus className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <p className="text-gray-900 font-medium mb-2">Ready to get started?</p>
+                    <p className="text-sm text-gray-600 mb-4">Add hosting credits to start publishing campaigns</p>
+                    <Button 
+                      onClick={() => setShowSimpleSetup(true)}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Add Credits
+                    </Button>
                   </div>
                 )}
                 </div>
@@ -388,7 +380,7 @@ export default function AccountSettingsPage() {
                     <Settings className="h-4 w-4" />
                     Adjust Credits
                   </Button>
-                  {!billingSummary?.cancellation_scheduled_at ? (
+                  {hasCredits && !billingSummary?.cancellation_scheduled_at ? (
                     <Button 
                       variant="outline"
                       onClick={() => handleSubscriptionChange('cancel')}
@@ -397,7 +389,7 @@ export default function AccountSettingsPage() {
                       <AlertCircle className="h-4 w-4" />
                       Cancel Subscription
                     </Button>
-                  ) : (
+                  ) : hasCredits && billingSummary?.cancellation_scheduled_at ? (
                     <Button 
                       variant="outline"
                       onClick={() => handleSubscriptionChange('reactivate')}
@@ -406,12 +398,13 @@ export default function AccountSettingsPage() {
                       <CheckCircle className="h-4 w-4" />
                       Reactivate Subscription
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Billing Information */}
+            {/* Billing Information - Only show when user has credits */}
+            {hasCredits && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -494,11 +487,7 @@ export default function AccountSettingsPage() {
                 </div>
               </CardContent>
             </Card>
-
-
-
-
-
+            )}
 
           </div>
         )}
@@ -528,6 +517,14 @@ export default function AccountSettingsPage() {
           brand: billingSummary?.payment_method_brand || undefined,
         }}
       />
+
+      <SimpleSetupModal
+        isOpen={showSimpleSetup}
+        onClose={() => setShowSimpleSetup(false)}
+        onSuccess={loadBillingSummary}
+      />
+
+
 
       {/* Cancel Subscription Modal */}
       {showCancelModal && (
