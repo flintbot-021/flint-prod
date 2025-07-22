@@ -36,10 +36,10 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
   const supabase = createClient()
   const [isUploading, setIsUploading] = useState(false)
   
-  // Get current settings with defaults
+  // Get current settings - don't apply defaults here to avoid saving placeholders
   const settings = section.settings as HeroSettings || {}
-  const headline = (settings.headline || settings.title || 'Your Hero Title') as string
-  const subheading = (settings.subheading || settings.subtitle || 'Add your compelling subtitle here') as string
+  const headline = (settings.headline || settings.title || '') as string
+  const subheading = (settings.subheading || settings.subtitle || '') as string
   const backgroundImage = settings.backgroundImage || ''
   const overlayColor = settings.overlayColor || '#000000'
   const overlayOpacity = settings.overlayOpacity ?? 40
@@ -135,9 +135,11 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
 
         {/* Content */}
         <div className="relative z-10 text-center space-y-8 px-6 max-w-4xl">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight">
-            {headline}
-          </h1>
+          {headline && (
+            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight">
+              {headline}
+            </h1>
+          )}
           
           {subheading && (
             <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed">
