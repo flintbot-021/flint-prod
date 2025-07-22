@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { UserProfile } from '@/components/ui/user-profile'
@@ -269,15 +270,15 @@ export default function Dashboard() {
     try {
       setError(null)
       
-      let result
+      // Prevent publishing from dashboard - users must use the builder
       if (newStatus === 'published') {
-        result = await publishCampaign(campaignId)
-      } else {
-        result = await updateCampaign(campaignId, { status: newStatus })
+        throw new Error('Publishing must be done from the campaign builder. Please use the "Edit" option and publish from there.')
       }
+      
+      const result = await updateCampaign(campaignId, { status: newStatus })
 
       if (!result.success) {
-        throw new Error(result.error || `Failed to ${newStatus === 'published' ? 'publish' : 'update'} campaign`)
+        throw new Error(result.error || `Failed to update campaign`)
       }
 
       // Refresh campaigns
@@ -414,6 +415,11 @@ export default function Dashboard() {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+              <Link href="/account" className="flex items-center">
+                <Settings className="h-4 w-4 mr-2" /> Account Settings
+              </Link>
+            </DropdownMenuItem>
                   <DropdownMenuItem onClick={signOut} className="flex items-center">
                     <LogOut className="h-4 w-4 mr-2" /> Log Out
                   </DropdownMenuItem>

@@ -101,18 +101,41 @@ export {
   getUserPreferences,
   updateUserPreferences,
 
-  // Subscription Management
-  updateSubscription,
-  resetMonthlyUsage,
-  incrementCampaignUsage,
-  incrementLeadsUsage,
-
   // Profile Analytics
   getCurrentProfileWithUsage,
   canCreateCampaign,
   canCaptureLeads,
   completeOnboarding
 } from './profiles';
+
+// =============================================================================
+// BILLING AND CREDIT MANAGEMENT
+// =============================================================================
+export {
+  // Credit Operations
+  createCreditTransaction,
+  getCreditTransactions,
+  getCreditBalance,
+  updateCreditBalance,
+
+  // Billing History
+  createBillingHistory,
+  getBillingHistory,
+  updateBillingHistoryStatus,
+
+  // Subscription Management
+  upsertUserSubscription,
+  getUserSubscription,
+  updateSubscriptionSlots,
+
+  // Publishing Operations
+  publishCampaign as publishCampaignWithCredits,
+  unpublishCampaign as unpublishCampaignWithCredits,
+  canPublishCampaign,
+
+  // Analytics
+  getBillingSummary
+} from './billing';
 
 // =============================================================================
 // TYPE RE-EXPORTS
@@ -169,8 +192,24 @@ export type {
   ResponseType,
   VariableType,
   VariableSource,
-  SubscriptionPlan,
-  SubscriptionStatus
+
+  // Billing Types
+  TransactionType,
+  BillingType,
+  BillingStatus,
+  SubscriptionStatus,
+  CreditTransaction,
+  BillingHistory,
+  UserSubscription,
+  CreateCreditTransaction,
+  CreateBillingHistory,
+  CreateUserSubscription,
+  UpdateCreditTransaction,
+  UpdateBillingHistory,
+  UpdateUserSubscription,
+  ProfileWithBilling,
+  CreditPurchaseRequest,
+  BillingSummary
 } from '@/lib/types/database';
 
 // =============================================================================
@@ -242,16 +281,12 @@ export async function createCampaignWithUsageTracking(
   campaignData: CreateCampaign
 ): Promise<DatabaseResult<Campaign>> {
   const { createCampaign } = await import('./campaigns');
-  const { incrementCampaignUsage } = await import('./profiles');
 
-  // Create the campaign - no limit checking needed
+  // Create the campaign
   const campaignResult = await createCampaign(campaignData);
   if (!campaignResult.success) {
     return campaignResult;
   }
-
-  // Increment usage counter for analytics
-  await incrementCampaignUsage();
 
   // Track campaign creation in PostHog (client-side only)
   if (typeof window !== 'undefined' && (window as any).posthog) {
@@ -343,29 +378,12 @@ export async function createLeadFromCapture(
 
   // Use the new createLead from sessions.ts (not the old one)
   const { createLead } = await import('./sessions');
-  const { incrementLeadsUsage, canCaptureLeads } = await import('./profiles');
-
-  // Check if user can capture more leads
-  const canCapture = await canCaptureLeads(1);
-  if (!canCapture.success) {
-    return canCapture as any;
-  }
-
-  if (!canCapture.data) {
-    return {
-      success: false,
-      error: 'Monthly leads limit reached'
-    };
-  }
 
   // Create the lead
   const leadResult = await createLead(leadData);
   if (!leadResult.success) {
     return leadResult;
   }
-
-  // Increment usage counter
-  await incrementLeadsUsage(1);
 
   return leadResult;
 }

@@ -1,8 +1,7 @@
 /**
  * Profiles Data Access Layer
  * 
- * This module provides CRUD operations for user profiles, subscription management,
- * and usage tracking.
+ * This module provides CRUD operations for user profiles and preferences.
  */
 
 import type {
@@ -10,8 +9,6 @@ import type {
   CreateProfile,
   UpdateProfile,
   ProfileWithUsage,
-  SubscriptionPlan,
-  SubscriptionStatus,
   UserPreferences,
   DatabaseResult
 } from '@/lib/types/database';
@@ -271,174 +268,14 @@ export async function updateUserPreferences(
   });
 }
 
-// =============================================================================
-// SUBSCRIPTION MANAGEMENT
-// =============================================================================
 
-/**
- * Update user subscription
- */
-export async function updateSubscription(
-  plan: SubscriptionPlan,
-  status: SubscriptionStatus,
-  trialEndsAt?: string,
-  subscriptionEndsAt?: string
-): Promise<DatabaseResult<Profile>> {
-  const userId = await requireAuth();
-  const supabase = await getSupabaseClient();
-
-  // Set limits based on plan - campaigns are now unlimited for all plans
-  const planLimits = {
-    free: { campaigns: -1, leads: 100 }, // -1 means unlimited
-    starter: { campaigns: -1, leads: 1000 },
-    pro: { campaigns: -1, leads: 10000 },
-    enterprise: { campaigns: -1, leads: -1 } // -1 means unlimited
-  };
-
-  const limits = planLimits[plan];
-
-  const updates: any = {
-    subscription_plan: plan,
-    subscription_status: status,
-    monthly_campaign_limit: limits.campaigns,
-    monthly_leads_limit: limits.leads,
-    updated_at: new Date().toISOString()
-  };
-
-  if (trialEndsAt) {
-    updates.trial_ends_at = trialEndsAt;
-  }
-
-  if (subscriptionEndsAt) {
-    updates.subscription_ends_at = subscriptionEndsAt;
-  }
-
-  return withErrorHandling(async () => {
-    return await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
-      .select()
-      .single();
-  });
-}
-
-/**
- * Reset monthly usage counters (typically called at the start of each month)
- */
-export async function resetMonthlyUsage(profileId?: string): Promise<DatabaseResult<Profile>> {
-  const userId = profileId || await requireAuth();
-  const supabase = await getSupabaseClient();
-
-  return withErrorHandling(async () => {
-    return await supabase
-      .from('profiles')
-      .update({
-        monthly_campaigns_used: 0,
-        monthly_leads_captured: 0,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', userId)
-      .select()
-      .single();
-  });
-}
-
-/**
- * Increment campaign usage
- */
-export async function incrementCampaignUsage(): Promise<DatabaseResult<Profile>> {
-  const userId = await requireAuth();
-  const supabase = await getSupabaseClient();
-
-  // First get current usage
-  const { data: profile, error: fetchError } = await supabase
-    .from('profiles')
-    .select('monthly_campaigns_used')
-    .eq('id', userId)
-    .single();
-
-  if (fetchError) {
-    return {
-      success: false,
-      error: fetchError.message || 'Failed to fetch profile'
-    };
-  }
-
-  // Increment usage without limit checking
-  const currentUsage = profile.monthly_campaigns_used || 0;
-
-  return withErrorHandling(async () => {
-    return await supabase
-      .from('profiles')
-      .update({
-        monthly_campaigns_used: currentUsage + 1,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', userId)
-      .select()
-      .single();
-  });
-}
-
-/**
- * Increment leads usage
- */
-export async function incrementLeadsUsage(count = 1): Promise<DatabaseResult<Profile>> {
-  const userId = await requireAuth();
-  const supabase = await getSupabaseClient();
-
-  // First get current usage
-  const { data: profile, error: fetchError } = await supabase
-    .from('profiles')
-    .select('monthly_leads_captured, monthly_leads_limit')
-    .eq('id', userId)
-    .single();
-
-  if (fetchError) {
-    return {
-      success: false,
-      error: fetchError.message || 'Failed to fetch profile'
-    };
-  }
-
-  // Check if limit would be exceeded
-  const currentUsage = profile.monthly_leads_captured || 0;
-  const limit = profile.monthly_leads_limit || 0;
-
-  if (limit > 0 && (currentUsage + count) > limit) {
-    return {
-      success: false,
-      error: 'Monthly leads limit exceeded',
-      validation_errors: [{
-        field: 'monthly_leads_captured',
-        message: `Adding ${count} lead(s) would exceed your monthly limit of ${limit} leads`,
-        code: 'LIMIT_EXCEEDED',
-        value: currentUsage
-      }]
-    };
-  }
-
-  // Increment usage
-  return withErrorHandling(async () => {
-    return await supabase
-      .from('profiles')
-      .update({
-        monthly_leads_captured: currentUsage + count,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', userId)
-      .select()
-      .single();
-  });
-}
 
 // =============================================================================
 // PROFILE ANALYTICS AND UTILITIES
 // =============================================================================
 
 /**
- * Get profile with usage statistics
+ * Get profile with basic statistics
  */
 export async function getCurrentProfileWithUsage(): Promise<DatabaseResult<ProfileWithUsage>> {
   const userId = await requireAuth();
@@ -479,23 +316,10 @@ export async function getCurrentProfileWithUsage(): Promise<DatabaseResult<Profi
       totalLeads = leadsCount || 0;
     }
 
-    // Calculate usage percentages - campaigns are unlimited now
-    const campaignUsagePercentage = 0; // No campaign limits
-
-    const leadsUsagePercentage = profile.monthly_leads_limit > 0 
-      ? Math.round((profile.monthly_leads_captured / profile.monthly_leads_limit) * 100)
-      : 0;
-
     const profileWithUsage: ProfileWithUsage = {
       ...profile,
       total_campaigns: totalCampaigns || 0,
-      total_leads: totalLeads,
-      current_month_campaigns: profile.monthly_campaigns_used,
-      current_month_leads: profile.monthly_leads_captured,
-      usage_percentage: {
-        campaigns: campaignUsagePercentage,
-        leads: leadsUsagePercentage
-      }
+      total_leads: totalLeads
     };
 
     return { data: profileWithUsage, error: null };
@@ -515,27 +339,12 @@ export async function canCreateCampaign(): Promise<DatabaseResult<boolean>> {
 }
 
 /**
- * Check if user can capture more leads
+ * Check if user can capture more leads (always returns true - no limits)
  */
 export async function canCaptureLeads(count = 1): Promise<DatabaseResult<boolean>> {
-  const userId = await requireAuth();
-  const supabase = await getSupabaseClient();
-
   return withErrorHandling(async () => {
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('monthly_leads_captured, monthly_leads_limit')
-      .eq('id', userId)
-      .single();
-
-    if (error) {
-      return { data: null, error };
-    }
-
-    const canCapture = profile.monthly_leads_limit <= 0 || 
-      (profile.monthly_leads_captured + count) <= profile.monthly_leads_limit;
-
-    return { data: canCapture, error: null };
+    // Always allow lead capture - no limits
+    return { data: true, error: null };
   });
 }
 

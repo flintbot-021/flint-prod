@@ -1,11 +1,8 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Campaign } from '@/lib/types/database'
-import { 
-  publishCampaign, 
-  unpublishCampaign
-} from '@/lib/data-access'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,8 +22,18 @@ import {
   Zap,
   Settings,
   Lock,
-  Unlock
+  Unlock,
+  CreditCard,
+  DollarSign
 } from 'lucide-react'
+
+
+
+
+interface UrlCheck {
+  available: boolean
+  checking: boolean
+}
 
 interface PublishModalProps {
   campaign: Campaign | null
@@ -37,47 +44,11 @@ interface PublishModalProps {
   className?: string
 }
 
-interface ValidationError {
-  field: string
-  message: string
-}
-
-interface UrlCheck {
-  available: boolean
-  suggestions?: string[]
-  checking: boolean
-  error?: string
-}
-
-// Simple modal component since Dialog is not available
-function Modal({ isOpen, onClose, children }: { isOpen: boolean; onClose: () => void; children: React.ReactNode }) {
-  if (!isOpen) return null
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/80" onClick={onClose} />
-      <div className="relative bg-background rounded-lg shadow-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        {children}
-      </div>
-    </div>
-  )
-}
-
-// Simple alert component since Alert is not available
-function Alert({ variant, children }: { variant?: 'default' | 'destructive'; children: React.ReactNode }) {
-  return (
-    <div className={cn(
-      'p-4 rounded-lg border',
-      variant === 'destructive' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'
-    )}>
-      {children}
-    </div>
-  )
-}
-
-// Simple separator component
-function Separator() {
-  return <div className="h-px bg-gray-200 my-4" />
+interface BillingSummary {
+  credit_balance: number
+  total_credits_owned: number
+  currently_published: number
+  available_credits: number
 }
 
 export function PublishModal({
@@ -88,17 +59,55 @@ export function PublishModal({
   mandatoryValidationErrors = [],
   className
 }: PublishModalProps) {
+  const router = useRouter()
+  
   // Form state
   const [isPublishing, setIsPublishing] = useState(false)
   const [useCustomUrl, setUseCustomUrl] = useState(false)
   const [customUrl, setCustomUrl] = useState('')
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   
+  // Billing state
+  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null)
+  const [loadingBilling, setLoadingBilling] = useState(true)
+  
   // UI state
   const [urlCheck, setUrlCheck] = useState<UrlCheck>({
     available: true,
     checking: false
   })
+  
+  // Load billing summary when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      loadBillingSummary()
+    }
+  }, [isOpen])
+  
+  const loadBillingSummary = async () => {
+    try {
+      setLoadingBilling(true)
+      const response = await fetch('/api/billing/summary')
+      
+      if (!response.ok) {
+        throw new Error('Failed to load billing information')
+      }
+      
+      const result = await response.json()
+      if (result.success) {
+        setBillingSummary(result.data)
+      }
+    } catch (error) {
+      console.error('Error loading billing summary:', error)
+      toast({
+        title: 'Billing Error',
+        description: 'Failed to load billing information',
+        variant: 'destructive'
+      })
+    } finally {
+      setLoadingBilling(false)
+    }
+  }
   
   // Reset form when modal opens/closes or campaign changes
   useEffect(() => {
@@ -128,75 +137,32 @@ export function PublishModal({
         errors.push('Campaign must have a name')
       }
       
-      // TODO: Add more validation logic here
-      // For now, just basic validation
       setValidationErrors(errors)
     }
 
     validateCampaign()
   }, [isOpen, campaign])
 
-
-
-  // Check URL availability when custom URL changes
-  useEffect(() => {
-    const checkUrl = async () => {
-      if (!useCustomUrl || !customUrl.trim() || customUrl.length < 3) {
-        setUrlCheck({ available: true, checking: false })
-        return
-      }
-
-      const slug = customUrl.trim().toLowerCase()
-      
-      // Basic format validation
-      const slugRegex = /^[a-z0-9-]+$/
-      if (!slugRegex.test(slug)) {
-        setUrlCheck({
-          available: false,
-          checking: false,
-          error: 'URL can only contain lowercase letters, numbers, and hyphens'
-        })
-        return
-      }
-
-      setUrlCheck(prev => ({ ...prev, checking: true }))
-
-      try {
-        // TODO: Implement URL availability checking
-        // For now, assume all URLs are available
-          setUrlCheck({
-          available: true,
-          checking: false
-          })
-      } catch (error) {
-        console.error('Error checking URL availability:', error)
-        setUrlCheck({
-          available: false,
-          checking: false,
-          error: 'Unable to check URL availability'
-        })
-      }
-    }
-
-    const timeoutId = setTimeout(checkUrl, 500) // Debounce
-    return () => clearTimeout(timeoutId)
-  }, [customUrl, useCustomUrl, campaign?.id])
-
-  // Generate suggested URL from campaign name
-  const suggestedUrl = useMemo(() => {
-    if (!campaign?.name) return ''
+  // Generate final URL
+  const finalUrl = useMemo(() => {
+    if (!campaign) return ''
     
-    return campaign.name
+    if (useCustomUrl && customUrl.trim()) {
+      return customUrl.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-')
+      }
+
+    // Generate from campaign name
+    const baseSlug = campaign.name
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
-      .trim()
-      .substring(0, 50)
-      .replace(/^-+|-+$/g, '')
-  }, [campaign?.name])
+      .replace(/^-|-$/g, '')
 
-  const finalUrl = useCustomUrl ? customUrl.trim() : suggestedUrl
+    return baseSlug || 'my-tool'
+  }, [campaign, useCustomUrl, customUrl])
+
+  // Generate full URL for preview
   const fullUrl = finalUrl && typeof window !== 'undefined' && campaign?.user_key 
     ? `${window.location.origin}/c/${campaign.user_key}/${finalUrl}` 
     : ''
@@ -205,7 +171,11 @@ export function PublishModal({
     validationErrors.length === 0 && 
     mandatoryValidationErrors.length === 0 &&
     (!useCustomUrl || (urlCheck.available && !urlCheck.checking)) &&
-    finalUrl.length >= 3
+    finalUrl.length >= 3 &&
+    billingSummary &&
+    billingSummary.credit_balance >= 1
+
+
 
   const handlePublish = async () => {
     if (!campaign || !canPublish) return
@@ -213,10 +183,19 @@ export function PublishModal({
     try {
       setIsPublishing(true)
       
-      const slug = useCustomUrl ? customUrl.trim() : undefined
-      const result = await publishCampaign(campaign.id, slug)
+      const response = await fetch(`/api/campaigns/${campaign.id}/publish`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          slug: useCustomUrl ? customUrl.trim() : undefined
+        }),
+      })
       
-      if (!result.success || !result.data) {
+      const result = await response.json()
+      
+      if (!result.success) {
         throw new Error(result.error || 'Failed to publish campaign')
       }
 
@@ -224,9 +203,11 @@ export function PublishModal({
       
       toast({
         title: 'Tool launched!',
-        description: `Your tool is now live at ${result.data.published_url}`,
+        description: result.message || 'Your tool is now live!',
         duration: 5000
       })
+      
+      onClose()
     } catch (error) {
       console.error('Error publishing campaign:', error)
       const message = error instanceof Error ? error.message : 'Failed to launch tool'
@@ -246,26 +227,30 @@ export function PublishModal({
     try {
       setIsPublishing(true)
       
-      const result = await unpublishCampaign(campaign.id, true)
+      const response = await fetch(`/api/campaigns/${campaign.id}/publish`, {
+        method: 'DELETE',
+      })
       
-      if (!result.success || !result.data) {
+      const result = await response.json()
+      
+      if (!result.success) {
         throw new Error(result.error || 'Failed to unpublish campaign')
       }
 
       onPublishSuccess(result.data)
       
       toast({
-        title: 'Tool paused',
-        description: 'Tool paused (URL preserved)',
+        title: 'Tool unpublished',
+        description: result.message || 'Tool unpublished successfully!',
         duration: 5000
       })
       
       onClose()
     } catch (error) {
       console.error('Error unpublishing campaign:', error)
-      const message = error instanceof Error ? error.message : 'Failed to pause tool'
+      const message = error instanceof Error ? error.message : 'Failed to unpublish tool'
       toast({
-        title: 'Pause failed',
+        title: 'Unpublish failed',
         description: message,
         variant: 'destructive'
       })
@@ -274,8 +259,6 @@ export function PublishModal({
     }
   }
 
-
-
   const copyUrlToClipboard = async () => {
     if (!fullUrl) return
     
@@ -283,7 +266,8 @@ export function PublishModal({
       await navigator.clipboard.writeText(fullUrl)
       toast({
         title: 'URL copied!',
-        description: 'The campaign URL has been copied to your clipboard'
+        description: 'The tool URL has been copied to your clipboard',
+        duration: 3000
       })
     } catch (error) {
       console.error('Error copying URL:', error)
@@ -295,242 +279,209 @@ export function PublishModal({
     }
   }
 
-  const openPreview = () => {
-    if (!campaign) return
-    const previewUrl = `/campaigns/${campaign.id}/preview`
-    window.open(previewUrl, '_blank', 'noopener,noreferrer')
-  }
+  if (!isOpen || !campaign) return null
 
-  const isPublished = campaign?.status === 'published'
-
-  if (!campaign) return null
+  const isPublished = campaign.status === 'published'
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose}>
-      <div className={cn('p-6', className)}>
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+      <div className={cn(
+        "bg-background rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto",
+        className
+      )}>
+        <div className="p-6">
         {/* Header */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            {isPublished ? (
-              <>
-                <Globe className="h-5 w-5 text-green-600" />
-                Manage Live Tool
-              </>
-            ) : (
-              <>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
                 <Zap className="h-5 w-5 text-blue-600" />
-                Launch Tool
-              </>
-            )}
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold">
+                  {isPublished ? 'Manage Tool' : 'Launch Tool'}
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            {isPublished 
-              ? 'Your tool is currently live. You can update the URL or pause it.'
-              : 'Make your tool public and generate a unique URL for sharing.'
-            }
+                <p className="text-sm text-muted-foreground">
+                  {campaign.name}
           </p>
         </div>
-
-        <div className="space-y-6">
-          {/* Validation Errors */}
-          {(validationErrors.length > 0 || mandatoryValidationErrors.length > 0) && (
-            <Alert variant="destructive">
-              <div className="space-y-1">
-                <p className="font-medium flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  Cannot publish campaign:
-                </p>
-                <ul className="list-disc list-inside space-y-1 text-sm">
-                  {mandatoryValidationErrors.map((error: string, index: number) => (
-                    <li key={`mandatory-${index}`}>Missing required section: {error}</li>
-                  ))}
-                  {validationErrors.map((error: string, index: number) => (
-                    <li key={`validation-${index}`}>{error}</li>
-                  ))}
-                </ul>
-              </div>
-            </Alert>
-          )}
-
-          {/* Campaign Status */}
-          <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                {isPublished ? (
-                  <Unlock className="h-4 w-4 text-green-600" />
-                ) : (
-                  <Lock className="h-4 w-4 text-muted-foreground" />
-                )}
-                <span className="font-medium">
-                  {campaign.name}
-                </span>
-              </div>
-              <Badge 
-                variant={isPublished ? 'default' : 'secondary'}
-                className={isPublished ? 'bg-green-100 text-green-800' : ''}
-              >
-                {isPublished ? 'Live' : 'Draft'}
-              </Badge>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={openPreview}
-              className="flex items-center gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              Preview
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              ×
             </Button>
           </div>
 
-          <Separator />
+          {/* Billing Information */}
+          {loadingBilling && (
+            <div className="mb-6 p-4 bg-muted rounded-lg flex items-center justify-center">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <span className="text-sm text-muted-foreground">Loading billing information...</span>
+            </div>
+          )}
+
+          {!loadingBilling && billingSummary && (
+            <div className={`mb-6 p-4 rounded-lg border ${
+              billingSummary.credit_balance >= 1 
+                ? 'bg-green-50 border-green-200' 
+                : 'bg-orange-50 border-orange-200'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {billingSummary.credit_balance >= 1 ? (
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-orange-600" />
+                  )}
+                  <span className={`font-medium ${
+                    billingSummary.credit_balance >= 1 
+                      ? 'text-green-800' 
+                      : 'text-orange-800'
+                  }`}>
+                    {billingSummary.credit_balance >= 1 
+                      ? `You have ${billingSummary.credit_balance} credit${billingSummary.credit_balance !== 1 ? 's' : ''} available`
+                      : 'No credits available'
+                    }
+                  </span>
+                </div>
+                {billingSummary.credit_balance < 1 && (
+                  <Button 
+                    onClick={() => router.push('/account')}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Manage Credits
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+
+
+          {/* Validation Errors */}
+          {(validationErrors.length > 0 || mandatoryValidationErrors.length > 0) && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />
+                <div className="text-sm">
+                  <p className="text-red-800 font-medium">Cannot publish tool</p>
+                  <ul className="mt-1 list-disc list-inside text-red-700">
+                    {mandatoryValidationErrors.map((error, index) => (
+                      <li key={index}>{error}</li>
+                  ))}
+                    {validationErrors.map((error, index) => (
+                      <li key={index}>{error}</li>
+                  ))}
+                </ul>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* URL Configuration */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="custom-url-toggle" className="flex items-center gap-2">
-                <Settings className="h-4 w-4" />
-                Custom URL
-                {isPublished && (
-                  <span className="text-xs text-muted-foreground">(pause to edit)</span>
-                )}
-              </Label>
+          <div className="mb-6 space-y-4">
+            <div>
+              <Label className="text-sm font-medium">Tool URL</Label>
+              <div className="mt-2 p-3 bg-muted rounded-lg">
+                <div className="text-sm text-muted-foreground mb-2">
+                  Your tool will be available at:
+                </div>
+              <div className="flex items-center gap-2">
+                  <code className="text-sm bg-background px-2 py-1 rounded flex-1 truncate">
+                    {fullUrl || 'Loading...'}
+                  </code>
+                  {fullUrl && (
+                    <Button size="sm" variant="outline" onClick={copyUrlToClipboard}>
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+          </div>
+
+            <div className="flex items-center space-x-2">
               <Switch
-                id="custom-url-toggle"
+                id="custom-url"
                 checked={useCustomUrl}
                 onCheckedChange={setUseCustomUrl}
-                disabled={isPublished}
               />
+              <Label htmlFor="custom-url" className="text-sm">
+                Customize URL
+              </Label>
             </div>
 
             {useCustomUrl && (
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="custom-url">Tool URL</Label>
-                  <div className="flex">
-                    <div className="flex items-center px-3 border border-r-0 border-input bg-muted rounded-l-md text-sm text-muted-foreground">
-                      {typeof window !== 'undefined' && campaign?.user_key 
-                        ? `${window.location.origin}/c/${campaign.user_key}/`
-                        : '/c/[user-key]/'
-                      }
-                    </div>
+              <div>
+                <Label htmlFor="custom-url-input" className="text-sm">
+                  Custom URL slug
+                </Label>
                     <Input
-                      id="custom-url"
+                  id="custom-url-input"
                       value={customUrl}
                       onChange={(e) => setCustomUrl(e.target.value)}
-                      placeholder="my-campaign"
-                      className="rounded-l-none"
-                      disabled={isPublished}
+                  placeholder="my-awesome-tool"
+                  className="mt-1"
                     />
-                  </div>
-                  {urlCheck.checking && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Checking availability...
-                    </div>
-                  )}
-                  {!urlCheck.checking && urlCheck.error && (
-                    <div className="flex items-center gap-2 text-sm text-red-600">
-                      <AlertCircle className="h-3 w-3" />
-                      {urlCheck.error}
-                    </div>
-                  )}
-                  {!urlCheck.checking && urlCheck.available && customUrl.length >= 3 && (
-                    <div className="flex items-center gap-2 text-sm text-green-600">
-                      <CheckCircle className="h-3 w-3" />
-                      URL is available
+                <p className="text-xs text-muted-foreground mt-1">
+                  Only letters, numbers, and hyphens allowed
+                </p>
                     </div>
                   )}
                 </div>
 
-                {/* URL Suggestions */}
-                {!urlCheck.available && urlCheck.suggestions && urlCheck.suggestions.length > 0 && (
-                  <div className="space-y-2">
-                    <Label className="text-sm text-muted-foreground">Suggestions:</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {urlCheck.suggestions.slice(0, 3).map((suggestion) => (
-                        <Button
-                          key={suggestion}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCustomUrl(suggestion)}
-                          className="text-xs"
-                        >
-                          {suggestion}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Final URL Preview */}
-            {fullUrl && (
-              <div className="space-y-2">
-                <Label>Public Tool URL</Label>
-                <div className="flex items-center gap-2 p-3 border rounded-md bg-green-50 border-green-200">
-                  <Globe className="h-4 w-4 text-green-600" />
-                  <span className="flex-1 text-sm font-mono text-green-800 truncate">
-                    {fullUrl}
-                  </span>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={copyUrlToClipboard}
-                      className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
-                    >
-                      <Copy className="h-3 w-3" />
-                    </Button>
+          {/* Unpublish Notice */}
                     {isPublished && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(fullUrl, '_blank')}
-                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </Button>
-                    )}
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
+                <div className="text-sm">
+                  <p className="text-green-800 font-medium">Tool is Live</p>
+                  <p className="text-green-700">
+                    Unpublishing will return 1 credit to your account and make the tool inaccessible to visitors.
+                  </p>
                   </div>
                 </div>
               </div>
             )}
-          </div>
 
-
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
-          <Button variant="outline" onClick={onClose} disabled={isPublishing}>
-            Cancel
-          </Button>
-          
+          {/* Action Buttons */}
+          <div className="flex gap-3">
           {isPublished ? (
+              <>
             <Button
               variant="outline"
               onClick={handleUnpublish}
               disabled={isPublishing}
-              className="flex items-center gap-2"
+                  className="flex-1"
             >
-              {isPublishing && <Loader2 className="h-4 w-4 animate-spin" />}
-              Pause Tool
+                  {isPublishing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Unpublish Tool
+                </Button>
+                <Button variant="outline" onClick={onClose}>
+                  Close
             </Button>
+              </>
           ) : (
+              <>
+                {billingSummary && billingSummary.credit_balance >= 1 && (
             <Button
               onClick={handlePublish}
               disabled={!canPublish || isPublishing}
-              className="flex items-center gap-2"
+                    className="flex-1"
+                    size="lg"
             >
-              {isPublishing && <Loader2 className="h-4 w-4 animate-spin" />}
-              <Share2 className="h-4 w-4" />
-              Launch Tool
+                    {isPublishing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {isPublishing ? 'Publishing...' : 'Use 1 Credit & Publish'}
             </Button>
           )}
+                <Button variant="outline" onClick={onClose}>
+                  Close
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </Modal>
+    </div>
   )
 } 
