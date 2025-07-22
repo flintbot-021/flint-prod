@@ -10,10 +10,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-                // Get profile with credit balance, billing anchor date, payment method, and cancellation info
+                // Get profile with credit balance, billing anchor date, payment method, and cancellation/downgrade info
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('credit_balance, billing_anchor_date, cancellation_scheduled_at, payment_method_last_four, payment_method_brand')
+      .select('credit_balance, billing_anchor_date, cancellation_scheduled_at, downgrade_scheduled_at, downgrade_to_credits, payment_method_last_four, payment_method_brand')
       .eq('id', user.id)
       .single();
 
@@ -74,6 +74,17 @@ export async function GET(request: NextRequest) {
           }
         }
 
+        // Calculate next billing amount (considering scheduled changes)
+        let nextBillingAmount = totalCreditsOwned * 9900; // Current amount by default
+        
+        if (profile.cancellation_scheduled_at) {
+          // If cancelled, next billing amount is 0
+          nextBillingAmount = 0;
+        } else if (profile.downgrade_scheduled_at && profile.downgrade_to_credits !== null) {
+          // If downgrade is scheduled, use the downgrade amount
+          nextBillingAmount = profile.downgrade_to_credits * 9900;
+        }
+
         // Create billing summary
         const billingSummary = {
           credit_balance: profile.credit_balance || 0,
@@ -81,14 +92,16 @@ export async function GET(request: NextRequest) {
           currently_published: publishedCount || 0,
           available_credits: profile.credit_balance || 0,
           active_slots: publishedCampaigns || [],
-          monthly_cost_cents: totalCreditsOwned * 9900, // $99 per credit owned
+          monthly_cost_cents: nextBillingAmount, // Use calculated next billing amount
           next_billing_date: nextBillingDate,
           billing_anchor_date: profile.billing_anchor_date,
           payment_method_last_four: profile.payment_method_last_four,
           payment_method_brand: profile.payment_method_brand,
           billing_history: [],
           cancellation_scheduled_at: profile.cancellation_scheduled_at,
-          subscription_ends_at: subscriptionEndsAt
+          subscription_ends_at: subscriptionEndsAt,
+          downgrade_scheduled_at: profile.downgrade_scheduled_at,
+          downgrade_to_credits: profile.downgrade_to_credits
         };
 
     return NextResponse.json({

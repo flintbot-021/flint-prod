@@ -35,6 +35,8 @@ interface BillingSummary {
   billing_history: any[]
   cancellation_scheduled_at: string | null
   subscription_ends_at: string | null
+  downgrade_scheduled_at: string | null
+  downgrade_to_credits: number | null
 }
 
 interface PublishedCampaign {
@@ -194,6 +196,9 @@ export default function AccountSettingsPage() {
   const monthlyCost = (billingSummary?.monthly_cost_cents || 0) / 100;
   const activeSlots = billingSummary?.active_slots || [];
   const availableSlots = monthlyCredits - activeSlots.length;
+  
+  // For billing display, show the effective credits (current or scheduled amount)
+  const effectiveCredits = billingSummary?.downgrade_to_credits ?? monthlyCredits;
 
   return (
     <>
@@ -301,6 +306,27 @@ export default function AccountSettingsPage() {
                   </div>
                 )}
 
+                {/* Downgrade Notice */}
+                {billingSummary?.downgrade_scheduled_at && billingSummary?.downgrade_to_credits !== null && (
+                  <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-center gap-2 text-blue-800 mb-2">
+                      <AlertCircle className="h-5 w-5" />
+                      <span className="font-medium">Downgrade Scheduled</span>
+                    </div>
+                    <p className="text-sm text-blue-700 mb-3">
+                      Your subscription will be reduced to {billingSummary.downgrade_to_credits} credit{billingSummary.downgrade_to_credits !== 1 ? 's' : ''} at your next billing cycle ({billingSummary.next_billing_date ? new Date(billingSummary.next_billing_date).toLocaleDateString() : 'next billing date'}). 
+                      New monthly charge: ${((billingSummary.downgrade_to_credits * 99)).toFixed(2)}/month.
+                    </p>
+                    <Button 
+                      size="sm"
+                      onClick={() => handleSubscriptionChange('reactivate')}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Cancel Downgrade
+                    </Button>
+                  </div>
+                )}
+
                 {/* Active Campaigns Section */}
                 <div className="mb-6">
                   <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
@@ -354,7 +380,7 @@ export default function AccountSettingsPage() {
                     variant="outline"
                     onClick={() => setShowCreditAdjustment(true)}
                     className="flex items-center gap-2"
-                    disabled={!!billingSummary?.cancellation_scheduled_at}
+                    disabled={!!billingSummary?.cancellation_scheduled_at || !!billingSummary?.downgrade_scheduled_at}
                   >
                     <Settings className="h-4 w-4" />
                     Adjust Credits
@@ -404,7 +430,7 @@ export default function AccountSettingsPage() {
                   <div>
                     <h4 className="font-medium text-gray-900 mb-2">Monthly Amount</h4>
                     <p className="text-gray-600">${monthlyCost.toFixed(2)}</p>
-                    <p className="text-xs text-gray-500">{monthlyCredits} credits × $99</p>
+                    <p className="text-xs text-gray-500">{effectiveCredits} credits × $99</p>
                   </div>
                 </div>
 

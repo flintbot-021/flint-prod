@@ -235,48 +235,48 @@ export function CreditAdjustmentModal({
               </div>
             </div>
 
-            {/* Simple Summary */}
+            {/* Summary */}
             {!noChange && (
-              <div className="text-center space-y-2">
-                <div className="text-sm text-gray-600">
-                  {currentCredits} → {newCredits} credits
-                </div>
-                <div className="text-lg font-semibold">
-                  {isIncrease ? (
-                    <span className="text-green-600">+{creditDifference} credit{Math.abs(creditDifference) !== 1 ? 's' : ''}</span>
-                  ) : (
-                    <span className="text-blue-600">{creditDifference} credit{Math.abs(creditDifference) !== 1 ? 's' : ''}</span>
-                  )}
-                </div>
-              </div>
-            )}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="space-y-3">
+                  {/* Credits Summary */}
+                  <div className="text-center">
+                    <div className="text-sm text-gray-700">
+                      {isIncrease ? (
+                        <span className="text-green-600">+{creditDifference} credit{Math.abs(creditDifference) !== 1 ? 's' : ''}</span>
+                      ) : (
+                        <span className="text-blue-600">{creditDifference} credit{Math.abs(creditDifference) !== 1 ? 's' : ''}</span>
+                      )} = {newCredits} total credit{newCredits !== 1 ? 's' : ''}
+                    </div>
+                  </div>
 
-            {/* Simple Pricing */}
-            {!noChange && (
-              <div className="p-4 bg-gray-50 rounded-lg text-center">
-                {isIncrease ? (
-                  <div>
-                    <div className="text-sm text-gray-600 mb-1">Charge today</div>
-                    <div className="text-xl font-bold text-green-600">
-                      ${billingAnchorDate ? 
-                        (calculateProratedAmount(creditDifference, billingAnchorDate) / 100).toFixed(2) : 
-                        (creditDifference * 99).toFixed(2)
-                      }
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Then ${(creditDifference * 99).toFixed(2)}/month
-                    </div>
+                  {/* Pricing Details */}
+                  <div className="text-center border-t pt-3">
+                    {isIncrease ? (
+                      <>
+                        <div className="text-sm text-gray-600 mb-1">Charge today: ${billingAnchorDate ? 
+                          (calculateProratedAmount(creditDifference, billingAnchorDate) / 100).toFixed(2) : 
+                          (creditDifference * 99).toFixed(2)
+                        }</div>
+                        <div className="text-sm text-gray-600">Then ${newMonthlyCost.toFixed(2)}/month going forward</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-sm text-gray-600 mb-1">
+                          {newCredits === 0 ? 'Cancels at next billing cycle' : 'Reduces at next billing cycle'}
+                        </div>
+                        <div className="text-sm text-blue-600">
+                          Save ${Math.abs(monthlyCostDifference).toFixed(2)}/month
+                        </div>
+                        {newCredits > 0 && (
+                          <div className="text-sm text-gray-600 mt-1">
+                            ${newMonthlyCost.toFixed(2)}/month going forward
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
-                ) : (
-                  <div>
-                    <div className="text-sm text-gray-600 mb-1">
-                      {newCredits === 0 ? 'Cancels at next billing' : 'Reduces at next billing'}
-                    </div>
-                    <div className="text-xl font-bold text-blue-600">
-                      Save ${Math.abs(monthlyCostDifference).toFixed(2)}/month
-                    </div>
-                  </div>
-                )}
+                </div>
               </div>
             )}
 

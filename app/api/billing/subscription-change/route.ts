@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     // Get current profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('credit_balance, billing_anchor_date, cancellation_scheduled_at')
+      .select('credit_balance, billing_anchor_date, cancellation_scheduled_at, downgrade_scheduled_at, downgrade_to_credits')
       .eq('id', user.id)
       .single();
 
@@ -45,13 +45,17 @@ export async function POST(request: NextRequest) {
       case 'cancel':
         // Schedule cancellation at end of billing period
         updateData.cancellation_scheduled_at = new Date().toISOString();
+        updateData.downgrade_scheduled_at = null; // Clear any scheduled downgrades
+        updateData.downgrade_to_credits = null;
         responseMessage = `Subscription scheduled for cancellation at end of current billing period.`;
         transactionDescription = 'Subscription cancellation scheduled';
         break;
 
       case 'reactivate':
-        // Remove scheduled cancellation
+        // Remove scheduled cancellation and any downgrades
         updateData.cancellation_scheduled_at = null;
+        updateData.downgrade_scheduled_at = null;
+        updateData.downgrade_to_credits = null;
         responseMessage = `Subscription reactivated. Your plan will continue renewing.`;
         transactionDescription = 'Subscription reactivated';
         break;
@@ -67,6 +71,10 @@ export async function POST(request: NextRequest) {
         // For immediate upgrade, add credits now
         const upgradeAmount = new_credit_amount - currentTotalCredits;
         updateData.credit_balance = (profile.credit_balance || 0) + upgradeAmount;
+        // Clear any scheduled changes since this is an immediate upgrade
+        updateData.cancellation_scheduled_at = null;
+        updateData.downgrade_scheduled_at = null;
+        updateData.downgrade_to_credits = null;
         
         // Create purchase transaction for the upgrade
         const { error: upgradeTransactionError } = await supabase
@@ -123,11 +131,15 @@ export async function POST(request: NextRequest) {
         if (new_credit_amount === 0) {
           // Downgrading to 0 is the same as canceling
           updateData.cancellation_scheduled_at = new Date().toISOString();
+          updateData.downgrade_scheduled_at = null;
+          updateData.downgrade_to_credits = null;
           responseMessage = `Subscription scheduled for cancellation at end of current billing period.`;
           transactionDescription = 'Subscription scheduled for cancellation (downgrade to 0)';
         } else {
           // Schedule downgrade for next billing cycle
-          // For now, we'll just log it - in a real system you'd handle this in billing cycle processing
+          updateData.downgrade_scheduled_at = new Date().toISOString();
+          updateData.downgrade_to_credits = new_credit_amount;
+          updateData.cancellation_scheduled_at = null; // Clear any existing cancellation
           responseMessage = `Subscription will downgrade to ${new_credit_amount} credit${new_credit_amount !== 1 ? 's' : ''} at next billing cycle.`;
           transactionDescription = `Downgrade scheduled from ${currentTotalCredits} to ${new_credit_amount} credits`;
         }

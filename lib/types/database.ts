@@ -84,6 +84,9 @@ export interface Profile {
   credit_balance: number | null;
   billing_anchor_date: Timestamp | null;
   cancellation_scheduled_at: Timestamp | null;
+  // Add fields for scheduled downgrades
+  downgrade_scheduled_at: Timestamp | null;
+  downgrade_to_credits: number | null;
 }
 
 /**
@@ -737,6 +740,9 @@ export interface BillingSummary {
   billing_history: BillingHistory[];
   cancellation_scheduled_at: string | null;
   subscription_ends_at: string | null; // When the current subscription will end if canceled
+  // Add fields for scheduled downgrades  
+  downgrade_scheduled_at: string | null;
+  downgrade_to_credits: number | null;
 }
 
 // =============================================================================
