@@ -2,22 +2,19 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-// Using a simple modal approach since Dialog component may not be available
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/use-toast'
-import { useAuth } from '@/lib/auth-context'
 import { 
   AlertTriangle, 
   CheckCircle, 
   Globe, 
-  Crown, 
-  Zap, 
   ExternalLink,
-  Loader2
+  Loader2,
+  X
 } from 'lucide-react'
 import type { Campaign } from '@/lib/types/database'
 
@@ -30,25 +27,11 @@ interface PublishModalProps {
   className?: string
 }
 
-interface TierInfo {
-  current_tier: 'free' | 'standard' | 'premium'
-  tier_name: string
-  max_campaigns: number
-  currently_published: number
+interface BillingInfo {
   can_publish: boolean
   requires_upgrade: boolean
-}
-
-const TIER_ICONS = {
-  free: Globe,
-  standard: Zap,
-  premium: Crown,
-}
-
-const TIER_COLORS = {
-  free: 'text-gray-500',
-  standard: 'text-blue-500', 
-  premium: 'text-yellow-500',
+  tier_name: string
+  error_message?: string
 }
 
 export function PublishModal({
@@ -66,56 +49,76 @@ export function PublishModal({
   const [useCustomUrl, setUseCustomUrl] = useState(false)
   const [customUrl, setCustomUrl] = useState('')
   const [validationErrors, setValidationErrors] = useState<string[]>([])
-  const [tierInfo, setTierInfo] = useState<TierInfo | null>(null)
-  const [isLoadingTier, setIsLoadingTier] = useState(true)
+  const [billingInfo, setBillingInfo] = useState<BillingInfo | null>(null)
+  const [isLoadingBilling, setIsLoadingBilling] = useState(true)
 
-  // Load tier information
+  // Generate URL preview
+  const generateUrlSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim()
+      .substring(0, 50)
+  }
+
+  const previewUrl = useCustomUrl && customUrl.trim() 
+    ? customUrl.trim() 
+    : generateUrlSlug(campaign.name || 'untitled-campaign')
+  
+  const fullUrl = `${typeof window !== 'undefined' ? window.location.origin : 'yoursite.com'}/c/[user-key]/${previewUrl}`
+
+  // Load billing information and validation errors
   useEffect(() => {
     if (isOpen) {
-      loadTierInfo()
+      loadBillingInfo()
       loadValidationErrors()
     }
   }, [isOpen, campaign.id])
 
-  const loadTierInfo = async () => {
+  const loadBillingInfo = async () => {
     try {
-      setIsLoadingTier(true)
+      setIsLoadingBilling(true)
       const response = await fetch('/api/billing/summary')
       const result = await response.json()
 
       if (result.data) {
         const summary = result.data
-        const tierInfo: TierInfo = {
-          current_tier: summary.current_tier,
+        const billingInfo: BillingInfo = {
+          can_publish: summary.current_tier !== 'free' && 
+                      (summary.max_campaigns === -1 || summary.currently_published < summary.max_campaigns),
+          requires_upgrade: summary.current_tier === 'free' || 
+                           (summary.max_campaigns > 0 && summary.currently_published >= summary.max_campaigns),
           tier_name: summary.tier_name,
-          max_campaigns: summary.max_campaigns,
-          currently_published: summary.currently_published,
-          can_publish: summary.max_campaigns === -1 || summary.currently_published < summary.max_campaigns,
-          requires_upgrade: summary.current_tier === 'free' || (summary.max_campaigns > 0 && summary.currently_published >= summary.max_campaigns)
+          error_message: summary.current_tier === 'free' 
+            ? 'Publishing requires a paid plan with credits.'
+            : summary.max_campaigns > 0 && summary.currently_published >= summary.max_campaigns
+              ? `You've reached your ${summary.tier_name} plan limit.`
+              : undefined
         }
-        setTierInfo(tierInfo)
+        setBillingInfo(billingInfo)
       }
     } catch (error) {
-      console.error('Failed to load tier info:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load account information. Please try again.',
-        variant: 'destructive',
+      console.error('Failed to load billing info:', error)
+      setBillingInfo({
+        can_publish: false,
+        requires_upgrade: true,
+        tier_name: 'Unknown',
+        error_message: 'Unable to verify billing status. Please try again.'
       })
     } finally {
-      setIsLoadingTier(false)
+      setIsLoadingBilling(false)
     }
   }
 
   const loadValidationErrors = async () => {
-    // Basic campaign validation
     const errors: string[] = []
     
     if (!campaign.name || campaign.name.trim() === '') {
       errors.push('Campaign must have a name')
     }
 
-    // Add any other validation logic here
     setValidationErrors([...errors, ...mandatoryValidationErrors])
   }
 
@@ -124,6 +127,15 @@ export function PublishModal({
       toast({
         title: 'Validation Error',
         description: 'Please fix the validation errors before publishing.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    if (!billingInfo?.can_publish) {
+      toast({
+        title: 'Upgrade Required',
+        description: billingInfo?.error_message || 'Publishing requires a paid plan.',
         variant: 'destructive',
       })
       return
@@ -149,7 +161,6 @@ export function PublishModal({
 
       if (!response.ok) {
         if (result.requiresUpgrade) {
-          // Show upgrade message
           toast({
             title: 'Upgrade Required',
             description: result.error,
@@ -189,12 +200,9 @@ export function PublishModal({
 
   if (!isOpen) return null
 
-  const TierIcon = tierInfo ? TIER_ICONS[tierInfo.current_tier] : Globe
-  const tierColor = tierInfo ? TIER_COLORS[tierInfo.current_tier] : 'text-gray-500'
-
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -205,154 +213,123 @@ export function PublishModal({
                 <p className="text-sm text-gray-600">Make your campaign live and accessible to visitors</p>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={onClose}>
-              ×
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-4 w-4" />
             </Button>
           </div>
 
-          <div className="space-y-6">
-          {/* Validation Errors */}
-          {validationErrors.length > 0 && (
-            <Card className="border-red-200 bg-red-50">
-              <CardHeader>
-                <CardTitle className="text-red-800 flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  Validation Errors
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="list-disc list-inside text-red-700 space-y-1">
-                  {validationErrors.map((error, index) => (
-                    <li key={index}>{error}</li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Tier Information */}
-          {isLoadingTier ? (
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-center">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                  <span className="ml-2">Loading account information...</span>
-                </div>
-              </CardContent>
-            </Card>
-          ) : tierInfo && (
-            <Card className={tierInfo.can_publish ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <TierIcon className={`h-5 w-5 ${tierColor}`} />
-                    Current Plan: {tierInfo.tier_name}
+          <div className="space-y-4">
+            {/* Validation Errors */}
+            {validationErrors.length > 0 && (
+              <div className="border border-red-200 bg-red-50 rounded-lg p-4">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-red-800">Please fix these issues:</p>
+                    <ul className="list-disc list-inside text-red-700 text-sm mt-1 space-y-1">
+                      {validationErrors.map((error, index) => (
+                        <li key={index}>{error}</li>
+                      ))}
+                    </ul>
                   </div>
-                  <Badge variant={tierInfo.current_tier === 'free' ? 'secondary' : 'default'}>
-                    {tierInfo.current_tier}
-                  </Badge>
-                </CardTitle>
-                <CardDescription>
-                  {tierInfo.max_campaigns === -1 
-                    ? 'Unlimited published campaigns'
-                    : `Up to ${tierInfo.max_campaigns} published campaigns`
-                  }
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm text-gray-600">Published Campaigns</span>
-                  <span className="font-medium">
-                    {tierInfo.currently_published} / {tierInfo.max_campaigns === -1 ? '∞' : tierInfo.max_campaigns}
-                  </span>
                 </div>
+              </div>
+            )}
 
-                {!tierInfo.can_publish && (
-                  <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-4">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-yellow-800">Upgrade Required</p>
-                        <p className="text-sm text-yellow-700 mt-1">
-                          {tierInfo.current_tier === 'free' 
-                            ? 'Publishing is not available on the Free plan.'
-                            : `You've reached your ${tierInfo.tier_name} plan limit. Upgrade or unpublish other campaigns to continue.`
-                          }
-                        </p>
-                        <Button 
-                          onClick={handleUpgrade}
-                          className="mt-3"
-                          size="sm"
-                        >
-                          View Upgrade Options
-                          <ExternalLink className="h-4 w-4 ml-1" />
-                        </Button>
-                      </div>
-                    </div>
+            {/* Billing Status */}
+            {isLoadingBilling ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                <span>Checking account status...</span>
+              </div>
+            ) : billingInfo && !billingInfo.can_publish ? (
+              <div className="border border-yellow-200 bg-yellow-50 rounded-lg p-4">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-yellow-800">Upgrade Required</p>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      {billingInfo.error_message}
+                    </p>
+                    <Button 
+                      onClick={handleUpgrade}
+                      className="mt-3"
+                      size="sm"
+                    >
+                      View Upgrade Options
+                      <ExternalLink className="h-4 w-4 ml-1" />
+                    </Button>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                </div>
+              </div>
+            ) : (
+              <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <p className="text-green-800 font-medium">Ready to publish</p>
+                </div>
+                <p className="text-sm text-green-700 mt-1">
+                  Your {billingInfo?.tier_name} plan allows publishing campaigns.
+                </p>
+              </div>
+            )}
 
-          {/* Custom URL Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Campaign URL</CardTitle>
-              <CardDescription>
-                Choose how your campaign will be accessed
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
+            {/* Custom URL Section */}
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <Label htmlFor="useCustomUrl" className="text-sm font-medium">
+                  Use custom URL slug
+                </Label>
+                <Switch
                   id="useCustomUrl"
                   checked={useCustomUrl}
-                  onChange={(e) => setUseCustomUrl(e.target.checked)}
-                  className="rounded border-gray-300"
+                  onCheckedChange={setUseCustomUrl}
                 />
-                <Label htmlFor="useCustomUrl">Use custom URL slug</Label>
               </div>
 
-              {useCustomUrl && (
-                <div className="space-y-2">
-                  <Label htmlFor="customUrl">Custom URL</Label>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-500">yoursite.com/c/</span>
+              {/* URL Preview */}
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                    Your campaign will be published at:
+                  </Label>
+                  <div className="mt-1 p-3 bg-gray-50 rounded-lg border">
+                    <code className="text-sm text-gray-700 break-all">
+                      {fullUrl}
+                    </code>
+                  </div>
+                </div>
+
+                {useCustomUrl && (
+                  <div className="space-y-2">
+                    <Label htmlFor="customUrl" className="text-sm font-medium">
+                      Custom URL slug
+                    </Label>
                     <Input
                       id="customUrl"
                       value={customUrl}
                       onChange={(e) => setCustomUrl(e.target.value)}
                       placeholder="my-campaign"
-                      className="flex-1"
+                      className="font-mono text-sm"
                     />
+                    <p className="text-xs text-gray-500">
+                      Use letters, numbers, and hyphens only. Leave empty to auto-generate from campaign name.
+                    </p>
                   </div>
-                  <p className="text-xs text-gray-500">
-                    Use letters, numbers, and hyphens only
-                  </p>
-                </div>
-              )}
-
-              {!useCustomUrl && (
-                <div className="bg-gray-50 rounded-lg p-3">
-                  <p className="text-sm text-gray-600">
-                    A URL will be automatically generated based on your campaign name
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-4 border-t">
+          <div className="flex items-center justify-between pt-6 mt-6 border-t">
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
             
             <Button
               onClick={handlePublish}
-              disabled={isPublishing || validationErrors.length > 0 || !tierInfo?.can_publish}
+              disabled={isPublishing || validationErrors.length > 0 || !billingInfo?.can_publish}
               className="min-w-[120px]"
             >
               {isPublishing ? (
@@ -368,7 +345,6 @@ export function PublishModal({
               )}
             </Button>
           </div>
-        </div>
         </div>
       </div>
     </div>

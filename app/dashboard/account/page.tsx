@@ -72,7 +72,8 @@ const TIERS = {
       'Create unlimited campaigns',
       'Preview campaigns',
       'Basic analytics',
-      'Community support'
+      'Community support',
+      'Custom branding'
     ],
     buttonText: 'Current Plan',
     popular: false
@@ -88,9 +89,8 @@ const TIERS = {
     features: [
       'Everything in Free',
       'Publish up to 3 campaigns',
-      'Advanced analytics',
       'Email support',
-      'Custom domains'
+      'Custom branding'
     ],
     buttonText: 'Upgrade to Standard',
     popular: true
@@ -107,9 +107,7 @@ const TIERS = {
       'Everything in Standard',
       'Unlimited published campaigns',
       'Priority support',
-      'Advanced integrations',
-      'Custom branding',
-      'API access'
+      'Custom branding'
     ],
     buttonText: 'Upgrade to Premium',
     popular: false
@@ -578,53 +576,52 @@ export default function AccountPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {/* Current Plan */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle className="text-sm font-medium">Current Plan</CardTitle>
               <CurrentTierIcon className={`h-4 w-4 ${currentTier.color}`} />
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <div className="text-2xl font-bold">{currentTier.name}</div>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-gray-600 mt-1">
                 {currentTier.price === 0 ? 'Free forever' : `$${currentTier.price}/month`}
               </p>
-
             </CardContent>
           </Card>
 
           {/* Published Campaigns */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle className="text-sm font-medium">Published Campaigns</CardTitle>
               <Eye className="h-4 w-4 text-green-500" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <div className="text-2xl font-bold">{billingSummary.currently_published}</div>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-gray-600 mt-1">
                 of {billingSummary.max_campaigns === -1 ? 'unlimited' : billingSummary.max_campaigns} available
               </p>
             </CardContent>
           </Card>
 
           {/* Subscription Status */}
-            <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
               <CardTitle className="text-sm font-medium">Status</CardTitle>
               <BarChart3 className="h-4 w-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
+            </CardHeader>
+            <CardContent className="pt-0">
               <div className="text-2xl font-bold">
                 <Badge variant={billingSummary.subscription_status === 'active' ? 'default' : 'secondary'}>
                   {billingSummary.subscription_status}
                 </Badge>
-                  </div>
+              </div>
               {billingSummary.current_period_end && (
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-gray-600 mt-1">
                   Renews {new Date(billingSummary.current_period_end).toLocaleDateString()}
                 </p>
               )}
             </CardContent>
           </Card>
-                </div>
+        </div>
 
         {/* Subscription Plans */}
         <div className="mb-8">
@@ -639,26 +636,24 @@ export default function AccountPage() {
               return (
                 <Card 
                   key={key} 
-                  className={`relative ${
+                  className={`relative flex flex-col h-full ${
                     isCurrentTier 
                       ? `${tier.borderColor} ${tier.bgColor} border-2` 
                       : 'border-gray-200 hover:border-gray-300 transition-colors'
                   }`}
                 >
-                  {tier.popular && (
+                  {isCurrentTier ? (
+                    <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                      <Badge variant="default">Current Plan</Badge>
+                    </div>
+                  ) : tier.popular ? (
                     <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                       <Badge className="bg-blue-500 text-white">
                         <Star className="h-3 w-3 mr-1" />
                         Most Popular
                       </Badge>
                     </div>
-                  )}
-                  
-                  {isCurrentTier && (
-                    <div className="absolute -top-3 right-4">
-                      <Badge variant="default">Current Plan</Badge>
-                  </div>
-                )}
+                  ) : null}
 
                   <CardHeader className="text-center pb-4">
                     <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full ${tier.bgColor} mb-4`}>
@@ -666,8 +661,8 @@ export default function AccountPage() {
                     </div>
                     <CardTitle className="text-xl font-bold">{tier.name}</CardTitle>
                     <div className="text-3xl font-bold">
-                      {tier.price === 0 ? 'Free' : `$${tier.price}`}
-                      {tier.price > 0 && <span className="text-sm font-normal text-gray-600">/month</span>}
+                      {tier.price === 0 ? '$0' : `$${tier.price}`}
+                      {tier.price >= 0 && <span className="text-sm font-normal text-gray-600">/month</span>}
                     </div>
                     <CardDescription>
                       {tier.max_campaigns === 0 
@@ -679,8 +674,8 @@ export default function AccountPage() {
                     </CardDescription>
                   </CardHeader>
 
-                  <CardContent>
-                    <ul className="space-y-3 mb-6">
+                  <CardContent className="flex-1 flex flex-col">
+                    <ul className="space-y-3 mb-6 flex-1">
                       {tier.features.map((feature, index) => (
                         <li key={index} className="flex items-start gap-2">
                           <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
@@ -689,39 +684,38 @@ export default function AccountPage() {
                       ))}
                     </ul>
 
-                    {isCurrentTier ? (
-                      <div className="space-y-3">
-                        <Button disabled className="w-full">
-                          Current Plan
-                    </Button>
-                        
-
-
-                        {billingSummary.scheduled_tier_change && (
-                          <div className="text-center space-y-2">
-                            <Badge variant="secondary" className="text-blue-700">
-                              Downgrade to {billingSummary.scheduled_tier_change.charAt(0).toUpperCase() + billingSummary.scheduled_tier_change.slice(1)} Scheduled
-                            </Badge>
-                            <p className="text-xs text-gray-600">
-                              Will change to {billingSummary.scheduled_tier_change} on {
-                                billingSummary.scheduled_change_date 
-                                  ? new Date(billingSummary.scheduled_change_date).toLocaleDateString()
-                                  : 'next billing date'
-                              }
-                            </p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                              className="w-full text-blue-600 hover:text-blue-700"
-                              onClick={() => handleCancelDowngrade()}
-                          >
-                              Cancel Downgrade
+                    <div className="mt-auto">
+                      {isCurrentTier ? (
+                        <div className="space-y-3">
+                          <Button disabled className="w-full">
+                            Current Plan
                           </Button>
+
+                          {billingSummary.scheduled_tier_change && (
+                            <div className="text-center space-y-2">
+                              <Badge variant="secondary" className="text-blue-700">
+                                Downgrade to {billingSummary.scheduled_tier_change.charAt(0).toUpperCase() + billingSummary.scheduled_tier_change.slice(1)} Scheduled
+                              </Badge>
+                              <p className="text-xs text-gray-600">
+                                Will change to {billingSummary.scheduled_tier_change} on {
+                                  billingSummary.scheduled_change_date 
+                                    ? new Date(billingSummary.scheduled_change_date).toLocaleDateString()
+                                    : 'next billing date'
+                                }
+                              </p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full text-blue-600 hover:text-blue-700"
+                                onClick={() => handleCancelDowngrade()}
+                              >
+                                Cancel Downgrade
+                              </Button>
+                            </div>
+                          )}
                         </div>
-                        )}
-                  </div>
-                ) : (
-                      <div className="space-y-2">
+                      ) : (
+                        <div className="space-y-2">
                         {/* Determine button text and action based on current tier and target tier */}
                         {(() => {
                           const currentTier = billingSummary?.current_tier
@@ -821,15 +815,15 @@ export default function AccountPage() {
                           
                           return null
                         })()}
-
-                </div>
-                    )}
-              </CardContent>
-            </Card>
-              )
-            })}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+                )
+              })}
+            </div>
           </div>
-        </div>
 
         {/* Published Campaigns List */}
         {billingSummary.published_campaigns.length > 0 && (
