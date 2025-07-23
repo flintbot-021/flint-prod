@@ -29,12 +29,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Clear the scheduled downgrade
+    // Clear the scheduled downgrade AND cancellation
     const { error: updateError } = await serviceSupabase
       .from('profiles')
       .update({
         scheduled_tier_change: null,
         scheduled_change_date: null,
+        cancellation_scheduled_at: null, // Also clear this field
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)

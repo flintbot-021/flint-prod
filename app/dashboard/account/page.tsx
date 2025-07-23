@@ -693,30 +693,9 @@ export default function AccountPage() {
                       <div className="space-y-3">
                         <Button disabled className="w-full">
                           Current Plan
-                        </Button>
-                        
-                        {/* Scheduled downgrades - consistent display for all types */}
-                        {billingSummary.cancellation_scheduled && (
-                          <div className="text-center space-y-2">
-                            <Badge variant="secondary" className="text-red-700">
-                              Downgrade to Free Scheduled
-                            </Badge>
-                            <p className="text-xs text-gray-600">
-                              Will change to free on {billingSummary.current_period_end 
-                                ? new Date(billingSummary.current_period_end).toLocaleDateString()
-                                : 'end of period'
-                              }
-                    </p>
-                    <Button 
-                              variant="outline" 
-                      size="sm"
-                              className="w-full text-red-600 hover:text-red-700"
-                              onClick={() => handleReactivateSubscription()}
-                    >
-                      Cancel Downgrade
                     </Button>
-                  </div>
-                )}
+                        
+
 
                         {billingSummary.scheduled_tier_change && (
                           <div className="text-center space-y-2">
@@ -887,7 +866,7 @@ export default function AccountPage() {
                         </div>
                         <p className="text-sm text-gray-600">
                           Published {new Date(campaign.published_at).toLocaleDateString()}
-                        </p>
+                          </p>
                         {isScheduledForUnpublish && billingSummary.scheduled_change_date && billingSummary.scheduled_tier_change && (
                           <p className="text-sm text-amber-700 mt-1">
                             ⚠️ Will be unpublished on {new Date(billingSummary.scheduled_change_date).toLocaleDateString()} due to downgrade to {billingSummary.scheduled_tier_change === 'free' ? 'Free' : billingSummary.scheduled_tier_change.charAt(0).toUpperCase() + billingSummary.scheduled_tier_change.slice(1)} plan
@@ -896,14 +875,14 @@ export default function AccountPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="secondary">Live</Badge>
-                          <Button
-                            variant="outline"
-                            size="sm"
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => router.push(`/dashboard/campaigns/${campaign.id}`)}
-                          >
+                        >
                           Manage
-                          </Button>
-                        </div>
+                        </Button>
+                      </div>
                       </div>
                   )
                 })}

@@ -107,7 +107,8 @@ export async function POST(request: NextRequest) {
               price: priceId,
             },
           ],
-          proration_behavior: 'create_prorations'
+          proration_behavior: 'create_prorations',
+          cancel_at_period_end: false, // Clear any scheduled cancellation when upgrading
         }
       )
 
@@ -121,6 +122,7 @@ export async function POST(request: NextRequest) {
           max_published_campaigns: tierConfig.max_campaigns,
           stripe_price_id: priceId,
           subscription_status: 'active',
+          cancellation_scheduled_at: null, // Clear any previous cancellation when upgrading
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id)

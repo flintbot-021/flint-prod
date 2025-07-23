@@ -162,6 +162,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       max_published_campaigns: tierConfig.max_campaigns,
       subscription_status: 'active',
       stripe_customer_id: customerId,
+      cancellation_scheduled_at: null, // Clear any previous cancellation when upgrading
       updated_at: new Date().toISOString(),
       ...(subscriptionId && { stripe_subscription_id: subscriptionId })
     }
