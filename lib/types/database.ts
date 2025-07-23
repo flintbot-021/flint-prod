@@ -558,115 +558,13 @@ export type BillingType = 'credit_purchase' | 'subscription_charge' | 'refund';
 export type BillingStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 export type SubscriptionStatus = 'active' | 'inactive' | 'cancelled' | 'past_due';
 
-/**
- * Credit transaction record
- */
-export interface CreditTransaction {
-  id: UUID;
-  user_id: UUID;
-  transaction_type: TransactionType;
-  amount: number; // positive for purchases/refunds, negative for usage
-  description: string | null;
-  campaign_id: UUID | null; // for usage transactions
-  stripe_payment_intent_id: string | null;
-  stripe_charge_id: string | null;
-  metadata: Record<string, any>;
-  created_at: Timestamp;
-  updated_at: Timestamp;
-}
+// ============================================================================
+// OLD BILLING TYPES REMOVED - Now using simplified subscription_tier system
+// ============================================================================
+// Removed: CreditTransaction, BillingHistory, UserSubscription interfaces
+// These are replaced by the subscription_tier field in profiles table
 
-/**
- * Billing history record
- */
-export interface BillingHistory {
-  id: UUID;
-  user_id: UUID;
-  billing_type: BillingType;
-  amount_cents: number;
-  currency: string;
-  status: BillingStatus;
-  stripe_payment_intent_id: string | null;
-  stripe_invoice_id: string | null;
-  stripe_charge_id: string | null;
-  description: string | null;
-  metadata: Record<string, any>;
-  billing_period_start: Timestamp | null;
-  billing_period_end: Timestamp | null;
-  created_at: Timestamp;
-  updated_at: Timestamp;
-}
-
-/**
- * User subscription record
- */
-export interface UserSubscription {
-  id: UUID;
-  user_id: UUID;
-  stripe_subscription_id: string | null;
-  stripe_customer_id: string;
-  status: SubscriptionStatus;
-  current_period_start: Timestamp | null;
-  current_period_end: Timestamp | null;
-  billing_cycle_anchor: Timestamp | null;
-  active_slots: number;
-  monthly_cost_cents: number;
-  created_at: Timestamp;
-  updated_at: Timestamp;
-}
-
-/**
- * Create types for billing entities
- */
-export interface CreateCreditTransaction {
-  user_id?: UUID; // Optional since it can be inferred from auth
-  transaction_type: TransactionType;
-  amount: number;
-  description?: string;
-  campaign_id?: UUID;
-  stripe_payment_intent_id?: string;
-  stripe_charge_id?: string;
-  metadata?: Record<string, any>;
-}
-
-export interface CreateBillingHistory {
-  user_id?: UUID; // Optional since it can be inferred from auth
-  billing_type: BillingType;
-  amount_cents: number;
-  currency?: string;
-  status: BillingStatus;
-  stripe_payment_intent_id?: string;
-  stripe_invoice_id?: string;
-  stripe_charge_id?: string;
-  description?: string;
-  metadata?: Record<string, any>;
-  billing_period_start?: string;
-  billing_period_end?: string;
-}
-
-export interface CreateUserSubscription {
-  user_id?: UUID; // Optional since it can be inferred from auth
-  stripe_subscription_id?: string;
-  stripe_customer_id: string;
-  status: SubscriptionStatus;
-  current_period_start?: string;
-  current_period_end?: string;
-  billing_cycle_anchor?: string;
-  active_slots?: number;
-  monthly_cost_cents?: number;
-}
-
-/**
- * Update types for billing entities
- */
-export interface UpdateCreditTransaction {
-  transaction_type?: TransactionType;
-  amount?: number;
-  description?: string;
-  campaign_id?: UUID;
-  stripe_payment_intent_id?: string;
-  stripe_charge_id?: string;
-  metadata?: Record<string, any>;
-}
+// Old Create/Update types removed with simplified tier system
 
 export interface UpdateBillingHistory {
   billing_type?: BillingType;
@@ -693,15 +591,7 @@ export interface UpdateUserSubscription {
   monthly_cost_cents?: number;
 }
 
-/**
- * Extended profile with billing information
- */
-export interface ProfileWithBilling extends Profile {
-  subscription?: UserSubscription;
-  total_spent?: number;
-  active_slots?: number;
-  next_billing_date?: string;
-}
+// ProfileWithBilling removed - using simplified subscription_tier system
 
 /**
  * Credit purchase request
@@ -721,28 +611,31 @@ export interface SubscriptionChangeRequest {
 }
 
 /**
- * Billing summary for account settings
+ * Simplified billing summary for tier-based system
  */
 export interface BillingSummary {
-  credit_balance: number;
-  total_credits_owned: number;
+  current_tier: 'free' | 'standard' | 'premium';
+  tier_name: string;
+  monthly_price: number;
+  max_campaigns: number;
+  tier_features: string[];
   currently_published: number;
-  available_credits: number;
-  active_slots: {
-    id: string;
+  subscription_status: 'active' | 'inactive' | 'cancelled' | 'past_due';
+  current_period_start: string | null;
+  current_period_end: string | null;
+  cancellation_scheduled: boolean;
+  can_downgrade: boolean;
+  published_campaigns: {
+    id: UUID;
     name: string;
-    published_url: string;
+    slug: string;
     published_at: string;
-    created_at: string;
   }[];
-  monthly_cost_cents: number;
-  next_billing_date: string | null;
-  billing_history: BillingHistory[];
-  cancellation_scheduled_at: string | null;
-  subscription_ends_at: string | null; // When the current subscription will end if canceled
-  // Add fields for scheduled downgrades  
-  downgrade_scheduled_at: string | null;
-  downgrade_to_credits: number | null;
+  available_tiers: {
+    standard: boolean;
+    premium: boolean;
+  };
+  available_slots?: number; // For backward compatibility
 }
 
 // =============================================================================
@@ -849,21 +742,7 @@ export interface Database {
         Insert: CreateLeadVariableValue;
         Update: UpdateLeadVariableValue;
       };
-      credit_transactions: {
-        Row: CreditTransaction;
-        Insert: CreateCreditTransaction;
-        Update: UpdateCreditTransaction;
-      };
-      billing_history: {
-        Row: BillingHistory;
-        Insert: CreateBillingHistory;
-        Update: UpdateBillingHistory;
-      };
-      user_subscriptions: {
-        Row: UserSubscription;
-        Insert: CreateUserSubscription;
-        Update: UpdateUserSubscription;
-      };
+      // Old billing tables removed - using subscription_tier system now
 
     };
     Views: {

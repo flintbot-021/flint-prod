@@ -1,42 +1,28 @@
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Campaign } from '@/lib/types/database'
-import { cn } from '@/lib/utils'
+// Using a simple modal approach since Dialog component may not be available
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/use-toast'
-import {
-  Globe,
-  Eye,
-  Share2,
-  Copy,
+import { useAuth } from '@/lib/auth-context'
+import { 
+  AlertTriangle, 
+  CheckCircle, 
+  Globe, 
+  Crown, 
+  Zap, 
   ExternalLink,
-  AlertCircle,
-  CheckCircle,
-  Loader2,
-  Zap,
-  Settings,
-  Lock,
-  Unlock,
-  CreditCard,
-  DollarSign
+  Loader2
 } from 'lucide-react'
-
-
-
-
-interface UrlCheck {
-  available: boolean
-  checking: boolean
-}
+import type { Campaign } from '@/lib/types/database'
 
 interface PublishModalProps {
-  campaign: Campaign | null
+  campaign: Campaign
   isOpen: boolean
   onClose: () => void
   onPublishSuccess: (updatedCampaign: Campaign) => void
@@ -44,11 +30,25 @@ interface PublishModalProps {
   className?: string
 }
 
-interface BillingSummary {
-  credit_balance: number
-  total_credits_owned: number
+interface TierInfo {
+  current_tier: 'free' | 'standard' | 'premium'
+  tier_name: string
+  max_campaigns: number
   currently_published: number
-  available_credits: number
+  can_publish: boolean
+  requires_upgrade: boolean
+}
+
+const TIER_ICONS = {
+  free: Globe,
+  standard: Zap,
+  premium: Crown,
+}
+
+const TIER_COLORS = {
+  free: 'text-gray-500',
+  standard: 'text-blue-500', 
+  premium: 'text-yellow-500',
 }
 
 export function PublishModal({
@@ -61,425 +61,314 @@ export function PublishModal({
 }: PublishModalProps) {
   const router = useRouter()
   
-  // Form state
+  // State
   const [isPublishing, setIsPublishing] = useState(false)
   const [useCustomUrl, setUseCustomUrl] = useState(false)
   const [customUrl, setCustomUrl] = useState('')
   const [validationErrors, setValidationErrors] = useState<string[]>([])
-  
-  // Billing state
-  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null)
-  const [loadingBilling, setLoadingBilling] = useState(true)
-  
-  // UI state
-  const [urlCheck, setUrlCheck] = useState<UrlCheck>({
-    available: true,
-    checking: false
-  })
-  
-  // Load billing summary when modal opens
+  const [tierInfo, setTierInfo] = useState<TierInfo | null>(null)
+  const [isLoadingTier, setIsLoadingTier] = useState(true)
+
+  // Load tier information
   useEffect(() => {
     if (isOpen) {
-      loadBillingSummary()
+      loadTierInfo()
+      loadValidationErrors()
     }
-  }, [isOpen])
-  
-  const loadBillingSummary = async () => {
+  }, [isOpen, campaign.id])
+
+  const loadTierInfo = async () => {
     try {
-      setLoadingBilling(true)
+      setIsLoadingTier(true)
       const response = await fetch('/api/billing/summary')
-      
-      if (!response.ok) {
-        throw new Error('Failed to load billing information')
-      }
-      
       const result = await response.json()
-      if (result.success) {
-        setBillingSummary(result.data)
+
+      if (result.data) {
+        const summary = result.data
+        const tierInfo: TierInfo = {
+          current_tier: summary.current_tier,
+          tier_name: summary.tier_name,
+          max_campaigns: summary.max_campaigns,
+          currently_published: summary.currently_published,
+          can_publish: summary.max_campaigns === -1 || summary.currently_published < summary.max_campaigns,
+          requires_upgrade: summary.current_tier === 'free' || (summary.max_campaigns > 0 && summary.currently_published >= summary.max_campaigns)
+        }
+        setTierInfo(tierInfo)
       }
     } catch (error) {
-      console.error('Error loading billing summary:', error)
+      console.error('Failed to load tier info:', error)
       toast({
-        title: 'Billing Error',
-        description: 'Failed to load billing information',
-        variant: 'destructive'
+        title: 'Error',
+        description: 'Failed to load account information. Please try again.',
+        variant: 'destructive',
       })
     } finally {
-      setLoadingBilling(false)
+      setIsLoadingTier(false)
     }
   }
-  
-  // Reset form when modal opens/closes or campaign changes
-  useEffect(() => {
-    if (isOpen && campaign) {
-      setCustomUrl('')
-      setUseCustomUrl(false)
-      setValidationErrors([])
-      setUrlCheck({ available: true, checking: false })
-      
-      // Pre-populate with existing URL if published
-      if (campaign.status === 'published' && campaign.published_url) {
-        setCustomUrl(campaign.published_url)
-        setUseCustomUrl(true)
-      }
-    }
-  }, [isOpen, campaign])
 
-  // Validate campaign when modal opens
-  useEffect(() => {
-    const validateCampaign = async () => {
-      if (!isOpen || !campaign) return
-      
-      // Simple validation - check if campaign has at least one section
-      const errors: string[] = []
-      
-      if (!campaign.name || campaign.name.trim() === '') {
-        errors.push('Campaign must have a name')
-      }
-      
-      setValidationErrors(errors)
-    }
-
-    validateCampaign()
-  }, [isOpen, campaign])
-
-  // Generate final URL
-  const finalUrl = useMemo(() => {
-    if (!campaign) return ''
+  const loadValidationErrors = async () => {
+    // Basic campaign validation
+    const errors: string[] = []
     
-    if (useCustomUrl && customUrl.trim()) {
-      return customUrl.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-')
-      }
+    if (!campaign.name || campaign.name.trim() === '') {
+      errors.push('Campaign must have a name')
+    }
 
-    // Generate from campaign name
-    const baseSlug = campaign.name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-
-    return baseSlug || 'my-tool'
-  }, [campaign, useCustomUrl, customUrl])
-
-  // Generate full URL for preview
-  const fullUrl = finalUrl && typeof window !== 'undefined' && campaign?.user_key 
-    ? `${window.location.origin}/c/${campaign.user_key}/${finalUrl}` 
-    : ''
-
-  const canPublish = campaign && 
-    validationErrors.length === 0 && 
-    mandatoryValidationErrors.length === 0 &&
-    (!useCustomUrl || (urlCheck.available && !urlCheck.checking)) &&
-    finalUrl.length >= 3 &&
-    billingSummary &&
-    billingSummary.credit_balance >= 1
-
-
+    // Add any other validation logic here
+    setValidationErrors([...errors, ...mandatoryValidationErrors])
+  }
 
   const handlePublish = async () => {
-    if (!campaign || !canPublish) return
+    if (validationErrors.length > 0) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fix the validation errors before publishing.',
+        variant: 'destructive',
+      })
+      return
+    }
 
     try {
       setIsPublishing(true)
-      
+
+      const publishData: any = {}
+      if (useCustomUrl && customUrl.trim()) {
+        publishData.slug = customUrl.trim()
+      }
+
       const response = await fetch(`/api/campaigns/${campaign.id}/publish`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          slug: useCustomUrl ? customUrl.trim() : undefined
-        }),
+        body: JSON.stringify(publishData),
       })
-      
+
       const result = await response.json()
-      
-      if (!result.success) {
+
+      if (!response.ok) {
+        if (result.requiresUpgrade) {
+          // Show upgrade message
+          toast({
+            title: 'Upgrade Required',
+            description: result.error,
+            variant: 'destructive',
+          })
+          return
+        }
+        
         throw new Error(result.error || 'Failed to publish campaign')
       }
 
-      onPublishSuccess(result.data)
-      
+      // Success
       toast({
-        title: 'Tool launched!',
-        description: result.message || 'Your tool is now live!',
-        duration: 5000
+        title: 'Campaign Published!',
+        description: result.message || 'Your campaign is now live.',
       })
-      
+
+      onPublishSuccess(result.data)
       onClose()
+
     } catch (error) {
       console.error('Error publishing campaign:', error)
-      const message = error instanceof Error ? error.message : 'Failed to launch tool'
       toast({
-        title: 'Launch failed',
-        description: message,
-        variant: 'destructive'
+        title: 'Publishing Failed',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: 'destructive',
       })
     } finally {
       setIsPublishing(false)
     }
   }
 
-  const handleUnpublish = async () => {
-    if (!campaign) return
-
-    try {
-      setIsPublishing(true)
-      
-      const response = await fetch(`/api/campaigns/${campaign.id}/publish`, {
-        method: 'DELETE',
-      })
-      
-      const result = await response.json()
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to unpublish campaign')
-      }
-
-      onPublishSuccess(result.data)
-      
-      toast({
-        title: 'Tool unpublished',
-        description: result.message || 'Tool unpublished successfully!',
-        duration: 5000
-      })
-      
-      onClose()
-    } catch (error) {
-      console.error('Error unpublishing campaign:', error)
-      const message = error instanceof Error ? error.message : 'Failed to unpublish tool'
-      toast({
-        title: 'Unpublish failed',
-        description: message,
-        variant: 'destructive'
-      })
-    } finally {
-      setIsPublishing(false)
-    }
+  const handleUpgrade = () => {
+    router.push('/dashboard/account')
+    onClose()
   }
 
-  const copyUrlToClipboard = async () => {
-    if (!fullUrl) return
-    
-    try {
-      await navigator.clipboard.writeText(fullUrl)
-      toast({
-        title: 'URL copied!',
-        description: 'The tool URL has been copied to your clipboard',
-        duration: 3000
-      })
-    } catch (error) {
-      console.error('Error copying URL:', error)
-      toast({
-        title: 'Copy failed',
-        description: 'Unable to copy URL to clipboard',
-        variant: 'destructive'
-      })
-    }
-  }
+  if (!isOpen) return null
 
-  if (!isOpen || !campaign) return null
-
-  const isPublished = campaign.status === 'published'
+  const TierIcon = tierInfo ? TIER_ICONS[tierInfo.current_tier] : Globe
+  const tierColor = tierInfo ? TIER_COLORS[tierInfo.current_tier] : 'text-gray-500'
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className={cn(
-        "bg-background rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto",
-        className
-      )}>
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-6">
-        {/* Header */}
+          {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Zap className="h-5 w-5 text-blue-600" />
-              </div>
+            <div className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
               <div>
-                <h2 className="text-xl font-semibold">
-                  {isPublished ? 'Manage Tool' : 'Launch Tool'}
-          </h2>
-                <p className="text-sm text-muted-foreground">
-                  {campaign.name}
-          </p>
-        </div>
+                <h2 className="text-xl font-semibold">Publish Campaign</h2>
+                <p className="text-sm text-gray-600">Make your campaign live and accessible to visitors</p>
+              </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
+            <Button variant="outline" size="sm" onClick={onClose}>
               ×
             </Button>
           </div>
 
-          {/* Billing Information */}
-          {loadingBilling && (
-            <div className="mb-6 p-4 bg-muted rounded-lg flex items-center justify-center">
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              <span className="text-sm text-muted-foreground">Loading billing information...</span>
-            </div>
-          )}
-
-          {!loadingBilling && billingSummary && (
-            <div className={`mb-6 p-4 rounded-lg border ${
-              billingSummary.credit_balance >= 1 
-                ? 'bg-green-50 border-green-200' 
-                : 'bg-orange-50 border-orange-200'
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {billingSummary.credit_balance >= 1 ? (
-                    <CheckCircle className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-orange-600" />
-                  )}
-                  <span className={`font-medium ${
-                    billingSummary.credit_balance >= 1 
-                      ? 'text-green-800' 
-                      : 'text-orange-800'
-                  }`}>
-                    {billingSummary.credit_balance >= 1 
-                      ? `You have ${billingSummary.credit_balance} credit${billingSummary.credit_balance !== 1 ? 's' : ''} available`
-                      : 'No credits available'
-                    }
-                  </span>
-                </div>
-                {billingSummary.credit_balance < 1 && (
-                  <Button 
-                    onClick={() => router.push('/dashboard/account')}
-                    size="sm"
-                    variant="outline"
-                  >
-                    <DollarSign className="h-4 w-4 mr-2" />
-                    Manage Credits
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-
-
-
+          <div className="space-y-6">
           {/* Validation Errors */}
-          {(validationErrors.length > 0 || mandatoryValidationErrors.length > 0) && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />
-                <div className="text-sm">
-                  <p className="text-red-800 font-medium">Cannot publish tool</p>
-                  <ul className="mt-1 list-disc list-inside text-red-700">
-                    {mandatoryValidationErrors.map((error, index) => (
-                      <li key={index}>{error}</li>
-                  ))}
-                    {validationErrors.map((error, index) => (
-                      <li key={index}>{error}</li>
+          {validationErrors.length > 0 && (
+            <Card className="border-red-200 bg-red-50">
+              <CardHeader>
+                <CardTitle className="text-red-800 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Validation Errors
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="list-disc list-inside text-red-700 space-y-1">
+                  {validationErrors.map((error, index) => (
+                    <li key={index}>{error}</li>
                   ))}
                 </ul>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           )}
 
-          {/* URL Configuration */}
-          <div className="mb-6 space-y-4">
-            <div>
-              <Label className="text-sm font-medium">Tool URL</Label>
-              <div className="mt-2 p-3 bg-muted rounded-lg">
-                <div className="text-sm text-muted-foreground mb-2">
-                  Your tool will be available at:
+          {/* Tier Information */}
+          {isLoadingTier ? (
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="ml-2">Loading account information...</span>
                 </div>
-              <div className="flex items-center gap-2">
-                  <code className="text-sm bg-background px-2 py-1 rounded flex-1 truncate">
-                    {fullUrl || 'Loading...'}
-                  </code>
-                  {fullUrl && (
-                    <Button size="sm" variant="outline" onClick={copyUrlToClipboard}>
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  )}
+              </CardContent>
+            </Card>
+          ) : tierInfo && (
+            <Card className={tierInfo.can_publish ? 'border-green-200 bg-green-50' : 'border-yellow-200 bg-yellow-50'}>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <TierIcon className={`h-5 w-5 ${tierColor}`} />
+                    Current Plan: {tierInfo.tier_name}
+                  </div>
+                  <Badge variant={tierInfo.current_tier === 'free' ? 'secondary' : 'default'}>
+                    {tierInfo.current_tier}
+                  </Badge>
+                </CardTitle>
+                <CardDescription>
+                  {tierInfo.max_campaigns === -1 
+                    ? 'Unlimited published campaigns'
+                    : `Up to ${tierInfo.max_campaigns} published campaigns`
+                  }
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm text-gray-600">Published Campaigns</span>
+                  <span className="font-medium">
+                    {tierInfo.currently_published} / {tierInfo.max_campaigns === -1 ? '∞' : tierInfo.max_campaigns}
+                  </span>
                 </div>
+
+                {!tierInfo.can_publish && (
+                  <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-4">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-yellow-800">Upgrade Required</p>
+                        <p className="text-sm text-yellow-700 mt-1">
+                          {tierInfo.current_tier === 'free' 
+                            ? 'Publishing is not available on the Free plan.'
+                            : `You've reached your ${tierInfo.tier_name} plan limit. Upgrade or unpublish other campaigns to continue.`
+                          }
+                        </p>
+                        <Button 
+                          onClick={handleUpgrade}
+                          className="mt-3"
+                          size="sm"
+                        >
+                          View Upgrade Options
+                          <ExternalLink className="h-4 w-4 ml-1" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Custom URL Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Campaign URL</CardTitle>
+              <CardDescription>
+                Choose how your campaign will be accessed
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="useCustomUrl"
+                  checked={useCustomUrl}
+                  onChange={(e) => setUseCustomUrl(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="useCustomUrl">Use custom URL slug</Label>
               </div>
-          </div>
 
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="custom-url"
-                checked={useCustomUrl}
-                onCheckedChange={setUseCustomUrl}
-              />
-              <Label htmlFor="custom-url" className="text-sm">
-                Customize URL
-              </Label>
-            </div>
-
-            {useCustomUrl && (
-              <div>
-                <Label htmlFor="custom-url-input" className="text-sm">
-                  Custom URL slug
-                </Label>
+              {useCustomUrl && (
+                <div className="space-y-2">
+                  <Label htmlFor="customUrl">Custom URL</Label>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-500">yoursite.com/c/</span>
                     <Input
-                  id="custom-url-input"
+                      id="customUrl"
                       value={customUrl}
                       onChange={(e) => setCustomUrl(e.target.value)}
-                  placeholder="my-awesome-tool"
-                  className="mt-1"
+                      placeholder="my-campaign"
+                      className="flex-1"
                     />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Only letters, numbers, and hyphens allowed
-                </p>
-                    </div>
-                  )}
-                </div>
-
-          {/* Unpublish Notice */}
-                    {isPublished && (
-            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
-                <div className="text-sm">
-                  <p className="text-green-800 font-medium">Tool is Live</p>
-                  <p className="text-green-700">
-                    Unpublishing will return 1 credit to your account and make the tool inaccessible to visitors.
-                  </p>
                   </div>
+                  <p className="text-xs text-gray-500">
+                    Use letters, numbers, and hyphens only
+                  </p>
                 </div>
-              </div>
-            )}
+              )}
+
+              {!useCustomUrl && (
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-sm text-gray-600">
+                    A URL will be automatically generated based on your campaign name
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Action Buttons */}
-          <div className="flex gap-3">
-          {isPublished ? (
-              <>
-            <Button
-              variant="outline"
-              onClick={handleUnpublish}
-              disabled={isPublishing}
-                  className="flex-1"
-            >
-                  {isPublishing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Unpublish Tool
-                </Button>
-                <Button variant="outline" onClick={onClose}>
-                  Close
+          <div className="flex items-center justify-between pt-4 border-t">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
             </Button>
-              </>
-          ) : (
-              <>
-                {billingSummary && billingSummary.credit_balance >= 1 && (
+            
             <Button
               onClick={handlePublish}
-              disabled={!canPublish || isPublishing}
-                    className="flex-1"
-                    size="lg"
+              disabled={isPublishing || validationErrors.length > 0 || !tierInfo?.can_publish}
+              className="min-w-[120px]"
             >
-                    {isPublishing && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                    {isPublishing ? 'Publishing...' : 'Use 1 Credit & Publish'}
+              {isPublishing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Publishing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Publish Campaign
+                </>
+              )}
             </Button>
-          )}
-                <Button variant="outline" onClick={onClose}>
-                  Close
-                </Button>
-              </>
-            )}
           </div>
+        </div>
         </div>
       </div>
     </div>
