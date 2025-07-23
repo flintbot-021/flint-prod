@@ -97,7 +97,9 @@ export async function GET(request: NextRequest) {
     if (profile.stripe_subscription_id && profile.subscription_status === 'active') {
       try {
         const subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id)
-        if (subscription.default_payment_method) {
+        
+        // Only get payment method if subscription still exists and is active
+        if (subscription && subscription.status === 'active' && subscription.default_payment_method) {
           const pm = await stripe.paymentMethods.retrieve(subscription.default_payment_method as string)
           if (pm.card) {
             paymentMethod = {
@@ -109,8 +111,13 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch (error) {
-        console.error('Error fetching payment method:', error)
-        // Continue without payment method info
+        // Handle case where subscription no longer exists (scheduled downgrades, cancellations, etc.)
+        if (error instanceof Error && error.message.includes('No such subscription')) {
+          console.log('Subscription no longer exists in Stripe (likely due to scheduled downgrade) - this is normal')
+        } else {
+          console.error('Error fetching payment method:', error)
+        }
+        // Continue without payment method info - this is expected for scheduled downgrades
       }
     }
 
