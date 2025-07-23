@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import Stripe from 'stripe'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2025-06-30.basil',
+})
 
 // Tier configuration
 const TIER_CONFIG = {
@@ -87,6 +92,28 @@ export async function GET(request: NextRequest) {
     const currentlyPublished = publishedCount || 0
     const availableSlots = maxCampaigns === -1 ? 'unlimited' : Math.max(0, maxCampaigns - currentlyPublished)
 
+    // Get payment method info if user has active subscription
+    let paymentMethod = null
+    if (profile.stripe_subscription_id && profile.subscription_status === 'active') {
+      try {
+        const subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id)
+        if (subscription.default_payment_method) {
+          const pm = await stripe.paymentMethods.retrieve(subscription.default_payment_method as string)
+          if (pm.card) {
+            paymentMethod = {
+              brand: pm.card.brand,
+              last4: pm.card.last4,
+              exp_month: pm.card.exp_month,
+              exp_year: pm.card.exp_year
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching payment method:', error)
+        // Continue without payment method info
+      }
+    }
+
     // Create billing summary
     const billingSummary = {
       // Current subscription info
@@ -112,6 +139,7 @@ export async function GET(request: NextRequest) {
       // Stripe info
       stripe_subscription_id: profile.stripe_subscription_id,
       has_stripe_customer: !!profile.stripe_customer_id,
+      payment_method: paymentMethod,
       
       // Available upgrade options
       available_tiers: {

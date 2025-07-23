@@ -44,6 +44,12 @@ interface PlanChangeConfirmationModalProps {
   onClose: () => void
   onConfirm: () => Promise<void>
   calculation: ProrationCalculation | null
+  paymentMethod?: {
+    brand: string
+    last4: string
+    exp_month: number
+    exp_year: number
+  } | null
   isLoading?: boolean
 }
 
@@ -52,6 +58,7 @@ export function PlanChangeConfirmationModal({
   onClose,
   onConfirm,
   calculation,
+  paymentMethod,
   isLoading = false
 }: PlanChangeConfirmationModalProps) {
   const [isConfirming, setIsConfirming] = useState(false)
@@ -122,6 +129,14 @@ export function PlanChangeConfirmationModal({
                     💡 <strong>Prorated upgrade:</strong> You get immediate access to {formatTierName(calculation.targetTier)} features and only pay for the time remaining in your billing cycle.
                   </p>
                 </div>
+                
+                {/* Payment method info */}
+                {paymentMethod && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600 mt-2">
+                    <CreditCard className="h-4 w-4" />
+                    <span>Will be charged to •••• •••• •••• {paymentMethod.last4} ({paymentMethod.brand.charAt(0).toUpperCase() + paymentMethod.brand.slice(1)})</span>
+                  </div>
+                )}
               </div>
             ) : calculation.isDowngrade ? (
               <div className="space-y-2">

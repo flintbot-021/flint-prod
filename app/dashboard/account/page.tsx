@@ -50,6 +50,12 @@ interface BillingSummary {
     standard: boolean
     premium: boolean
   }
+  payment_method?: {
+    brand: string
+    last4: string
+    exp_month: number
+    exp_year: number
+  } | null
 }
 
 // Tier configuration
@@ -454,31 +460,7 @@ export default function AccountPage() {
               <p className="text-xs text-gray-600">
                 {currentTier.price === 0 ? 'Free forever' : `$${currentTier.price}/month`}
               </p>
-              
-              {/* Cancellation Notice & Reactivation */}
-              {billingSummary.cancellation_scheduled && billingSummary.current_period_end && (
-                <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-xs text-amber-800 font-medium mb-2">
-                    Cancellation Scheduled
-                  </p>
-                  <p className="text-xs text-amber-700 mb-3">
-                    Access until {new Date(billingSummary.current_period_end).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long', 
-                      day: 'numeric'
-                    })}
-                  </p>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleReactivateSubscription}
-                    disabled={isReactivating}
-                    className="w-full text-xs h-7"
-                  >
-                    {isReactivating ? 'Reactivating...' : 'Reactivate Plan'}
-                  </Button>
-                </div>
-              )}
+
             </CardContent>
           </Card>
 
@@ -586,24 +568,33 @@ export default function AccountPage() {
                           Current Plan
                         </Button>
                         
+                        {/* Scheduled downgrades - consistent display for all types */}
                         {billingSummary.cancellation_scheduled && (
-                          <div className="text-center">
-                            <Badge variant="secondary" className="text-yellow-700">
-                              Cancellation Scheduled
+                          <div className="text-center space-y-2">
+                            <Badge variant="secondary" className="text-red-700">
+                              Downgrade to Free Scheduled
                             </Badge>
-                            <p className="text-xs text-gray-600 mt-1">
-                              Access until {billingSummary.current_period_end 
+                            <p className="text-xs text-gray-600">
+                              Will change to free on {billingSummary.current_period_end 
                                 ? new Date(billingSummary.current_period_end).toLocaleDateString()
                                 : 'end of period'
                               }
                             </p>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="w-full text-red-600 hover:text-red-700"
+                              onClick={() => handleReactivateSubscription()}
+                            >
+                              Cancel Downgrade
+                            </Button>
                           </div>
                         )}
                         
                         {billingSummary.scheduled_tier_change && (
                           <div className="text-center space-y-2">
                             <Badge variant="secondary" className="text-blue-700">
-                              Downgrade Scheduled
+                              Downgrade to {billingSummary.scheduled_tier_change.charAt(0).toUpperCase() + billingSummary.scheduled_tier_change.slice(1)} Scheduled
                             </Badge>
                             <p className="text-xs text-gray-600">
                               Will change to {billingSummary.scheduled_tier_change} on {
@@ -724,19 +715,7 @@ export default function AccountPage() {
                           
                           return null
                         })()}
-                        
-                        {/* Payment method indicator - only show for upgrades */}
-                        {key !== 'free' && billingSummary?.current_tier !== key && (
-                          billingSummary?.current_tier !== 'free' && billingSummary?.subscription_status === 'active' ? (
-                            <p className="text-xs text-green-600 text-center">
-                              ✓ Uses your existing payment method
-                            </p>
-                          ) : (
-                            <p className="text-xs text-gray-500 text-center">
-                              Secure checkout with Stripe
-                            </p>
-                          )
-                        )}
+
                       </div>
                     )}
                   </CardContent>
@@ -799,6 +778,7 @@ export default function AccountPage() {
         }}
         onConfirm={handleConfirmPlanChange}
         calculation={prorationCalculation}
+        paymentMethod={billingSummary?.payment_method}
       />
     </div>
   )
