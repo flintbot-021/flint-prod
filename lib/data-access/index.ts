@@ -109,33 +109,10 @@ export {
 } from './profiles';
 
 // =============================================================================
-// BILLING AND CREDIT MANAGEMENT
+// OLD BILLING SYSTEM REMOVED
 // =============================================================================
-export {
-  // Credit Operations
-  createCreditTransaction,
-  getCreditTransactions,
-  getCreditBalance,
-  updateCreditBalance,
-
-  // Billing History
-  createBillingHistory,
-  getBillingHistory,
-  updateBillingHistoryStatus,
-
-  // Subscription Management
-  upsertUserSubscription,
-  getUserSubscription,
-  updateSubscriptionSlots,
-
-  // Publishing Operations
-  publishCampaign as publishCampaignWithCredits,
-  unpublishCampaign as unpublishCampaignWithCredits,
-  canPublishCampaign,
-
-  // Analytics
-  getBillingSummary
-} from './billing';
+// Removed complex credit-based billing system
+// Now using simplified subscription tiers managed by Stripe
 
 // =============================================================================
 // TYPE RE-EXPORTS
@@ -198,17 +175,6 @@ export type {
   BillingType,
   BillingStatus,
   SubscriptionStatus,
-  CreditTransaction,
-  BillingHistory,
-  UserSubscription,
-  CreateCreditTransaction,
-  CreateBillingHistory,
-  CreateUserSubscription,
-  UpdateCreditTransaction,
-  UpdateBillingHistory,
-  UpdateUserSubscription,
-  ProfileWithBilling,
-  CreditPurchaseRequest,
   BillingSummary
 } from '@/lib/types/database';
 

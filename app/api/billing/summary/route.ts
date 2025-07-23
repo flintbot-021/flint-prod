@@ -1,119 +1,129 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+
+// Tier configuration
+const TIER_CONFIG = {
+  free: {
+    name: 'Free',
+    price: 0,
+    max_campaigns: 0,
+    features: ['Create campaigns', 'Preview campaigns'],
+  },
+  standard: {
+    name: 'Standard',
+    price: 99,
+    max_campaigns: 3,
+    features: ['Everything in Free', 'Publish up to 3 campaigns', 'Basic analytics', 'Email support'],
+  },
+  premium: {
+    name: 'Premium', 
+    price: 249,
+    max_campaigns: -1, // -1 means unlimited
+    features: ['Everything in Standard', 'Unlimited published campaigns', 'Advanced analytics', 'Priority support', 'Custom branding'],
+  },
+} as const
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-                // Get profile with credit balance, billing anchor date, payment method, and cancellation/downgrade info
+    // Get profile with subscription info
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('credit_balance, billing_anchor_date, cancellation_scheduled_at, downgrade_scheduled_at, downgrade_to_credits, payment_method_last_four, payment_method_brand')
+      .select(`
+        subscription_tier,
+        max_published_campaigns,
+        stripe_subscription_id,
+        stripe_price_id,
+        subscription_status,
+        current_period_start,
+        current_period_end,
+        cancellation_scheduled_at,
+        stripe_customer_id
+      `)
       .eq('id', user.id)
-      .single();
+      .single()
 
     if (profileError) {
       return NextResponse.json(
         { error: 'Failed to fetch profile' },
         { status: 500 }
-      );
+      )
     }
 
-    // Get published campaigns with details
-    const { data: publishedCampaigns, count: publishedCount } = await supabase
+    // Get published campaigns count
+    const { count: publishedCount } = await supabase
       .from('campaigns')
-      .select('id, name, published_url, published_at, created_at', { count: 'exact' })
+      .select('*', { count: 'exact' })
       .eq('user_id', user.id)
       .eq('status', 'published')
-      .order('published_at', { ascending: false });
 
-            // Calculate total credits owned from credit_transactions
-        const { data: creditTransactions } = await supabase
-          .from('credit_transactions')
-          .select('amount')
-          .eq('user_id', user.id)
-          .eq('transaction_type', 'purchase');
+    // Get published campaigns details
+    const { data: publishedCampaigns } = await supabase
+      .from('campaigns')
+      .select('id, name, published_url, published_at, created_at')
+      .eq('user_id', user.id)
+      .eq('status', 'published')
+      .order('published_at', { ascending: false })
 
-        const totalCreditsOwned = creditTransactions?.reduce((sum, transaction) => sum + transaction.amount, 0) || 0;
+    const currentTier = profile.subscription_tier || 'free'
+    const tierConfig = TIER_CONFIG[currentTier as keyof typeof TIER_CONFIG]
+    
+    // Calculate available slots
+    const maxCampaigns = tierConfig.max_campaigns
+    const currentlyPublished = publishedCount || 0
+    const availableSlots = maxCampaigns === -1 ? 'unlimited' : Math.max(0, maxCampaigns - currentlyPublished)
 
-        // Calculate next billing date (1 month from billing anchor date)
-        let nextBillingDate = null;
-        let subscriptionEndsAt = null;
-        
-        if (profile.billing_anchor_date) {
-          const anchorDate = new Date(profile.billing_anchor_date);
-          const nextDate = new Date(anchorDate);
-          nextDate.setMonth(nextDate.getMonth() + 1);
-          nextBillingDate = nextDate.toISOString();
-          
-          // If cancellation is scheduled, subscription ends at next billing date
-          if (profile.cancellation_scheduled_at) {
-            subscriptionEndsAt = nextBillingDate;
-          }
-        } else if (totalCreditsOwned > 0) {
-          // If user has credits but no billing anchor date, set it to next month from now
-          const now = new Date();
-          const nextMonth = new Date(now);
-          nextMonth.setMonth(nextMonth.getMonth() + 1);
-          nextBillingDate = nextMonth.toISOString();
-          
-          // Update the billing anchor date in the database for future consistency
-          await supabase
-            .from('profiles')
-            .update({ billing_anchor_date: now.toISOString() })
-            .eq('id', user.id);
-          
-          // If cancellation is scheduled, subscription ends at next billing date
-          if (profile.cancellation_scheduled_at) {
-            subscriptionEndsAt = nextBillingDate;
-          }
-        }
-
-        // Calculate next billing amount (considering scheduled changes)
-        let nextBillingAmount = totalCreditsOwned * 9900; // Current amount by default
-        
-        if (profile.cancellation_scheduled_at) {
-          // If cancelled, next billing amount is 0
-          nextBillingAmount = 0;
-        } else if (profile.downgrade_scheduled_at && profile.downgrade_to_credits !== null) {
-          // If downgrade is scheduled, use the downgrade amount
-          nextBillingAmount = profile.downgrade_to_credits * 9900;
-        }
-
-        // Create billing summary
-        const billingSummary = {
-          credit_balance: profile.credit_balance || 0,
-          total_credits_owned: totalCreditsOwned,
-          currently_published: publishedCount || 0,
-          available_credits: profile.credit_balance || 0,
-          active_slots: publishedCampaigns || [],
-          monthly_cost_cents: nextBillingAmount, // Use calculated next billing amount
-          next_billing_date: nextBillingDate,
-          billing_anchor_date: profile.billing_anchor_date,
-          payment_method_last_four: profile.payment_method_last_four,
-          payment_method_brand: profile.payment_method_brand,
-          billing_history: [],
-          cancellation_scheduled_at: profile.cancellation_scheduled_at,
-          subscription_ends_at: subscriptionEndsAt,
-          downgrade_scheduled_at: profile.downgrade_scheduled_at,
-          downgrade_to_credits: profile.downgrade_to_credits
-        };
+    // Create billing summary
+    const billingSummary = {
+      // Current subscription info
+      current_tier: currentTier,
+      tier_name: tierConfig.name,
+      monthly_price: tierConfig.price,
+      max_campaigns: maxCampaigns,
+      tier_features: tierConfig.features,
+      
+      // Usage info
+      currently_published: currentlyPublished,
+      available_slots: availableSlots,
+      published_campaigns: publishedCampaigns || [],
+      
+      // Billing info
+      subscription_status: profile.subscription_status || 'inactive',
+      current_period_start: profile.current_period_start,
+      current_period_end: profile.current_period_end,
+      cancellation_scheduled: !!profile.cancellation_scheduled_at,
+      
+      // Stripe info
+      stripe_subscription_id: profile.stripe_subscription_id,
+      has_stripe_customer: !!profile.stripe_customer_id,
+      
+      // Available upgrade options
+      available_tiers: {
+        standard: currentTier !== 'standard' ? TIER_CONFIG.standard : null,
+        premium: currentTier !== 'premium' ? TIER_CONFIG.premium : null,
+      },
+      
+      // Downgrade info (can only downgrade from premium to standard)
+      can_downgrade: currentTier === 'premium',
+      downgrade_option: currentTier === 'premium' ? TIER_CONFIG.standard : null,
+    }
 
     return NextResponse.json({
       success: true,
       data: billingSummary
-    });
+    })
 
   } catch (error) {
-    console.error('Error fetching billing summary:', error);
+    console.error('Error fetching billing summary:', error)
     return NextResponse.json(
       { error: 'Failed to fetch billing summary' },
       { status: 500 }
-    );
+    )
   }
 } 

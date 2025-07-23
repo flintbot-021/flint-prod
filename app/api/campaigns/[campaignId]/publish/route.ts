@@ -1,265 +1,209 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
-
-interface PublishParams {
-  params: {
-    campaignId: string;
-  };
-}
+// Tier configuration for campaign limits
+const TIER_LIMITS = {
+  free: 0,
+  standard: 3,
+  premium: -1, // -1 means unlimited
+} as const
 
 export async function POST(
   request: NextRequest,
-  { params }: PublishParams
+  { params }: { params: { campaignId: string } }
 ) {
   try {
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { campaignId } = await params;
-    
-    // Parse request body for slug
-    const body = await request.json();
-    const { slug } = body;
+    const campaignId = params.campaignId
 
-    // Check if user can publish (has credits)
-    const { data: profile } = await supabase
+    // Get user's current subscription tier
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('credit_balance')
+      .select('subscription_tier')
       .eq('id', user.id)
-      .single();
+      .single()
 
-    if (!profile || (profile.credit_balance || 0) < 1) {
+    if (profileError) {
+      return NextResponse.json(
+        { error: 'Failed to get user profile' },
+        { status: 500 }
+      )
+    }
+
+    const currentTier = (profile.subscription_tier as keyof typeof TIER_LIMITS) || 'free'
+    const tierLimit = TIER_LIMITS[currentTier]
+
+    // Check if user can publish based on their tier
+    if (tierLimit === 0) {
       return NextResponse.json(
         { 
-          success: false,
-          error: 'Insufficient credits. Please purchase credits to publish.' 
+          error: 'Publishing not available on Free tier. Please upgrade to publish campaigns.',
+          requiresUpgrade: true,
+          currentTier
         },
-        { status: 400 }
-      );
+        { status: 403 }
+      )
     }
 
-    // Generate published URL slug
-    let publishedUrl = slug;
-    if (!publishedUrl) {
-      // Get campaign name to generate slug
-      const { data: existingCampaign } = await supabase
+    // For non-unlimited tiers, check current published count
+    if (tierLimit > 0) {
+      const { count: publishedCount, error: countError } = await supabase
         .from('campaigns')
-        .select('name')
-        .eq('id', campaignId)
+        .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .single();
-      
-      if (existingCampaign?.name) {
-        publishedUrl = existingCampaign.name
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '');
-      } else {
-        publishedUrl = 'my-tool';
+        .eq('status', 'published')
+
+      if (countError) {
+        return NextResponse.json(
+          { error: 'Failed to check published campaigns' },
+          { status: 500 }
+        )
+      }
+
+      if ((publishedCount || 0) >= tierLimit) {
+        return NextResponse.json(
+          { 
+            error: `You've reached your ${currentTier} tier limit of ${tierLimit} published campaigns. Please upgrade or unpublish other campaigns.`,
+            requiresUpgrade: true,
+            currentTier,
+            currentCount: publishedCount,
+            tierLimit
+          },
+          { status: 403 }
+        )
       }
     }
 
-    // Start transaction: update campaign status and consume credit
-    const { data: campaign, error: campaignError } = await supabase
-      .from('campaigns')
-      .update({
-        status: 'published',
-        published_at: new Date().toISOString(),
-        published_url: publishedUrl
-      })
-      .eq('id', campaignId)
-      .eq('user_id', user.id)
-      .select()
-      .single();
-
-    if (campaignError || !campaign) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Failed to publish campaign' 
-        },
-        { status: 500 }
-      );
-    }
-
-    // Consume 1 credit
-    const { error: creditError } = await supabase
-      .from('profiles')
-      .update({
-        credit_balance: (profile.credit_balance || 0) - 1
-      })
-      .eq('id', user.id);
-
-    if (creditError) {
-      // Rollback campaign status
-      await supabase
-        .from('campaigns')
-        .update({ status: 'draft', published_at: null })
-        .eq('id', campaignId);
-
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Failed to consume credit' 
-        },
-        { status: 500 }
-      );
-    }
-
-    // Create credit usage transaction record
-    const { error: usageTransactionError } = await supabase
-      .from('credit_transactions')
-      .insert({
-        user_id: user.id,
-        transaction_type: 'usage',
-        amount: -1, // Negative for usage
-        description: `Published campaign: ${campaign.name}`,
-        campaign_id: campaignId,
-        metadata: {
-          campaign_name: campaign.name,
-          action: 'publish'
-        }
-      });
-
-    if (usageTransactionError) {
-      console.error('Failed to create usage transaction:', usageTransactionError);
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: campaign,
-      message: 'Campaign published successfully! 1 credit has been consumed.'
-    });
-
-  } catch (error) {
-    console.error('Error publishing campaign:', error);
-    return NextResponse.json(
-      { error: 'Failed to publish campaign' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(
-  request: NextRequest,
-  { params }: PublishParams
-) {
-  try {
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { campaignId } = await params;
-
-    // Get current campaign to check if it's published
+    // Get the campaign to publish
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
       .select('*')
       .eq('id', campaignId)
       .eq('user_id', user.id)
-      .single();
+      .single()
 
     if (campaignError || !campaign) {
       return NextResponse.json(
-        { 
-          success: false,
-          error: 'Campaign not found' 
-        },
+        { error: 'Campaign not found' },
         { status: 404 }
-      );
+      )
     }
 
-    if (campaign.status !== 'published') {
+    if (campaign.status === 'published') {
       return NextResponse.json(
-        { 
-          success: false,
-          error: 'Campaign is not published' 
-        },
+        { error: 'Campaign is already published' },
         { status: 400 }
-      );
+      )
     }
 
-    // Unpublish the campaign
-    const { data: updatedCampaign, error: updateError } = await supabase
+    // Publish the campaign
+    const { data: publishedCampaign, error: publishError } = await supabase
       .from('campaigns')
       .update({
-        status: 'draft',
-        published_at: null
+        status: 'published',
+        published_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
       .eq('id', campaignId)
       .eq('user_id', user.id)
       .select()
-      .single();
+      .single()
 
-    if (updateError) {
+    if (publishError) {
       return NextResponse.json(
-        { 
-          success: false,
-          error: 'Failed to unpublish campaign' 
-        },
+        { error: 'Failed to publish campaign' },
         { status: 500 }
-      );
-    }
-
-    // Refund 1 credit
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('credit_balance')
-      .eq('id', user.id)
-      .single();
-
-    const { error: creditError } = await supabase
-      .from('profiles')
-      .update({
-        credit_balance: (profile?.credit_balance || 0) + 1
-      })
-      .eq('id', user.id);
-
-    if (creditError) {
-      console.error('Failed to refund credit:', creditError);
-      // Don't fail the unpublish operation, just log the error
-    } else {
-      // Create credit refund transaction record
-      const { error: refundTransactionError } = await supabase
-        .from('credit_transactions')
-        .insert({
-          user_id: user.id,
-          transaction_type: 'refund',
-          amount: 1, // Positive for refund
-          description: `Unpublished campaign: ${campaign.name}`,
-          campaign_id: campaignId,
-          metadata: {
-            campaign_name: campaign.name,
-            action: 'unpublish'
-          }
-        });
-
-      if (refundTransactionError) {
-        console.error('Failed to create refund transaction:', refundTransactionError);
-      }
+      )
     }
 
     return NextResponse.json({
       success: true,
-      data: updatedCampaign,
-      message: 'Campaign unpublished successfully! 1 credit has been refunded.'
-    });
+      data: publishedCampaign,
+      message: `Campaign published successfully! You're on the ${currentTier} tier.`
+    })
 
   } catch (error) {
-    console.error('Error unpublishing campaign:', error);
+    console.error('Error publishing campaign:', error)
+    return NextResponse.json(
+      { error: 'Failed to publish campaign' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { campaignId: string } }
+) {
+  try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const campaignId = params.campaignId
+
+    // Get the campaign to unpublish
+    const { data: campaign, error: campaignError } = await supabase
+      .from('campaigns')
+      .select('*')
+      .eq('id', campaignId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (campaignError || !campaign) {
+      return NextResponse.json(
+        { error: 'Campaign not found' },
+        { status: 404 }
+      )
+    }
+
+    if (campaign.status !== 'published') {
+      return NextResponse.json(
+        { error: 'Campaign is not published' },
+        { status: 400 }
+      )
+    }
+
+    // Unpublish the campaign
+    const { data: unpublishedCampaign, error: unpublishError } = await supabase
+      .from('campaigns')
+      .update({
+        status: 'draft',
+        published_at: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', campaignId)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+
+    if (unpublishError) {
+      return NextResponse.json(
+        { error: 'Failed to unpublish campaign' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: unpublishedCampaign,
+      message: 'Campaign unpublished successfully!'
+    })
+
+  } catch (error) {
+    console.error('Error unpublishing campaign:', error)
     return NextResponse.json(
       { error: 'Failed to unpublish campaign' },
       { status: 500 }
-    );
+    )
   }
 } 
