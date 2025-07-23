@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { targetTier } = body
 
-    if (!['standard', 'premium'].includes(targetTier)) {
+    if (!['free', 'standard', 'premium'].includes(targetTier)) {
       return NextResponse.json({ error: 'Invalid target tier' }, { status: 400 })
     }
 
@@ -55,6 +55,78 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         error: `Already on ${targetTier} plan` 
       }, { status: 400 })
+    }
+
+    // Special handling for downgrade to Free tier
+    if (targetTier === 'free') {
+      // Get subscription from Stripe to get billing period info
+      const subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id)
+      
+      if (!subscription || subscription.status !== 'active') {
+        return NextResponse.json({ 
+          error: 'Subscription is not active' 
+        }, { status: 400 })
+      }
+
+      // Get billing period from the subscription item
+      const subscriptionItems = (subscription as any).items?.data
+      if (!subscriptionItems || subscriptionItems.length === 0) {
+        return NextResponse.json({ 
+          error: 'No subscription items found' 
+        }, { status: 500 })
+      }
+      
+      const subscriptionItem = subscriptionItems[0]
+      const periodStart = subscriptionItem.current_period_start
+      const periodEnd = subscriptionItem.current_period_end
+      
+      if (!periodStart || !periodEnd) {
+        return NextResponse.json({ 
+          error: 'Invalid billing period data from Stripe' 
+        }, { status: 500 })
+      }
+      
+      const currentPeriodStart = new Date(periodStart * 1000)
+      const currentPeriodEnd = new Date(periodEnd * 1000)
+      const now = new Date()
+      
+      // Calculate days
+      const totalDays = Math.ceil((currentPeriodEnd.getTime() - currentPeriodStart.getTime()) / (1000 * 60 * 60 * 24))
+      const daysRemaining = Math.ceil((currentPeriodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      
+      const currentTier = profile.subscription_tier as 'standard' | 'premium'
+      const currentAmount = TIER_CONFIG[currentTier].amount
+
+      return NextResponse.json({
+        success: true,
+        calculation: {
+          currentTier,
+          targetTier: 'free',
+          currentAmount,
+          targetAmount: 0, // Free tier costs $0
+          
+          // Billing period info
+          currentPeriodStart: currentPeriodStart.toISOString(),
+          currentPeriodEnd: currentPeriodEnd.toISOString(),
+          totalDays,
+          daysUsed: totalDays - daysRemaining,
+          daysRemaining,
+          
+          // No charges for downgrade to free
+          immediateCharge: 0,
+          isUpgrade: false,
+          isDowngrade: true,
+          
+          // Next billing (none - free tier)
+          nextBillingDate: currentPeriodEnd.toISOString(),
+          nextBillingAmount: 0,
+          
+          // Display formatting
+          formattedImmediateCharge: '$0.00',
+          changeType: 'downgrade',
+          actionText: 'No immediate charge',
+        }
+      })
     }
 
     // Get subscription from Stripe to get accurate billing info

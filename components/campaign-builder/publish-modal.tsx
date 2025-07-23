@@ -369,7 +369,8 @@ export function PublishModal({
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </div>
   )
 } 

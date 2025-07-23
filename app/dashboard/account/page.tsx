@@ -41,10 +41,10 @@ interface BillingSummary {
   scheduled_change_date?: string
   can_downgrade: boolean
   published_campaigns: Array<{
-    id: string
-    name: string
+  id: string
+  name: string
     slug: string
-    published_at: string
+  published_at: string
   }>
   available_tiers: {
     standard: boolean
@@ -129,6 +129,8 @@ export default function AccountPage() {
   const [showProrationModal, setShowProrationModal] = useState(false)
   const [prorationCalculation, setProrationCalculation] = useState<any>(null)
   const [pendingTier, setPendingTier] = useState<string | null>(null)
+  const [campaignImpact, setCampaignImpact] = useState<any>(null)
+  const [scheduledCampaignImpact, setScheduledCampaignImpact] = useState<any>(null)
 
   useEffect(() => {
     loadBillingSummary()
@@ -177,9 +179,14 @@ export default function AccountPage() {
       setIsLoading(true)
       const response = await fetch('/api/billing/summary')
       const result = await response.json()
-
+      
       if (result.data) {
         setBillingSummary(result.data)
+        
+        // Check if there's a scheduled downgrade that will affect campaigns
+        if (result.data.scheduled_tier_change) {
+          await checkScheduledCampaignImpact(result.data.scheduled_tier_change)
+        }
       }
     } catch (error) {
       console.error('Failed to load billing summary:', error)
@@ -218,8 +225,29 @@ export default function AccountPage() {
           throw new Error(prorationResult.error || 'Failed to calculate proration')
         }
 
+        // For downgrades, also check campaign impact
+        let campaignImpactResult = null
+        if (prorationResult.calculation.isDowngrade) {
+          console.log('Checking campaign impact for downgrade to:', tier)
+          const campaignResponse = await fetch('/api/billing/handle-campaign-limits', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ targetTier: tier, preview: true }),
+          })
+
+          if (campaignResponse.ok) {
+            campaignImpactResult = await campaignResponse.json()
+          } else {
+            console.error('Failed to check campaign impact')
+            // Continue without campaign impact info
+          }
+        }
+
         // Store the calculation and show confirmation modal
         setProrationCalculation(prorationResult.calculation)
+        setCampaignImpact(campaignImpactResult)
         setPendingTier(tier)
         setShowProrationModal(true)
         setIsUpgrading(null) // Reset loading state since we're showing modal
@@ -259,49 +287,55 @@ export default function AccountPage() {
     }
   }
 
-  const handleCancelSubscription = () => {
-    const tierName = billingSummary?.tier_name || 'current'
-    const periodEnd = billingSummary?.current_period_end
-    
-    const endDate = periodEnd ? new Date(periodEnd).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long', 
-      day: 'numeric'
-    }) : 'the end of your billing period'
+  const handleCancelSubscription = async () => {
+    try {
+      // Calculate proration for Free tier (should show no charge)
+      console.log('Calculating proration for Free tier')
+      const prorationResponse = await fetch('/api/billing/calculate-proration', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ targetTier: 'free' }),
+      })
 
-    showConfirmation({
-      title: `Downgrade to Free Plan`,
-      description: `Are you sure you want to downgrade to the free plan? You'll continue to have access to your ${tierName} features until ${endDate}. You can upgrade again anytime.`,
-      confirmText: 'Yes, Downgrade to Free',
-      cancelText: 'Keep Current Plan',
-      variant: 'warning',
-      onConfirm: async () => {
-        try {
-          const response = await fetch('/api/billing/cancel-subscription', {
-            method: 'POST',
-          })
+      const prorationResult = await prorationResponse.json()
 
-          const result = await response.json()
-
-          if (response.ok) {
-            toast({
-              title: 'Downgraded to Free Plan',
-              description: `You've been downgraded to the free plan. You can continue using your ${tierName} features until ${endDate}.`,
-            })
-            await loadBillingSummary()
-          } else {
-            throw new Error(result.error || 'Failed to downgrade subscription')
-          }
-        } catch (error) {
-          console.error('Error downgrading subscription:', error)
-          toast({
-            title: 'Error',
-            description: error instanceof Error ? error.message : 'Failed to downgrade subscription',
-            variant: 'destructive',
-          })
-        }
+      if (!prorationResponse.ok) {
+        throw new Error(prorationResult.error || 'Failed to calculate proration')
       }
-    })
+
+      // Check campaign impact for Free tier
+      console.log('Checking campaign impact for downgrade to Free')
+      const campaignResponse = await fetch('/api/billing/handle-campaign-limits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ targetTier: 'free', preview: true }),
+      })
+
+      let campaignImpactResult = null
+      if (campaignResponse.ok) {
+        campaignImpactResult = await campaignResponse.json()
+      } else {
+        console.error('Failed to check campaign impact')
+        // Continue without campaign impact info
+      }
+
+      // Store data and show confirmation modal
+      setProrationCalculation(prorationResult.calculation)
+      setCampaignImpact(campaignImpactResult)
+      setPendingTier('free')
+      setShowProrationModal(true)
+    } catch (error) {
+      console.error('Error preparing Free downgrade:', error)
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to prepare downgrade',
+        variant: 'destructive',
+      })
+    }
   }
 
   const handleCancelDowngrade = async () => {
@@ -336,31 +370,57 @@ export default function AccountPage() {
 
     try {
       if (method === 'existing') {
-        // Update existing subscription (uses existing payment method)
-        console.log('Updating existing subscription to:', pendingTier)
-        const response = await fetch('/api/billing/update-subscription', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ tier: pendingTier }),
-        })
-
-        const result = await response.json()
-
-        if (response.ok) {
-          toast({
-            title: 'Subscription Updated!',
-            description: result.message || `Successfully updated to ${pendingTier} plan.`,
-            duration: 5000,
+        // For free tier downgrades, use cancel subscription endpoint
+        if (pendingTier === 'free') {
+          console.log('Cancelling subscription (downgrade to free)')
+          const response = await fetch('/api/billing/cancel-subscription', {
+            method: 'POST',
           })
-          await loadBillingSummary()
+
+          const result = await response.json()
+
+          if (response.ok) {
+            toast({
+              title: 'Downgrade Scheduled!',
+              description: result.message || 'Successfully scheduled downgrade to Free plan.',
+              duration: 5000,
+            })
+            await loadBillingSummary()
+          } else {
+            throw new Error(result.error || 'Failed to schedule downgrade')
+          }
         } else {
-          throw new Error(result.error || 'Failed to update subscription')
+          // Update existing subscription (uses existing payment method)
+          console.log('Updating existing subscription to:', pendingTier)
+          const response = await fetch('/api/billing/update-subscription', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ tier: pendingTier }),
+          })
+
+          const result = await response.json()
+
+          if (response.ok) {
+            toast({
+              title: 'Subscription Updated!',
+              description: result.message || `Successfully updated to ${pendingTier} plan.`,
+              duration: 5000,
+            })
+            await loadBillingSummary()
+          } else {
+            throw new Error(result.error || 'Failed to update subscription')
+          }
         }
-      } else {
-        // Create checkout session for different/new card
-        console.log('Creating checkout session for different card:', pendingTier)
+              } else {
+          // For free tier downgrades, different/new card methods don't make sense
+          if (pendingTier === 'free') {
+            throw new Error('Free tier downgrades should use existing payment method flow')
+          }
+          
+          // Create checkout session for different/new card
+          console.log('Creating checkout session for different card:', pendingTier)
         const response = await fetch('/api/billing/create-upgrade-checkout', {
           method: 'POST',
           headers: {
@@ -395,6 +455,7 @@ export default function AccountPage() {
         setShowProrationModal(false)
         setProrationCalculation(null)
         setPendingTier(null)
+        setCampaignImpact(null)
       }
     }
   }
@@ -480,10 +541,10 @@ export default function AccountPage() {
           </Button>
         </div>
 
-        <div className="mb-8">
+          <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Account & Billing</h1>
           <p className="text-gray-600">Manage your subscription and view your campaign usage</p>
-        </div>
+          </div>
 
         {/* Usage Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -517,17 +578,17 @@ export default function AccountPage() {
           </Card>
 
           {/* Subscription Status */}
-          <Card>
+            <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Status</CardTitle>
               <BarChart3 className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
+              </CardHeader>
+              <CardContent>
               <div className="text-2xl font-bold">
                 <Badge variant={billingSummary.subscription_status === 'active' ? 'default' : 'secondary'}>
                   {billingSummary.subscription_status}
                 </Badge>
-              </div>
+                  </div>
               {billingSummary.current_period_end && (
                 <p className="text-xs text-gray-600">
                   Renews {new Date(billingSummary.current_period_end).toLocaleDateString()}
@@ -535,7 +596,7 @@ export default function AccountPage() {
               )}
             </CardContent>
           </Card>
-        </div>
+                </div>
 
         {/* Subscription Plans */}
         <div className="mb-8">
@@ -568,8 +629,8 @@ export default function AccountPage() {
                   {isCurrentTier && (
                     <div className="absolute -top-3 right-4">
                       <Badge variant="default">Current Plan</Badge>
-                    </div>
-                  )}
+                  </div>
+                )}
 
                   <CardHeader className="text-center pb-4">
                     <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full ${tier.bgColor} mb-4`}>
@@ -617,18 +678,18 @@ export default function AccountPage() {
                                 ? new Date(billingSummary.current_period_end).toLocaleDateString()
                                 : 'end of period'
                               }
-                            </p>
-                            <Button 
+                    </p>
+                    <Button 
                               variant="outline" 
-                              size="sm" 
+                      size="sm"
                               className="w-full text-red-600 hover:text-red-700"
                               onClick={() => handleReactivateSubscription()}
-                            >
-                              Cancel Downgrade
-                            </Button>
-                          </div>
-                        )}
-                        
+                    >
+                      Cancel Downgrade
+                    </Button>
+                  </div>
+                )}
+
                         {billingSummary.scheduled_tier_change && (
                           <div className="text-center space-y-2">
                             <Badge variant="secondary" className="text-blue-700">
@@ -641,18 +702,18 @@ export default function AccountPage() {
                                   : 'next billing date'
                               }
                             </p>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                               className="w-full text-blue-600 hover:text-blue-700"
                               onClick={() => handleCancelDowngrade()}
-                            >
+                          >
                               Cancel Downgrade
-                            </Button>
-                          </div>
+                          </Button>
+                        </div>
                         )}
-                      </div>
-                    ) : (
+                  </div>
+                ) : (
                       <div className="space-y-2">
                         {/* Determine button text and action based on current tier and target tier */}
                         {(() => {
@@ -663,13 +724,13 @@ export default function AccountPage() {
                           if (targetTier === 'free') {
                             if (currentTier !== 'free' && !billingSummary?.cancellation_scheduled && !billingSummary?.scheduled_tier_change) {
                               return (
-                                <Button 
+                    <Button 
                                   className="w-full text-red-600 hover:text-red-700"
                                   onClick={handleCancelSubscription}
                                   variant="outline"
-                                >
+                    >
                                   Downgrade to Free
-                                </Button>
+                    </Button>
                               )
                             }
                             return null // Free users can't "upgrade" to free
@@ -679,11 +740,11 @@ export default function AccountPage() {
                           if (targetTier === 'standard') {
                             if (currentTier === 'premium' && !billingSummary?.cancellation_scheduled && !billingSummary?.scheduled_tier_change) {
                               return (
-                                <Button 
+                  <Button 
                                   className="w-full"
                                   onClick={() => handleUpgrade('standard')}
                                   disabled={isUpgrading === 'standard'}
-                                  variant="outline"
+                    variant="outline"
                                 >
                                   {isUpgrading === 'standard' ? (
                                     <>
@@ -693,11 +754,11 @@ export default function AccountPage() {
                                   ) : (
                                     'Downgrade to Standard'
                                   )}
-                                </Button>
+                  </Button>
                               )
                             } else if (currentTier === 'free') {
                               return (
-                                <Button 
+                    <Button 
                                   className="w-full"
                                   onClick={() => handleUpgrade('standard')}
                                   disabled={isUpgrading === 'standard'}
@@ -714,7 +775,7 @@ export default function AccountPage() {
                                       <ExternalLink className="h-4 w-4 ml-2" />
                                     </>
                                   )}
-                                </Button>
+                    </Button>
                               )
                             }
                             return null
@@ -724,7 +785,7 @@ export default function AccountPage() {
                           if (targetTier === 'premium') {
                             if (currentTier !== 'premium') {
                               return (
-                                <Button 
+                    <Button 
                                   className="w-full"
                                   onClick={() => handleUpgrade('premium')}
                                   disabled={isUpgrading === 'premium'}
@@ -745,7 +806,7 @@ export default function AccountPage() {
                                       )}
                                     </>
                                   )}
-                                </Button>
+                    </Button>
                               )
                             }
                             return null
@@ -754,10 +815,10 @@ export default function AccountPage() {
                           return null
                         })()}
 
-                      </div>
+                </div>
                     )}
-                  </CardContent>
-                </Card>
+              </CardContent>
+            </Card>
               )
             })}
           </div>
@@ -765,21 +826,21 @@ export default function AccountPage() {
 
         {/* Published Campaigns List */}
         {billingSummary.published_campaigns.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
                 <Eye className="h-5 w-5" />
                 Published Campaigns ({billingSummary.published_campaigns.length})
-              </CardTitle>
+                </CardTitle>
               <CardDescription>
                 Your currently published campaigns
               </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </CardHeader>
+              <CardContent>
               <div className="space-y-3">
                 {billingSummary.published_campaigns.map((campaign) => (
                   <div key={campaign.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
+                  <div>
                       <h4 className="font-medium">{campaign.name}</h4>
                       <p className="text-sm text-gray-600">
                         Published {new Date(campaign.published_at).toLocaleDateString()}
@@ -787,22 +848,22 @@ export default function AccountPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">Live</Badge>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
+                        <Button
+                          variant="outline"
+                          size="sm"
                         onClick={() => router.push(`/dashboard/campaigns/${campaign.id}`)}
-                      >
+                        >
                         Manage
-                      </Button>
+                        </Button>
+                      </div>
                     </div>
-                  </div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+                </div>
+              </CardContent>
+            </Card>
+            )}
       </div>
-      
+
       {/* Confirmation Dialog */}
       {ConfirmationDialog}
       
@@ -813,11 +874,13 @@ export default function AccountPage() {
           setShowProrationModal(false)
           setProrationCalculation(null)
           setPendingTier(null)
+          setCampaignImpact(null)
         }}
         onConfirm={handleConfirmPlanChange}
         calculation={prorationCalculation}
+        campaignImpact={campaignImpact}
         paymentMethod={billingSummary?.payment_method}
       />
-    </div>
+        </div>
   )
 } 

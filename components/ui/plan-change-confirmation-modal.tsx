@@ -39,11 +39,28 @@ interface ProrationCalculation {
   totalDays: number
 }
 
+interface CampaignImpact {
+  action: 'none' | 'unpublish'
+  currentPublished: number
+  maxAllowed: number | string
+  campaignsToKeep: Array<{
+    id: string
+    name: string
+    published_at: string
+  }>
+  campaignsToUnpublish: Array<{
+    id: string
+    name: string
+    published_at: string
+  }>
+}
+
 interface PlanChangeConfirmationModalProps {
   isOpen: boolean
   onClose: () => void
   onConfirm: (method: 'existing' | 'different' | 'new') => Promise<void>
   calculation: ProrationCalculation | null
+  campaignImpact?: CampaignImpact | null
   paymentMethod?: {
     brand: string
     last4: string
@@ -58,6 +75,7 @@ export function PlanChangeConfirmationModal({
   onClose,
   onConfirm,
   calculation,
+  campaignImpact,
   paymentMethod,
   isLoading = false
 }: PlanChangeConfirmationModalProps) {
@@ -156,6 +174,56 @@ export function PlanChangeConfirmationModal({
               </p>
             )}
           </div>
+
+          {/* Campaign Impact Warning */}
+          {campaignImpact && campaignImpact.action === 'unpublish' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <h3 className="font-medium text-amber-900 mb-2 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Campaign Impact
+              </h3>
+              <div className="space-y-2">
+                <p className="text-sm text-amber-800">
+                  <strong>{campaignImpact.campaignsToUnpublish.length} campaign{campaignImpact.campaignsToUnpublish.length !== 1 ? 's' : ''} will be unpublished</strong> to meet the {campaignImpact.maxAllowed} campaign limit for {formatTierName(calculation.targetTier)} plan.
+                </p>
+                
+                {campaignImpact.campaignsToKeep.length > 0 && (
+                  <div className="text-sm text-amber-700">
+                    <p className="font-medium mb-1">Will remain published (newest {campaignImpact.campaignsToKeep.length}):</p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      {campaignImpact.campaignsToKeep.map((campaign) => (
+                        <li key={campaign.id} className="truncate">
+                          {campaign.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {campaignImpact.campaignsToUnpublish.length > 0 && (
+                  <div className="text-sm text-amber-700">
+                    <p className="font-medium mb-1">Will be unpublished (older {campaignImpact.campaignsToUnpublish.length}):</p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      {campaignImpact.campaignsToUnpublish.slice(0, 3).map((campaign) => (
+                        <li key={campaign.id} className="truncate">
+                          {campaign.name}
+                        </li>
+                      ))}
+                      {campaignImpact.campaignsToUnpublish.length > 3 && (
+                        <li className="text-amber-600 italic">
+                          and {campaignImpact.campaignsToUnpublish.length - 3} more...
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
+                
+                <p className="text-xs text-amber-600 mt-3">
+                  💡 Unpublished campaigns remain as drafts and can be republished later if you upgrade.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Next Billing */}
           <div className="bg-gray-50 rounded-lg p-4">
