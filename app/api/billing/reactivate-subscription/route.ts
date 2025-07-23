@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createServiceRoleClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     // Get current profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('stripe_subscription_id, subscription_tier')
+      .select('stripe_subscription_id, subscription_tier, cancellation_scheduled_at')
       .eq('id', user.id)
       .single()
 
@@ -27,24 +28,24 @@ export async function POST(request: NextRequest) {
     }
 
     if (!profile.stripe_subscription_id) {
-      return NextResponse.json({ error: 'No active subscription found' }, { status: 400 })
+      return NextResponse.json({ error: 'No subscription found' }, { status: 400 })
     }
 
-    if (profile.subscription_tier === 'free') {
-      return NextResponse.json({ error: 'No subscription to cancel' }, { status: 400 })
+    if (!profile.cancellation_scheduled_at) {
+      return NextResponse.json({ error: 'Subscription is not scheduled for cancellation' }, { status: 400 })
     }
 
-    // Cancel the subscription at period end
+    // Reactivate the subscription in Stripe (remove the cancellation)
     await stripe.subscriptions.update(profile.stripe_subscription_id, {
-      cancel_at_period_end: true,
+      cancel_at_period_end: false,
     })
 
-    // Update profile to indicate cancellation is scheduled
+    // Update profile to remove cancellation
     const serviceSupabase = createServiceRoleClient()
     const { error: updateError } = await serviceSupabase
       .from('profiles')
       .update({
-        cancellation_scheduled_at: new Date().toISOString(),
+        cancellation_scheduled_at: null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id)
@@ -52,20 +53,20 @@ export async function POST(request: NextRequest) {
     if (updateError) {
       console.error('Error updating profile:', updateError)
       return NextResponse.json(
-        { error: 'Failed to update cancellation status' }, 
+        { error: 'Failed to update reactivation status' }, 
         { status: 500 }
       )
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Subscription cancelled successfully. You\'ll retain access until the end of your billing period.',
+      message: 'Subscription reactivated successfully. Your subscription will continue as normal.',
     })
 
   } catch (error) {
-    console.error('Error cancelling subscription:', error)
+    console.error('Error reactivating subscription:', error)
     return NextResponse.json(
-      { error: 'Failed to cancel subscription' },
+      { error: 'Failed to reactivate subscription' },
       { status: 500 }
     )
   }

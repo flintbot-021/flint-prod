@@ -44,10 +44,18 @@ export async function GET(request: NextRequest) {
         current_period_start,
         current_period_end,
         cancellation_scheduled_at,
+        scheduled_tier_change,
+        scheduled_change_date,
         stripe_customer_id
       `)
       .eq('id', user.id)
       .single()
+
+    console.log('Profile data from database:', {
+      subscription_tier: profile?.subscription_tier,
+      scheduled_tier_change: profile?.scheduled_tier_change,
+      scheduled_change_date: profile?.scheduled_change_date
+    })
 
     if (profileError) {
       return NextResponse.json(
@@ -98,6 +106,8 @@ export async function GET(request: NextRequest) {
       current_period_start: profile.current_period_start,
       current_period_end: profile.current_period_end,
       cancellation_scheduled: !!profile.cancellation_scheduled_at,
+      scheduled_tier_change: profile.scheduled_tier_change,
+      scheduled_change_date: profile.scheduled_change_date,
       
       // Stripe info
       stripe_subscription_id: profile.stripe_subscription_id,
