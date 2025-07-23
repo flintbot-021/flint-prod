@@ -186,6 +186,9 @@ export default function AccountPage() {
         // Check if there's a scheduled downgrade that will affect campaigns
         if (result.data.scheduled_tier_change) {
           await checkScheduledCampaignImpact(result.data.scheduled_tier_change)
+        } else {
+          // Clear scheduled campaign impact if no scheduled downgrade
+          setScheduledCampaignImpact(null)
         }
       }
     } catch (error) {
@@ -197,6 +200,31 @@ export default function AccountPage() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const checkScheduledCampaignImpact = async (scheduledTier: string) => {
+    try {
+      console.log('Checking scheduled campaign impact for tier:', scheduledTier)
+      const response = await fetch('/api/billing/handle-campaign-limits', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ targetTier: scheduledTier, preview: true }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        setScheduledCampaignImpact(result)
+        console.log('Scheduled campaign impact:', result)
+      } else {
+        console.error('Failed to check scheduled campaign impact')
+        setScheduledCampaignImpact(null)
+      }
+    } catch (error) {
+      console.error('Error checking scheduled campaign impact:', error)
+      setScheduledCampaignImpact(null)
     }
   }
 
@@ -838,26 +866,47 @@ export default function AccountPage() {
               </CardHeader>
               <CardContent>
               <div className="space-y-3">
-                {billingSummary.published_campaigns.map((campaign) => (
-                  <div key={campaign.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                      <h4 className="font-medium">{campaign.name}</h4>
-                      <p className="text-sm text-gray-600">
-                        Published {new Date(campaign.published_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">Live</Badge>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                        onClick={() => router.push(`/dashboard/campaigns/${campaign.id}`)}
-                        >
-                        Manage
-                        </Button>
+                {billingSummary.published_campaigns.map((campaign) => {
+                  // Check if this campaign is scheduled for unpublishing
+                  const isScheduledForUnpublish = scheduledCampaignImpact?.campaignsToUnpublish?.some(
+                    (c: any) => c.id === campaign.id
+                  )
+                  
+                  return (
+                    <div key={campaign.id} className={`flex items-center justify-between p-3 rounded-lg ${
+                      isScheduledForUnpublish ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'
+                    }`}>
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium">{campaign.name}</h4>
+                          {isScheduledForUnpublish && (
+                            <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-100">
+                              Scheduled for Unpublishing
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          Published {new Date(campaign.published_at).toLocaleDateString()}
+                        </p>
+                        {isScheduledForUnpublish && billingSummary.scheduled_change_date && billingSummary.scheduled_tier_change && (
+                          <p className="text-sm text-amber-700 mt-1">
+                            ⚠️ Will be unpublished on {new Date(billingSummary.scheduled_change_date).toLocaleDateString()} due to downgrade to {billingSummary.scheduled_tier_change === 'free' ? 'Free' : billingSummary.scheduled_tier_change.charAt(0).toUpperCase() + billingSummary.scheduled_tier_change.slice(1)} plan
+                          </p>
+                        )}
                       </div>
-                    </div>
-                ))}
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">Live</Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                          onClick={() => router.push(`/dashboard/campaigns/${campaign.id}`)}
+                          >
+                          Manage
+                          </Button>
+                        </div>
+                      </div>
+                  )
+                })}
                 </div>
               </CardContent>
             </Card>
