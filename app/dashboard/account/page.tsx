@@ -115,6 +115,33 @@ export default function AccountPage() {
 
   useEffect(() => {
     loadBillingSummary()
+    
+    // Handle success/cancel from Stripe checkout
+    const urlParams = new URLSearchParams(window.location.search)
+    const success = urlParams.get('success')
+    const canceled = urlParams.get('canceled')
+    const sessionId = urlParams.get('session_id')
+    
+    if (success && sessionId) {
+      toast({
+        title: 'Subscription Successful!',
+        description: 'Your plan has been upgraded successfully. Welcome to your new tier!',
+        duration: 5000,
+      })
+      
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, '/dashboard/account')
+    } else if (canceled) {
+      toast({
+        title: 'Checkout Cancelled',
+        description: 'Your subscription upgrade was cancelled. No charges were made.',
+        variant: 'destructive',
+        duration: 5000,
+      })
+      
+      // Clean up URL parameters  
+      window.history.replaceState({}, document.title, '/dashboard/account')
+    }
   }, [])
 
   const loadBillingSummary = async () => {
@@ -151,6 +178,12 @@ export default function AccountPage() {
       })
 
       const result = await response.json()
+
+      if (!response.ok) {
+        // Show more detailed error information
+        const errorMsg = result.details ? `${result.error}: ${result.details}` : result.error
+        throw new Error(errorMsg || 'Failed to create checkout session')
+      }
 
       if (result.checkout_url) {
         window.location.href = result.checkout_url

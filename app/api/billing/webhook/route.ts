@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -88,42 +88,64 @@ export async function POST(request: NextRequest) {
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   console.log('Processing checkout completion:', session.id)
+  console.log('Session metadata:', session.metadata)
+  console.log('Session mode:', session.mode)
+  console.log('Session customer:', session.customer)
   
   const customerId = session.customer as string
   const userId = session.metadata?.user_id
   const tier = session.metadata?.tier as 'standard' | 'premium'
   
   if (!userId || !tier) {
-    console.error('Missing required metadata in checkout session')
+    console.error('Missing required metadata in checkout session:', { userId, tier, metadata: session.metadata })
     return
   }
 
-  const supabase = await createClient()
+  if (!customerId) {
+    console.error('Missing customer ID in checkout session')
+    return
+  }
+
+  const supabase = createServiceRoleClient()
   
   try {
+    // Get subscription details if this is a subscription checkout
+    let subscriptionId = null
+    if (session.mode === 'subscription' && session.subscription) {
+      subscriptionId = session.subscription as string
+      console.log('Subscription ID from session:', subscriptionId)
+    }
+
     // Update user's subscription tier
     const tierConfig = TIER_CONFIG[tier]
     
-    const { error } = await supabase
+    const updateData = {
+      subscription_tier: tier,
+      max_published_campaigns: tierConfig.max_campaigns,
+      subscription_status: 'active',
+      stripe_customer_id: customerId,
+      updated_at: new Date().toISOString(),
+      ...(subscriptionId && { stripe_subscription_id: subscriptionId })
+    }
+
+    console.log('Updating user with data:', updateData)
+    
+    const { error, data } = await supabase
       .from('profiles')
-      .update({
-        subscription_tier: tier,
-        max_published_campaigns: tierConfig.max_campaigns,
-        subscription_status: 'active',
-        stripe_customer_id: customerId,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', userId)
+      .select()
 
     if (error) {
       console.error('Error updating user subscription:', error)
-      return
+      throw error
     }
 
-    console.log(`Successfully updated user ${userId} to ${tier} tier`)
+    console.log(`Successfully updated user ${userId} to ${tier} tier:`, data)
     
   } catch (error) {
     console.error('Error in handleCheckoutCompleted:', error)
+    throw error // Re-throw to ensure webhook fails if there's an issue
   }
 }
 
@@ -131,7 +153,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   console.log('Processing subscription update:', subscription.id)
   
   const customerId = subscription.customer as string
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   
   try {
     // Get user by Stripe customer ID
@@ -191,7 +213,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   console.log('Processing subscription deletion:', subscription.id)
   
   const customerId = subscription.customer as string
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   
   try {
     // Get user by Stripe customer ID
@@ -252,7 +274,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   // The subscription update webhook handles the actual subscription changes
   
   const customerId = invoice.customer as string
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   
   try {
     // Get user by Stripe customer ID
@@ -279,7 +301,7 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   console.log('Processing failed payment:', invoice.id)
   
   const customerId = invoice.customer as string
-  const supabase = await createClient()
+  const supabase = createServiceRoleClient()
   
   try {
     // Get user by Stripe customer ID
