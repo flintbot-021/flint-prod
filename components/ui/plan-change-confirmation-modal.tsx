@@ -42,7 +42,7 @@ interface ProrationCalculation {
 interface PlanChangeConfirmationModalProps {
   isOpen: boolean
   onClose: () => void
-  onConfirm: () => Promise<void>
+  onConfirm: (method: 'existing' | 'different' | 'new') => Promise<void>
   calculation: ProrationCalculation | null
   paymentMethod?: {
     brand: string
@@ -63,10 +63,10 @@ export function PlanChangeConfirmationModal({
 }: PlanChangeConfirmationModalProps) {
   const [isConfirming, setIsConfirming] = useState(false)
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (method: 'existing' | 'different' | 'new') => {
     setIsConfirming(true)
     try {
-      await onConfirm()
+      await onConfirm(method)
     } finally {
       setIsConfirming(false)
       onClose()
@@ -183,21 +183,72 @@ export function PlanChangeConfirmationModal({
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleConfirm}
-              disabled={isConfirming || isLoading}
-              className="w-full sm:w-auto"
-              variant={calculation.isUpgrade ? 'default' : 'outline'}
-            >
-              {isConfirming || isLoading ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-                  Processing...
-                </>
+            
+            {/* Different button sets based on upgrade vs downgrade and payment method */}
+            {calculation.isUpgrade && calculation.immediateCharge > 0 ? (
+              paymentMethod ? (
+                // Has existing payment method - show both options
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    onClick={() => handleConfirm('existing')}
+                    disabled={isConfirming || isLoading}
+                    className="w-full sm:w-auto"
+                    variant="default"
+                  >
+                    {isConfirming || isLoading ? (
+                      <>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                        Processing...
+                      </>
+                    ) : (
+                      `Confirm with ${paymentMethod.brand.charAt(0).toUpperCase() + paymentMethod.brand.slice(1)} ••••${paymentMethod.last4}`
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => handleConfirm('different')}
+                    disabled={isConfirming || isLoading}
+                    className="w-full sm:w-auto"
+                    variant="outline"
+                  >
+                    Use Different Card
+                  </Button>
+                </div>
               ) : (
-                `Confirm ${calculation.changeType === 'upgrade' ? 'Upgrade' : 'Change'}`
-              )}
-            </Button>
+                // No payment method - direct to checkout
+                <Button
+                  onClick={() => handleConfirm('new')}
+                  disabled={isConfirming || isLoading}
+                  className="w-full sm:w-auto"
+                  variant="default"
+                >
+                  {isConfirming || isLoading ? (
+                    <>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Continue to Secure Checkout'
+                  )}
+                </Button>
+              )
+            ) : (
+              // Downgrade or no charge - single confirm button
+              <Button
+                onClick={() => handleConfirm('existing')}
+                disabled={isConfirming || isLoading}
+                className="w-full sm:w-auto"
+                variant={calculation.isUpgrade ? 'default' : 'outline'}
+              >
+                {isConfirming || isLoading ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                    Processing...
+                  </>
+                ) : (
+                  `Confirm ${calculation.changeType === 'upgrade' ? 'Upgrade' : 'Change'}`
+                )}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

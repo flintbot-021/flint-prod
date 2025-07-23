@@ -138,6 +138,8 @@ export default function AccountPage() {
     const success = urlParams.get('success')
     const canceled = urlParams.get('canceled')
     const sessionId = urlParams.get('session_id')
+    const upgrade = urlParams.get('upgrade')
+    const tier = urlParams.get('tier')
     
     if (success && sessionId) {
       toast({
@@ -148,7 +150,16 @@ export default function AccountPage() {
       
       // Clean up URL parameters
       window.history.replaceState({}, document.title, '/dashboard/account')
-    } else if (canceled) {
+    } else if (upgrade === 'success' && tier) {
+      toast({
+        title: 'Upgrade Successful!',
+        description: `Your plan has been upgraded to ${tier}. The new features are now available!`,
+        duration: 5000,
+      })
+      
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, '/dashboard/account')
+    } else if (canceled || upgrade === 'cancelled') {
       toast({
         title: 'Checkout Cancelled',
         description: 'Your subscription upgrade was cancelled. No charges were made.',
@@ -320,31 +331,56 @@ export default function AccountPage() {
     }
   }
 
-  const handleConfirmPlanChange = async () => {
+  const handleConfirmPlanChange = async (method: 'existing' | 'different' | 'new') => {
     if (!pendingTier) return
 
     try {
-      // Update existing subscription (uses existing payment method)
-      console.log('Updating existing subscription to:', pendingTier)
-      const response = await fetch('/api/billing/update-subscription', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ tier: pendingTier }),
-      })
-
-      const result = await response.json()
-
-      if (response.ok) {
-        toast({
-          title: 'Subscription Updated!',
-          description: result.message || `Successfully updated to ${pendingTier} plan.`,
-          duration: 5000,
+      if (method === 'existing') {
+        // Update existing subscription (uses existing payment method)
+        console.log('Updating existing subscription to:', pendingTier)
+        const response = await fetch('/api/billing/update-subscription', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ tier: pendingTier }),
         })
-        await loadBillingSummary()
+
+        const result = await response.json()
+
+        if (response.ok) {
+          toast({
+            title: 'Subscription Updated!',
+            description: result.message || `Successfully updated to ${pendingTier} plan.`,
+            duration: 5000,
+          })
+          await loadBillingSummary()
+        } else {
+          throw new Error(result.error || 'Failed to update subscription')
+        }
       } else {
-        throw new Error(result.error || 'Failed to update subscription')
+        // Create checkout session for different/new card
+        console.log('Creating checkout session for different card:', pendingTier)
+        const response = await fetch('/api/billing/create-upgrade-checkout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            tier: pendingTier,
+            prorationAmount: prorationCalculation?.immediateCharge || 0
+          }),
+        })
+
+        const result = await response.json()
+
+        if (response.ok) {
+          // Redirect to Stripe checkout
+          window.location.href = result.checkoutUrl
+          return // Don't reset modal state yet - user will return from checkout
+        } else {
+          throw new Error(result.error || 'Failed to create checkout session')
+        }
       }
     } catch (error) {
       console.error('Error updating subscription:', error)
@@ -354,10 +390,12 @@ export default function AccountPage() {
         variant: 'destructive',
       })
     } finally {
-      // Reset modal state
-      setShowProrationModal(false)
-      setProrationCalculation(null)
-      setPendingTier(null)
+      // Only reset modal state for existing payment method flow
+      if (method === 'existing') {
+        setShowProrationModal(false)
+        setProrationCalculation(null)
+        setPendingTier(null)
+      }
     }
   }
 

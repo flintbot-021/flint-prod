@@ -94,10 +94,11 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   
   const customerId = session.customer as string
   const userId = session.metadata?.user_id
-  const tier = session.metadata?.tier as 'standard' | 'premium'
+  const tier = session.metadata?.tier || session.metadata?.target_tier as 'standard' | 'premium'
+  const upgradeType = session.metadata?.upgrade_type
   
   if (!userId || !tier) {
-    console.error('Missing required metadata in checkout session:', { userId, tier, metadata: session.metadata })
+    console.error('Missing required metadata in checkout session:', { userId, tier, upgradeType, metadata: session.metadata })
     return
   }
 
@@ -109,15 +110,52 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const supabase = createServiceRoleClient()
   
   try {
+    if (upgradeType === 'proration') {
+      // Handle upgrade checkout - need to update existing subscription
+      console.log('Processing upgrade checkout for user:', userId, 'to tier:', tier)
+      
+      // Get current profile to find existing subscription
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('stripe_subscription_id')
+        .eq('id', userId)
+        .single()
+        
+      if (profileError || !profile?.stripe_subscription_id) {
+        console.error('Could not find existing subscription for upgrade:', profileError)
+        return
+      }
+      
+      // Update the Stripe subscription to new tier
+      const priceId = tier === 'standard' ? process.env.STRIPE_STANDARD_PRICE_ID : process.env.STRIPE_PREMIUM_PRICE_ID
+      const subscription = await stripe.subscriptions.update(profile.stripe_subscription_id, {
+        items: [{
+          id: (await stripe.subscriptions.retrieve(profile.stripe_subscription_id)).items.data[0].id,
+          price: priceId,
+        }],
+        proration_behavior: 'none', // We already charged for proration
+      })
+      
+      console.log('Updated subscription for upgrade:', subscription.id)
+    }
+    
     // Get subscription details if this is a subscription checkout
     let subscriptionId = null
     if (session.mode === 'subscription' && session.subscription) {
       subscriptionId = session.subscription as string
       console.log('Subscription ID from session:', subscriptionId)
+    } else if (upgradeType === 'proration') {
+      // For upgrade checkouts, keep the existing subscription ID
+      const { data: profile } = await supabase
+        .from('profiles')  
+        .select('stripe_subscription_id')
+        .eq('id', userId)
+        .single()
+      subscriptionId = profile?.stripe_subscription_id
     }
 
     // Update user's subscription tier
-    const tierConfig = TIER_CONFIG[tier]
+    const tierConfig = TIER_CONFIG[tier as keyof typeof TIER_CONFIG]
     
     const updateData = {
       subscription_tier: tier,
