@@ -5,7 +5,7 @@ import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { getMobileClasses, getCampaignTheme, getCampaignTextColor } from '../utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Activity } from 'lucide-react'
 
 interface SliderConfig {
   id: string
@@ -332,20 +332,19 @@ export function MultipleSlidersSection({
 
       {/* Navigation */}
       <SectionNavigationBar
-        canGoNext={canContinue()}
-        onNext={handleContinue}
         onPrevious={onPrevious}
-        actionButton={{
-          label: 'Continue',
-          onClick: handleContinue,
-          disabled: !canContinue()
-        }}
-        canGoPrevious={index > 0}
+        icon={<Activity className="h-5 w-5 text-primary" />}
+        label={`Sliders ${index + 1}`}
         validationText={
           sliders.some(s => s.required) 
             ? 'Please complete all required sliders' 
             : undefined
         }
+        actionButton={{
+          label: 'Next',
+          onClick: handleContinue,
+          disabled: !canContinue()
+        }}
         deviceInfo={deviceInfo}
         campaign={campaign}
       />
