@@ -96,8 +96,8 @@ export const SECTION_TYPES: SectionType[] = [
     category: 'input',
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     defaultSettings: {
-      headline: 'Rate the following',
-      subheading: 'Please provide your ratings for each item below',
+      headline: '',
+      subheading: '',
       sliders: [
         {
           id: 'slider_1',

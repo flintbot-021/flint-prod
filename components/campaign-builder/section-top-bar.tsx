@@ -167,7 +167,6 @@ export function SectionTopBar({
                 <InlineEditableText
                   value={section.title}
                   onSave={handleNameChange}
-                  variant="body"
                   placeholder={isQuestionSection(section.type) ? "use_underscores_for_variables" : "Section name (edit me)"}
                   className={cn(
                     "font-medium",
@@ -175,12 +174,6 @@ export function SectionTopBar({
                       ? "text-red-600"
                       : "text-foreground"
                   )}
-                  showEditIcon={false}
-                  showSaveStatus={true}
-                  validation={validateName}
-                  maxLength={50}
-                  required={true}
-                  autoSave={false}
                 />
               </div>
             )}

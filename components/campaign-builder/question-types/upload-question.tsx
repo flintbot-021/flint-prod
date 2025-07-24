@@ -233,99 +233,93 @@ export function UploadQuestion({
   if (isPreview) {
     // Preview Mode - Show file upload interface
     return (
-      <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
-        <div className="space-y-6">
-          {/* Question Text */}
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-gray-900">
-              {headline || 'Upload your files'}
-              {required && <span className="text-red-500 ml-1">*</span>}
-            </h1>
-            
-            {subheading && (
+      <div className={cn('py-16 px-6 max-w-2xl mx-auto', className)}>
+        {/* Question Text */}
+        <div className="pt-8 text-center">
+          <h1 className="text-4xl font-bold text-gray-900">
+            {headline || 'Upload your files'}
+            {required && <span className="text-red-500 ml-1">*</span>}
+          </h1>
+          
+          {subheading && (
+            <div className="pt-4">
               <p className="text-xl text-gray-600">
                 {subheading}
               </p>
+            </div>
+          )}
+        </div>
+
+        {/* Upload Area */}
+        <div className="pt-6 space-y-4">
+          <div
+            className={cn(
+              'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
+              isDragOver 
+                ? 'border-blue-500 bg-blue-50/10' 
+                : 'border-gray-600 hover:border-gray-500'
             )}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <div className="space-y-2">
+              <p className="text-lg text-gray-300">
+                Drag and drop your files here, or{' '}
+                <label className="text-blue-500 hover:text-blue-400 cursor-pointer underline">
+                  browse
+                  <input
+                    type="file"
+                    multiple
+                    accept={getAcceptedTypes()}
+                    onChange={(e) => e.target.files && handleFileSelect(e.target.files)}
+                    className="hidden"
+                  />
+                </label>
+              </p>
+              <p className="text-sm text-gray-400">
+                Maximum {maxFiles} files, {maxFileSize}MB each
+              </p>
+            </div>
           </div>
 
-          {/* Upload Area */}
-          <div className="space-y-4">
-            <div
-              className={cn(
-                'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
-                isDragOver 
-                  ? 'border-blue-500 bg-blue-50/10' 
-                  : 'border-gray-600 hover:border-gray-500'
-              )}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
-              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          {/* Show uploaded files */}
+          {uploadedFiles.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-medium text-gray-300">Uploaded Files:</h4>
               <div className="space-y-2">
-                <p className="text-lg text-gray-300">
-                  Drag and drop your files here, or{' '}
-                  <label className="text-blue-500 hover:text-blue-400 cursor-pointer underline">
-                    browse
-                    <input
-                      type="file"
-                      multiple
-                      accept={getAcceptedTypes()}
-                      onChange={(e) => e.target.files && handleFileSelect(e.target.files)}
-                      className="hidden"
-                    />
-                  </label>
-                </p>
-                <p className="text-sm text-gray-500">
-                  Maximum {maxFiles} files, {maxFileSize}MB each
-                </p>
-                <div className="text-xs text-gray-600 space-y-1">
-                  {allowImages && <p>Images: JPG, PNG, GIF, etc.</p>}
-                  {allowDocuments && <p>Documents: PDF, DOC, TXT, etc.</p>}
-                  {allowAudio && <p>Audio: MP3, WAV, etc.</p>}
-                  {allowVideo && <p>Video: MP4, AVI, etc.</p>}
-                </div>
+                {uploadedFiles.map((file) => (
+                  <div key={file.id} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      {getFileIcon(file.type)}
+                      <div>
+                        <p className="text-sm font-medium text-white">{file.name}</p>
+                        <p className="text-xs text-gray-400">{formatFileSize(file.size)}</p>
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => removeFile(file.id)}
+                      className="text-gray-400 hover:text-red-400"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             </div>
+          )}
 
-            {/* Uploaded Files */}
-            {uploadedFiles.length > 0 && (
-              <div className="space-y-2">
-                <h3 className="text-sm font-medium text-gray-300">Uploaded Files ({uploadedFiles.length})</h3>
-                <div className="space-y-2">
-                  {uploadedFiles.map((file) => (
-                    <div key={file.id} className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        {getFileIcon(file.type)}
-                        <div>
-                          <p className="text-sm font-medium text-white">{file.name}</p>
-                          <p className="text-xs text-gray-400">{formatFileSize(file.size)}</p>
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeFile(file.id)}
-                        className="text-gray-400 hover:text-red-400"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+          {isUploading && (
+            <div className="text-center py-4">
+              <div className="inline-flex items-center space-x-2 text-blue-500">
+                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-sm">Uploading files...</span>
               </div>
-            )}
-
-            {isUploading && (
-              <div className="text-center py-4">
-                <div className="inline-flex items-center space-x-2 text-blue-500">
-                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-sm">Uploading files...</span>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -333,41 +327,31 @@ export function UploadQuestion({
 
   // Edit Mode - Configuration interface
   return (
-    <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
+    <div className={cn('py-16 px-6 max-w-2xl mx-auto', className)}>
       {/* Main Question - Large, center-aligned */}
-      <div className="text-center">
+      <div className="pt-8">
         <InlineEditableText
           value={headline}
           onSave={handleHeadlineChange}
-          variant="body"
           placeholder="Type your question here"
-          className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-4xl !font-bold !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          variant="heading"
+          className="text-center block w-full"
         />
       </div>
 
       {/* Subheading */}
-      <div className="text-center">
+      <div className="pt-4">
         <InlineEditableText
           value={subheading}
           onSave={handleSubheadingChange}
-          variant="body"
           placeholder="Type sub heading here"
-          className="text-xl text-gray-500 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-xl !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          variant="subheading"
+          className="text-center block w-full"
         />
       </div>
 
       {/* Upload Configuration */}
-      <div className="space-y-6 pt-6">
+      <div className="pt-6">
         {/* File Types */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-gray-900">Allowed File Types</h3>
@@ -423,15 +407,7 @@ export function UploadQuestion({
         </div>
       </div>
 
-      {/* Saving Indicator */}
-      {isSaving && (
-        <div className="fixed top-4 right-4">
-          <div className="flex items-center space-x-2 text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-            <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-medium">Saving...</span>
-          </div>
-        </div>
-      )}
+
     </div>
   )
 } 

@@ -317,17 +317,13 @@ export function SectionBlock({
             <InlineEditableText
               value={content}
               onSave={handleContentChange}
-              variant="body"
               placeholder={
                 isQuestionType 
                   ? "Enter your question text..." 
                   : "Enter your content..."
               }
               className="min-h-[60px] p-3 border border-border rounded-lg w-full"
-              showEditIcon={false}
-              showSaveStatus={true}
               multiline={true}
-              maxLength={1000}
             />
           </div>
 

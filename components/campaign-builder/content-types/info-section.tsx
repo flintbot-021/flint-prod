@@ -401,14 +401,7 @@ export function InfoSection({
                   <InlineEditableText
                     value={title}
                     onSave={handleTitleChange}
-                    variant="heading"
-                    placeholder="Enter section title..."
                     className="p-3 border border-border rounded-lg w-full font-medium"
-                    showEditIcon={false}
-                    showSaveStatus={true}
-                    maxLength={100}
-                    required={showTitle}
-                    validation={validateTitle}
                   />
                 </div>
 
@@ -490,15 +483,7 @@ export function InfoSection({
             <InlineEditableText
               value={content}
               onSave={handleContentChange}
-              variant="body"
-              placeholder="Enter your content text..."
               className="min-h-[120px] p-3 border border-border rounded-lg w-full"
-              showEditIcon={false}
-              showSaveStatus={true}
-              multiline={true}
-              maxLength={2000}
-              required={true}
-              validation={validateContent}
             />
           </div>
         )}
@@ -569,12 +554,7 @@ export function InfoSection({
                 <InlineEditableText
                   value={imageAlt}
                   onSave={handleImageAltChange}
-                  variant="body"
-                  placeholder="Describe this image for accessibility..."
                   className="p-3 border border-border rounded-lg w-full text-muted-foreground"
-                  showEditIcon={false}
-                  showSaveStatus={true}
-                  maxLength={200}
                 />
               </div>
             )}

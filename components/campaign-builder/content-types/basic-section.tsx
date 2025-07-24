@@ -77,18 +77,15 @@ export function BasicSection({ section, isPreview = false, onUpdate, className }
 
   // Build Mode - Simple and clean like text questions
   return (
-    <div className={cn('py-16 space-y-6 max-w-2xl mx-auto', className)}>
+    <div className={cn('py-16 max-w-2xl mx-auto', className)}>
       {/* Title - Seamless inline editing (identical to hero section) */}
       <div className="pt-8">
         <InlineEditableText
           value={title}
           onSave={(newTitle) => updateSettings({ title: newTitle })}
-          autoSave={false}
           placeholder="Your Headline"
-          className="!text-4xl !font-bold text-center text-gray-400 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0"
-          inputClassName="!text-4xl !font-bold !border-0 !bg-transparent !shadow-none !outline-none !ring-0 text-center text-gray-400 placeholder:text-gray-600 focus:!bg-transparent hover:!bg-transparent"
-          showEditIcon={false}
           variant="heading"
+          className="text-center block w-full"
         />
       </div>
 
@@ -97,12 +94,9 @@ export function BasicSection({ section, isPreview = false, onUpdate, className }
         <InlineEditableText
           value={subtitle}
           onSave={(newSubtitle) => updateSettings({ subtitle: newSubtitle })}
-          autoSave={false}
-          placeholder="Add your compelling subtitle here"
-          className="!text-xl text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0"
-          inputClassName="!text-xl !border-0 !bg-transparent !shadow-none !outline-none !ring-0 text-center text-gray-500 placeholder:text-gray-600 focus:!bg-transparent hover:!bg-transparent"
-          showEditIcon={false}
-          variant="body"
+          placeholder="Add your  subtitle here"
+          variant="subheading"
+          className="text-center block w-full"
         />
       </div>
 
@@ -111,12 +105,8 @@ export function BasicSection({ section, isPreview = false, onUpdate, className }
         <InlineEditableText
           value={content}
           onSave={(newContent) => updateSettings({ content: newContent })}
-          autoSave={false}
           placeholder="Add your content here. You can write multiple paragraphs and create rich content that engages your audience."
-          className="!text-lg text-center text-gray-500 hover:bg-transparent focus:bg-transparent !border-0 !bg-transparent !shadow-none !outline-none !ring-0 rounded-none px-0 py-0 !min-h-32"
-          inputClassName="!text-lg !border-0 !bg-transparent !shadow-none !outline-none !ring-0 text-center text-gray-500 placeholder:text-gray-600 focus:!bg-transparent hover:!bg-transparent !min-h-32"
-          showEditIcon={false}
-          variant="body"
+          className="text-lg text-center block w-full min-h-32"
           multiline={true}
         />
       </div>

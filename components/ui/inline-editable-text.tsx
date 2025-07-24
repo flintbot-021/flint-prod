@@ -1,191 +1,167 @@
 'use client'
 
-import React, { forwardRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { useInlineEdit, InlineEditOptions } from '@/hooks/use-inline-edit'
-import { Input } from './input'
-import { Textarea } from './textarea'
-import { Loader2, AlertCircle, Check } from 'lucide-react'
 
-export interface InlineEditableTextProps extends Omit<InlineEditOptions, 'onSave'> {
+export interface InlineEditableTextProps {
   value: string
   onSave: (value: string) => Promise<void> | void
   className?: string
-  inputClassName?: string
-  editClassName?: string
-  errorClassName?: string
   placeholder?: string
   disabled?: boolean
-  
-  // Styling options
-  variant?: 'default' | 'heading' | 'subheading' | 'body' | 'caption'
-  size?: 'sm' | 'md' | 'lg'
-  
-  // Display options
-  showEditIcon?: boolean
-  showSaveStatus?: boolean
-  truncate?: boolean
+  multiline?: boolean
+  autoSave?: boolean
+  variant?: 'heading' | 'subheading' | 'paragraph' | 'label'
 }
 
+// Variant styles - clean and focused on typography only
 const variantStyles = {
-  default: 'text-sm text-foreground',
-  heading: 'text-xl font-semibold text-foreground',
-  subheading: 'text-lg font-medium text-foreground', 
-  body: 'text-sm text-foreground',
-  caption: 'text-xs text-muted-foreground'
+  heading: 'text-4xl font-bold leading-tight',
+  subheading: 'text-xl font-medium leading-normal', 
+  paragraph: 'text-base font-normal leading-normal',
+  label: 'text-sm font-medium leading-normal'
 }
 
-const sizeStyles = {
-  sm: 'text-xs',
-  md: 'text-sm', 
-  lg: 'text-base'
-}
-
-export const InlineEditableText = forwardRef<
-  HTMLDivElement,
-  InlineEditableTextProps
->(({
+export function InlineEditableText({
   value,
   onSave,
   className,
-  inputClassName,
-  editClassName,
-  errorClassName,
   placeholder = 'Click to edit...',
   disabled = false,
-  variant = 'default',
-  size = 'md',
-  showEditIcon = false,
-  showSaveStatus = true,
-  truncate = false,
   multiline = false,
-  maxLength,
-  required = false,
-  validation,
   autoSave = true,
-  autoSaveDelay = 500,
-  ...options
-}, ref) => {
-  const {
-    isEditing,
-    value: editValue,
-    displayValue,
-    error,
-    isSaving,
-    isDirty,
-    startEdit,
-    setValue,
-    handleKeyDown,
-    handleBlur,
-    inputRef
-  } = useInlineEdit(value, {
-    onSave,
-    placeholder,
-    multiline,
-    maxLength,
-    required,
-    validation,
-    autoSave,
-    autoSaveDelay,
-    ...options
-  })
+  variant = 'paragraph'
+}: InlineEditableTextProps) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState('')
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
 
-  // Determine if content is empty
-  const isEmpty = !value && !placeholder
+  // Determine if we have actual content (not just placeholder)
+  const hasContent = value && value.trim().length > 0
+
+  // Get variant styling
+  const variantClasses = variantStyles[variant]
+
+  const startEdit = () => {
+    if (disabled) return
+    
+    setIsEditing(true)
+    // Start with current value or empty string (clear placeholder)
+    setEditValue(value || '')
+  }
+
+  const handleSave = async () => {
+    const trimmedValue = editValue.trim()
+    
+    try {
+      await onSave(trimmedValue)
+      setIsEditing(false)
+    } catch (error) {
+      console.error('Failed to save:', error)
+      // Keep editing mode open on error
+    }
+  }
+
+  const handleCancel = () => {
+    setEditValue('')
+    setIsEditing(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (multiline) {
+      // For multiline, save on Ctrl+Enter or Cmd+Enter
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        handleSave()
+      }
+      // Cancel on Escape
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        handleCancel()
+      }
+    } else {
+      // For single line, save on Enter
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        handleSave()
+      }
+      // Cancel on Escape
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        handleCancel()
+      }
+    }
+  }
+
+  const handleBlur = () => {
+    if (autoSave) {
+      handleSave()
+    } else {
+      setIsEditing(false)
+    }
+  }
+
+  // Auto-focus when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      // Move cursor to end
+      const element = inputRef.current
+      const length = element.value.length
+      element.setSelectionRange(length, length)
+    }
+  }, [isEditing])
 
   if (disabled) {
     return (
-      <div
-        ref={ref}
-        className={cn(
-          // Don't apply variant styles - let parent control all styling completely
-          truncate && 'truncate',
-          'cursor-not-allowed opacity-50',
-          className
-        )}
-      >
-        {displayValue}
+      <div className={cn('cursor-not-allowed opacity-50', variantClasses, className)}>
+        {hasContent ? value : placeholder}
       </div>
     )
   }
 
   if (isEditing) {
-    const InputComponent = multiline ? Textarea : Input
+    const InputComponent = multiline ? 'textarea' : 'input'
     
     return (
-      <div ref={ref} className={cn('relative', editClassName)}>
-        <InputComponent
-          ref={inputRef as React.RefObject<HTMLInputElement & HTMLTextAreaElement>}
-          value={editValue}
-          onChange={(e) => setValue(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onBlur={handleBlur}
-          placeholder={placeholder}
-          maxLength={maxLength}
-          className={cn(
-            'w-full border-0 bg-transparent p-0 m-0 focus:ring-0 focus:border-0',
-            'resize-none shadow-none', // Remove all default input styling
-            className, // Use the same className as view mode for consistent styling
-            error && 'border-red-500 focus:ring-red-500'
-          )}
-          style={{
-            fontSize: 'inherit',
-            fontFamily: 'inherit', 
-            fontWeight: 'inherit',
-            lineHeight: 'inherit', // Inherit line height from parent
-            color: 'inherit',
-            minHeight: 'auto',
-            height: 'auto'
-          }}
-          autoFocus
-        />
-        
-        {/* Save status indicator */}
-        {showSaveStatus && (isSaving || isDirty) && (
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center">
-            {isSaving ? (
-              <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-            ) : isDirty ? (
-              <div className="w-2 h-2 bg-orange-400 rounded-full" />
-            ) : (
-              <Check className="h-3 w-3 text-green-500" />
-            )}
-          </div>
+      <InputComponent
+        ref={inputRef as any}
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+        placeholder=""
+        className={cn(
+          // Remove all default input styling
+          'border-0 outline-none ring-0 shadow-none bg-transparent p-0 m-0',
+          'focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none',
+          'resize-none', // For textarea
+          variantClasses, // Apply variant styling
+          className
         )}
-        
-        {/* Error message */}
-        {error && (
-          <div className={cn(
-            'absolute top-full left-0 mt-1 flex items-center space-x-1 text-xs text-red-600',
-            errorClassName
-          )}>
-            <AlertCircle className="h-3 w-3" />
-            <span>{error}</span>
-          </div>
-        )}
-      </div>
+        style={{
+          width: '100%',
+          minHeight: multiline ? '1.2em' : 'auto',
+          height: 'auto'
+        }}
+      />
     )
   }
 
   // View mode
   return (
     <div
-      ref={ref}
       onClick={startEdit}
       className={cn(
-        'relative cursor-text', // Removed outline-none to allow focus outline
-        // Use the same className as edit mode for consistent styling
-        truncate && 'truncate',
-        isEmpty && 'text-gray-400 italic',
-        // Keep focus outline for accessibility
-        'focus:outline-offset-1',
-        // Ensure consistent spacing with edit mode
-        multiline && 'min-h-[inherit] whitespace-pre-wrap',
+        'cursor-text',
+        // Show light grey for placeholder, black for content
+        hasContent ? 'text-black' : 'text-gray-400',
+        variantClasses, // Apply variant styling
         className
       )}
       tabIndex={0}
       role="button"
-      aria-label={`Edit ${displayValue || 'text'}`}
+      aria-label={`Edit ${value || 'text'}`}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
@@ -193,25 +169,7 @@ export const InlineEditableText = forwardRef<
         }
       }}
     >
-      {/* Render content with line breaks preserved */}
-      {displayValue ? (
-        <span 
-          dangerouslySetInnerHTML={{ 
-            __html: displayValue.replace(/\n/g, '<br>') 
-          }} 
-        />
-      ) : null}
-      
-      {/* Edit indicator - removed to avoid layout shifts */}
-      
-      {/* Empty state indicator */}
-      {isEmpty && (
-        <span className="text-gray-300 select-none">
-          {placeholder || 'Click to add text...'}
-        </span>
-      )}
+      {hasContent ? value : placeholder}
     </div>
   )
-})
-
-InlineEditableText.displayName = 'InlineEditableText' 
+} 
