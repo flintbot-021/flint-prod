@@ -118,7 +118,7 @@ function extractInputVariablesWithTypesFromBuilder(sections: CampaignSection[], 
   }> = []
   
   sections
-    .filter(s => s.order < currentOrder && isQuestionSection(s.type) && !s.type.includes('capture'))
+    .filter(s => isQuestionSection(s.type) && !s.type.includes('capture') && s.title)
     .forEach(section => {
       if (section.type === 'question-slider-multiple') {
         // Handle multiple sliders - each slider becomes a variable
@@ -215,24 +215,12 @@ export function AILogicSection({
   }, [settings.outputVariables])
   
   // Extract actual variables from campaign sections with type information
-  // Create a stable cache key based on section changes
-  const sectionsCacheKey = useMemo(() => {
-    return allSections
-      .filter(s => isQuestionSection(s.type) && s.title)
-      .map(s => `${s.id}-${s.title}-${s.type}-${s.order}`)
-      .sort()
-      .join('|')
-  }, [allSections])
-  
   const extractedVariablesWithTypes = useMemo(() => {
     if (allSections.length > 0 && section?.order !== undefined) {
-      console.log('🔄 Extracting variables from sections:', allSections.length, 'sections, logic at order:', section.order)
-      const variables = extractInputVariablesWithTypesFromBuilder(allSections, section.order)
-      console.log('🔄 Extracted variables:', variables.map(v => v.name))
-      return variables
+      return extractInputVariablesWithTypesFromBuilder(allSections, section.order)
     }
     return []
-  }, [allSections, section?.order, sectionsCacheKey])
+  }, [allSections, section?.order])
   
   // Extract just the variable names for backward compatibility
   const extractedVariables = useMemo(() => {
@@ -241,9 +229,7 @@ export function AILogicSection({
   
   // Use extracted variables or fallback to provided ones
   const currentAvailableVariables = useMemo(() => {
-    const variables = extractedVariables.length > 0 ? extractedVariables : availableVariables
-    console.log('🔄 Current available variables for @ dropdown:', variables)
-    return variables
+    return extractedVariables.length > 0 ? extractedVariables : availableVariables
   }, [extractedVariables, availableVariables])
   
   // Separate text and file variables
