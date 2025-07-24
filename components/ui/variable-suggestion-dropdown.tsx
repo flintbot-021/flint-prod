@@ -128,7 +128,7 @@ export function VariableSuggestionDropdown({
     return 'No sample data'
   }
   
-  // Render text with highlighted @ variables
+  // Render text with highlighted @ variables as simple colored text
   const renderHighlightedText = (text: string) => {
     if (!text) return null
     
@@ -141,22 +141,23 @@ export function VariableSuggestionDropdown({
         const variableName = part.substring(1)
         const isValidVariable = variables.some(v => v.name === variableName)
 
-                return (
+        return (
           <span
             key={index}
-                    className={cn(
-              'px-1.5 py-0.5 rounded-md border',
+            className={cn(
+              // Simple colored text - no background or styling
+              'font-medium',
               isValidVariable 
-                ? 'bg-orange-100 border-orange-300' 
-                : 'bg-gray-100 border-gray-300'
+                ? 'text-orange-600' 
+                : 'text-gray-400'
             )}
-            style={{ color: 'transparent' }} // Force transparent text
           >
             {part}
           </span>
         )
       }
-      return <span key={index} style={{ color: 'transparent' }}>{part}</span>
+      // Show regular text normally - inherit color from parent
+      return <span key={index}>{part}</span>
     })
   }
   
@@ -241,8 +242,62 @@ export function VariableSuggestionDropdown({
     }, 0)
   }, [value, dropdown.atIndex, onChange])
   
-  // Handle keyboard navigation
+  // Handle keyboard navigation and atomic @variable deletion
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Handle atomic @variable deletion on backspace
+    if (e.key === 'Backspace') {
+      const input = e.target as HTMLInputElement | HTMLTextAreaElement
+      const cursorPosition = input.selectionStart || 0
+      
+      // Look backwards from cursor to find if we're at the end of an @variable
+      const textBeforeCursor = value.substring(0, cursorPosition)
+      const variableMatch = textBeforeCursor.match(/@\w+$/)
+      
+      if (variableMatch) {
+        // We're at the end of an @variable, delete the entire variable
+        e.preventDefault()
+        const newValue = textBeforeCursor.substring(0, textBeforeCursor.length - variableMatch[0].length) + 
+                        value.substring(cursorPosition)
+        const newCursorPosition = cursorPosition - variableMatch[0].length
+        
+        onChange(newValue)
+        
+        // Set cursor position after the change
+        setTimeout(() => {
+          input.setSelectionRange(newCursorPosition, newCursorPosition)
+        }, 0)
+        
+        return
+      }
+    }
+    
+    // Handle atomic @variable deletion on delete key
+    if (e.key === 'Delete') {
+      const input = e.target as HTMLInputElement | HTMLTextAreaElement
+      const cursorPosition = input.selectionStart || 0
+      
+      // Look forwards from cursor to find if we're at the beginning of an @variable
+      const textAfterCursor = value.substring(cursorPosition)
+      const variableMatch = textAfterCursor.match(/^@\w+/)
+      
+      if (variableMatch) {
+        // We're at the beginning of an @variable, delete the entire variable
+        e.preventDefault()
+        const newValue = value.substring(0, cursorPosition) + 
+                        value.substring(cursorPosition + variableMatch[0].length)
+        
+        onChange(newValue)
+        
+        // Cursor stays at the same position
+        setTimeout(() => {
+          input.setSelectionRange(cursorPosition, cursorPosition)
+        }, 0)
+        
+        return
+      }
+    }
+    
+    // Handle dropdown navigation (existing logic)
     if (!dropdown.show) return
     
     switch (e.key) {
@@ -265,7 +320,7 @@ export function VariableSuggestionDropdown({
         setDropdown(prev => ({ ...prev, show: false }))
         break
     }
-  }, [dropdown.show, filteredVariables, selectedIndex, insertVariable])
+  }, [dropdown.show, filteredVariables, selectedIndex, insertVariable, value, onChange])
   
   // Handle blur
   const handleBlur = useCallback((e: React.FocusEvent) => {
@@ -298,16 +353,18 @@ export function VariableSuggestionDropdown({
         ref={overlayRef}
         className={cn(
           'absolute inset-0 pointer-events-none whitespace-pre-wrap break-words overflow-visible',
-          'font-[inherit] text-transparent leading-relaxed', // Match input font but hide text, add more line height
+          'font-[inherit] leading-relaxed', // Match input font and line height - removed text-transparent
           inputClassName?.includes('text-center') ? 'text-center' : '',
           inputClassName?.includes('text-left') ? 'text-left' : '',
           inputClassName?.includes('text-right') ? 'text-right' : '',
-          inputClassName // Apply same styling as input
+          inputClassName // Apply same styling as input including text color
         )}
         style={{
           zIndex: 1,
-          padding: '0.25rem', // Default padding, will be overridden by inputClassName
-          lineHeight: '1.8', // Extra line height to accommodate tags
+          lineHeight: '1.8', // Match input line height exactly
+          fontSize: 'inherit', // Ensure font size matches
+          fontFamily: 'inherit', // Ensure font family matches
+          padding: '0.25rem' // Default padding, overridden by inputClassName
         }}
       >
         {renderHighlightedText(value)}
@@ -322,11 +379,13 @@ export function VariableSuggestionDropdown({
         placeholder={placeholder}
         className={cn(
           'w-full relative z-10 bg-transparent leading-relaxed',
-          inputClassName
+          inputClassName,
+          '!text-transparent' // Hide input text so overlay chips show
         )}
         style={{ 
           backgroundColor: 'transparent',
-          lineHeight: '1.8' // Match overlay line height
+          lineHeight: '1.8', // Match overlay line height
+          caretColor: '#374151' // Make cursor visible with gray color
         }}
         {...(multiline ? { rows: 1 } : {})}
       />

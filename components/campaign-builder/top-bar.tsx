@@ -77,6 +77,7 @@ export function CampaignBuilderTopBar({
   const [editedName, setEditedName] = useState(campaignName)
   const [isSticky, setIsSticky] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [editModalInitialStep, setEditModalInitialStep] = useState<'basic' | 'theme'>('basic')
   const inputRef = useRef<HTMLInputElement>(null)
   const topBarRef = useRef<HTMLDivElement>(null)
 
@@ -134,9 +135,18 @@ export function CampaignBuilderTopBar({
     router.push('/dashboard')
   }
 
-  const handleEditCampaign = () => {
-    console.log('Theme button clicked - opening edit modal')
+  const handleEditCampaignBasic = () => {
+    console.log('Pencil icon clicked - opening edit modal to basic info')
     if (campaign) {
+      setEditModalInitialStep('basic')
+      setShowEditModal(true)
+    }
+  }
+
+  const handleEditCampaignTheme = () => {
+    console.log('Theme button clicked - opening edit modal to theme')
+    if (campaign) {
+      setEditModalInitialStep('theme')
       setShowEditModal(true)
     }
   }
@@ -203,10 +213,22 @@ export function CampaignBuilderTopBar({
             <div className="h-6 w-px bg-border" />
 
             {/* Campaign Name - Plain Text Only */}
-            <div className="flex items-center">
+            <div className="flex items-center space-x-2 group">
               <h1 className="text-lg font-semibold text-foreground">
                 {campaignName}
               </h1>
+              {/* Edit Campaign Button */}
+              {campaign && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleEditCampaignBasic}
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Edit campaign name and description"
+                >
+                  <Edit3 className="h-3 w-3" />
+                </Button>
+              )}
             </div>
 
             {/* Status Badge */}
@@ -292,7 +314,7 @@ export function CampaignBuilderTopBar({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleEditCampaign}
+                onClick={handleEditCampaignTheme}
                 disabled={isSaving}
               >
                 <Settings className="h-4 w-4 mr-2" />
@@ -329,7 +351,7 @@ export function CampaignBuilderTopBar({
           onClose={handleEditModalClose}
           onSave={handleEditModalSave}
           mode="edit"
-          initialStep="theme"
+          initialStep={editModalInitialStep}
         />
       )}
     </div>

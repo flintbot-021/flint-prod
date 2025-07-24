@@ -1266,11 +1266,11 @@ export function AILogicSection({
                         onClick={generatePrompt}
                         disabled={isGeneratingPrompt}
                         variant="outline"
-                        className="border-purple-500 text-purple-700 hover:bg-purple-50 hover:border-purple-600 text-xs px-2 py-1 h-6"
+                        className="border-orange-500 text-orange-700 hover:bg-orange-50 hover:border-orange-600 text-xs px-2 py-1 h-6"
                       >
                         {isGeneratingPrompt ? (
                           <>
-                            <div className="animate-spin h-3 w-3 mr-1 border border-purple-700 border-t-transparent rounded-full" />
+                            <div className="animate-spin h-3 w-3 mr-1 border border-orange-700 border-t-transparent rounded-full" />
                             {promptLoadingMessage}
                           </>
                         ) : (
@@ -1490,11 +1490,11 @@ export function AILogicSection({
                           disabled={isGeneratingOutputs || !settings.prompt?.trim()}
                           size="sm"
                           variant="outline"
-                          className="border-purple-500 text-purple-700 hover:bg-purple-50 hover:border-purple-600"
+                          className="border-orange-500 text-orange-700 hover:bg-orange-50 hover:border-orange-600"
                         >
                           {isGeneratingOutputs ? (
                             <>
-                              <div className="animate-spin h-4 w-4 mr-2 border-2 border-purple-700 border-t-transparent rounded-full" />
+                              <div className="animate-spin h-4 w-4 mr-2 border-2 border-orange-700 border-t-transparent rounded-full" />
                               {outputLoadingMessage}
                             </>
                           ) : (

@@ -50,7 +50,6 @@ export function SectionBlock({
 }: SectionBlockProps) {
   const [isPreview, setIsPreview] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(initiallyCollapsed)
-  const [isSaving, setIsSaving] = useState(false)
 
   const {
     attributes,
@@ -76,25 +75,25 @@ export function SectionBlock({
   const isQuestionType = sectionType?.category === 'input' || 
     ['multiple-choice', 'text-input', 'rating-scale', 'email-capture', 'contact-form'].includes(section.type)
 
-  // Handle section name updates
+  // Handle section name updates - optimistic approach
   const handleNameChange = async (newName: string) => {
     if (newName.trim() === section.title) return
     
-    setIsSaving(true)
+    // Save in background without blocking the UI
     try {
       await onUpdate(section.id, { title: newName.trim() })
     } catch (error) {
+      // Handle error but don't block the UI
+      console.error('Failed to save section name:', error)
       throw error
-    } finally {
-      setIsSaving(false)
     }
   }
 
-  // Handle type changes
+  // Handle type changes - optimistic approach
   const handleTypeChange = async (newType: string) => {
     if (newType === section.type) return
     
-    setIsSaving(true)
+    // Save in background without blocking the UI
     try {
       // Update the section type and potentially reset settings
       const newSectionType = getSectionTypeById(newType)
@@ -107,26 +106,22 @@ export function SectionBlock({
       onTypeChange?.(section.id, newType)
     } catch (error) {
       console.error('Failed to update section type:', error)
-    } finally {
-      setIsSaving(false)
     }
   }
 
-  // Handle visibility toggle
+  // Handle visibility toggle - optimistic approach
   const handleVisibilityToggle = async () => {
-    setIsSaving(true)
+    // Save in background without blocking the UI
     try {
       await onUpdate(section.id, { isVisible: !section.isVisible })
     } catch (error) {
       console.error('Failed to update visibility:', error)
-    } finally {
-      setIsSaving(false)
     }
   }
 
-  // Handle required toggle for questions
+  // Handle required toggle for questions - optimistic approach
   const handleRequiredChange = async (required: boolean) => {
-    setIsSaving(true)
+    // Save in background without blocking the UI
     try {
       await onUpdate(section.id, { 
         settings: { 
@@ -136,14 +131,12 @@ export function SectionBlock({
       })
     } catch (error) {
       console.error('Failed to update required status:', error)
-    } finally {
-      setIsSaving(false)
     }
   }
 
-  // Handle button label changes
+  // Handle button label changes - optimistic approach
   const handleButtonLabelChange = async (newLabel: string) => {
-    setIsSaving(true)
+    // Save in background without blocking the UI
     try {
       await onUpdate(section.id, { 
         settings: { 
@@ -153,14 +146,12 @@ export function SectionBlock({
       })
     } catch (error) {
       throw error
-    } finally {
-      setIsSaving(false)
     }
   }
 
-  // Handle content updates
+  // Handle content updates - optimistic approach
   const handleContentChange = async (newContent: string) => {
-    setIsSaving(true)
+    // Save in background without blocking the UI
     try {
       await onUpdate(section.id, { 
         settings: { 
@@ -170,8 +161,6 @@ export function SectionBlock({
       })
     } catch (error) {
       throw error
-    } finally {
-      setIsSaving(false)
     }
   }
 
@@ -444,16 +433,6 @@ export function SectionBlock({
           showButtonPreview={true}
           isPreview={isPreview}
         />
-      )}
-
-      {/* Loading Overlay */}
-      {isSaving && (
-        <div className="absolute inset-0 bg-background bg-opacity-50 flex items-center justify-center z-10">
-          <div className="flex items-center space-x-2 text-blue-600">
-            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm font-medium">Saving...</span>
-          </div>
-        </div>
       )}
     </Card>
   )
