@@ -114,28 +114,43 @@ export class AIProcessingEngine {
       const OpenAI = (await import('openai')).default
       const openai = new OpenAI({ apiKey: this.apiKey })
 
-      // Upload files to OpenAI first
+      // Process files - handle images and documents differently
       const uploadedFiles: Record<string, string> = {}
+      const imageFiles: Record<string, string> = {}
       
       if (request.fileObjects) {
         for (const [variableName, fileObj] of Object.entries(request.fileObjects)) {
           try {
-            console.log(`📤 Uploading ${fileObj.file.name} to OpenAI...`)
-            
-            // Convert File to the format OpenAI expects
-            const fileBuffer = await fileObj.file.arrayBuffer()
-            const file = new File([fileBuffer], fileObj.file.name, { type: fileObj.file.type })
-            
-            const uploadedFile = await openai.files.create({
-              file: file,
-              purpose: 'user_data'
-            })
-            
-            uploadedFiles[variableName] = uploadedFile.id
-            console.log(`✅ Uploaded ${fileObj.file.name} with ID: ${uploadedFile.id}`)
+            // Check if this is an image file
+            if (fileObj.file.type.startsWith('image/')) {
+              console.log(`📷 Processing image ${fileObj.file.name} for direct vision analysis...`)
+              
+              // For images, create a data URL for direct use
+              const fileBuffer = await fileObj.file.arrayBuffer()
+              const base64 = Buffer.from(fileBuffer).toString('base64')
+              const dataUrl = `data:${fileObj.file.type};base64,${base64}`
+              
+              imageFiles[variableName] = dataUrl
+              console.log(`✅ Prepared image ${fileObj.file.name} for vision analysis`)
+              
+            } else {
+              console.log(`📤 Uploading document ${fileObj.file.name} to OpenAI...`)
+              
+              // For documents, upload to OpenAI Files API
+              const fileBuffer = await fileObj.file.arrayBuffer()
+              const file = new File([fileBuffer], fileObj.file.name, { type: fileObj.file.type })
+              
+              const uploadedFile = await openai.files.create({
+                file: file,
+                purpose: 'user_data'
+              })
+              
+              uploadedFiles[variableName] = uploadedFile.id
+              console.log(`✅ Uploaded document ${fileObj.file.name} with ID: ${uploadedFile.id}`)
+            }
             
           } catch (uploadError) {
-            console.error(`❌ Failed to upload ${fileObj.file.name}:`, uploadError)
+            console.error(`❌ Failed to process ${fileObj.file.name}:`, uploadError)
             // Continue with other files
           }
         }
@@ -144,12 +159,23 @@ export class AIProcessingEngine {
       // Build content array for OpenAI
       const content: Array<any> = []
 
-      // Add uploaded files to content
+      // Add uploaded document files to content
       Object.entries(uploadedFiles).forEach(([variableName, fileId]) => {
         content.push({
           type: 'file',
           file: {
             file_id: fileId
+          }
+        })
+      })
+
+      // Add image files to content for vision analysis
+      Object.entries(imageFiles).forEach(([variableName, dataUrl]) => {
+        content.push({
+          type: 'image_url',
+          image_url: {
+            url: dataUrl,
+            detail: 'high' // Use high detail for better analysis
           }
         })
       })
