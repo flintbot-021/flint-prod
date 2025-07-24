@@ -34,9 +34,9 @@ export function BasicContentSection({
   const configAny = basicConfig as any
   const settings: BasicContentSettings = {
     alignment: configAny.alignment || 'center',
-    headline: title || 'Your Headline Here',
-    subheading: description || 'A compelling subheading to draw them in.',
-    content: configAny.content || 'This is where your main content will go. You can add more details, paragraphs, and information here to engage your audience.',
+    headline: title || '',
+    subheading: description || '',
+    content: configAny.content || '',
     image_url: configAny.image_url || '',
   }
 

@@ -20,13 +20,16 @@ interface BasicSettings {
 }
 
 export function BasicSection({ section, isPreview = false, onUpdate, className }: BasicSectionProps) {
-  // Get current settings with defaults
+  // Get current settings with empty defaults (like other sections)
   const settings = section.settings as BasicSettings || {}
   const {
-    title = 'Your Headline',
-    subtitle = 'Add your subheading here',
-    content = 'Add your content here. You can write multiple paragraphs and create rich content that engages your audience.'
+    title = '',
+    subtitle = '',
+    content = ''
   } = settings
+
+  // Helper function to check if content exists (same as other sections)
+  const hasContent = (value: string) => value && value.trim().length > 0
 
   // Handle settings updates
   const updateSettings = async (newSettings: Partial<BasicSettings>) => {
@@ -43,30 +46,37 @@ export function BasicSection({ section, isPreview = false, onUpdate, className }
     }
   }
 
-
-
   if (isPreview) {
-    // Preview Mode - What end users see
+    // Preview Mode - Only show elements that have content
     return (
       <div className={cn('py-16 px-6', className)}>
-        <div className="max-w-4xl mx-auto space-y-12">
+        <div className="max-w-4xl mx-auto">
           {/* Text Content */}
-          <div className="space-y-6 text-center">
-            <div className="space-y-4">
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
-                {title}
-              </h1>
-              
-              {subtitle && (
+          <div className="text-center">
+            {/* Title - Only show if has content */}
+            {hasContent(title) && (
+              <div className="pt-8">
+                <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
+                  {title}
+                </h1>
+              </div>
+            )}
+            
+            {/* Subtitle - Only show if has content */}
+            {hasContent(subtitle) && (
+              <div className="pt-4">
                 <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto">
                   {subtitle}
                 </p>
-              )}
-            </div>
+              </div>
+            )}
 
-            {content && (
-              <div className="text-lg text-gray-700 max-w-4xl mx-auto leading-relaxed whitespace-pre-wrap">
-                {content}
+            {/* Content - Only show if has content */}
+            {hasContent(content) && (
+              <div className="pt-6">
+                <div className="text-lg text-gray-700 max-w-4xl mx-auto leading-relaxed whitespace-pre-wrap">
+                  {content}
+                </div>
               </div>
             )}
           </div>
@@ -75,7 +85,7 @@ export function BasicSection({ section, isPreview = false, onUpdate, className }
     )
   }
 
-  // Build Mode - Simple and clean like text questions
+  // Build Mode - Simple and clean like other sections
   return (
     <div className={cn('py-16 max-w-2xl mx-auto', className)}>
       {/* Title - Seamless inline editing (identical to hero section) */}
@@ -94,7 +104,7 @@ export function BasicSection({ section, isPreview = false, onUpdate, className }
         <InlineEditableText
           value={subtitle}
           onSave={(newSubtitle) => updateSettings({ subtitle: newSubtitle })}
-          placeholder="Add your  subtitle here"
+          placeholder="Add your subheading here"
           variant="subheading"
           className="text-center block w-full"
         />
@@ -106,6 +116,7 @@ export function BasicSection({ section, isPreview = false, onUpdate, className }
           value={content}
           onSave={(newContent) => updateSettings({ content: newContent })}
           placeholder="Add your content here. You can write multiple paragraphs and create rich content that engages your audience."
+          variant="paragraph"
           className="text-lg text-center block w-full min-h-32"
           multiline={true}
         />

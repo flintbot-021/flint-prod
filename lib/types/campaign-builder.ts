@@ -178,9 +178,9 @@ export const SECTION_TYPES: SectionType[] = [
     category: 'content',
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     defaultSettings: {
-      title: 'Your Headline',
-      subtitle: 'Add your subheading here',
-      content: 'Add your content here. You can write multiple paragraphs, format text, and create rich content...',
+      title: '',
+      subtitle: '',
+      content: '',
       image: '',
       imagePosition: 'above',
       textAlignment: 'center'
