@@ -128,7 +128,7 @@ export function VariableSuggestionDropdown({
     return 'No sample data'
   }
   
-  // Render text with highlighted @ variables as chips
+  // Render text with highlighted @ variables as simple colored text
   const renderHighlightedText = (text: string) => {
     if (!text) return null
     
@@ -145,17 +145,12 @@ export function VariableSuggestionDropdown({
           <span
             key={index}
             className={cn(
-              // Clean chip styling with proper sizing to match text
-              'inline-flex items-center h-[1.2em] px-1.5 mx-0.5 rounded text-xs font-medium',
-              'border transition-colors whitespace-nowrap align-baseline',
+              // Simple colored text - no background or styling
+              'font-medium',
               isValidVariable 
-                ? 'bg-orange-100 text-orange-800 border-orange-300' 
-                : 'bg-gray-100 text-gray-600 border-gray-300'
+                ? 'text-orange-600' 
+                : 'text-gray-400'
             )}
-            style={{ 
-              fontSize: 'inherit', // Match parent font size
-              lineHeight: 'inherit' // Match parent line height
-            }}
           >
             {part}
           </span>
