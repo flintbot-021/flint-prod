@@ -140,18 +140,32 @@ export function useInlineEdit(
       return
     }
 
-    try {
-      setIsSaving(true)
-      await onSave?.(value)
-      setOriginalValue(value)
-      setIsEditing(false)
-      setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save')
-    } finally {
-      setIsSaving(false)
+    // Optimistic update: immediately exit edit mode and update display
+    const newValue = value
+    const previousValue = originalValue
+    
+    setOriginalValue(newValue)
+    setIsEditing(false)
+    setError(null)
+    
+    // Save in background without blocking UI
+    if (onSave) {
+      try {
+        // Show subtle saving indicator without blocking
+        setIsSaving(true)
+        await onSave(newValue)
+      } catch (err) {
+        // Revert on error
+        setValue(previousValue)
+        setOriginalValue(previousValue)
+        setError(err instanceof Error ? err.message : 'Failed to save')
+        // Re-enter edit mode to show error
+        setIsEditing(true)
+      } finally {
+        setIsSaving(false)
+      }
     }
-  }, [value, error, validateValue, onSave])
+  }, [value, error, validateValue, onSave, originalValue])
 
   const cancel = useCallback(() => {
     setValue(originalValue)

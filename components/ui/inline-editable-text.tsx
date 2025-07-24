@@ -137,7 +137,6 @@ export const InlineEditableText = forwardRef<
             minHeight: 'auto',
             height: 'auto'
           }}
-          disabled={isSaving}
           autoFocus
         />
         
@@ -162,13 +161,6 @@ export const InlineEditableText = forwardRef<
           )}>
             <AlertCircle className="h-3 w-3" />
             <span>{error}</span>
-          </div>
-        )}
-        
-        {/* Character count */}
-        {maxLength && (
-          <div className="absolute top-full right-0 mt-1 text-xs text-gray-400">
-            {editValue.length}/{maxLength}
           </div>
         )}
       </div>
