@@ -123,14 +123,22 @@ export const InlineEditableText = forwardRef<
           placeholder={placeholder}
           maxLength={maxLength}
           className={cn(
-            'w-full',
-            // Don't apply variant styles - let parent control all styling completely
-            error && 'border-red-500 focus:ring-red-500',
-            inputClassName
+            'w-full border-0 bg-transparent p-0 m-0 focus:ring-0 focus:border-0',
+            'resize-none shadow-none', // Remove all default input styling
+            className, // Use the same className as view mode for consistent styling
+            error && 'border-red-500 focus:ring-red-500'
           )}
+          style={{
+            fontSize: 'inherit',
+            fontFamily: 'inherit', 
+            fontWeight: 'inherit',
+            lineHeight: 'inherit', // Inherit line height from parent
+            color: 'inherit',
+            minHeight: 'auto',
+            height: 'auto'
+          }}
           disabled={isSaving}
           autoFocus
-          {...(multiline && { autoGrow: true, style: { minHeight: 'inherit' } })}
         />
         
         {/* Save status indicator */}
@@ -173,12 +181,12 @@ export const InlineEditableText = forwardRef<
       ref={ref}
       onClick={startEdit}
       className={cn(
-        'group relative cursor-text transition-colors',
-        // Don't apply variant styles - let parent control all styling completely
+        'relative cursor-text', // Removed outline-none to allow focus outline
+        // Use the same className as edit mode for consistent styling
         truncate && 'truncate',
         isEmpty && 'text-gray-400 italic',
-        // Let parent component control padding - no default padding added
-        'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1',
+        // Keep focus outline for accessibility
+        'focus:outline-offset-1',
         // Ensure consistent spacing with edit mode
         multiline && 'min-h-[inherit] whitespace-pre-wrap',
         className
@@ -202,14 +210,7 @@ export const InlineEditableText = forwardRef<
         />
       ) : null}
       
-      {/* Edit indicator */}
-      {showEditIcon && (
-        <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-        </span>
-      )}
+      {/* Edit indicator - removed to avoid layout shifts */}
       
       {/* Empty state indicator */}
       {isEmpty && (
