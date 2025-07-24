@@ -102,11 +102,52 @@ export async function POST(
       )
     }
 
+    // Parse request body to get custom slug
+    const body = await request.json().catch(() => ({}))
+    const customSlug = body.slug?.trim()
+    
+    // Generate published URL slug
+    const generateUrlSlug = (name: string) => {
+      return name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim()
+        .substring(0, 50)
+    }
+    
+    const publishedUrl = customSlug || generateUrlSlug(campaign.name || 'untitled-campaign')
+
+    // Check if the slug already exists for this user
+    const { data: existingCampaign, error: slugCheckError } = await supabase
+      .from('campaigns')
+      .select('id')
+      .eq('user_key', campaign.user_key)
+      .eq('published_url', publishedUrl)
+      .neq('id', campaignId) // Exclude current campaign
+      .single()
+
+    if (slugCheckError && slugCheckError.code !== 'PGRST116') { // PGRST116 = no rows found
+      return NextResponse.json(
+        { error: 'Failed to validate slug availability' },
+        { status: 500 }
+      )
+    }
+
+    if (existingCampaign) {
+      return NextResponse.json(
+        { error: `The URL slug "${publishedUrl}" is already in use. Please choose a different one.` },
+        { status: 400 }
+      )
+    }
+
     // Publish the campaign
     const { data: publishedCampaign, error: publishError } = await supabase
       .from('campaigns')
       .update({
         status: 'published',
+        published_url: publishedUrl,
         published_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
