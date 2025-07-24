@@ -44,8 +44,11 @@ export function PublishModal({
 }: PublishModalProps) {
   const router = useRouter()
   
+  // Detect if campaign is already published
+  const isPublished = campaign.status === 'published'
+  
   // State
-  const [isPublishing, setIsPublishing] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   const [useCustomUrl, setUseCustomUrl] = useState(false)
   const [customUrl, setCustomUrl] = useState('')
   const [validationErrors, setValidationErrors] = useState<string[]>([])
@@ -74,8 +77,14 @@ export function PublishModal({
     if (isOpen) {
       loadBillingInfo()
       loadValidationErrors()
+      
+      // If campaign is published, populate the custom URL field with existing URL
+      if (isPublished && campaign.published_url) {
+        setCustomUrl(campaign.published_url)
+        setUseCustomUrl(true)
+      }
     }
-  }, [isOpen, campaign.id])
+  }, [isOpen, campaign.id, isPublished])
 
   const loadBillingInfo = async () => {
     try {
@@ -142,7 +151,7 @@ export function PublishModal({
     }
 
     try {
-      setIsPublishing(true)
+      setIsProcessing(true)
 
       const publishData: any = {}
       if (useCustomUrl && customUrl.trim()) {
@@ -189,7 +198,45 @@ export function PublishModal({
         variant: 'destructive',
       })
     } finally {
-      setIsPublishing(false)
+      setIsProcessing(false)
+    }
+  }
+
+  const handleUnpublish = async () => {
+    try {
+      setIsProcessing(true)
+
+      const response = await fetch(`/api/campaigns/${campaign.id}/publish`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to unpublish campaign')
+      }
+
+      // Success
+      toast({
+        title: 'Campaign Unpublished!',
+        description: result.message || 'Your campaign is now offline.',
+      })
+
+      onPublishSuccess(result.data)
+      onClose()
+
+    } catch (error) {
+      console.error('Error unpublishing campaign:', error)
+      toast({
+        title: 'Unpublishing Failed',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsProcessing(false)
     }
   }
 
@@ -209,8 +256,15 @@ export function PublishModal({
             <div className="flex items-center gap-2">
               <Globe className="h-5 w-5" />
               <div>
-                <h2 className="text-xl font-semibold">Publish Campaign</h2>
-                <p className="text-sm text-gray-600">Make your campaign live and accessible to visitors</p>
+                <h2 className="text-xl font-semibold">
+                  {isPublished ? 'Manage Published Campaign' : 'Publish Campaign'}
+                </h2>
+                <p className="text-sm text-gray-600">
+                  {isPublished 
+                    ? 'Update your campaign URL or take it offline' 
+                    : 'Make your campaign live and accessible to visitors'
+                  }
+                </p>
               </div>
             </div>
             <Button variant="ghost" size="sm" onClick={onClose}>
@@ -241,6 +295,16 @@ export function PublishModal({
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mr-2" />
                 <span>Checking account status...</span>
+              </div>
+            ) : isPublished ? (
+              <div className="border border-blue-200 bg-blue-50 rounded-lg p-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-blue-600" />
+                  <p className="text-blue-800 font-medium">Campaign is live</p>
+                </div>
+                <p className="text-sm text-blue-700 mt-1">
+                  Published on {campaign.published_at ? new Date(campaign.published_at).toLocaleDateString() : 'Unknown date'}
+                </p>
               </div>
             ) : billingInfo && !billingInfo.can_publish ? (
               <div className="border border-yellow-200 bg-yellow-50 rounded-lg p-4">
@@ -274,51 +338,93 @@ export function PublishModal({
               </div>
             )}
 
-            {/* Custom URL Section */}
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <Label htmlFor="useCustomUrl" className="text-sm font-medium">
-                  Use custom URL slug
-                </Label>
-                <Switch
-                  id="useCustomUrl"
-                  checked={useCustomUrl}
-                  onCheckedChange={setUseCustomUrl}
-                />
-              </div>
-
-              {/* URL Preview */}
-              <div className="space-y-3">
-                <div>
+            {/* URL Section */}
+            {isPublished ? (
+              <div className="border rounded-lg p-4">
+                <div className="space-y-3">
                   <Label className="text-xs text-gray-500 uppercase tracking-wide">
-                    Your campaign will be published at:
+                    Your campaign is currently live at:
                   </Label>
-                  <div className="mt-1 p-3 bg-gray-50 rounded-lg border">
+                  <div className="p-3 bg-gray-50 rounded-lg border">
                     <code className="text-sm text-gray-700 break-all">
                       {fullUrl}
                     </code>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const currentUrl = `${window.location.origin}/c/${campaign.user_key}/${campaign.published_url}`
+                        window.open(currentUrl, '_blank', 'noopener,noreferrer')
+                      }}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-1" />
+                      Visit Live Campaign
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const currentUrl = `${window.location.origin}/c/${campaign.user_key}/${campaign.published_url}`
+                        navigator.clipboard.writeText(currentUrl)
+                        toast({
+                          title: 'Copied!',
+                          description: 'Campaign URL copied to clipboard',
+                        })
+                      }}
+                    >
+                      <Globe className="h-4 w-4 mr-1" />
+                      Copy URL
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <Label htmlFor="useCustomUrl" className="text-sm font-medium">
+                    Use custom URL slug
+                  </Label>
+                  <Switch
+                    id="useCustomUrl"
+                    checked={useCustomUrl}
+                    onCheckedChange={setUseCustomUrl}
+                  />
                 </div>
 
-                {useCustomUrl && (
-                  <div className="space-y-2">
-                    <Label htmlFor="customUrl" className="text-sm font-medium">
-                      Custom URL slug
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-gray-500 uppercase tracking-wide">
+                      Your campaign will be published at:
                     </Label>
-                    <Input
-                      id="customUrl"
-                      value={customUrl}
-                      onChange={(e) => setCustomUrl(e.target.value)}
-                      placeholder="my-campaign"
-                      className="font-mono text-sm"
-                    />
-                    <p className="text-xs text-gray-500">
-                      Use letters, numbers, and hyphens only. Leave empty to auto-generate from campaign name.
-                    </p>
+                    <div className="mt-1 p-3 bg-gray-50 rounded-lg border">
+                      <code className="text-sm text-gray-700 break-all">
+                        {fullUrl}
+                      </code>
+                    </div>
                   </div>
-                )}
+
+                  {useCustomUrl && (
+                    <div className="space-y-2">
+                      <Label htmlFor="customUrl" className="text-sm font-medium">
+                        Custom URL slug
+                      </Label>
+                      <Input
+                        id="customUrl"
+                        value={customUrl}
+                        onChange={(e) => setCustomUrl(e.target.value)}
+                        placeholder="my-campaign"
+                        className="font-mono text-sm"
+                      />
+                      <p className="text-xs text-gray-500">
+                        Use letters, numbers, and hyphens only. Leave empty to auto-generate from campaign name.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -327,23 +433,44 @@ export function PublishModal({
               Cancel
             </Button>
             
-            <Button
-              onClick={handlePublish}
-              disabled={isPublishing || validationErrors.length > 0 || !billingInfo?.can_publish}
-              className="min-w-[120px]"
-            >
-              {isPublishing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Publishing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Publish Campaign
-                </>
-              )}
-            </Button>
+{isPublished ? (
+              <Button
+                variant="destructive"
+                onClick={handleUnpublish}
+                disabled={isProcessing}
+                className="min-w-[120px]"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Unpublishing...
+                  </>
+                ) : (
+                  <>
+                    <X className="h-4 w-4 mr-2" />
+                    Unpublish
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button
+                onClick={handlePublish}
+                disabled={isProcessing || validationErrors.length > 0 || !billingInfo?.can_publish}
+                className="min-w-[120px]"
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Publish Campaign
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </div>
