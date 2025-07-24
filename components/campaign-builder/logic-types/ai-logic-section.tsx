@@ -215,12 +215,24 @@ export function AILogicSection({
   }, [settings.outputVariables])
   
   // Extract actual variables from campaign sections with type information
+  // Create a stable cache key based on section changes
+  const sectionsCacheKey = useMemo(() => {
+    return allSections
+      .filter(s => isQuestionSection(s.type) && s.title)
+      .map(s => `${s.id}-${s.title}-${s.type}-${s.order}`)
+      .sort()
+      .join('|')
+  }, [allSections])
+  
   const extractedVariablesWithTypes = useMemo(() => {
     if (allSections.length > 0 && section?.order !== undefined) {
-      return extractInputVariablesWithTypesFromBuilder(allSections, section.order)
+      console.log('🔄 Extracting variables from sections:', allSections.length, 'sections, logic at order:', section.order)
+      const variables = extractInputVariablesWithTypesFromBuilder(allSections, section.order)
+      console.log('🔄 Extracted variables:', variables.map(v => v.name))
+      return variables
     }
     return []
-  }, [allSections, section?.order])
+  }, [allSections, section?.order, sectionsCacheKey])
   
   // Extract just the variable names for backward compatibility
   const extractedVariables = useMemo(() => {
@@ -228,7 +240,11 @@ export function AILogicSection({
   }, [extractedVariablesWithTypes])
   
   // Use extracted variables or fallback to provided ones
-  const currentAvailableVariables = extractedVariables.length > 0 ? extractedVariables : availableVariables
+  const currentAvailableVariables = useMemo(() => {
+    const variables = extractedVariables.length > 0 ? extractedVariables : availableVariables
+    console.log('🔄 Current available variables for @ dropdown:', variables)
+    return variables
+  }, [extractedVariables, availableVariables])
   
   // Separate text and file variables
   const textVariables = useMemo(() => {
