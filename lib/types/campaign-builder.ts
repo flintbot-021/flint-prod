@@ -252,8 +252,8 @@ export const SECTION_TYPES: SectionType[] = [
     category: 'output',
     color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     defaultSettings: {
-      title: 'Your Results',
-      content: 'Hey @name, based on your input...',
+      title: '',
+      content: '',
       image: '',
       showVariables: true,
       alignment: 'center'

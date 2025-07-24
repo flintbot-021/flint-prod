@@ -42,12 +42,24 @@ export function InlineEditableText({
   // Get variant styling
   const variantClasses = variantStyles[variant]
 
+  // Auto-resize textarea function
+  const autoResizeTextarea = () => {
+    if (multiline && inputRef.current) {
+      const textarea = inputRef.current as HTMLTextAreaElement
+      textarea.style.height = 'auto'
+      textarea.style.height = textarea.scrollHeight + 'px'
+    }
+  }
+
   const startEdit = () => {
     if (disabled) return
     
     setIsEditing(true)
     // Start with current value or empty string (clear placeholder)
     setEditValue(value || '')
+    
+    // Auto-resize after setting value
+    setTimeout(autoResizeTextarea, 0)
   }
 
   const handleSave = async () => {
@@ -112,6 +124,11 @@ export function InlineEditableText({
     }
   }, [isEditing])
 
+  // Auto-resize when content changes
+  useEffect(() => {
+    autoResizeTextarea()
+  }, [editValue, multiline])
+
   if (disabled) {
     return (
       <div className={cn('cursor-not-allowed opacity-50', variantClasses, className)}>
@@ -127,7 +144,13 @@ export function InlineEditableText({
       <InputComponent
         ref={inputRef as any}
         value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
+        onChange={(e) => {
+          setEditValue(e.target.value)
+          // Auto-resize as user types
+          if (multiline) {
+            setTimeout(autoResizeTextarea, 0)
+          }
+        }}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
         placeholder=""
@@ -135,14 +158,14 @@ export function InlineEditableText({
           // Remove all default input styling
           'border-0 outline-none ring-0 shadow-none bg-transparent p-0 m-0',
           'focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none',
-          'resize-none', // For textarea
+          'resize-none overflow-hidden', // For textarea - prevent manual resize and hide scrollbar
           variantClasses, // Apply variant styling
           className
         )}
         style={{
           width: '100%',
-          minHeight: multiline ? '1.2em' : 'auto',
-          height: 'auto'
+          height: multiline ? 'auto' : 'auto',
+          minHeight: multiline ? '1.5em' : 'auto'
         }}
       />
     )
@@ -156,6 +179,8 @@ export function InlineEditableText({
         'cursor-text',
         // Show light grey for placeholder, black for content
         hasContent ? 'text-black' : 'text-gray-400',
+        // Handle multiline content properly
+        multiline ? 'whitespace-pre-wrap' : '',
         variantClasses, // Apply variant styling
         className
       )}

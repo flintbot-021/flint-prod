@@ -142,7 +142,7 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
           )}
           
           {subheading && (
-            <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed whitespace-pre-wrap">
               {subheading}
             </p>
           )}
@@ -198,6 +198,7 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
           placeholder="Add your compelling subheading here"
           variant="subheading"
           className="text-center block w-full"
+          multiline={true}
         />
       </div>
 

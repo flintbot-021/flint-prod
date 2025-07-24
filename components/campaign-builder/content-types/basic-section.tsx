@@ -65,7 +65,7 @@ export function BasicSection({ section, isPreview = false, onUpdate, className }
             {/* Subtitle - Only show if has content */}
             {hasContent(subtitle) && (
               <div className="pt-4">
-                <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto">
+                <p className="text-xl md:text-2xl text-gray-600 max-w-3xl mx-auto whitespace-pre-wrap">
                   {subtitle}
                 </p>
               </div>
@@ -107,6 +107,7 @@ export function BasicSection({ section, isPreview = false, onUpdate, className }
           placeholder="Add your subheading here"
           variant="subheading"
           className="text-center block w-full"
+          multiline={true}
         />
       </div>
 

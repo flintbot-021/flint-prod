@@ -258,18 +258,17 @@ export function OutputSection({
   const [aiTestDataTimestamp, setAiTestDataTimestamp] = useState(0)
   const [isUploadingButtonFile, setIsUploadingButtonFile] = useState(false)
   
-  // Local state for tracking external content changes
-  const [localContent, setLocalContent] = useState('')
+  // Local state for variable dropdown components
   const [localTitle, setLocalTitle] = useState('')
   const [localSubtitle, setLocalSubtitle] = useState('')
-  const [localButtonText, setLocalButtonText] = useState('')
+  const [localContent, setLocalContent] = useState('')
   
-  // Get current settings with defaults
+  // Get current settings with empty defaults (like other sections)
   const settings = section.settings as OutputSettings || {}
   const {
-    title = 'Headline goes here',
-    subtitle = 'Subheading',
-    content = 'Paragraph',
+    title = '',
+    subtitle = '',
+    content = '',
     image = '',
     textAlignment = 'center',
     showButton = false,
@@ -279,40 +278,23 @@ export function OutputSection({
     buttonFile
   } = settings
 
+  // Helper function to check if content exists (same as other sections)
+  const hasContent = (value: string) => value && value.trim().length > 0
+
   // Sync local state with external settings changes (e.g., from variable updates)
   useEffect(() => {
     setLocalTitle(title)
-  }, [title])
-  
-  useEffect(() => {
     setLocalSubtitle(subtitle)
-  }, [subtitle])
-  
-  useEffect(() => {
-    if (settings.content !== undefined) {
-      console.log(`🔄 Content-types output section ${section.id} content updated:`, {
-        from: localContent,
-        to: settings.content
-      })
-      setLocalContent(settings.content)
-    }
-  }, [settings.content, section.id])
-  
-  // Sync local button text state with external changes
-  useEffect(() => {
-    setLocalButtonText(buttonText)
-  }, [buttonText])
+    setLocalContent(content)
+  }, [title, subtitle, content])
 
   // Initialize local state on mount
   useEffect(() => {
     setLocalTitle(title)
     setLocalSubtitle(subtitle)
-    setLocalButtonText(buttonText)
-    if (settings.content !== undefined) {
-      setLocalContent(settings.content)
-    }
+    setLocalContent(content)
   }, [])
-
+  
   // Extract variables from campaign sections
   const availableVariables = useMemo(() => 
     getSimpleVariables(allSections, section.order || 0), 
@@ -353,12 +335,6 @@ export function OutputSection({
   // Handle settings updates
   const updateSettings = async (newSettings: Partial<OutputSettings>) => {
     try {
-      // Update local state immediately for responsive UI
-      if (newSettings.title !== undefined) setLocalTitle(newSettings.title)
-      if (newSettings.subtitle !== undefined) setLocalSubtitle(newSettings.subtitle)
-      if (newSettings.content !== undefined) setLocalContent(newSettings.content)
-      if (newSettings.buttonText !== undefined) setLocalButtonText(newSettings.buttonText)
-      
       await onUpdate({
         settings: {
           ...settings,
@@ -371,7 +347,6 @@ export function OutputSection({
       if (newSettings.title !== undefined) setLocalTitle(title)
       if (newSettings.subtitle !== undefined) setLocalSubtitle(subtitle)
       if (newSettings.content !== undefined) setLocalContent(content)
-      if (newSettings.buttonText !== undefined) setLocalButtonText(buttonText)
       throw error
     }
   }
@@ -490,14 +465,14 @@ export function OutputSection({
   }
 
   if (isPreview) {
-    // Preview Mode - What end users see
+    // Preview Mode - Only show elements that have content
     return (
       <ResultsGate>
         <div className={cn('py-16 px-6', className)}>
-          <div className="max-w-4xl mx-auto space-y-12">
+          <div className="max-w-4xl mx-auto">
             {/* Image */}
             {image && (
-              <div className="w-full">
+              <div className="pt-8 w-full">
                 <img 
                   src={image}
                   alt={title || 'Section image'}
@@ -507,27 +482,33 @@ export function OutputSection({
             )}
 
             {/* Text Content with Variable Interpolation */}
-            <div className={cn('space-y-6', getAlignmentClass(textAlignment))}>
-              <div className="space-y-4">
-                <h1 className="text-4xl md:text-5xl font-bold text-foreground">
-                  {(() => {
-                    console.log('🎯 About to render VariableInterpolatedContent for TITLE with:', {
-                      content: localTitle || title,
-                      contextVariableCount: Object.keys(variableContext.variables).length,
-                      contextVariables: variableContext.variables
-                    })
-                    return (
-                      <VariableInterpolatedContent
-                        content={localTitle || title}
-                        context={variableContext}
-                        showPreview={true}
-                        enableRealTimeProcessing={true}
-                      />
-                    )
-                  })()}
-                </h1>
-                
-                {(localSubtitle || subtitle) && (
+            <div className={cn(getAlignmentClass(textAlignment))}>
+              {/* Title - Only show if has content */}
+              {hasContent(localTitle || title) && (
+                <div className={cn(image ? "pt-6" : "pt-8")}>
+                  <h1 className="text-4xl md:text-5xl font-bold text-foreground">
+                    {(() => {
+                      console.log('🎯 About to render VariableInterpolatedContent for TITLE with:', {
+                        content: localTitle || title,
+                        contextVariableCount: Object.keys(variableContext.variables).length,
+                        contextVariables: variableContext.variables
+                      })
+                      return (
+                        <VariableInterpolatedContent
+                          content={localTitle || title}
+                          context={variableContext}
+                          showPreview={true}
+                          enableRealTimeProcessing={true}
+                        />
+                      )
+                    })()}
+                  </h1>
+                </div>
+              )}
+              
+              {/* Subtitle - Only show if has content */}
+              {hasContent(localSubtitle || subtitle) && (
+                <div className="pt-4">
                   <div className="text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto">
                     <VariableInterpolatedContent
                       content={localSubtitle || subtitle}
@@ -536,17 +517,20 @@ export function OutputSection({
                       enableRealTimeProcessing={true}
                     />
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              {(localContent || content) && (
-                <div className="text-lg text-foreground max-w-4xl mx-auto leading-relaxed">
-                  <VariableInterpolatedContent
-                    content={localContent || content}
-                    context={variableContext}
-                    showPreview={true}
-                    enableRealTimeProcessing={true}
-                  />
+              {/* Content - Only show if has content */}
+              {hasContent(localContent || content) && (
+                <div className="pt-6">
+                  <div className="text-lg text-foreground max-w-4xl mx-auto leading-relaxed">
+                    <VariableInterpolatedContent
+                      content={localContent || content}
+                      context={variableContext}
+                      showPreview={true}
+                      enableRealTimeProcessing={true}
+                    />
+                  </div>
                 </div>
               )}
 
@@ -586,9 +570,9 @@ export function OutputSection({
     )
   }
 
-  // Build Mode - Identical to BasicSection but with @ variable support and button configuration
+  // Build Mode - Simple and clean like other sections (users can still type @ variables manually)
   return (
-    <div className={cn('py-16 space-y-6 max-w-2xl mx-auto', className)}>
+    <div className={cn('py-16 max-w-2xl mx-auto', className)}>
       
       {/* Image Selector with Unsplash */}
       <UnsplashImageSelector
@@ -599,46 +583,46 @@ export function OutputSection({
         placeholder="Search for section images..."
       />
 
-      {/* Title - With variable dropdown support */}
-      <div>
+      {/* Title - Seamless inline editing with variable support */}
+      <div className="pt-8">
         <VariableSuggestionDropdown
           value={localTitle}
-          onChange={setLocalTitle}
+          onChange={(newTitle) => setLocalTitle(newTitle)}
           onSave={(newTitle) => updateSettings({ title: newTitle })}
           autoSave={true}
-          placeholder="Headline goes here"
+          placeholder="Your headline (you can use @ variables like @name)"
           className="w-full"
-          inputClassName="!text-3xl !font-bold !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto !min-h-[3rem] !leading-tight placeholder:text-gray-600"
+          inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!border-0 focus-visible:!outline-none focus-visible:!ring-0 !resize-none !overflow-hidden !text-4xl !font-bold !leading-tight !text-center !block !w-full !text-black placeholder:!text-gray-400"
           variables={availableVariables}
           multiline={false}
         />
       </div>
 
-      {/* Subtitle - With variable dropdown support */}
+      {/* Subtitle - Seamless inline editing with variable support */}
       <div className="pt-4">
         <VariableSuggestionDropdown
           value={localSubtitle}
-          onChange={setLocalSubtitle}
+          onChange={(newSubtitle) => setLocalSubtitle(newSubtitle)}
           onSave={(newSubtitle) => updateSettings({ subtitle: newSubtitle })}
           autoSave={true}
-          placeholder="Subheading"
+          placeholder="Add your subheading (you can use @ variables)"
           className="w-full"
-          inputClassName="!text-xl !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto !min-h-[2rem] !leading-tight placeholder:text-gray-600"
+          inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!border-0 focus-visible:!outline-none focus-visible:!ring-0 !resize-none !overflow-hidden !text-xl !font-medium !leading-normal !text-center !block !w-full !text-black placeholder:!text-gray-400 !whitespace-pre-wrap"
           variables={availableVariables}
-          multiline={false}
+          multiline={true}
         />
       </div>
 
-      {/* Rich Text Content - With @ variable dropdown support */}
+      {/* Rich Text Content - With variable support */}
       <div className="pt-6">
         <VariableSuggestionDropdown
           value={localContent}
-          onChange={setLocalContent}
+          onChange={(newContent) => setLocalContent(newContent)}
           onSave={(newContent) => updateSettings({ content: newContent })}
           autoSave={true}
-          placeholder="Paragraph"
+          placeholder="Add your content here. You can use @ variables like @name, @email, etc."
           className="w-full"
-          inputClassName="!text-lg !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto !leading-relaxed placeholder:text-gray-600 resize-none"
+          inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!border-0 focus-visible:!outline-none focus-visible:!ring-0 !resize-none !overflow-hidden !text-base !font-normal !leading-normal !text-center !block !w-full !min-h-32 !text-black placeholder:!text-gray-400 !whitespace-pre-wrap"
           variables={availableVariables}
           multiline={true}
         />
@@ -671,9 +655,8 @@ export function OutputSection({
               </Label>
               <Input
                 id="button-text"
-                value={localButtonText}
-                onChange={(e) => setLocalButtonText(e.target.value)}
-                onBlur={() => handleButtonSettingChange('buttonText', localButtonText)}
+                value={buttonText}
+                onChange={(e) => handleButtonSettingChange('buttonText', e.target.value)}
                 placeholder="Download Now"
                 className="w-full"
               />
