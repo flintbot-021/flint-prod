@@ -422,8 +422,21 @@ export function AILogicSection({
     const missingTextInputs = textVariables.filter(variable => {
       const savedValue = (settings.testInputs || {})[variable.name]
       const localValue = localTestInputs[variable.name]
-      const hasValue = (savedValue && savedValue.trim()) || (localValue && localValue.trim())
-      return !hasValue
+      
+      // Handle different input types
+      const isSliderVariable = variable.section.type === 'question-slider' || 
+                              variable.section.type === 'question-slider-multiple' ||
+                              variable.section.type === 'slider'
+      
+      if (isSliderVariable) {
+        // For sliders, check if user has actually set a value (not just using the minimum default)
+        const hasUserSetValue = savedValue !== undefined || localValue !== undefined
+        return !hasUserSetValue
+      } else {
+        // For text inputs, check for non-empty strings
+        const hasValue = (savedValue && String(savedValue).trim()) || (localValue && String(localValue).trim())
+        return !hasValue
+      }
     })
     
     // For file variables, require test files
@@ -432,7 +445,7 @@ export function AILogicSection({
     )
     
     return missingTextInputs.length === 0 && missingTestFiles.length === 0
-  }, [extractedVariablesWithTypes, textVariables, fileVariables, settings.testInputs, settings.testFiles])
+  }, [extractedVariablesWithTypes, textVariables, fileVariables, settings.testInputs, settings.testFiles, localTestInputs])
 
   const step2Complete = useMemo(() => {
     return settings.prompt && settings.prompt.trim() !== ''
@@ -889,9 +902,13 @@ export function AILogicSection({
                             }
                             
                             // Use local state for immediate slider response
-                            const localValue = localTestInputs[variable.name] !== undefined 
-                              ? localTestInputs[variable.name] 
-                              : (settings.testInputs || {})[variable.name] || sliderConfig?.defaultValue || 5
+                            // Start at minimum value + 1 to encourage user interaction
+                            const hasUserInput = localTestInputs[variable.name] !== undefined || (settings.testInputs || {})[variable.name] !== undefined
+                            const localValue = hasUserInput 
+                              ? (localTestInputs[variable.name] !== undefined 
+                                  ? localTestInputs[variable.name] 
+                                  : (settings.testInputs || {})[variable.name])
+                              : Math.max(1, (sliderConfig?.minValue || 0) + 1) // Start at minimum + 1, but at least 1
                             
                             const numericValue = Number(localValue)
                             const minVal = sliderConfig?.minValue || 0
@@ -920,7 +937,9 @@ export function AILogicSection({
                                       }}
                                       className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider focus:outline-none"
                                       style={{
-                                        background: `linear-gradient(to right, #f97316 0%, #f97316 ${progressPercent}%, #e5e7eb ${progressPercent}%, #e5e7eb 100%)`
+                                        background: hasUserInput 
+                                          ? `linear-gradient(to right, #f97316 0%, #f97316 ${progressPercent}%, #e5e7eb ${progressPercent}%, #e5e7eb 100%)`
+                                          : `linear-gradient(to right, #d1d5db 0%, #d1d5db ${progressPercent}%, #e5e7eb ${progressPercent}%, #e5e7eb 100%)`
                                       }}
                                     />
                                     {/* Custom thumb styling via CSS */}
@@ -930,41 +949,53 @@ export function AILogicSection({
                                         width: 20px;
                                         height: 20px;
                                         border-radius: 50%;
-                                        background: #f97316;
+                                        background: ${hasUserInput ? '#f97316' : '#d1d5db'};
                                         cursor: pointer;
                                         border: 2px solid white;
-                                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                        box-shadow: 0 2px 4px rgba(0,0,0,${hasUserInput ? '0.2' : '0.1'});
+                                        opacity: ${hasUserInput ? '1' : '0.7'};
                                         transition: all 0.15s ease;
                                       }
                                       .slider:hover::-webkit-slider-thumb {
                                         transform: scale(1.1);
                                         box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                                        opacity: 1;
                                       }
                                       .slider::-moz-range-thumb {
                                         width: 20px;
                                         height: 20px;
                                         border-radius: 50%;
-                                        background: #f97316;
+                                        background: ${hasUserInput ? '#f97316' : '#d1d5db'};
                                         cursor: pointer;
                                         border: 2px solid white;
-                                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                        box-shadow: 0 2px 4px rgba(0,0,0,${hasUserInput ? '0.2' : '0.1'});
+                                        opacity: ${hasUserInput ? '1' : '0.7'};
                                         transition: all 0.15s ease;
                                       }
                                       .slider:hover::-moz-range-thumb {
                                         transform: scale(1.1);
                                         box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                                        opacity: 1;
                                       }
                                     `}</style>
                                   </div>
                                   <div className="flex justify-between items-center text-xs text-gray-500">
                                     <span className="font-medium">{sliderConfig?.minLabel || 'Low'}</span>
                                     <div className="flex items-center space-x-1">
-                                      <span className="text-xs font-bold text-orange-600 font-mono">
-                                        {numericValue}
-                                      </span>
-                                      <span className="text-xs text-gray-500">
-                                        / {maxVal}
-                                      </span>
+                                      {!hasUserInput ? (
+                                        <span className="text-xs text-gray-400 font-medium">
+                                          please slide
+                                        </span>
+                                      ) : (
+                                        <>
+                                          <span className="text-xs font-bold text-orange-600 font-mono">
+                                            {numericValue}
+                                          </span>
+                                          <span className="text-xs text-gray-500">
+                                            / {maxVal}
+                                          </span>
+                                        </>
+                                      )}
                                     </div>
                                     <span className="font-medium">{sliderConfig?.maxLabel || 'High'}</span>
                                   </div>
