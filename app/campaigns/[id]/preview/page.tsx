@@ -228,10 +228,22 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-          <p className="text-muted-foreground">Loading campaign preview...</p>
+      <div className="min-h-screen bg-background">
+        {/* Ghosted Top Bar */}
+        <div className="h-16 bg-gray-200 animate-pulse"></div>
+        
+        {/* Main Content */}
+        <div className="flex items-center justify-center min-h-[calc(100vh-64px)] p-4">
+          <div className="text-center space-y-8 max-w-2xl mx-auto">
+                         {/* Ghosted Headline */}
+             <div className="h-12 bg-gray-200 rounded animate-pulse mx-auto w-[640px]"></div>
+            
+            {/* Ghosted Subheading */}
+            <div className="h-6 bg-gray-200 rounded animate-pulse mx-auto w-1/2"></div>
+            
+            {/* Ghosted Button */}
+            <div className="h-12 bg-gray-200 rounded animate-pulse mx-auto w-32"></div>
+          </div>
         </div>
       </div>
     )
