@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { InlineEditableText } from '@/components/ui/inline-editable-text'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
@@ -73,6 +74,25 @@ export function SectionBottomBar({
   // Get Capture section settings
   const captureSettings = isCaptureSection ? section.settings as any : null
   const captureButtonText = captureSettings?.submitButtonText || 'Get my results'
+  
+  // Local state for optimistic button text updates
+  const [localCaptureButtonText, setLocalCaptureButtonText] = useState(captureButtonText)
+  
+  // Sync local state when prop changes
+  useEffect(() => {
+    setLocalCaptureButtonText(captureButtonText)
+  }, [captureButtonText])
+  
+  // Handle button text save with validation
+  const handleButtonTextSave = () => {
+    const trimmedText = localCaptureButtonText.trim()
+    if (trimmedText && trimmedText.length <= 30) {
+      updateCaptureSettings({ submitButtonText: trimmedText })
+    } else {
+      // Reset to last valid value if validation fails
+      setLocalCaptureButtonText(captureButtonText)
+    }
+  }
 
 
 
@@ -195,17 +215,24 @@ export function SectionBottomBar({
         {isCaptureSection ? (
           <div className="flex items-center space-x-2">
             <span className="text-xs text-gray-400 font-medium">Button:</span>
-            <InlineEditableText
-              value={captureButtonText}
-              onSave={(newText) => updateCaptureSettings({ submitButtonText: newText })}
-              variant="caption"
+            <input
+              type="text"
+              value={localCaptureButtonText}
+              onChange={(e) => setLocalCaptureButtonText(e.target.value)}
+              onBlur={handleButtonTextSave}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleButtonTextSave()
+                  e.currentTarget.blur()
+                } else if (e.key === 'Escape') {
+                  setLocalCaptureButtonText(captureButtonText)
+                  e.currentTarget.blur()
+                }
+              }}
               placeholder="Get my results"
-              className="font-medium text-white px-2 py-1 bg-gray-800 border border-gray-700 rounded"
-              showEditIcon={false}
-              showSaveStatus={true}
-              validation={validateButtonLabel}
+              className="font-medium text-white px-2 py-1 bg-gray-800 border border-gray-700 rounded text-sm min-w-[80px] w-auto max-w-[200px] focus:outline-none focus:ring-1 focus:ring-blue-500"
+              style={{ width: `${Math.max(80, localCaptureButtonText.length * 8 + 8)}px` }}
               maxLength={30}
-              required={true}
             />
           </div>
         ) : null}

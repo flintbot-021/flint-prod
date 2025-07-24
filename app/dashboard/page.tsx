@@ -18,8 +18,6 @@ import {
   createCampaignWithUsageTracking
 } from '@/lib/data-access'
 import { Campaign, Profile, CampaignStatus, CreateCampaign } from '@/lib/types/database'
-import { LazyExportButton } from '@/components/export/lazy-export-button'
-import { getDashboardExportData, getDashboardExportFields } from '@/lib/export'
 import { useConfirmationDialog } from '@/components/ui/confirmation-dialog'
 import { CampaignCard } from '@/components/dashboard/campaign-card'
 import type { CampaignWithStats } from '@/components/dashboard/campaign-card'
@@ -81,11 +79,6 @@ export default function Dashboard() {
   const [loadingCampaigns, setLoadingCampaigns] = useState(true)
   const [loadingStats, setLoadingStats] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  
-  // Lazy loading for export data
-  const [exportData, setExportData] = useState<any[]>([])
-  const [loadingExportData, setLoadingExportData] = useState(false)
-  const [hasLoadedExportData, setHasLoadedExportData] = useState(false)
 
   // Modal state for campaign edit/create
   const [showEditModal, setShowEditModal] = useState(false)
@@ -223,45 +216,6 @@ export default function Dashboard() {
     } finally {
       setLoadingStats(false)
     }
-  }
-
-  // Lazy load export data only when needed
-  const loadExportData = async () => {
-    if (hasLoadedExportData) return
-
-    try {
-      setLoadingExportData(true)
-      const exportResult = await getDashboardExportData(timeFilter, profile)
-      
-      if (exportResult.success && exportResult.data) {
-        setExportData(exportResult.data)
-      } else {
-        console.error('Failed to load export data:', exportResult.error)
-        setExportData([])
-      }
-      setHasLoadedExportData(true)
-    } catch (error) {
-      console.error('Error loading export data:', error)
-      setExportData([])
-    } finally {
-      setLoadingExportData(false)
-    }
-  }
-
-  const handleExportStart = () => {
-    if (!hasLoadedExportData) {
-      loadExportData()
-    }
-    console.log('Export started...')
-  }
-
-  const handleExportComplete = (filename: string) => {
-    console.log(`Export completed: ${filename}`)
-  }
-
-  const handleExportError = (error: string) => {
-    console.error('Export error:', error)
-    setError(`Export failed: ${error}`)
   }
 
   // Campaign management functions
@@ -405,20 +359,7 @@ export default function Dashboard() {
               ))}
             </div>
             <div className="flex items-center space-x-3">
-              <LazyExportButton
-                data={exportData}
-                source="dashboard"
-                title="Export Dashboard Analytics"
-                defaultFields={getDashboardExportFields()}
-                onExportStart={handleExportStart}
-                onExportComplete={handleExportComplete}
-                onExportError={handleExportError}
-                variant="outline"
-                size="sm"
-                disabled={loadingExportData}
-                showDropdown={true}
-                className="h-9"
-              />
+              {/* Export button hidden on tools page */}
               {/* Optimized New Tool Button with Link prefetching */}
               <Button
                 onClick={handleCreateCampaign}

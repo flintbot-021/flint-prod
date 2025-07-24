@@ -594,7 +594,16 @@ export function CaptureSection({
                   placeholder="Your Company Name"
                   value={localBusinessName}
                   onChange={(e) => setLocalBusinessName(e.target.value)}
-                  onBlur={() => updateSettings({ businessName: localBusinessName })}
+                  onBlur={() => updateSettings({ businessName: localBusinessName.trim() })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      updateSettings({ businessName: localBusinessName.trim() })
+                      e.currentTarget.blur()
+                    } else if (e.key === 'Escape') {
+                      setLocalBusinessName(businessName)
+                      e.currentTarget.blur()
+                    }
+                  }}
                   className="mt-1"
                 />
               </div>
@@ -607,7 +616,16 @@ export function CaptureSection({
                   placeholder="https://yourcompany.com/privacy"
                   value={localPrivacyPolicyLink}
                   onChange={(e) => setLocalPrivacyPolicyLink(e.target.value)}
-                  onBlur={() => updateSettings({ privacyPolicyLink: localPrivacyPolicyLink })}
+                  onBlur={() => updateSettings({ privacyPolicyLink: localPrivacyPolicyLink.trim() })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      updateSettings({ privacyPolicyLink: localPrivacyPolicyLink.trim() })
+                      e.currentTarget.blur()
+                    } else if (e.key === 'Escape') {
+                      setLocalPrivacyPolicyLink(privacyPolicyLink)
+                      e.currentTarget.blur()
+                    }
+                  }}
                   className="mt-1"
                 />
               </div>
