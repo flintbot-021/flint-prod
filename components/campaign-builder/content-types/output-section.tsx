@@ -584,7 +584,7 @@ export function OutputSection({
       />
 
       {/* Title - Seamless inline editing with variable support */}
-      <div className="pt-8">
+      <div className="pt-12">
         <VariableSuggestionDropdown
           value={localTitle}
           onChange={(newTitle) => setLocalTitle(newTitle)}
@@ -614,7 +614,7 @@ export function OutputSection({
       </div>
 
       {/* Rich Text Content - With variable support */}
-      <div className="pt-6">
+      <div className="pt-6 pb-8">
         <VariableSuggestionDropdown
           value={localContent}
           onChange={(newContent) => setLocalContent(newContent)}
@@ -622,7 +622,7 @@ export function OutputSection({
           autoSave={true}
           placeholder="Add your content here. You can use @ variables like @name, @email, etc."
           className="w-full"
-          inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!border-0 focus-visible:!outline-none focus-visible:!ring-0 !resize-none !overflow-hidden !text-base !font-normal !leading-normal !text-center !block !w-full !min-h-32 !text-black placeholder:!text-gray-400 !whitespace-pre-wrap"
+          inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!border-0 focus-visible:!outline-none focus-visible:!ring-0 !resize-none !overflow-hidden !text-base !font-normal !leading-normal !text-center !block !w-full !text-black placeholder:!text-gray-400 !whitespace-pre-wrap"
           variables={availableVariables}
           multiline={true}
         />
