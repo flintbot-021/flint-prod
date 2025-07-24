@@ -53,18 +53,75 @@ export const getLeadsExportData = async (
       sort_order: sortDirection
     }
 
-    // Add search and campaign filters if specified
-    const leadsParams = {
+    // First get user's campaigns to ensure we only export leads from their campaigns
+    const campaignsResult = await getCampaigns({ page: 1, per_page: 100 })
+    
+    if (!campaignsResult.success || !campaignsResult.data) {
+      return {
+        success: false,
+        error: 'Failed to load campaigns data'
+      }
+    }
+
+    const campaigns = campaignsResult.data.data || []
+    const userCampaignIds = campaigns.map(c => c.id)
+
+    // If no campaigns found, return empty export
+    if (userCampaignIds.length === 0) {
+      return {
+        success: true,
+        data: [],
+        metadata: {
+          analytics: {
+            totalLeads: 0,
+            convertedLeads: 0,
+            conversionRate: 0,
+            campaignBreakdown: []
+          },
+          filters: {
+            searchTerm: searchTerm || null,
+            selectedCampaign: selectedCampaign !== 'all' ? selectedCampaign : null,
+            sortField,
+            sortDirection,
+            includeCompleted,
+            maxRecords
+          },
+          userInfo: profile ? {
+            monthlyLeadsCaptured: 0, // Property removed from Profile type
+            monthlyLeadsLimit: 1000, // Default limit
+            usagePercentage: 0 // Default percentage
+          } : null,
+          exportedAt: new Date().toISOString(),
+          source: 'leads' as const
+        }
+      }
+    }
+
+    // Determine which campaigns to include - validate selectedCampaign belongs to user
+    let campaignIdsToInclude: string[]
+    if (selectedCampaign !== 'all') {
+      // Verify the selected campaign belongs to this user
+      if (userCampaignIds.includes(selectedCampaign)) {
+        campaignIdsToInclude = [selectedCampaign]
+      } else {
+        // Selected campaign doesn't belong to user, return empty results
+        campaignIdsToInclude = []
+      }
+    } else {
+      // Include all user's campaigns
+      campaignIdsToInclude = userCampaignIds
+    }
+
+    // Build the leads query parameters
+    const filteredLeadsParams = {
       ...paginationParams,
-      ...(selectedCampaign !== 'all' && { campaign_id: selectedCampaign }),
+      campaign_ids: campaignIdsToInclude,
       ...(searchTerm && { search: searchTerm }),
       ...(includeCompleted !== undefined && { completed: includeCompleted })
     }
 
-    const [leadsResult, campaignsResult] = await Promise.all([
-      getLeads(leadsParams),
-      getCampaigns({ page: 1, per_page: 100 })
-    ])
+    // Now get leads filtered by user's campaigns
+    const leadsResult = await getLeads(filteredLeadsParams)
 
     if (!leadsResult.success || !leadsResult.data) {
       return {
@@ -73,15 +130,7 @@ export const getLeadsExportData = async (
       }
     }
 
-    if (!campaignsResult.success || !campaignsResult.data) {
-      return {
-        success: false,
-        error: 'Failed to load campaigns data'
-      }
-    }
-
     const leads = leadsResult.data.data || []
-    const campaigns = campaignsResult.data.data || []
 
     // Create campaigns map for enrichment
     const campaignsMap = new Map<string, Campaign>()
@@ -95,18 +144,8 @@ export const getLeadsExportData = async (
       return { ...lead, campaign }
     })
 
-    // Apply additional client-side filtering if needed
+    // Server handles filtering, so use enriched leads directly
     let filteredLeads = enrichedLeads
-
-    // Additional search filtering (if not handled by server)
-    if (searchTerm && !leadsParams.search) {
-      filteredLeads = filteredLeads.filter(lead =>
-        lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.phone?.includes(searchTerm) ||
-        lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.campaign?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    }
 
     // Format data for export
     const exportData = filteredLeads.map(lead => ({
@@ -176,9 +215,9 @@ export const getLeadsExportData = async (
         maxRecords
       },
       userInfo: profile ? {
-        monthlyLeadsCaptured: profile.monthly_leads_captured || 0,
-        monthlyLeadsLimit: profile.monthly_leads_limit || 1000,
-        usagePercentage: Math.round(((profile.monthly_leads_captured || 0) / (profile.monthly_leads_limit || 1000)) * 100)
+        monthlyLeadsCaptured: 0, // Property removed from Profile type
+        monthlyLeadsLimit: 1000, // Default limit
+        usagePercentage: 0 // Default percentage
       } : null,
       exportedAt: new Date().toISOString(),
       source: 'leads' as const

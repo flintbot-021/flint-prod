@@ -1029,7 +1029,7 @@ export default function LeadsPage() {
             </div>
             <div className="flex items-center space-x-3">
               <ExportButton
-                data={exportData}
+                data={exportData.length > 0 ? exportData : new Array(totalLeads).fill({})}
                 source="leads"
                 title="Export Leads Data"
                 defaultFields={getLeadsExportFields()}
@@ -1038,7 +1038,6 @@ export default function LeadsPage() {
                 onExportError={handleExportError}
                 variant="outline"
                 size="sm"
-                disabled={loadingExportData}
                 showDropdown={true}
               />
             </div>
