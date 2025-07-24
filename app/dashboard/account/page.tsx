@@ -70,10 +70,8 @@ const TIERS = {
     max_campaigns: 0,
     features: [
       'Create unlimited campaigns',
-      'Preview campaigns',
-      'Basic analytics',
-      'Community support',
-      'Custom branding'
+      'Preview your campaigns',
+      'Community support'
     ],
     buttonText: 'Current Plan',
     popular: false
@@ -89,6 +87,8 @@ const TIERS = {
     features: [
       'Everything in Free',
       'Publish up to 3 campaigns',
+      'Simple Analytics',
+      'Lead lists',
       'Email support',
       'Custom branding'
     ],
@@ -107,7 +107,7 @@ const TIERS = {
       'Everything in Standard',
       'Unlimited published campaigns',
       'Priority support',
-      'Custom branding'
+      'Export leads'
     ],
     buttonText: 'Upgrade to Premium',
     popular: false
@@ -666,7 +666,7 @@ export default function AccountPage() {
                     </div>
                     <CardDescription>
                       {tier.max_campaigns === 0 
-                        ? 'Perfect for trying out' 
+                        ? 'Perfect for trying things out' 
                         : tier.max_campaigns === -1 
                           ? 'For growing businesses' 
                           : `Up to ${tier.max_campaigns} published campaigns`
