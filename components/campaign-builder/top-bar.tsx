@@ -15,13 +15,10 @@ import {
   Loader2,
   Rocket,
   Settings,
-  LifeBuoy,
   ChevronDown,
   Copy,
   PauseCircle,
-  Home,
-  Mail,
-  BookOpen
+  Home
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -319,32 +316,7 @@ export function CampaignBuilderTopBar({
               </Button>
             )}
 
-            {/* Help Icon Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="Help" className="ml-2">
-                  <LifeBuoy className="h-5 w-5 text-gray-500" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <a href="mailto:support@yourdomain.com" className="flex items-center" target="_blank" rel="noopener noreferrer">
-                    <Mail className="h-4 w-4 mr-2" />
-                    Email Support
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href="https://help.yourdomain.com" className="flex items-center" target="_blank" rel="noopener noreferrer">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    Help Docs
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onShowOnboarding} className="flex items-center">
-                  <Eye className="h-4 w-4 mr-2" />
-                  Show Onboarding Guide
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+
           </div>
         </div>
       </div>

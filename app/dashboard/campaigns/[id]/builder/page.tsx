@@ -1356,7 +1356,7 @@ export default function ToolBuilderPage() {
         >
           <div className="min-h-screen bg-background">
             {/* Header */}
-            <PrimaryNavigation currentPage="builder" />
+            <PrimaryNavigation currentPage="builder" onShowOnboarding={() => setShowOnboarding(true)} />
 
             {/* Tool Builder Top Bar */}
             <CampaignBuilderTopBar

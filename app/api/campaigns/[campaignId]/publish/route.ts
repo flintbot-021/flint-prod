@@ -10,7 +10,7 @@ const TIER_LIMITS = {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { campaignId: string } }
+  { params }: { params: Promise<{ campaignId: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -20,7 +20,9 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const campaignId = params.campaignId
+    // Await params before accessing properties (Next.js 15 requirement)
+    const resolvedParams = await params
+    const campaignId = resolvedParams.campaignId
 
     // Get user's current subscription tier
     const { data: profile, error: profileError } = await supabase
@@ -102,11 +104,52 @@ export async function POST(
       )
     }
 
+    // Parse request body to get custom slug
+    const body = await request.json().catch(() => ({}))
+    const customSlug = body.slug?.trim()
+    
+    // Generate published URL slug
+    const generateUrlSlug = (name: string) => {
+      return name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim()
+        .substring(0, 50)
+    }
+    
+    const publishedUrl = customSlug || generateUrlSlug(campaign.name || 'untitled-campaign')
+
+    // Check if the slug already exists for this user
+    const { data: existingCampaign, error: slugCheckError } = await supabase
+      .from('campaigns')
+      .select('id')
+      .eq('user_key', campaign.user_key)
+      .eq('published_url', publishedUrl)
+      .neq('id', campaignId) // Exclude current campaign
+      .single()
+
+    if (slugCheckError && slugCheckError.code !== 'PGRST116') { // PGRST116 = no rows found
+      return NextResponse.json(
+        { error: 'Failed to validate slug availability' },
+        { status: 500 }
+      )
+    }
+
+    if (existingCampaign) {
+      return NextResponse.json(
+        { error: `The URL slug "${publishedUrl}" is already in use. Please choose a different one.` },
+        { status: 400 }
+      )
+    }
+
     // Publish the campaign
     const { data: publishedCampaign, error: publishError } = await supabase
       .from('campaigns')
       .update({
         status: 'published',
+        published_url: publishedUrl,
         published_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -139,7 +182,7 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { campaignId: string } }
+  { params }: { params: Promise<{ campaignId: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -149,7 +192,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const campaignId = params.campaignId
+    // Await params before accessing properties (Next.js 15 requirement)
+    const resolvedParams = await params
+    const campaignId = resolvedParams.campaignId
 
     // Get the campaign to unpublish
     const { data: campaign, error: campaignError } = await supabase
