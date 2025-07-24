@@ -10,7 +10,7 @@ const TIER_LIMITS = {
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { campaignId: string } }
+  { params }: { params: Promise<{ campaignId: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -20,7 +20,9 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const campaignId = params.campaignId
+    // Await params before accessing properties (Next.js 15 requirement)
+    const resolvedParams = await params
+    const campaignId = resolvedParams.campaignId
 
     // Get user's current subscription tier
     const { data: profile, error: profileError } = await supabase
@@ -180,7 +182,7 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { campaignId: string } }
+  { params }: { params: Promise<{ campaignId: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -190,7 +192,9 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const campaignId = params.campaignId
+    // Await params before accessing properties (Next.js 15 requirement)
+    const resolvedParams = await params
+    const campaignId = resolvedParams.campaignId
 
     // Get the campaign to unpublish
     const { data: campaign, error: campaignError } = await supabase
