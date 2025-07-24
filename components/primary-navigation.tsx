@@ -17,6 +17,18 @@ export function PrimaryNavigation({ currentPage, onShowOnboarding }: PrimaryNavi
   const router = useRouter()
   const { user, signOut } = useAuth()
 
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      // Redirect to sign in page after logout
+      router.push('/auth/login')
+    } catch (error) {
+      console.error('Error during sign out:', error)
+      // Still redirect even if there's an error
+      router.push('/auth/login')
+    }
+  }
+
   return (
     <header className="bg-background shadow border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -84,8 +96,8 @@ export function PrimaryNavigation({ currentPage, onShowOnboarding }: PrimaryNavi
             <div className="relative">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="h-9 w-9 rounded-full bg-blue-100 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-blue-400">
-                  <span className="text-base font-medium text-blue-600">
+                <button className="h-9 w-9 rounded-full flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-orange-400" style={{ backgroundColor: '#fbd6c3' }}>
+                  <span className="text-base font-medium" style={{ color: '#f76706' }}>
                     {user?.email?.[0]?.toUpperCase() || '?'}
                   </span>
                 </button>
@@ -98,7 +110,7 @@ export function PrimaryNavigation({ currentPage, onShowOnboarding }: PrimaryNavi
                     <Settings className="h-4 w-4 mr-2" /> Account Settings
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={signOut} className="flex items-center">
+                <DropdownMenuItem onClick={handleSignOut} className="flex items-center">
                   <LogOut className="h-4 w-4 mr-2" /> Log Out
                 </DropdownMenuItem>
               </DropdownMenuContent>
