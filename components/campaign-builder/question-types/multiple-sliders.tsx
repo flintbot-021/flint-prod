@@ -42,8 +42,8 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
   const [sliderValues, setSliderValues] = useState<Record<string, number[]>>({})
   
   const settings = (section.settings as unknown as MultipleSlidersSettings) || { 
-    headline: 'Rate the following',
-    subheading: 'Please provide your ratings for each item below',
+    headline: '',
+    subheading: '',
     sliders: []
   }
 
@@ -114,9 +114,12 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
     setSliderValues(prev => ({ ...prev, [sliderId]: value }))
   }
 
+  // Helper function to check if content exists (same as other sections)
+  const hasContent = (value: string) => value && value.trim().length > 0
+
   if (isPreview) {
     return (
-      <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-8', className)}>
+      <div className={cn('py-16 px-6 max-w-2xl mx-auto', className)}>
         <style>
           {`
             .slider-hide-value [data-radix-tooltip-content],
@@ -129,19 +132,28 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
           `}
         </style>
         {/* Section Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold text-gray-900">
-            {settings.headline}
-          </h1>
-          {settings.subheading && (
-            <p className="text-xl text-gray-600">
-              {settings.subheading}
-            </p>
+        <div className="text-center">
+          {/* Headline - Only show if has content */}
+          {hasContent(settings.headline) && (
+            <div className="pt-8">
+              <h1 className="text-4xl font-bold text-gray-900">
+                {settings.headline}
+              </h1>
+            </div>
+          )}
+          
+          {/* Subheading - Only show if has content */}
+          {hasContent(settings.subheading) && (
+            <div className="pt-4">
+              <p className="text-xl text-gray-600">
+                {settings.subheading}
+              </p>
+            </div>
           )}
         </div>
 
         {/* Sliders */}
-        <div className="space-y-6">
+        <div className={hasContent(settings.headline) || hasContent(settings.subheading) ? "pt-6 space-y-6" : "pt-8 space-y-6"}>
           {settings.sliders.map((slider) => (
             <div key={slider.id} className="space-y-3">
               <div className="text-left">
@@ -183,49 +195,45 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
   }
 
   return (
-    <div className={cn('py-16 px-6 max-w-4xl mx-auto space-y-8', className)}>
+    <div className={cn('py-16 px-6 max-w-4xl mx-auto', className)}>
       {/* Section Header Configuration */}
-      <div className="text-center space-y-6 pb-8 border-b border-gray-700">
-        <InlineEditableText
-          value={settings.headline}
-          onSave={(value) => updateSettings({ headline: value })}
-          variant="body"
-          placeholder="Section headline"
-          className="text-4xl font-bold text-gray-300 text-center block w-full hover:bg-transparent rounded-none px-0 py-0"
-          inputClassName="!text-4xl !font-bold !text-gray-300 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
-        />
+      <div className="text-center pb-8 border-b border-gray-700">
+        <div className="pt-8">
+          <InlineEditableText
+            value={settings.headline}
+            onSave={(value) => updateSettings({ headline: value })}
+            placeholder="Type your question here"
+            variant="heading"
+            className="text-center block w-full"
+          />
+        </div>
         
-        <InlineEditableText
-          value={settings.subheading || ''}
-          onSave={(value) => updateSettings({ subheading: value })}
-          variant="body"
-          placeholder="Section subheading (optional)"
-          className="text-xl text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0"
-          inputClassName="!text-xl !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
-        />
+        <div className="pt-4">
+          <InlineEditableText
+            value={settings.subheading || ''}
+            onSave={(value) => updateSettings({ subheading: value })}
+            placeholder="Type sub heading here"
+            variant="subheading"
+            className="text-center block w-full"
+          />
+        </div>
       </div>
 
-      {/* Slider Configurations */}
-      {settings.sliders.map((slider, index) => (
-        <SliderConfigCard
-          key={slider.id}
-          slider={slider}
-          index={index}
-          onUpdate={(updates) => updateSlider(index, updates)}
-          onDelete={() => deleteSlider(index)}
-          canDelete={settings.sliders.length > 1}
-          sliderValue={getSliderValue(slider.id, slider.defaultValue)}
-          onSliderValueChange={(value) => setSliderValue(slider.id, value)}
-        />
-      ))}
+      {/* Individual Sliders */}
+      <div className="pt-8">
+        {settings.sliders.map((slider, index) => (
+          <SliderConfigCard
+            key={slider.id}
+            slider={slider}
+            index={index}
+            onUpdate={(updates) => updateSlider(index, updates)}
+            onDelete={() => deleteSlider(index)}
+            canDelete={settings.sliders.length > 1}
+            sliderValue={getSliderValue(slider.id, slider.defaultValue)}
+            onSliderValueChange={(value) => setSliderValue(slider.id, value)}
+          />
+        ))}
+      </div>
       
       <div className="flex justify-center pt-6">
         <Button
@@ -286,14 +294,9 @@ function SliderConfigCard({
             <InlineEditableText
               value={slider.label}
               onSave={(value) => onUpdate({ label: value })}
-              variant="body"
               placeholder="Type slider label here"
-              className="text-lg font-medium text-gray-300 hover:bg-transparent rounded-none px-0 py-0"
-              inputClassName="!text-lg !font-medium !text-gray-300 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-              showEditIcon={false}
-              showSaveStatus={false}
-              multiline={false}
-              autoSave={false}
+              variant="label"
+              className="text-gray-300"
             />
           </div>
           <Badge variant="secondary" className="font-mono text-xs bg-gray-800 text-gray-300 ml-4 min-w-32 flex-shrink-0 flex items-center">
@@ -301,13 +304,9 @@ function SliderConfigCard({
             <InlineEditableText
               value={slider.variableName}
               onSave={(value) => onUpdate({ variableName: value })}
-              variant="body"
               placeholder="variable_name"
-              className="font-mono text-xs text-gray-300 hover:bg-transparent rounded-none px-0 py-0 flex-1 min-w-0"
-              inputClassName="!font-mono !text-xs !text-gray-300 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto w-full"
-              showEditIcon={false}
-              showSaveStatus={false}
-              autoSave={false}
+              variant="label"
+              className="font-mono text-xs text-gray-300 flex-1 min-w-0"
             />
           </Badge>
         </div>
@@ -329,13 +328,9 @@ function SliderConfigCard({
               <InlineEditableText
                 value={slider.minValue.toString()}
                 onSave={(value) => onUpdate({ minValue: parseInt(value) || 0 })}
-                variant="caption"
                 placeholder="0"
-                className="text-sm text-gray-400 hover:bg-transparent rounded-none px-0 py-0"
-                inputClassName="!text-sm !text-gray-400 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-                showEditIcon={false}
-                showSaveStatus={false}
-                autoSave={false}
+                variant="label"
+                className="text-sm text-center"
               />
             </div>
             <div className="text-center">
@@ -343,13 +338,9 @@ function SliderConfigCard({
               <InlineEditableText
                 value={slider.step.toString()}
                 onSave={(value) => onUpdate({ step: parseInt(value) || 1 })}
-                variant="caption"
                 placeholder="1"
-                className="text-sm text-gray-400 text-center hover:bg-transparent rounded-none px-0 py-0"
-                inputClassName="!text-sm !text-gray-400 !text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-                showEditIcon={false}
-                showSaveStatus={false}
-                autoSave={false}
+                variant="label"
+                className="text-sm text-center"
               />
             </div>
             <div className="text-center">
@@ -357,13 +348,9 @@ function SliderConfigCard({
               <InlineEditableText
                 value={slider.maxValue.toString()}
                 onSave={(value) => onUpdate({ maxValue: parseInt(value) || 100 })}
-                variant="caption"
                 placeholder="100"
-                className="text-sm text-gray-400 text-right hover:bg-transparent rounded-none px-0 py-0"
-                inputClassName="!text-sm !text-gray-400 !text-right !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-                showEditIcon={false}
-                showSaveStatus={false}
-                autoSave={false}
+                variant="label"
+                className="text-sm text-center"
               />
             </div>
           </div>
@@ -377,13 +364,9 @@ function SliderConfigCard({
           <InlineEditableText
             value={slider.minLabel}
             onSave={(value) => onUpdate({ minLabel: value })}
-            variant="caption"
             placeholder="Low"
-            className="text-sm text-gray-400 hover:bg-transparent rounded-none px-0 py-0"
-            inputClassName="!text-sm !text-gray-400 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-            showEditIcon={false}
-            showSaveStatus={false}
-            autoSave={false}
+            variant="label"
+            className="text-gray-400"
           />
         </div>
         <div className="text-center">
@@ -391,13 +374,9 @@ function SliderConfigCard({
           <InlineEditableText
             value={slider.maxLabel}
             onSave={(value) => onUpdate({ maxLabel: value })}
-            variant="caption"
             placeholder="High"
-            className="text-sm text-gray-400 hover:bg-transparent rounded-none px-0 py-0"
-            inputClassName="!text-sm !text-gray-400 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-            showEditIcon={false}
-            showSaveStatus={false}
-            autoSave={false}
+            variant="label"
+            className="text-sm text-center"
           />
         </div>
       </div>

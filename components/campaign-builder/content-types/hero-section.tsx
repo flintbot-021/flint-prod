@@ -142,7 +142,7 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
           )}
           
           {subheading && (
-            <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed whitespace-pre-wrap">
               {subheading}
             </p>
           )}
@@ -168,7 +168,7 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
 
   // Call-to-Action Button
   return (
-    <div className={cn('py-16 space-y-6 max-w-2xl mx-auto', className)}>
+    <div className={cn('py-16 max-w-2xl mx-auto', className)}>
       
       {/* Background Image Selector */}
       <UnsplashImageSelector
@@ -184,14 +184,9 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
         <InlineEditableText
           value={headline}
           onSave={handleHeadlineChange}
-          variant="body"
           placeholder="Your Hero Headline"
-          className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-4xl !font-bold !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          variant="heading"
+          className="text-center block w-full"
         />
       </div>
 
@@ -200,14 +195,10 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
         <InlineEditableText
           value={subheading}
           onSave={handleSubheadingChange}
-          variant="body"
           placeholder="Add your compelling subheading here"
-          className="text-xl text-gray-500 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-xl !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          variant="subheading"
+          className="text-center block w-full"
+          multiline={true}
         />
       </div>
 
@@ -216,12 +207,8 @@ export function HeroSection({ section, campaignId, isPreview = false, onUpdate, 
         <InlineEditableText
           value={buttonText}
           onSave={(newButtonText) => updateSettings({ buttonText: newButtonText })}
-          autoSave={false}
           placeholder="Get Started"
-          className="!bg-blue-600 !text-white hover:!bg-blue-700 !text-base !px-6 !py-3 !font-semibold !rounded-md inline-block !border-0 !shadow-none !outline-none !ring-0"
-          inputClassName="!bg-blue-600 !text-white !text-base !font-semibold !border-0 !shadow-none !outline-none !ring-0 text-center placeholder:!text-blue-200 focus:!bg-blue-600 hover:!bg-blue-600 !px-6 !py-3 !rounded-md"
-          showEditIcon={false}
-          variant="body"
+          className="bg-blue-600 text-white hover:bg-blue-700 text-base px-6 py-3 font-semibold rounded-md inline-block"
         />
       </div>
     </div>

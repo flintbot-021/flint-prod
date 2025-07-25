@@ -83,24 +83,25 @@ export function DateTimeQuestion({
   if (isPreview) {
     // Preview Mode - Show what end users see
     return (
-      <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
-        <div className="space-y-6">
-          {/* Question Text */}
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold text-gray-900">
-              {headline || 'Select a date and time'}
-              {required && <span className="text-red-500 ml-1">*</span>}
-            </h1>
-            
-            {subheading && (
+      <div className={cn('py-16 px-6 max-w-2xl mx-auto', className)}>
+        {/* Question Text */}
+        <div className="pt-8 text-center">
+          <h1 className="text-4xl font-bold text-gray-900">
+            {headline || 'Select a date and time'}
+            {required && <span className="text-red-500 ml-1">*</span>}
+          </h1>
+          
+          {subheading && (
+            <div className="pt-4">
               <p className="text-xl text-gray-600">
                 {subheading}
               </p>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
 
-          {/* Date & Time Inputs - Only show if enabled */}
-          <div className="space-y-6 pt-6">
+        {/* Date & Time Inputs - Only show if enabled */}
+        <div className="pt-6 space-y-6">
             {/* Date Input - Only if includeDate is true */}
             {settings.includeDate && (
               <div className="space-y-3">
@@ -133,48 +134,37 @@ export function DateTimeQuestion({
               </div>
             )}
           </div>
-        </div>
       </div>
     )
   }
 
   // Edit Mode - Configuration interface
   return (
-    <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
+    <div className={cn('py-16 px-6 max-w-2xl mx-auto', className)}>
       {/* Main Question - Large, center-aligned */}
-      <div className="text-center">
+      <div className="pt-8">
         <InlineEditableText
           value={headline}
           onSave={handleHeadlineChange}
-          variant="body"
           placeholder="When would you like to schedule this?"
-          className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-4xl !font-bold !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          variant="heading"
+          className="text-center block w-full"
         />
       </div>
 
       {/* Subheading */}
-      <div className="text-center">
+      <div className="pt-4">
         <InlineEditableText
           value={subheading}
           onSave={handleSubheadingChange}
-          variant="body"
-          placeholder="Type sub heading here"
-          className="text-xl text-gray-500 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-xl !text-gray-500 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          placeholder="Pick a date and time that works for you"
+          variant="subheading"
+          className="text-center block w-full"
         />
       </div>
 
-      {/* Date & Time Configuration */}
-      <div className="space-y-6 pt-6">
+      {/* Configuration Options */}
+      <div className="pt-6">
         {/* Date & Time Options */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-gray-900">Date & Time Options</h3>
@@ -208,15 +198,7 @@ export function DateTimeQuestion({
 
       </div>
 
-      {/* Saving Indicator */}
-      {isSaving && (
-        <div className="fixed top-4 right-4">
-          <div className="flex items-center space-x-2 text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-            <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-medium">Saving...</span>
-          </div>
-        </div>
-      )}
+
     </div>
   )
 } 

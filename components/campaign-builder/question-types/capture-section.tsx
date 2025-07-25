@@ -452,41 +452,31 @@ export function CaptureSection({
 
   // Edit Mode - Configuration interface
   return (
-    <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
+    <div className={cn('py-16 px-6 max-w-2xl mx-auto', className)}>
       {/* Main Question - Large, center-aligned */}
-      <div className="text-center">
+      <div className="pt-8">
         <InlineEditableText
           value={headline}
           onSave={handleHeadlineChange}
-          variant="body"
           placeholder="Get Your Results"
-          className="text-4xl font-bold text-foreground text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-4xl !font-bold !text-foreground text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          variant="heading"
+          className="text-center block w-full"
         />
       </div>
 
       {/* Subheading */}
-      <div className="text-center">
+      <div className="pt-4">
         <InlineEditableText
           value={subheading}
           onSave={handleSubheadingChange}
-          variant="body"
           placeholder="Enter your information to unlock your personalized results"
-          className="text-xl text-muted-foreground text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-xl !text-muted-foreground text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          variant="subheading"
+          className="text-center block w-full"
         />
       </div>
 
       {/* Field Configuration */}
-      <div className="space-y-6 pt-6">
+      <div className="pt-6">
         {/* Fields to Collect */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-foreground">Fields to Collect</h3>
@@ -634,15 +624,7 @@ export function CaptureSection({
         </div>
       </div>
 
-      {/* Saving Indicator */}
-      {isSaving && (
-        <div className="fixed top-4 right-4">
-          <div className="flex items-center space-x-2 text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-            <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-medium">Saving...</span>
-          </div>
-        </div>
-      )}
+
     </div>
   )
 } 

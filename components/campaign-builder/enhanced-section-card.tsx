@@ -170,18 +170,8 @@ export function EnhancedSectionCard({
               <InlineEditableText
                 value={section.title}
                 onSave={handleTitleUpdate}
-                variant="subheading"
-                placeholder="Enter section title..."
-                className={cn(
-                  'font-medium',
-                  section.isVisible ? 'text-foreground' : 'text-muted-foreground'
-                )}
-                showEditIcon={false}
-                showSaveStatus={true}
-                validation={validateTitle}
-                maxLength={100}
-                required={true}
-                disabled={isSaving}
+                placeholder="Section name (edit me)"
+                className="font-medium text-foreground"
               />
               
               {isSaving && (

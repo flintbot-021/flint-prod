@@ -89,14 +89,8 @@ const SortableEditOption = memo(function SortableEditOption({
         <InlineEditableText
           value={option.text}
           onSave={(newText) => onUpdate(option.id, newText)}
-          variant="body"
           placeholder="Option goes here..."
-          className="w-full text-base text-gray-700 hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-base !text-gray-700 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-          showEditIcon={false}
-          showSaveStatus={false}
-          maxLength={100}
-          autoSave={false}
+          className="w-full text-base text-gray-700"
         />
       </div>
 
@@ -261,47 +255,47 @@ export function MultipleChoiceQuestion({
   if (isPreview) {
     // Preview Mode - Show how the question appears to users
     return (
-      <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
-        <div className="space-y-6">
-          {/* Question Text */}
-          <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-900">
-              {headline || 'Your question text here...'}
-              {required && <span className="text-red-500 ml-1">*</span>}
-            </h1>
-            
-            {subheading && (
+      <div className={cn('py-16 px-6 max-w-2xl mx-auto', className)}>
+        {/* Question Text */}
+        <div className="pt-8 text-center">
+          <h1 className="text-4xl font-bold text-gray-900">
+            {headline || 'Your question text here...'}
+            {required && <span className="text-red-500 ml-1">*</span>}
+          </h1>
+          
+          {subheading && (
+            <div className="pt-4">
               <p className="text-xl text-gray-600">
                 {subheading}
               </p>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
 
-          {/* Options */}
-          <div className="space-y-3 pt-6">
-            {sortedOptions.map((option, index) => (
-              <label 
-                key={`preview-${option.id || index}`} 
-                className="flex items-center space-x-3 p-4 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-              >
-                {selectionType === 'single' ? (
-                  <input 
-                    type="radio" 
-                    name={`preview-options-${section.id}`} 
-                    value={option.id}
-                    className="h-4 w-4" 
-                  />
-                ) : (
-                  <input 
-                    type="checkbox" 
-                    value={option.id}
-                    className="h-4 w-4" 
-                  />
-                )}
-                <span className="flex-1 text-lg text-gray-900">{option.text}</span>
-              </label>
-            ))}
-          </div>
+        {/* Options */}
+        <div className="pt-6 space-y-3">
+          {sortedOptions.map((option, index) => (
+            <label 
+              key={`preview-${option.id || index}`} 
+              className="flex items-center space-x-3 p-4 border border-gray-300 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+            >
+              {selectionType === 'single' ? (
+                <input 
+                  type="radio" 
+                  name={`preview-options-${section.id}`} 
+                  value={option.id}
+                  className="h-4 w-4" 
+                />
+              ) : (
+                <input 
+                  type="checkbox" 
+                  value={option.id}
+                  className="h-4 w-4" 
+                />
+              )}
+              <span className="flex-1 text-lg text-gray-900">{option.text}</span>
+            </label>
+          ))}
         </div>
       </div>
     )
@@ -309,41 +303,31 @@ export function MultipleChoiceQuestion({
 
   // Edit Mode - Direct inline editing
   return (
-    <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
+    <div className={cn('py-16 px-6 max-w-2xl mx-auto', className)}>
       {/* Main Question - Large, center-aligned */}
-      <div className="text-center">
+      <div className="pt-8">
         <InlineEditableText
           value={headline}
           onSave={handleHeadlineChange}
-          variant="body"
           placeholder="Type your question here"
-          className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-4xl !font-bold !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          variant="heading"
+          className="text-center block w-full"
         />
       </div>
 
       {/* Subheading */}
-      <div className="text-center">
+      <div className="pt-4">
         <InlineEditableText
           value={subheading}
           onSave={handleSubheadingChange}
-          variant="body"
           placeholder="Type sub heading here"
-          className="text-xl text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-xl !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          variant="subheading"
+          className="text-center block w-full"
         />
       </div>
 
       {/* Options Section */}
-      <div className="space-y-4 pt-8">
+      <div className="pt-6">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -368,7 +352,7 @@ export function MultipleChoiceQuestion({
         <Button
           onClick={handleAddOption}
           variant="outline"
-          className="w-full py-6 border-dashed border-2 border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-600"
+          className="w-full py-6 border-dashed border-2 border-gray-300 text-gray-500 hover:border-gray-400 hover:text-gray-600 mt-4"
           disabled={isSaving || options.length >= 10}
         >
           <Plus className="h-5 w-5 mr-2" />
@@ -376,15 +360,7 @@ export function MultipleChoiceQuestion({
         </Button>
       </div>
 
-      {/* Saving Indicator */}
-      {isSaving && (
-        <div className="fixed top-4 right-4">
-          <div className="flex items-center space-x-2 text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-            <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-medium">Saving...</span>
-          </div>
-        </div>
-      )}
+
     </div>
   )
 } 

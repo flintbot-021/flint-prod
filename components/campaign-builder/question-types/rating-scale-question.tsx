@@ -289,15 +289,8 @@ export function RatingScaleQuestion({
           <InlineEditableText
             value={content}
             onSave={handleContentChange}
-            variant="body"
             placeholder="Enter your question text..."
             className="min-h-[60px] p-3 border border-border rounded-lg w-full"
-            showEditIcon={false}
-            showSaveStatus={true}
-            multiline={true}
-            maxLength={200}
-            required={true}
-            validation={validateContent}
           />
         </div>
 
@@ -475,12 +468,8 @@ export function RatingScaleQuestion({
                 <InlineEditableText
                   value={minLabel}
                   onSave={handleMinLabelChange}
-                  variant="body"
                   placeholder="e.g., Poor, Disagree"
                   className="p-3 border border-border rounded-lg w-full"
-                  showEditIcon={false}
-                  showSaveStatus={true}
-                  maxLength={50}
                 />
               </div>
               <div>
@@ -490,12 +479,8 @@ export function RatingScaleQuestion({
                 <InlineEditableText
                   value={maxLabel}
                   onSave={handleMaxLabelChange}
-                  variant="body"
                   placeholder="e.g., Excellent, Agree"
                   className="p-3 border border-border rounded-lg w-full"
-                  showEditIcon={false}
-                  showSaveStatus={true}
-                  maxLength={50}
                 />
               </div>
             </div>
@@ -509,12 +494,8 @@ export function RatingScaleQuestion({
               <InlineEditableText
                 value={centerLabel}
                 onSave={handleCenterLabelChange}
-                variant="body"
                 placeholder="e.g., Neutral, Okay"
                 className="p-3 border border-border rounded-lg w-full"
-                showEditIcon={false}
-                showSaveStatus={true}
-                maxLength={50}
               />
             </div>
           )}
@@ -575,13 +556,8 @@ export function RatingScaleQuestion({
           <InlineEditableText
             value={helpText}
             onSave={handleHelpTextChange}
-            variant="body"
             placeholder="Add helpful instructions for users..."
             className="p-3 border border-border rounded-lg w-full text-muted-foreground"
-            showEditIcon={false}
-            showSaveStatus={true}
-            maxLength={200}
-            multiline={true}
           />
         </div>
 

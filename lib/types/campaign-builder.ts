@@ -96,8 +96,8 @@ export const SECTION_TYPES: SectionType[] = [
     category: 'input',
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     defaultSettings: {
-      headline: 'Rate the following',
-      subheading: 'Please provide your ratings for each item below',
+      headline: '',
+      subheading: '',
       sliders: [
         {
           id: 'slider_1',
@@ -178,9 +178,9 @@ export const SECTION_TYPES: SectionType[] = [
     category: 'content',
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     defaultSettings: {
-      title: 'Your Headline',
-      subtitle: 'Add your subheading here',
-      content: 'Add your content here. You can write multiple paragraphs, format text, and create rich content...',
+      title: '',
+      subtitle: '',
+      content: '',
       image: '',
       imagePosition: 'above',
       textAlignment: 'center'
@@ -252,8 +252,8 @@ export const SECTION_TYPES: SectionType[] = [
     category: 'output',
     color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     defaultSettings: {
-      title: 'Your Results',
-      content: 'Hey @name, based on your input...',
+      title: '',
+      content: '',
       image: '',
       showVariables: true,
       alignment: 'center'

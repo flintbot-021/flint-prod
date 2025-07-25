@@ -58,102 +58,92 @@ export function TextQuestion({
     }
   }
 
-  // Handle content change
+  // Handle content changes
   const handleHeadlineChange = async (newHeadline: string) => {
     await updateSettings({ headline: newHeadline })
   }
 
-  // Handle subheading change
   const handleSubheadingChange = async (newSubheading: string) => {
     await updateSettings({ subheading: newSubheading })
   }
 
-  // Handle label change
   const handleLabelChange = async (newLabel: string) => {
     await updateSettings({ label: newLabel })
   }
 
-  // Handle placeholder change
   const handlePlaceholderChange = async (newPlaceholder: string) => {
     await updateSettings({ placeholder: newPlaceholder })
   }
 
+  // Helper to check if content has actual value
+  const hasContent = (value: string) => value && value.trim().length > 0
+
   if (isPreview) {
-    // Preview Mode - Show how the question appears to users
+    // Preview Mode - Only show elements that have content
     return (
-      <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
-        <div className="space-y-6">
-          {/* Main Question Text */}
-          <div className="text-center">
+      <div className={cn('py-16 px-6 max-w-2xl mx-auto', className)}>
+        {/* Main Question Text - Only show if has content */}
+        {hasContent(headline) && (
+          <div className="pt-8 text-center">
             <h1 className="text-4xl font-bold text-gray-900">
-              {headline || 'Your question text here...'}
+              {headline}
             </h1>
           </div>
+        )}
 
-          {/* Optional Subheading */}
-          {subheading && (
-            <div className="text-center">
-              <p className="text-xl text-gray-600">
-                {subheading}
-              </p>
-            </div>
-          )}
-
-          {/* Label */}
-          {label && (
-            <div className="pt-6">
-              <label className="text-sm font-medium text-gray-700 block">
-                {label}
-              </label>
-            </div>
-          )}
-
-          {/* Input Field */}
-          <div>
-            <input
-              type="text"
-              placeholder={placeholder || 'Type your answer here...'}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              disabled={false}
-            />
+        {/* Optional Subheading - Only show if has content */}
+        {hasContent(subheading) && (
+          <div className="pt-4 text-center">
+            <p className="text-xl text-gray-600">
+              {subheading}
+            </p>
           </div>
+        )}
+
+        {/* Label - Only show if has content */}
+        {hasContent(label) && (
+          <div className="pt-6">
+            <label className="text-sm font-medium text-gray-700 block">
+              {label}
+            </label>
+          </div>
+        )}
+
+        {/* Input Field - Always show with placeholder */}
+        <div className="pt-4">
+          <input
+            type="text"
+            placeholder={hasContent(placeholder) ? placeholder : 'Type your answer here...'}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            disabled={false}
+          />
         </div>
       </div>
     )
   }
 
-  // Edit Mode - Direct inline editing like the user's image
+  // Edit Mode - Direct inline editing
   return (
-    <div className={cn('py-16 px-6 max-w-2xl mx-auto space-y-6', className)}>
+    <div className={cn('py-16 px-6 max-w-2xl mx-auto', className)}>
       {/* Main Question - Large, center-aligned */}
-      <div className="text-center">
+      <div className="pt-8">
         <InlineEditableText
           value={headline}
           onSave={handleHeadlineChange}
-          variant="body"
           placeholder="Type your question here"
-          className="text-4xl font-bold text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-4xl !font-bold !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          variant="heading"
+          className="text-center block w-full"
         />
       </div>
 
       {/* Subheading */}
-      <div className="text-center">
+      <div className="pt-4">
         <InlineEditableText
           value={subheading}
           onSave={handleSubheadingChange}
-          variant="body"
           placeholder="Type sub heading here"
-          className="text-xl text-gray-400 text-center block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-xl !text-gray-400 text-center !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          variant="subheading"
+          className="text-center block w-full"
         />
       </div>
 
@@ -162,42 +152,24 @@ export function TextQuestion({
         <InlineEditableText
           value={label}
           onSave={handleLabelChange}
-          variant="body"
           placeholder="Type label here"
-          className="text-sm font-medium text-gray-400 block w-full hover:bg-transparent rounded-none px-0 py-0 mx-0 my-0"
-          inputClassName="!text-sm !font-medium !text-gray-400 !border-0 !border-none !bg-transparent !shadow-none !outline-none !ring-0 !ring-offset-0 focus:!border-0 focus:!border-none focus:!bg-transparent focus:!shadow-none focus:!outline-none focus:!ring-0 focus:!ring-offset-0 focus-visible:!border-0 focus-visible:!border-none focus-visible:!bg-transparent focus-visible:!shadow-none focus-visible:!outline-none focus-visible:!ring-0 focus-visible:!ring-offset-0 !rounded-none !p-0 !m-0 h-auto"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          variant="label"
+          className="block w-full"
         />
       </div>
 
       {/* Input Field */}
-      <div>
+      <div className="pt-4">
         <InlineEditableText
           value={placeholder}
           onSave={handlePlaceholderChange}
-          variant="body"
           placeholder="Answer will go here"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg text-gray-400 bg-white hover:bg-white"
-          inputClassName="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg text-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          showEditIcon={false}
-          showSaveStatus={false}
-          multiline={false}
-          autoSave={false}
+          variant="paragraph"
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"
         />
       </div>
 
-      {/* Saving Indicator */}
-      {isSaving && (
-        <div className="fixed top-4 right-4">
-          <div className="flex items-center space-x-2 text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-            <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs font-medium">Saving...</span>
-          </div>
-        </div>
-      )}
+
     </div>
   )
 } 

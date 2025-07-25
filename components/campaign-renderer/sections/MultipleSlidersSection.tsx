@@ -47,7 +47,7 @@ export function MultipleSlidersSection({
   
   const configData = config as unknown as MultipleSlidersSettings
   const sliders = configData.sliders || []
-  const headline = title || 'Rate the following'
+  const headline = title || ''
   const subheading = description || ''
   
   // Theme styles
@@ -172,15 +172,17 @@ export function MultipleSlidersSection({
           
           {/* Section Header */}
           <div className="text-center space-y-4">
-            <h1 
-              className={cn(
-                'font-bold leading-tight',
-                deviceInfo?.type === 'mobile' ? 'text-2xl' : 'text-4xl'
-              )}
-              style={primaryTextStyle}
-            >
-              {headline}
-            </h1>
+            {headline && (
+              <h1 
+                className={cn(
+                  'font-bold leading-tight',
+                  deviceInfo?.type === 'mobile' ? 'text-2xl' : 'text-4xl'
+                )}
+                style={primaryTextStyle}
+              >
+                {headline}
+              </h1>
+            )}
             
             {subheading && (
               <p 
