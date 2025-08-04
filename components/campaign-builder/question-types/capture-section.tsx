@@ -401,9 +401,9 @@ export function CaptureSection({
                     onCheckedChange={(checked) => handleFieldChange('flintTermsConsent', !!checked)}
                     className="mt-1"
                   />
-                  <Label htmlFor="flint-terms-consent" className="text-sm text-gray-300 leading-relaxed">
-                    I agree to Flint’s <a href="https://launch.useflint.co/terms-conditions" target="_blank" rel="noopener noreferrer" className="underline">Terms & Conditions</a>*
-                  </Label>
+                  <label htmlFor="flint-terms-consent" className="text-sm text-gray-300 leading-relaxed cursor-pointer">
+                    I agree to Flint's <a href="https://launch.useflint.co/terms-conditions" target="_blank" rel="noopener noreferrer" className="underline">Terms & Conditions</a><span className="text-red-500 ml-1">*</span>
+                  </label>
                 </div>
                 
                 {/* Marketing Consent */}
@@ -414,17 +414,16 @@ export function CaptureSection({
                     onCheckedChange={(checked) => handleFieldChange('marketingConsent', !!checked)}
                     className="mt-1"
                   />
-                  <Label htmlFor="marketing-consent" className="text-sm text-gray-300 leading-relaxed">
+                  <label htmlFor="marketing-consent" className="text-sm text-gray-300 leading-relaxed cursor-pointer">
                     I agree to receive relevant marketing communications from {businessName || 'this business'} in accordance with their{' '}
                     {privacyPolicyLink ? (
-                      <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline">
+                      <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline inline">
                         Privacy Policy
                       </a>
                     ) : (
-                      'Privacy Policy'
-                    )}
-                    .
-                  </Label>
+                      <span className="inline">Privacy Policy</span>
+                    )}.
+                  </label>
                 </div>
                 
               </div>
