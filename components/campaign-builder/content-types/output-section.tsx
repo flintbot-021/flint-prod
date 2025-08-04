@@ -263,6 +263,10 @@ export function OutputSection({
   const [localSubtitle, setLocalSubtitle] = useState('')
   const [localContent, setLocalContent] = useState('')
   
+  // Local state for button settings to prevent lag
+  const [localButtonText, setLocalButtonText] = useState('')
+  const [localButtonUrl, setLocalButtonUrl] = useState('')
+  
   // Get current settings with empty defaults (like other sections)
   const settings = section.settings as OutputSettings || {}
   const {
@@ -286,13 +290,17 @@ export function OutputSection({
     setLocalTitle(title)
     setLocalSubtitle(subtitle)
     setLocalContent(content)
-  }, [title, subtitle, content])
+    setLocalButtonText(buttonText)
+    setLocalButtonUrl(buttonUrl)
+  }, [title, subtitle, content, buttonText, buttonUrl])
 
   // Initialize local state on mount
   useEffect(() => {
     setLocalTitle(title)
     setLocalSubtitle(subtitle)
     setLocalContent(content)
+    setLocalButtonText(buttonText)
+    setLocalButtonUrl(buttonUrl)
   }, [])
   
   // Extract variables from campaign sections
@@ -655,8 +663,14 @@ export function OutputSection({
               </Label>
               <Input
                 id="button-text"
-                value={buttonText}
-                onChange={(e) => handleButtonSettingChange('buttonText', e.target.value)}
+                value={localButtonText}
+                onChange={(e) => setLocalButtonText(e.target.value)}
+                onBlur={(e) => handleButtonSettingChange('buttonText', e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleButtonSettingChange('buttonText', e.currentTarget.value)
+                  }
+                }}
                 placeholder="Download Now"
                 className="w-full"
               />
@@ -736,8 +750,14 @@ export function OutputSection({
                 <Input
                   id="button-url"
                   type="url"
-                  value={buttonUrl}
-                  onChange={(e) => handleButtonSettingChange('buttonUrl', e.target.value)}
+                  value={localButtonUrl}
+                  onChange={(e) => setLocalButtonUrl(e.target.value)}
+                  onBlur={(e) => handleButtonSettingChange('buttonUrl', e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleButtonSettingChange('buttonUrl', e.currentTarget.value)
+                    }
+                  }}
                   placeholder="https://example.com"
                   className="w-full"
                 />
