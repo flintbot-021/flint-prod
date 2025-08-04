@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { User, Mail, Phone, AlertCircle, Check, Loader2 } from 'lucide-react'
 import { useCaptureSubmission, type CaptureFormData } from '@/hooks/use-capture-submission'
 import { useCapture } from '@/contexts/capture-context'
+import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js'
 
 interface CaptureSectionProps {
   section: CampaignSection
@@ -67,10 +68,32 @@ const validateEmail = (email: string): boolean => {
 }
 
 const validatePhone = (phone: string): boolean => {
-  const cleanPhone = phone.replace(/[^\d+]/g, '')
-  const internationalRegex = /^\+[1-9]\d{6,14}$/
-  const usRegex = /^(\+1)?[2-9]\d{2}[2-9]\d{2}\d{4}$/
-  return internationalRegex.test(cleanPhone) || usRegex.test(cleanPhone)
+  if (!phone || !phone.trim()) return false
+  
+  try {
+    // Try parsing with common regions (AU, GB, US)
+    const regions = ['AU', 'GB', 'US'] as const
+    
+    for (const region of regions) {
+      try {
+        const phoneNumber = parsePhoneNumber(phone, region)
+        if (phoneNumber && phoneNumber.isValid()) {
+          return true
+        }
+      } catch {
+        // Continue to next region
+      }
+    }
+    
+    // Try parsing as E.164 format (international with +)
+    if (phone.startsWith('+')) {
+      return isValidPhoneNumber(phone)
+    }
+    
+    return false
+  } catch {
+    return false
+  }
 }
 
 const validateName = (name: string): boolean => {
@@ -97,7 +120,7 @@ export function CaptureSection({
   const enabledFields = settings.enabledFields || { name: true, email: true, phone: false }
   const requiredFields = settings.requiredFields || { name: true, email: true, phone: false }
   const fieldLabels = settings.fieldLabels || { name: 'Full Name', email: 'Email Address', phone: 'Phone Number' }
-  const fieldPlaceholders = settings.fieldPlaceholders || { name: 'Enter your full name', email: 'your@email.com', phone: 'Enter your phone number' }
+  const fieldPlaceholders = settings.fieldPlaceholders || { name: 'Enter your full name', email: 'your@email.com', phone: '+61 400 000 000 or 0400 000 000' }
   const submitButtonText = settings.submitButtonText || 'Get my results'
   const businessName = settings.businessName || ''
   const privacyPolicyLink = settings.privacyPolicyLink || ''
@@ -241,7 +264,7 @@ export function CaptureSection({
       if (!formData.phone?.trim()) {
         errors.phone = 'Phone number is required'
       } else if (!validatePhone(formData.phone)) {
-        errors.phone = 'Please enter a valid phone number'
+        errors.phone = 'Please enter a valid phone number (include country code for international numbers)'
       }
     }
 
@@ -401,9 +424,9 @@ export function CaptureSection({
                     onCheckedChange={(checked) => handleFieldChange('flintTermsConsent', !!checked)}
                     className="mt-1"
                   />
-                  <Label htmlFor="flint-terms-consent" className="text-sm text-gray-300 leading-relaxed">
-                    I agree to Flint’s <a href="https://launch.useflint.co/terms-conditions" target="_blank" rel="noopener noreferrer" className="underline">Terms & Conditions</a>*
-                  </Label>
+                  <label htmlFor="flint-terms-consent" className="text-sm text-gray-300 leading-relaxed cursor-pointer">
+                    I agree to Flint's <a href="https://launch.useflint.co/terms-conditions" target="_blank" rel="noopener noreferrer" className="underline">Terms & Conditions</a><span className="text-red-500 ml-1">*</span>
+                  </label>
                 </div>
                 
                 {/* Marketing Consent */}
@@ -414,17 +437,16 @@ export function CaptureSection({
                     onCheckedChange={(checked) => handleFieldChange('marketingConsent', !!checked)}
                     className="mt-1"
                   />
-                  <Label htmlFor="marketing-consent" className="text-sm text-gray-300 leading-relaxed">
+                  <label htmlFor="marketing-consent" className="text-sm text-gray-300 leading-relaxed cursor-pointer">
                     I agree to receive relevant marketing communications from {businessName || 'this business'} in accordance with their{' '}
                     {privacyPolicyLink ? (
-                      <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline">
+                      <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline inline">
                         Privacy Policy
                       </a>
                     ) : (
-                      'Privacy Policy'
-                    )}
-                    .
-                  </Label>
+                      <span className="inline">Privacy Policy</span>
+                    )}.
+                  </label>
                 </div>
                 
               </div>
@@ -568,7 +590,7 @@ export function CaptureSection({
         </div>
 
         {/* Marketing Consent Configuration */}
-        <div className="space-y-4">
+        <div className="space-y-4 pt-6">
           <h3 className="text-sm font-medium text-foreground">Marketing Consent</h3>
           <p className="text-xs text-muted-foreground">
             The marketing consent checkbox is always displayed. Configure its content below.

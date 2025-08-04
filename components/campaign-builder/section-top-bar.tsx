@@ -56,7 +56,7 @@ export function SectionTopBar({
   const [isChangingType, setIsChangingType] = useState(false)
   
   const sectionType = getSectionTypeById(section.type)
-  const isAILogicSection = section.type === 'ai-logic'
+  const isAILogicSection = section.type === 'logic-ai'
   
   // Get the icon component
   const IconComponent = sectionType && Icons[sectionType.icon as keyof typeof Icons] 

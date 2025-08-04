@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { CampaignSection, getSectionTypeById } from '@/lib/types/campaign-builder'
@@ -50,6 +50,11 @@ export function SectionBlock({
 }: SectionBlockProps) {
   const [isPreview, setIsPreview] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(initiallyCollapsed)
+
+  // Sync internal collapsed state with external prop changes (for expand/collapse all)
+  useEffect(() => {
+    setIsCollapsed(initiallyCollapsed)
+  }, [initiallyCollapsed])
 
   const {
     attributes,

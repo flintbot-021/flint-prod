@@ -16,7 +16,7 @@ interface OptionalSectionPlaceholderProps {
 const OPTIONAL_SECTIONS = {
   hero: {
     id: 'content-hero',
-    name: 'Hero Section',
+    name: 'Intro Section',
     description: 'Eye-catching header with background image',
     icon: Star,
     color: 'orange'
@@ -75,14 +75,16 @@ export function OptionalSectionPlaceholder({
       bg: 'bg-orange-50 hover:bg-orange-100',
       icon: 'text-orange-500',
       text: 'text-orange-700',
-      button: 'text-orange-600 hover:text-orange-700'
+      button: 'text-orange-600 hover:text-orange-700',
+      badge: 'bg-orange-500'
     },
     blue: {
       border: 'border-blue-200 hover:border-blue-300',
       bg: 'bg-blue-50 hover:bg-blue-100',
       icon: 'text-blue-500',
       text: 'text-blue-700',
-      button: 'text-blue-600 hover:text-blue-700'
+      button: 'text-blue-600 hover:text-blue-700',
+      badge: 'bg-blue-500'
     }
   }
 
@@ -102,12 +104,12 @@ export function OptionalSectionPlaceholder({
     >
       {/* Badge */}
       <div className={cn(
-        'absolute text-white text-xs px-2 py-1 rounded-full font-medium',
+        'absolute text-white text-xs px-2 py-1 rounded-full font-medium z-10',
         isSuggestion 
           ? 'bg-gray-500 -top-1 -right-1' 
-          : 'bg-blue-500 -top-2 -right-2'
+          : `${colors.badge} -top-2 -right-2`
       )}>
-        {isSuggestion ? 'Suggested' : 'Get Started'}
+        {isSuggestion ? 'Suggested' : 'Fresh Start'}
       </div>
 
       {/* Content */}
@@ -218,8 +220,8 @@ export function TemplatePlaceholder({
       )}
       onClick={handleClick}
     >
-      <div className="absolute text-white text-xs px-2 py-1 rounded-full font-medium bg-purple-500 -top-2 -right-2">
-        Start Fresh
+      <div className="absolute text-white text-xs px-2 py-1 rounded-full font-medium bg-purple-500 -top-2 -right-2 z-10">
+        Quick Start
       </div>
       <div className="text-center">
         <div className="mx-auto w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-colors bg-white shadow-sm group-hover:shadow-md">

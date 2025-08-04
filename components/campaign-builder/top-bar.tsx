@@ -16,6 +16,7 @@ import {
   Rocket,
   Settings,
   ChevronDown,
+  ChevronUp,
   Copy,
   PauseCircle,
   Home
@@ -50,6 +51,10 @@ interface CampaignBuilderTopBarProps {
   onPause?: () => void
   onShowOnboarding?: () => void;
   className?: string
+  // Expand/Collapse All functionality
+  sectionsCount?: number
+  allSectionsCollapsed?: boolean
+  onToggleAllSections?: () => void
 }
 
 export function CampaignBuilderTopBar({
@@ -70,7 +75,10 @@ export function CampaignBuilderTopBar({
   onPublish,
   onPause,
   onShowOnboarding,
-  className
+  className,
+  sectionsCount = 0,
+  allSectionsCollapsed = true,
+  onToggleAllSections
 }: CampaignBuilderTopBarProps) {
   const router = useRouter()
   const [isEditingName, setIsEditingName] = useState(false)
@@ -249,6 +257,29 @@ export function CampaignBuilderTopBar({
 
           {/* Right Section - Actions */}
           <div className="flex items-center space-x-3">
+            {/* Expand/Collapse All Button */}
+            {sectionsCount > 0 && onToggleAllSections && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onToggleAllSections}
+                disabled={isSaving}
+                className="flex items-center gap-2"
+              >
+                {allSectionsCollapsed ? (
+                  <>
+                    <ChevronDown className="h-4 w-4" />
+                    Expand All
+                  </>
+                ) : (
+                  <>
+                    <ChevronUp className="h-4 w-4" />
+                    Collapse All
+                  </>
+                )}
+              </Button>
+            )}
+
             {/* Preview Button - Always show if onPreview is available */}
             {onPreview && (
               <Button

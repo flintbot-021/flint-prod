@@ -155,7 +155,7 @@ export const SECTION_TYPES: SectionType[] = [
   // Content Sections
   {
     id: 'content-hero',
-    name: 'Hero Section',
+    name: 'Intro Section',
     description: 'Full-width hero with title, subtitle, and image',
     icon: 'Image',
     category: 'content',
@@ -172,7 +172,7 @@ export const SECTION_TYPES: SectionType[] = [
   },
   {
     id: 'content-basic',
-    name: 'Basic Section',
+    name: 'Divider Section',
     description: 'Simple content block with text and optional image',
     icon: 'FileText',
     category: 'content',

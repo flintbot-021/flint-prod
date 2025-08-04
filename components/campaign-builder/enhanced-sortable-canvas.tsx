@@ -34,6 +34,7 @@ interface EnhancedSortableCanvasProps {
   campaignId: string
   campaignName?: string
   sectionPersistence?: SectionPersistence
+  onPersistenceChange?: () => void
 }
 
 export function EnhancedSortableCanvas({ 
@@ -51,7 +52,8 @@ export function EnhancedSortableCanvas({
   showCollapsedSections = true,
   campaignId,
   campaignName,
-  sectionPersistence
+  sectionPersistence,
+  onPersistenceChange
 }: EnhancedSortableCanvasProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: 'campaign-canvas',
@@ -95,6 +97,12 @@ export function EnhancedSortableCanvas({
 
   // Use provided campaign name or fallback
   const displayCampaignName = campaignName || 'New Campaign'
+
+  // Wrapper for collapse change to trigger parent updates
+  const handleCollapseChange = (sectionId: string, isCollapsed: boolean) => {
+    sectionPersistence?.setSectionCollapsed(sectionId, isCollapsed)
+    onPersistenceChange?.()
+  }
 
   return (
     <div
@@ -181,7 +189,7 @@ export function EnhancedSortableCanvas({
                   onSelect={() => onSectionSelect?.(section.id)}
                   isCollapsible={showCollapsedSections}
                   initiallyCollapsed={sectionPersistence?.isSectionCollapsed(section.id) ?? true}
-                  onCollapseChange={sectionPersistence?.setSectionCollapsed}
+                  onCollapseChange={handleCollapseChange}
                   allSections={sections}
                   campaignId={campaignId}
                   showDragHandle={true}
@@ -208,7 +216,7 @@ export function EnhancedSortableCanvas({
                 onSelect={() => onSectionSelect?.(section.id)}
                 isCollapsible={showCollapsedSections}
                 initiallyCollapsed={sectionPersistence?.isSectionCollapsed(section.id) ?? true}
-                onCollapseChange={sectionPersistence?.setSectionCollapsed}
+                onCollapseChange={handleCollapseChange}
                 allSections={sections}
                 campaignId={campaignId}
                 showDragHandle={false}

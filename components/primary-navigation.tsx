@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth-context'
 import { Settings, LogOut, LifeBuoy, Mail, BookOpen, Eye } from 'lucide-react'
 
 interface PrimaryNavigationProps {
-  currentPage?: 'dashboard' | 'leads' | 'account' | 'builder'
+  currentPage?: 'dashboard' | 'tools' | 'leads' | 'account' | 'builder'
   onShowOnboarding?: () => void
 }
 
@@ -32,21 +32,25 @@ export function PrimaryNavigation({ currentPage, onShowOnboarding }: PrimaryNavi
   return (
     <header className="bg-background shadow border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
-          <div className="flex items-center space-x-4">
+        <div className="flex items-center py-4">
+          {/* Left - Logo */}
+          <div className="flex items-center">
             <FlintLogo size="sm" showText={false} className="!h-6 !w-auto" />
-            <span className="mx-4 text-gray-300 select-none">|</span>
+          </div>
+          
+          {/* Center - Navigation */}
+          <div className="flex-1 flex justify-center">
             <nav className="flex items-center space-x-2">
               <Button
                 variant="ghost"
                 onClick={() => router.push('/dashboard')}
                 className={`text-sm font-medium ${
-                  currentPage === 'dashboard' 
+                  currentPage === 'dashboard' || currentPage === 'tools'
                     ? 'text-primary' 
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                Dashboard
+                Tools
               </Button>
               <Button
                 variant="ghost"
@@ -61,6 +65,8 @@ export function PrimaryNavigation({ currentPage, onShowOnboarding }: PrimaryNavi
               </Button>
             </nav>
           </div>
+          
+          {/* Right - Actions */}
           
           <div className="flex items-center space-x-2">
             {/* Help Dropdown */}
