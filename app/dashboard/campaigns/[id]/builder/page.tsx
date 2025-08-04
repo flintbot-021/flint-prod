@@ -9,11 +9,12 @@ import { CampaignSection, SectionType, getSectionTypeById } from '@/lib/types/ca
 import { CampaignBuilderTopBar } from '@/components/campaign-builder/top-bar'
 import { SectionsMenu } from '@/components/campaign-builder/sections-menu'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { PublishModal } from '@/components/campaign-builder/publish-modal'
 import { CaptureProvider } from '@/contexts/capture-context'
 import { toast } from '@/components/ui/use-toast'
 import { PrimaryNavigation } from '@/components/primary-navigation'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { useSectionPersistence } from '@/hooks/use-section-persistence'
 import { usePostHog } from 'posthog-js/react'
 import { 
@@ -139,7 +140,9 @@ export default function ToolBuilderPage() {
   const [showPublishModal, setShowPublishModal] = useState(false)
   const [activeDragItem, setActiveDragItem] = useState<CampaignSection | null>(null)
   const [isAutoReordering, setIsAutoReordering] = useState(false) // Track automatic reordering
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [allSectionsCollapsed, setAllSectionsCollapsed] = useState(true)
+  const [persistenceVersion, setPersistenceVersion] = useState(0)
 
   useEffect(() => {
     // Only show onboarding if not seen before
@@ -150,6 +153,35 @@ export default function ToolBuilderPage() {
   }, []);
 
   const sectionPersistence = useSectionPersistence(params.id as string)
+
+  // Handle expand/collapse all sections
+  const handleToggleAllSections = () => {
+    const newCollapsedState = !allSectionsCollapsed
+    
+    // Update all sections to the new collapsed state
+    sections.forEach(section => {
+      sectionPersistence.setSectionCollapsed(section.id, newCollapsedState)
+    })
+    
+    setAllSectionsCollapsed(newCollapsedState)
+    // Force re-render by incrementing version
+    setPersistenceVersion(prev => prev + 1)
+  }
+
+  // Update allSectionsCollapsed state when sections change or individual sections are toggled
+  useEffect(() => {
+    if (sections.length === 0) {
+      setAllSectionsCollapsed(true)
+      return
+    }
+    
+    // Check if all sections are collapsed
+    const allCollapsed = sections.every(section => 
+      sectionPersistence.isSectionCollapsed(section.id)
+    )
+    
+    setAllSectionsCollapsed(allCollapsed)
+  }, [sections, sectionPersistence, persistenceVersion])
 
   // DnD sensors for pointer interactions  
   const sensors = useSensors(
@@ -1377,6 +1409,9 @@ export default function ToolBuilderPage() {
               onPublish={handlePublish}
               onPause={handlePause}
               onShowOnboarding={() => setShowOnboarding(true)}
+              sectionsCount={sections.length}
+              allSectionsCollapsed={allSectionsCollapsed}
+              onToggleAllSections={handleToggleAllSections}
             />
 
             {/* Main Content Area */}
@@ -1423,11 +1458,11 @@ export default function ToolBuilderPage() {
                               Every tool needs a Capture section, Logic section, and Output section. Click the placeholders below to add required sections, or use the sidebar for additional sections.
                             </CardDescription>
                           </div>
-
                         </div>
                       </CardHeader>
                       <CardContent>
                         <EnhancedSortableCanvas
+                          key={persistenceVersion}
                           sections={sections}
                           onSectionUpdate={handleSectionUpdate}
                           onSectionDelete={handleSectionDelete}
@@ -1443,6 +1478,7 @@ export default function ToolBuilderPage() {
                           campaignId={campaign?.id}
                           campaignName={campaign?.name}
                           sectionPersistence={sectionPersistence}
+                          onPersistenceChange={() => setPersistenceVersion(prev => prev + 1)}
                         />
                       </CardContent>
                     </Card>
