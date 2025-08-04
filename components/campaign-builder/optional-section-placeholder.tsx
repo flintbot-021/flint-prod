@@ -16,7 +16,7 @@ interface OptionalSectionPlaceholderProps {
 const OPTIONAL_SECTIONS = {
   hero: {
     id: 'content-hero',
-    name: 'Hero Section',
+    name: 'Intro Section',
     description: 'Eye-catching header with background image',
     icon: Star,
     color: 'orange'
