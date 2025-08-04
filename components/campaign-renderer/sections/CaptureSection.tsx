@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { SectionNavigationBar } from '../SectionNavigationBar'
+import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js'
 
 // =============================================================================
 // CAPTURE SECTION COMPONENT
@@ -47,10 +48,32 @@ interface CaptureSettings {
 // Email validation is handled by isValidEmail from utils
 
 const validatePhone = (phone: string): boolean => {
-  const cleanPhone = phone.replace(/[^\d+]/g, '')
-  const internationalRegex = /^\+[1-9]\d{6,14}$/
-  const usRegex = /^(\+1)?[2-9]\d{2}[2-9]\d{2}\d{4}$/
-  return internationalRegex.test(cleanPhone) || usRegex.test(cleanPhone)
+  if (!phone || !phone.trim()) return false
+  
+  try {
+    // Try parsing with common regions (AU, GB, US)
+    const regions = ['AU', 'GB', 'US'] as const
+    
+    for (const region of regions) {
+      try {
+        const phoneNumber = parsePhoneNumber(phone, region)
+        if (phoneNumber && phoneNumber.isValid()) {
+          return true
+        }
+      } catch {
+        // Continue to next region
+      }
+    }
+    
+    // Try parsing as E.164 format (international with +)
+    if (phone.startsWith('+')) {
+      return isValidPhoneNumber(phone)
+    }
+    
+    return false
+  } catch {
+    return false
+  }
 }
 
 const validateName = (name: string): boolean => {
@@ -95,7 +118,7 @@ export function CaptureSection({
     fieldPlaceholders: {
       name: configData.fieldPlaceholders?.name ?? 'Enter your full name',
       email: configData.fieldPlaceholders?.email ?? 'your@email.com',
-      phone: configData.fieldPlaceholders?.phone ?? 'Enter your phone number'
+      phone: configData.fieldPlaceholders?.phone ?? '+61 400 000 000 or 0400 000 000'
     },
     submitButtonText: configData.submitButtonText || configData.buttonText || config.buttonLabel || 'Generate My Results',
     businessName: configData.businessName || '',
@@ -172,7 +195,7 @@ export function CaptureSection({
       if (!formData.phone?.trim()) {
         newErrors.phone = 'Phone number is required'
       } else if (!validatePhone(formData.phone)) {
-        newErrors.phone = 'Please enter a valid phone number'
+        newErrors.phone = 'Please enter a valid phone number (include country code for international numbers)'
       }
     }
 
