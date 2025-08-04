@@ -1411,6 +1411,25 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
           />
         </div>
       )}
+
+      {/* Mobile Footer - Powered by Flint (only visible on mobile) */}
+      {campaign && campaign.settings?.branding?.show_powered_by !== false && (
+        <div className="sm:hidden border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="max-w-7xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-center text-xs text-muted-foreground">
+              <span>Powered by</span>
+              <a 
+                href="https://launch.useflint.co/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="ml-1 font-semibold text-primary hover:text-primary/80 transition-colors"
+              >
+                Flint
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 } 

@@ -568,7 +568,7 @@ export function CaptureSection({
         </div>
 
         {/* Marketing Consent Configuration */}
-        <div className="space-y-4">
+        <div className="space-y-4 pt-6">
           <h3 className="text-sm font-medium text-foreground">Marketing Consent</h3>
           <p className="text-xs text-muted-foreground">
             The marketing consent checkbox is always displayed. Configure its content below.

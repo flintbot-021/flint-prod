@@ -49,10 +49,10 @@ export function CampaignHeader({ campaign, className, showPoweredBy = true }: Ca
             </div>
           )}
 
-          {/* Powered By Branding */}
+          {/* Powered By Branding - Hidden on mobile */}
           <div className="flex items-center justify-end min-w-0 flex-1">
             {shouldShowPoweredBy && (
-              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+              <div className="hidden sm:flex items-center space-x-2 text-sm text-muted-foreground">
                 <span>Powered by</span>
                 <a 
                   href="https://launch.useflint.co/" 
