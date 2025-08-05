@@ -21,6 +21,8 @@ interface SliderQuestionProps {
     showValue: boolean
     required: boolean
     buttonText: string
+    minLabel?: string
+    maxLabel?: string
   }
   isPreview?: boolean
   isEditing?: boolean
@@ -84,8 +86,16 @@ export function SliderQuestion({
         </div>
 
         {/* Slider */}
-        <div className="pt-6 space-y-4">
-          <div className="space-y-2">
+        <div className="pt-8 space-y-6">
+          {settings.showValue && (
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-500 text-white text-2xl font-bold shadow-lg">
+                {sliderValue[0]}
+              </div>
+            </div>
+          )}
+          
+          <div className="space-y-4">
             <Slider
               value={sliderValue}
               onValueChange={setSliderValue}
@@ -95,18 +105,16 @@ export function SliderQuestion({
               className="w-full"
             />
             <div className="flex justify-between text-sm text-gray-400">
-              <span>{settings.minValue}</span>
-              <span>{settings.maxValue}</span>
+              <div className="text-center space-y-2">
+                <div>{settings.minValue}</div>
+                <div className="text-xs">{settings.minLabel || 'Low'}</div>
+              </div>
+              <div className="text-center space-y-2">
+                <div>{settings.maxValue}</div>
+                <div className="text-xs">{settings.maxLabel || 'High'}</div>
+              </div>
             </div>
           </div>
-          
-          {settings.showValue && (
-            <div className="text-center">
-              <span className="text-2xl font-bold text-blue-400">
-                {sliderValue[0]}
-              </span>
-            </div>
-          )}
         </div>
       </div>
     )
@@ -137,8 +145,8 @@ export function SliderQuestion({
       </div>
 
       {/* Slider Preview */}
-      <div className="pt-6">
-        <div className="space-y-2">
+      <div className="pt-8">
+        <div className="space-y-4">
           <Slider
             value={sliderValue}
             onValueChange={setSliderValue}
@@ -148,41 +156,53 @@ export function SliderQuestion({
             className="w-full"
           />
           <div className="flex justify-between items-center text-sm text-gray-400">
-            <div className="w-12 text-left">
-              <InlineEditableText
-                value={settings.minValue.toString()}
-                onSave={(value) => onChange?.({ ...settings, minValue: parseInt(value) || 0 })}
-                placeholder="0"
-                className="text-sm text-center w-full"
-              />
+            <div className="w-16 text-left space-y-2">
+              <div className="text-center">
+                <InlineEditableText
+                  value={settings.minValue.toString()}
+                  onSave={(value) => onChange?.({ ...settings, minValue: parseInt(value) || 0 })}
+                  placeholder="0"
+                  className="text-sm text-center w-full"
+                />
+              </div>
+              <div className="text-center">
+                <InlineEditableText
+                  value={settings.minLabel || 'Low'}
+                  onSave={(value) => onChange?.({ ...settings, minLabel: value })}
+                  placeholder="Low"
+                  className="text-xs text-center w-full text-gray-500"
+                />
+              </div>
             </div>
             <div className="text-center">
-              <div className="text-xs text-gray-500 mb-1">increments</div>
               <InlineEditableText
                 value={settings.step.toString()}
                 onSave={(value) => onChange?.({ ...settings, step: parseInt(value) || 1 })}
                 placeholder="1"
                 className="text-sm text-center"
               />
+              <div className="text-xs text-gray-500 mt-1">increments</div>
             </div>
-            <div className="w-12 text-right">
-              <InlineEditableText
-                value={settings.maxValue.toString()}
-                onSave={(value) => onChange?.({ ...settings, maxValue: parseInt(value) || 100 })}
-                placeholder="100"
-                className="text-sm text-center w-full"
-              />
+            <div className="w-16 text-right space-y-2">
+              <div className="text-center">
+                <InlineEditableText
+                  value={settings.maxValue.toString()}
+                  onSave={(value) => onChange?.({ ...settings, maxValue: parseInt(value) || 100 })}
+                  placeholder="100"
+                  className="text-sm text-center w-full"
+                />
+              </div>
+              <div className="text-center">
+                <InlineEditableText
+                  value={settings.maxLabel || 'High'}
+                  onSave={(value) => onChange?.({ ...settings, maxLabel: value })}
+                  placeholder="High"
+                  className="text-xs text-center w-full text-gray-500"
+                />
+              </div>
             </div>
           </div>
         </div>
-        
-        {settings.showValue && (
-          <div className="text-center">
-            <span className="text-2xl font-bold text-blue-400">
-              {sliderValue[0]}
-            </span>
-          </div>
-        )}
       </div>
     </div>
   )
