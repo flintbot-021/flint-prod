@@ -217,7 +217,7 @@ export function MultipleSlidersSection({
                   {/* Clickable Slider Label */}
                   <div 
                     className={cn(
-                      'cursor-pointer select-none',
+                      'cursor-pointer select-none relative',
                       'flex items-center justify-between',
                       'p-3 rounded-lg transition-colors duration-200',
                       'hover:bg-gray-50',
@@ -246,24 +246,26 @@ export function MultipleSlidersSection({
                       </h3>
                     </div>
                     
-                    {/* Current Value Display */}
-                    <div className="flex items-center space-x-2">
-                      {hasError && (
+                    {/* Current Value Display - Small Circle in Top Right */}
+                    {slider.showValue && (
+                      <div className="absolute top-2 right-2">
+                        <div 
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-full text-white text-sm font-bold shadow-md"
+                          style={{ backgroundColor: theme.buttonColor }}
+                        >
+                          {currentValue}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Error Display */}
+                    {hasError && (
+                      <div className="flex items-center space-x-2">
                         <span className="text-red-400 text-sm">
                           Required
                         </span>
-                      )}
-                      <span 
-                        className={cn(
-                          'font-medium',
-                          deviceInfo?.type === 'mobile' ? 'text-base' : 'text-lg',
-                          hasError && 'text-red-400'
-                        )}
-                        style={hasError ? undefined : mutedTextStyle}
-                      >
-                        {currentValue}
-                      </span>
-                    </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Collapsible Slider Interface */}
@@ -275,12 +277,6 @@ export function MultipleSlidersSection({
                   )}>
                     <div className="space-y-4 px-3 pb-2">
                       
-                      {/* Labels */}
-                      <div className="flex justify-between text-sm" style={mutedTextStyle}>
-                        <span>{slider.minLabel}</span>
-                        <span>{slider.maxLabel}</span>
-                      </div>
-                      
                       {/* Slider */}
                       <div className="relative px-2">
                         <input
@@ -291,24 +287,31 @@ export function MultipleSlidersSection({
                           value={currentValue}
                           onChange={(e) => handleSliderChange(slider.id, parseInt(e.target.value))}
                           className={cn(
-                            'w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer slider',
-                            'focus:outline-none focus:ring-2 focus:ring-blue-500',
+                            'w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer',
+                            'slider-thumb:appearance-none slider-thumb:w-6 slider-thumb:h-6',
+                            'slider-thumb:rounded-full',
+                            'slider-thumb:cursor-pointer slider-thumb:shadow-lg',
+                            'focus:outline-none focus:ring-2 focus:ring-opacity-50',
                             hasError && 'ring-2 ring-red-500'
                           )}
+                          style={{
+                            background: `linear-gradient(to right, ${theme.buttonColor} 0%, ${theme.buttonColor} ${
+                              ((currentValue - slider.minValue) / (slider.maxValue - slider.minValue)) * 100
+                            }%, #e5e7eb ${
+                              ((currentValue - slider.minValue) / (slider.maxValue - slider.minValue)) * 100
+                            }%, #e5e7eb 100%)`,
+                            // Apply theme colors to webkit slider components
+                            ['--slider-thumb-color' as any]: theme.buttonColor,
+                            ['--slider-focus-color' as any]: theme.buttonColor,
+                          }}
                         />
                       </div>
                       
-                      {/* Value Display */}
-                      {slider.showValue && (
-                        <div className="text-center">
-                          <span className={cn(
-                            'font-bold text-white',
-                            deviceInfo?.type === 'mobile' ? 'text-xl' : 'text-2xl'
-                          )}>
-                            {currentValue}
-                          </span>
-                        </div>
-                      )}
+                      {/* Labels below slider */}
+                      <div className="flex justify-between items-center text-sm" style={mutedTextStyle}>
+                        <span>{slider.minLabel}</span>
+                        <span>{slider.maxLabel}</span>
+                      </div>
                       
                       {/* Error Message */}
                       {hasError && (

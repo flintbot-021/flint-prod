@@ -160,7 +160,10 @@ export function SliderQuestion({
               <div className="text-center">
                 <InlineEditableText
                   value={settings.minValue.toString()}
-                  onSave={(value) => onChange?.({ ...settings, minValue: parseInt(value) || 0 })}
+                  onSave={(value) => {
+                    const numValue = parseInt(value.replace(/[^-0-9]/g, '')) || 0
+                    onChange?.({ ...settings, minValue: numValue })
+                  }}
                   placeholder="0"
                   className="text-sm text-center w-full"
                 />
@@ -177,7 +180,10 @@ export function SliderQuestion({
             <div className="text-center">
               <InlineEditableText
                 value={settings.step.toString()}
-                onSave={(value) => onChange?.({ ...settings, step: parseInt(value) || 1 })}
+                onSave={(value) => {
+                  const numValue = parseInt(value.replace(/[^0-9]/g, '')) || 1
+                  onChange?.({ ...settings, step: Math.max(1, numValue) }) // Ensure step is at least 1
+                }}
                 placeholder="1"
                 className="text-sm text-center"
               />
@@ -187,7 +193,10 @@ export function SliderQuestion({
               <div className="text-center">
                 <InlineEditableText
                   value={settings.maxValue.toString()}
-                  onSave={(value) => onChange?.({ ...settings, maxValue: parseInt(value) || 100 })}
+                  onSave={(value) => {
+                    const numValue = parseInt(value.replace(/[^-0-9]/g, '')) || 100
+                    onChange?.({ ...settings, maxValue: numValue })
+                  }}
                   placeholder="100"
                   className="text-sm text-center w-full"
                 />
