@@ -135,6 +135,66 @@ export async function createPublicLead(
 }
 
 /**
+ * Public: Create a lead from the capture form (no auth required, no SELECT permission needed)
+ * This version doesn't return the created lead data for maximum security
+ */
+export async function createPublicLeadSecure(
+  leadData: CreateLead
+): Promise<DatabaseResult<null>> {
+  // Validate required fields
+  const validationErrors = validateRequiredFields(leadData, [
+    'campaign_id',
+    'email',
+    'session_id'
+  ]);
+  if (validationErrors.length > 0) {
+    return {
+      success: false,
+      error: 'Validation failed',
+      validation_errors: validationErrors
+    };
+  }
+
+  // Validate UUID format
+  if (!isValidUUID(leadData.campaign_id)) {
+    return {
+      success: false,
+      error: 'Invalid campaign ID format'
+    };
+  }
+
+  // Validate email format
+  if (!isValidEmail(leadData.email)) {
+    return {
+      success: false,
+      error: 'Invalid email format',
+      validation_errors: [{
+        field: 'email',
+        message: 'Please provide a valid email address',
+        code: 'INVALID_EMAIL',
+        value: leadData.email
+      }]
+    };
+  }
+
+  const supabase = await getSupabaseClient();
+
+  return withErrorHandling(async () => {
+    // Insert without .select() - this doesn't require SELECT permission
+    const { error } = await supabase
+      .from('leads')
+      .insert(leadData);
+
+    if (error) {
+      throw error;
+    }
+
+    // Return success without data
+    return { data: null };
+  });
+}
+
+/**
  * Get lead by ID
  */
 export async function getLeadById(
