@@ -868,8 +868,7 @@ export default function LeadsPage() {
     
     const colors = {
       published: 'default',
-      draft: 'secondary', 
-      archived: 'outline'
+      draft: 'secondary'
     } as const
 
     return (

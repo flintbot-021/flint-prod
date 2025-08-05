@@ -30,11 +30,11 @@ import {
 import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/use-toast'
 import { CampaignEditModal } from './campaign-edit-modal'
-import { Campaign } from '@/lib/types/database'
+import { Campaign, CampaignStatus } from '@/lib/types/database'
 
 interface CampaignBuilderTopBarProps {
   campaignName: string
-  campaignStatus: 'draft' | 'published' | 'archived'
+  campaignStatus: CampaignStatus
   campaignId?: string
   campaignUserKey?: string
   campaignPublishedUrl?: string

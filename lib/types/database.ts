@@ -13,7 +13,7 @@ export type UUID = string;
 export type Timestamp = string;
 export type JSONValue = string | number | boolean | null | { [key: string]: JSONValue } | JSONValue[];
 
-export type CampaignStatus = 'draft' | 'published' | 'archived';
+export type CampaignStatus = 'draft' | 'published';
 
 export type SectionType = 
   | 'text_question'
@@ -203,7 +203,6 @@ export interface UserPreferences {
   dashboard?: {
     default_view?: 'grid' | 'list';
     campaigns_per_page?: number;
-    show_archived?: boolean;
   };
   notifications?: {
     email_campaign_published?: boolean;
