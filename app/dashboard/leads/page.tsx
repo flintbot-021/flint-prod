@@ -631,7 +631,8 @@ export default function LeadsPage() {
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalLeads, setTotalLeads] = useState(0)
+  const [totalLeads, setTotalLeads] = useState(0) // Filtered total
+  const [overallTotalLeads, setOverallTotalLeads] = useState(0) // Unfiltered total
   const [totalPages, setTotalPages] = useState(0)
   const leadsPerPage = 20
 
@@ -743,8 +744,22 @@ export default function LeadsPage() {
         paginationParams.search = searchTerm
       }
 
-      // Load leads
-      const leadsResult = await getLeads(paginationParams)
+      // Load overall total (without search/campaign filters) for "X of Y" display
+      const overallParams: PaginationParams & {
+        campaign_ids?: string[];
+      } = {
+        page: 1,
+        per_page: 1 // We only need the count, not the actual data
+      }
+      
+      // Only show leads for campaigns owned by the user (but no other filters)
+      const userCampaignIds = campaignsResult.data?.data?.map((c: any) => c.id) || []
+      overallParams.campaign_ids = userCampaignIds
+      
+      const [overallResult, leadsResult] = await Promise.all([
+        getLeads(overallParams),
+        getLeads(paginationParams)
+      ])
 
       if (!leadsResult.success) {
         throw new Error(leadsResult.error || 'Failed to load leads')
@@ -758,7 +773,8 @@ export default function LeadsPage() {
         }) || []
 
         setLeads(enrichedLeads)
-        setTotalLeads(leadsResult.data.meta?.total || 0)
+        setTotalLeads(leadsResult.data.meta?.total || 0) // Filtered total
+        setOverallTotalLeads(overallResult.success ? (overallResult.data?.meta?.total || 0) : 0) // Overall total
         setTotalPages(Math.ceil((leadsResult.data.meta?.total || 0) / leadsPerPage))
       }
     } catch (err) {
@@ -904,8 +920,13 @@ export default function LeadsPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-6">
               <div className="text-sm text-muted-foreground">
-                <span className="font-medium text-lg text-foreground">{totalLeads}</span>
-                <span className="ml-1">total leads</span>
+                <span className="font-medium text-lg text-foreground">{sortedLeads.length}</span>
+                <span className="ml-1">
+                  {searchTerm || selectedCampaign !== 'all' 
+                    ? `of ${overallTotalLeads} leads` 
+                    : 'total leads'
+                  }
+                </span>
               </div>
             </div>
             <div className="flex items-center space-x-3">
@@ -989,6 +1010,42 @@ export default function LeadsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Filter Results Summary */}
+              {!loadingData && (searchTerm || selectedCampaign !== 'all') && (
+                <div className="mb-4 p-3 bg-muted/50 rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-muted-foreground">
+                      Showing <span className="font-medium text-foreground">{sortedLeads.length}</span> of{' '}
+                      <span className="font-medium text-foreground">{overallTotalLeads}</span> leads
+                      {searchTerm && (
+                        <span className="ml-2">
+                          matching "<span className="font-medium text-foreground">{searchTerm}</span>"
+                        </span>
+                      )}
+                      {selectedCampaign !== 'all' && (
+                        <span className="ml-2">
+                          from <span className="font-medium text-foreground">
+                            {campaigns.find(c => c.id === selectedCampaign)?.name || 'selected tool'}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSearchTerm('')
+                        setSelectedCampaign('all')
+                        setCurrentPage(1)
+                      }}
+                      className="text-xs"
+                    >
+                      Clear filters
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
               {loadingData ? (
                 <div className="space-y-4">
                   {[...Array(5)].map((_, i) => (
@@ -1176,16 +1233,34 @@ export default function LeadsPage() {
               ) : (
                 <div className="text-center py-12">
                   <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-foreground mb-2">No leads yet</h3>
+                  <h3 className="text-lg font-medium text-foreground mb-2">
+                    {overallTotalLeads > 0 ? 'No matching leads' : 'No leads yet'}
+                  </h3>
                   <p className="text-muted-foreground mb-4">
-                    Leads will appear here once people start completing your campaigns.
+                    {overallTotalLeads > 0 
+                      ? 'No leads match your current filters. Try adjusting your search or campaign filter.'
+                      : 'Leads will appear here once people start completing your campaigns.'
+                    }
                   </p>
-                  <Button
-                    onClick={() => router.push('/dashboard')}
-                    size="sm"
-                  >
-                    View Your Tools
-                  </Button>
+                  {overallTotalLeads > 0 ? (
+                    <Button
+                      onClick={() => {
+                        setSearchTerm('')
+                        setSelectedCampaign('all')
+                        setCurrentPage(1)
+                      }}
+                      size="sm"
+                    >
+                      Clear Filters
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => router.push('/dashboard')}
+                      size="sm"
+                    >
+                      View Your Tools
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>
