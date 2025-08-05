@@ -248,6 +248,13 @@ export interface CampaignSettings {
     facebook_pixel_id?: string;
     custom_scripts?: string[];
   };
+  seo?: {
+    meta_title?: string;
+    meta_description?: string;
+    og_image_url?: string;
+    keywords?: string[];
+    canonical_url?: string;
+  };
 }
 
 /**

@@ -13,8 +13,8 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Flint Lead Magnet Tool",
-  description: "Create powerful lead magnets with interactive campaigns and capture valuable leads",
+  title: "Flint: Build lightweight tools, fast.",
+  description: "Build and deploy interactive tools that convert visitors into leads. Create quizzes, calculators, and more with Flint's no-code platform.",
   icons: {
     icon: '/favicon.png',
     shortcut: '/favicon.png',
