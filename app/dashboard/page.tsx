@@ -30,7 +30,6 @@ import {
   TrendingUp, 
   Target,
   Plus,
-  ArrowUpRight,
   Activity,
   Clock,
   Settings,
@@ -369,11 +368,6 @@ export default function Dashboard() {
             <StatsCard
               title="Live Tools"
               value={campaigns.filter(c => c.status === 'published').length}
-              subtitle={
-                <span className="text-green-600">
-                  {stats.totalCampaigns} total tools
-                </span>
-              }
               icon={Activity}
               iconColor="text-blue-600"
               loading={loadingCampaigns}
@@ -382,12 +376,6 @@ export default function Dashboard() {
             <StatsCard
               title="Average Conversion Rate"
               value={`${stats.completionRate.toFixed(1)}%`}
-              subtitle={
-                <span className="text-green-600">
-                  <ArrowUpRight className="h-3 w-3 inline" />
-                  3.2% improvement
-                </span>
-              }
               icon={TrendingUp}
               iconColor="text-purple-600"
               loading={loadingStats}
@@ -396,12 +384,6 @@ export default function Dashboard() {
             <StatsCard
               title="Total Leads"
               value={stats.totalLeads.toLocaleString()}
-              subtitle={
-                <span className="text-green-600">
-                  <ArrowUpRight className="h-3 w-3 inline" />
-                  12% from last period
-                </span>
-              }
               icon={Users}
               iconColor="text-green-600"
               loading={loadingStats}
