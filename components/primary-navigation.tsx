@@ -35,7 +35,9 @@ export function PrimaryNavigation({ currentPage, onShowOnboarding }: PrimaryNavi
         <div className="flex items-center py-4">
           {/* Left - Logo */}
           <div className="flex items-center">
-            <FlintLogo size="sm" showText={false} className="!h-6 !w-auto" />
+            <Link href="/dashboard" className="hover:opacity-80 transition-opacity">
+              <FlintLogo size="sm" showText={false} className="!h-6 !w-auto" />
+            </Link>
           </div>
           
           {/* Center - Navigation */}

@@ -32,6 +32,7 @@ export function KnowledgeBaseModal({
   const [entries, setEntries] = useState<KnowledgeBaseEntry[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [uploadError, setUploadError] = useState<string>('')
   const [newEntry, setNewEntry] = useState<NewEntry>({
     title: '',
     content: '',
@@ -61,6 +62,9 @@ export function KnowledgeBaseModal({
   }
 
   const handleAddEntry = async () => {
+    // Clear any previous errors
+    setUploadError('')
+    
     // For text entries, both title and content are required
     // For file entries, only title is required (content is optional)
     if (!newEntry.title.trim() || (newEntry.type === 'text' && !newEntry.content.trim())) {
@@ -95,12 +99,31 @@ export function KnowledgeBaseModal({
         await loadEntries()
         setNewEntry({ title: '', content: '', type: 'text' })
         setShowAddForm(false)
+        setUploadError('') // Clear any errors on success
       } else {
-        console.error('Failed to add entry:', result.error || 'Unknown error')
-        // You could add a toast notification here to show the error to the user
+        // Handle specific error messages from the server
+        const errorMessage = result.error || 'Failed to upload file. Please try again.'
+        
+        // Check for common file upload errors
+        if (errorMessage.includes('size') || errorMessage.includes('large') || errorMessage.includes('limit')) {
+          setUploadError('File is too large. Please choose a file smaller than 10MB.')
+        } else if (errorMessage.includes('type') || errorMessage.includes('format')) {
+          setUploadError('File type is not supported. Please upload: .txt, .md, .pdf, .doc, or .docx files.')
+        } else if (response.status === 413) {
+          setUploadError('File is too large. Please choose a file smaller than 10MB.')
+        } else {
+          setUploadError(errorMessage)
+        }
+        
+        console.error('Failed to add entry:', errorMessage)
       }
     } catch (error) {
       console.error('Failed to add knowledge base entry:', error)
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setUploadError('Network error. Please check your connection and try again.')
+      } else {
+        setUploadError('An unexpected error occurred. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -130,6 +153,27 @@ export function KnowledgeBaseModal({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      // Clear any previous errors
+      setUploadError('')
+      
+      // Check file size (10MB limit)
+      const maxSize = 10 * 1024 * 1024 // 10MB in bytes
+      if (file.size > maxSize) {
+        setUploadError(`File size (${(file.size / (1024 * 1024)).toFixed(1)}MB) exceeds the 10MB limit. Please choose a smaller file.`)
+        // Clear the file input
+        e.target.value = ''
+        return
+      }
+      
+      // Check file type
+      const allowedTypes = ['.txt', '.md', '.pdf', '.doc', '.docx']
+      const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase()
+      if (!allowedTypes.includes(fileExtension)) {
+        setUploadError(`File type "${fileExtension}" is not supported. Please upload: ${allowedTypes.join(', ')}`)
+        e.target.value = ''
+        return
+      }
+      
       setNewEntry(prev => ({
         ...prev,
         file,
@@ -162,12 +206,21 @@ export function KnowledgeBaseModal({
           {/* Add Entry Form */}
           {showAddForm && (
             <Card className="p-4 mb-6 border-blue-200 bg-blue-50">
+              {/* Error Message */}
+              {uploadError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-sm text-red-800">{uploadError}</p>
+                </div>
+              )}
               <div className="space-y-4">
                 <div className="flex items-center gap-4">
                   <Button
                     variant={newEntry.type === 'text' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setNewEntry(prev => ({ ...prev, type: 'text', file: undefined }))}
+                    onClick={() => {
+                      setNewEntry(prev => ({ ...prev, type: 'text', file: undefined }))
+                      setUploadError('') // Clear errors when switching to text
+                    }}
                   >
                     <FileText className="h-4 w-4 mr-2" />
                     Text
@@ -175,7 +228,10 @@ export function KnowledgeBaseModal({
                   <Button
                     variant={newEntry.type === 'file' ? 'default' : 'outline'}
                     size="sm"
-                    onClick={() => setNewEntry(prev => ({ ...prev, type: 'file' }))}
+                    onClick={() => {
+                      setNewEntry(prev => ({ ...prev, type: 'file' }))
+                      setUploadError('') // Clear errors when switching to file
+                    }}
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     File
@@ -247,6 +303,7 @@ export function KnowledgeBaseModal({
                     onClick={() => {
                       setShowAddForm(false)
                       setNewEntry({ title: '', content: '', type: 'text' })
+                      setUploadError('') // Clear errors when canceling
                     }}
                     size="sm"
                   >
