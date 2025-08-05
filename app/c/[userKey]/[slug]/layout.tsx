@@ -2,12 +2,12 @@ import type { Metadata } from 'next'
 import { getPublishedCampaignWithSectionsByUserKey } from '@/lib/data-access/public-campaigns'
 
 interface Props {
-  params: { userKey: string; slug: string }
+  params: Promise<{ userKey: string; slug: string }>
   children: React.ReactNode
 }
 
-export async function generateMetadata({ params }: { params: { userKey: string; slug: string } }): Promise<Metadata> {
-  const { userKey, slug } = params
+export async function generateMetadata({ params }: { params: Promise<{ userKey: string; slug: string }> }): Promise<Metadata> {
+  const { userKey, slug } = await params
 
   // Default fallback metadata
   const defaultMetadata: Metadata = {
