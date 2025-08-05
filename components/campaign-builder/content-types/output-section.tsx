@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react'
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
 import { Upload, X, ExternalLink, Download, Link as LinkIcon } from 'lucide-react'
@@ -257,6 +257,8 @@ export function OutputSection({
   const [isUploading, setIsUploading] = useState(false)
   const [aiTestDataTimestamp, setAiTestDataTimestamp] = useState(0)
   const [isUploadingButtonFile, setIsUploadingButtonFile] = useState(false)
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const pendingUpdatesRef = useRef<Partial<OutputSettings>>({})
   
   // Local state for variable dropdown components
   const [localTitle, setLocalTitle] = useState('')
@@ -286,15 +288,18 @@ export function OutputSection({
   const hasContent = (value: string) => value && value.trim().length > 0
 
   // Sync local state with external settings changes (e.g., from variable updates)
+  // Only update if the external value is different and not empty (to prevent overwrites)
   useEffect(() => {
-    setLocalTitle(title)
-    setLocalSubtitle(subtitle)
-    setLocalContent(content)
-    setLocalButtonText(buttonText)
-    setLocalButtonUrl(buttonUrl)
-  }, [title, subtitle, content, buttonText, buttonUrl])
+    // Defensive sync - preserve local content if external content is empty
+    // Only update if external has content AND is different from local, OR if local is empty
+    if ((title && title !== localTitle) || (!localTitle && title)) setLocalTitle(title)
+    if ((subtitle && subtitle !== localSubtitle) || (!localSubtitle && subtitle)) setLocalSubtitle(subtitle) 
+    if ((content && content !== localContent) || (!localContent && content)) setLocalContent(content)
+    if ((buttonText && buttonText !== localButtonText) || (!localButtonText && buttonText)) setLocalButtonText(buttonText)
+    if ((buttonUrl && buttonUrl !== localButtonUrl) || (!localButtonUrl && buttonUrl)) setLocalButtonUrl(buttonUrl)
+  }, [title, subtitle, content, buttonText, buttonUrl, localTitle, localSubtitle, localContent, localButtonText, localButtonUrl])
 
-  // Initialize local state on mount
+  // Initialize local state on mount - only run once
   useEffect(() => {
     setLocalTitle(title)
     setLocalSubtitle(subtitle)
@@ -340,24 +345,60 @@ export function OutputSection({
     conditionalRules: []
   }
 
-  // Handle settings updates
-  const updateSettings = async (newSettings: Partial<OutputSettings>) => {
-    try {
-      await onUpdate({
-        settings: {
-          ...settings,
-          ...newSettings
-        }
-      })
-    } catch (error) {
-      console.error('Failed to update output settings:', error)
-      // Revert local state on error
-      if (newSettings.title !== undefined) setLocalTitle(title)
-      if (newSettings.subtitle !== undefined) setLocalSubtitle(subtitle)
-      if (newSettings.content !== undefined) setLocalContent(content)
-      throw error
+  // Debounced settings update to prevent race conditions
+  const debouncedUpdateSettings = useCallback((newSettings: Partial<OutputSettings>, immediate = false) => {
+    // Merge with pending updates
+    pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...newSettings }
+    
+    // Clear existing timeout
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current)
     }
-  }
+    
+    // Set new timeout (or execute immediately for critical updates like file uploads)
+    const delay = immediate ? 0 : 500
+    updateTimeoutRef.current = setTimeout(async () => {
+      const updatesToApply = { ...pendingUpdatesRef.current }
+      pendingUpdatesRef.current = {}
+      
+      // Create the final settings object that will be sent
+      // Preserve local state values if they exist and aren't being explicitly updated
+      const finalSettings = {
+        ...settings,
+        // Preserve local state if not being explicitly updated
+        ...(localTitle && !updatesToApply.title ? { title: localTitle } : {}),
+        ...(localSubtitle && !updatesToApply.subtitle ? { subtitle: localSubtitle } : {}),
+        ...(localContent && !updatesToApply.content ? { content: localContent } : {}),
+        ...updatesToApply
+      }
+      
+      try {
+        await onUpdate({
+          settings: finalSettings
+        })
+      } catch (error) {
+        console.error('Failed to update output settings:', error)
+        // Revert local state on error
+        if (updatesToApply.title !== undefined) setLocalTitle(title)
+        if (updatesToApply.subtitle !== undefined) setLocalSubtitle(subtitle)
+        if (updatesToApply.content !== undefined) setLocalContent(content)
+      }
+    }, delay)
+  }, [settings, title, subtitle, content, onUpdate, localTitle, localSubtitle, localContent])
+
+  // Handle settings updates - use debounced version by default
+  const updateSettings = useCallback((newSettings: Partial<OutputSettings>, immediate = false) => {
+    debouncedUpdateSettings(newSettings, immediate)
+  }, [debouncedUpdateSettings])
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Handle image upload (identical to BasicSection)
   const handleImageUpload = useCallback(async (files: FileList) => {
@@ -387,7 +428,7 @@ export function OutputSection({
       )
       
       if (uploadedFiles.length > 0) {
-        await updateSettings({ image: uploadedFiles[0].url })
+        await updateSettings({ image: uploadedFiles[0].url }, true) // immediate update for file uploads
       }
     } catch (error) {
       console.error('Upload failed:', error)
@@ -440,6 +481,7 @@ export function OutputSection({
       
       if (uploadedFiles.length > 0) {
         const uploadedFile = uploadedFiles[0]
+        
         await updateSettings({ 
           buttonFile: {
             id: uploadedFile.id,
@@ -447,7 +489,7 @@ export function OutputSection({
             url: uploadedFile.url,
             size: file.size
           }
-        })
+        }, true) // immediate update for file uploads
       }
     } catch (error) {
       console.error('File upload failed:', error)
@@ -455,11 +497,11 @@ export function OutputSection({
     } finally {
       setIsUploadingButtonFile(false)
     }
-  }, [])
+  }, [updateSettings])
 
   // Handle button settings
   const handleButtonSettingChange = async (setting: keyof OutputSettings, value: any) => {
-    await updateSettings({ [setting]: value })
+    await updateSettings({ [setting]: value }, true) // immediate update for button settings
   }
 
   // Get text alignment class
@@ -584,7 +626,7 @@ export function OutputSection({
       
       {/* Image Selector with Unsplash */}
       <UnsplashImageSelector
-        onImageSelect={(imageUrl) => updateSettings({ image: imageUrl })}
+        onImageSelect={(imageUrl) => updateSettings({ image: imageUrl }, true)} // immediate update for image selection
         onUpload={handleImageUpload}
         currentImage={image}
         isUploading={isUploading}
