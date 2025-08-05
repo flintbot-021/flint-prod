@@ -48,14 +48,7 @@ interface DashboardStats {
   topPerformingCampaign?: CampaignWithStats
 }
 
-type TimeFilter = 'today' | 'week' | 'month' | 'all'
 
-const timeFilterOptions: { value: TimeFilter; label: string }[] = [
-  { value: 'today', label: 'Today' },
-  { value: 'week', label: 'This Week' },
-  { value: 'month', label: 'This Month' },
-  { value: 'all', label: 'All Time' }
-]
 
 export default function Dashboard() {
   const { user, loading, signOut } = useAuth()
@@ -75,7 +68,6 @@ export default function Dashboard() {
     completionRate: 0,
     recentCampaigns: []
   })
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('month')
   const [loadingCampaigns, setLoadingCampaigns] = useState(true)
   const [loadingStats, setLoadingStats] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -94,7 +86,7 @@ export default function Dashboard() {
     if (user) {
       loadCampaigns()
     }
-  }, [user, timeFilter])
+  }, [user])
 
   // Memoize campaigns with stats to prevent unnecessary recalculations
   const campaignsWithStats = useMemo(() => {
@@ -339,38 +331,17 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Filter and Export Controls */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
-            <div className="flex items-center space-x-1 bg-muted p-1 rounded-lg">
-              {timeFilterOptions.map((option) => (
-                <Button
-                  key={option.value}
-                  variant={timeFilter === option.value ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setTimeFilter(option.value as TimeFilter)}
-                  className={`h-8 px-3 text-xs font-medium transition-all ${
-                    timeFilter === option.value
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                  }`}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-            <div className="flex items-center space-x-3">
-              {/* Export button hidden on tools page */}
-              {/* Optimized New Tool Button with Link prefetching */}
-              <Button
-                onClick={handleCreateCampaign}
-                disabled={!canCreateCampaign}
-                size="sm"
-                className="h-9 flex items-center space-x-2"
-              >
-                <Plus className="h-4 w-4" />
-                <span>New Tool</span>
-              </Button>
-            </div>
+          {/* New Tool Button */}
+          <div className="flex justify-end mb-6">
+            <Button
+              onClick={handleCreateCampaign}
+              disabled={!canCreateCampaign}
+              size="sm"
+              className="h-9 flex items-center space-x-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>New Tool</span>
+            </Button>
           </div>
 
           {/* Error State */}
