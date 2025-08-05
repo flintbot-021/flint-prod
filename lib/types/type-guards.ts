@@ -26,7 +26,7 @@ import {
 // =============================================================================
 
 export function isCampaignStatus(value: any): value is CampaignStatus {
-  return typeof value === 'string' && ['draft', 'published', 'archived'].includes(value);
+  return typeof value === 'string' && ['draft', 'published'].includes(value);
 }
 
 export function isSectionType(value: any): value is SectionType {

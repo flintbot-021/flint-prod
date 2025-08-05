@@ -115,6 +115,21 @@ export function UploadQuestion({
     return types.join(',')
   }
 
+  // Get human-readable file types for display
+  const getAcceptedTypesText = () => {
+    const types: string[] = []
+    if (allowImages) types.push('Images (JPG, PNG, GIF)')
+    if (allowDocuments) types.push('Documents (PDF, DOC, DOCX)')
+    if (allowAudio) types.push('Audio files')
+    if (allowVideo) types.push('Video files')
+    
+    if (types.length === 0) return 'No file types allowed'
+    if (types.length === 1) return types[0]
+    if (types.length === 2) return types.join(' & ')
+    
+    return types.slice(0, -1).join(', ') + ' & ' + types[types.length - 1]
+  }
+
   // Get file type icon
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith('image/')) return <Image className="w-4 h-4" />
@@ -129,15 +144,16 @@ export function UploadQuestion({
 
     const fileArray = Array.from(files)
     const validFiles = fileArray.filter(file => {
-      // Check file type
+      // Check file type first
       if (!isFileTypeAllowed(file, settings)) {
-        alert(`File type ${file.type} is not allowed`)
+        const acceptedTypes = getAcceptedTypesText()
+        alert(`File type not allowed. "${file.name}" is not a supported file type.\n\nAccepted types: ${acceptedTypes}`)
         return false
       }
       
       // Check file size
       if (file.size > maxFileSize * 1024 * 1024) {
-        alert(`File ${file.name} is too large. Maximum size is ${maxFileSize}MB.`)
+        alert(`File "${file.name}" is too large (${formatFileSize(file.size)}).\n\nMaximum size allowed: ${maxFileSize}MB`)
         return false
       }
       
@@ -216,16 +232,37 @@ export function UploadQuestion({
   // Helper functions
   function isFileTypeAllowed(file: File, settings: UploadSettings): boolean {
     const { allowImages, allowDocuments, allowAudio, allowVideo } = settings
+    const fileName = file.name.toLowerCase()
+    const fileExtension = fileName.split('.').pop()
     
-    if (allowImages && file.type.startsWith('image/')) return true
+    // Check images
+    if (allowImages && (
+      file.type.startsWith('image/') ||
+      ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(fileExtension || '')
+    )) return true
+    
+    // Check documents
     if (allowDocuments && (
       file.type === 'application/pdf' ||
       file.type.includes('document') ||
       file.type.includes('sheet') ||
-      file.type.includes('presentation')
+      file.type.includes('presentation') ||
+      file.type === 'text/plain' ||
+      file.type === 'application/rtf' ||
+      ['pdf', 'doc', 'docx', 'txt', 'rtf'].includes(fileExtension || '')
     )) return true
-    if (allowAudio && file.type.startsWith('audio/')) return true
-    if (allowVideo && file.type.startsWith('video/')) return true
+    
+    // Check audio
+    if (allowAudio && (
+      file.type.startsWith('audio/') ||
+      ['mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a'].includes(fileExtension || '')
+    )) return true
+    
+    // Check video
+    if (allowVideo && (
+      file.type.startsWith('video/') ||
+      ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'].includes(fileExtension || '')
+    )) return true
     
     return false
   }
@@ -252,17 +289,28 @@ export function UploadQuestion({
 
         {/* Upload Area */}
         <div className="pt-6 space-y-4">
-          <div
-            className={cn(
-              'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
-              isDragOver 
-                ? 'border-blue-500 bg-blue-50/10' 
-                : 'border-gray-600 hover:border-gray-500'
-            )}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
+          {!allowImages && !allowDocuments && !allowAudio && !allowVideo ? (
+            <div className="border-2 border-dashed border-gray-400 rounded-lg p-8 text-center bg-gray-100">
+              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-lg text-gray-500">
+                No file types are currently allowed for upload
+              </p>
+              <p className="text-sm text-gray-400 mt-2">
+                The campaign builder needs to enable at least one file type
+              </p>
+            </div>
+          ) : (
+            <div
+              className={cn(
+                'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
+                isDragOver 
+                  ? 'border-blue-500 bg-blue-50/10' 
+                  : 'border-gray-600 hover:border-gray-500'
+              )}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
             <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <div className="space-y-2">
               <p className="text-lg text-gray-300">
@@ -279,10 +327,11 @@ export function UploadQuestion({
                 </label>
               </p>
               <p className="text-sm text-gray-400">
-                Maximum {maxFiles} files, {maxFileSize}MB each
+                {getAcceptedTypesText()} • Max {maxFiles} files, {maxFileSize}MB each
               </p>
             </div>
           </div>
+          )}
 
           {/* Show uploaded files */}
           {uploadedFiles.length > 0 && (

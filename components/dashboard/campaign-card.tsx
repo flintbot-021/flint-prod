@@ -20,7 +20,6 @@ import {
   Clock,
   Settings,
   Globe,
-  Archive,
   FileText
 } from 'lucide-react'
 import {
@@ -68,8 +67,6 @@ const CampaignCard = memo(function CampaignCard({
         return <Activity className="h-3 w-3" />
       case 'draft':
         return <Clock className="h-3 w-3" />
-      case 'archived':
-        return <Settings className="h-3 w-3" />
       default:
         return <Clock className="h-3 w-3" />
     }
@@ -78,32 +75,10 @@ const CampaignCard = memo(function CampaignCard({
   const getStatusActions = useCallback((campaign: CampaignWithStats) => {
     const actions = []
 
-    if (campaign.status === 'draft') {
-      // Only allow archiving from draft - no publishing from dashboard
-      actions.push({
-        label: 'Archive Tool',
-        icon: Archive,
-        action: () => onStatusChange(campaign.id, 'archived'),
-        variant: 'secondary' as const
-      })
-    } else if (campaign.status === 'published') {
-      // Allow pausing (unpublishing) and archiving
+    if (campaign.status === 'published') {
+      // Allow pausing (unpublishing) only
       actions.push({
         label: 'Pause Tool',
-        icon: FileText,
-        action: () => onStatusChange(campaign.id, 'draft'),
-        variant: 'secondary' as const
-      })
-      actions.push({
-        label: 'Archive Tool',
-        icon: Archive,
-        action: () => onStatusChange(campaign.id, 'archived'),
-        variant: 'secondary' as const
-      })
-    } else if (campaign.status === 'archived') {
-      // Only allow restoring to draft - no direct publishing from dashboard
-      actions.push({
-        label: 'Restore to Draft',
         icon: FileText,
         action: () => onStatusChange(campaign.id, 'draft'),
         variant: 'secondary' as const

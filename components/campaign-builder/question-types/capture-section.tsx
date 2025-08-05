@@ -599,7 +599,7 @@ export function CaptureSection({
             <div className="p-4 bg-background border border-border rounded-lg space-y-3">
               <div>
                 <Label htmlFor="businessName" className="text-sm font-medium text-foreground">
-                  Business Name (Required)
+                  Business Name (Optional)
                 </Label>
                 <Input
                   id="businessName"

@@ -5,8 +5,8 @@ import { X } from 'lucide-react';
 const slides = [
   {
     title: 'Add Sections',
-    description: 'Start building your campaign by dragging in content or question blocks from the left menu onto your canvas.',
-    imageAlt: 'Drag and drop sections',
+    description: 'Start building your campaign by adding content or question sections from the left menu to your canvas.',
+    imageAlt: 'Add sections to canvas',
     image: '/1.png', // Updated to real image
   },
   {
