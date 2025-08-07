@@ -287,17 +287,36 @@ export function OutputSection({
   // Helper function to check if content exists (same as other sections)
   const hasContent = (value: string) => value && value.trim().length > 0
 
+  // Track the last external values we've seen to detect external changes
+  const lastExternalValues = useRef({ title, subtitle, content, buttonText, buttonUrl })
+
   // Sync local state with external settings changes (e.g., from variable updates)
-  // Only update if the external value is different and not empty (to prevent overwrites)
+  // Only sync when external values change, not when local values change
   useEffect(() => {
-    // Defensive sync - preserve local content if external content is empty
-    // Only update if external has content AND is different from local, OR if local is empty
-    if ((title && title !== localTitle) || (!localTitle && title)) setLocalTitle(title)
-    if ((subtitle && subtitle !== localSubtitle) || (!localSubtitle && subtitle)) setLocalSubtitle(subtitle) 
-    if ((content && content !== localContent) || (!localContent && content)) setLocalContent(content)
-    if ((buttonText && buttonText !== localButtonText) || (!localButtonText && buttonText)) setLocalButtonText(buttonText)
-    if ((buttonUrl && buttonUrl !== localButtonUrl) || (!localButtonUrl && buttonUrl)) setLocalButtonUrl(buttonUrl)
-  }, [title, subtitle, content, buttonText, buttonUrl, localTitle, localSubtitle, localContent, localButtonText, localButtonUrl])
+    const last = lastExternalValues.current
+    
+    // Only update local state if external values actually changed
+    if (title !== last.title) {
+      setLocalTitle(title)
+      last.title = title
+    }
+    if (subtitle !== last.subtitle) {
+      setLocalSubtitle(subtitle)
+      last.subtitle = subtitle
+    }
+    if (content !== last.content) {
+      setLocalContent(content)
+      last.content = content
+    }
+    if (buttonText !== last.buttonText) {
+      setLocalButtonText(buttonText)
+      last.buttonText = buttonText
+    }
+    if (buttonUrl !== last.buttonUrl) {
+      setLocalButtonUrl(buttonUrl)
+      last.buttonUrl = buttonUrl
+    }
+  }, [title, subtitle, content, buttonText, buttonUrl])
 
   // Initialize local state on mount - only run once
   useEffect(() => {
@@ -306,6 +325,9 @@ export function OutputSection({
     setLocalContent(content)
     setLocalButtonText(buttonText)
     setLocalButtonUrl(buttonUrl)
+    
+    // Initialize the ref with current values
+    lastExternalValues.current = { title, subtitle, content, buttonText, buttonUrl }
   }, [])
   
   // Extract variables from campaign sections
@@ -356,19 +378,19 @@ export function OutputSection({
     }
     
     // Set new timeout (or execute immediately for critical updates like file uploads)
-    const delay = immediate ? 0 : 500
+    const delay = immediate ? 0 : 300 // Reduced delay for better responsiveness
     updateTimeoutRef.current = setTimeout(async () => {
       const updatesToApply = { ...pendingUpdatesRef.current }
       pendingUpdatesRef.current = {}
       
-      // Create the final settings object that will be sent
-      // Preserve local state values if they exist and aren't being explicitly updated
+      // Create the final settings object - always use the most current local state
       const finalSettings = {
         ...settings,
-        // Preserve local state if not being explicitly updated
-        ...(localTitle && !updatesToApply.title ? { title: localTitle } : {}),
-        ...(localSubtitle && !updatesToApply.subtitle ? { subtitle: localSubtitle } : {}),
-        ...(localContent && !updatesToApply.content ? { content: localContent } : {}),
+        // Always use current local state values for text fields
+        title: updatesToApply.title !== undefined ? updatesToApply.title : localTitle,
+        subtitle: updatesToApply.subtitle !== undefined ? updatesToApply.subtitle : localSubtitle,
+        content: updatesToApply.content !== undefined ? updatesToApply.content : localContent,
+        // Apply other updates
         ...updatesToApply
       }
       
@@ -378,13 +400,10 @@ export function OutputSection({
         })
       } catch (error) {
         console.error('Failed to update output settings:', error)
-        // Revert local state on error
-        if (updatesToApply.title !== undefined) setLocalTitle(title)
-        if (updatesToApply.subtitle !== undefined) setLocalSubtitle(subtitle)
-        if (updatesToApply.content !== undefined) setLocalContent(content)
+        // On error, don't revert - let the sync useEffect handle it
       }
     }, delay)
-  }, [settings, title, subtitle, content, onUpdate, localTitle, localSubtitle, localContent])
+  }, [settings, onUpdate, localTitle, localSubtitle, localContent])
 
   // Handle settings updates - use debounced version by default
   const updateSettings = useCallback((newSettings: Partial<OutputSettings>, immediate = false) => {
