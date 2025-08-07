@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -70,22 +70,26 @@ export default function Dashboard() {
   const [loadingCampaigns, setLoadingCampaigns] = useState(true)
   const [loadingStats, setLoadingStats] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const hasLoadedRef = useRef(false)
 
   // Modal state for campaign edit/create
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null)
 
   useEffect(() => {
+    // Start loading campaigns immediately if user exists and we haven't loaded yet
+    if (user && !hasLoadedRef.current) {
+      hasLoadedRef.current = true
+      loadCampaigns()
+    }
+  }, [user])
+
+  useEffect(() => {
+    // Handle redirect only after auth is fully resolved
     if (!loading && !user) {
       router.push('/auth/login')
     }
   }, [user, loading, router])
-
-  useEffect(() => {
-    if (user) {
-      loadCampaigns()
-    }
-  }, [user])
 
   // Memoize campaigns with stats to prevent unnecessary recalculations
   const campaignsWithStats = useMemo(() => {
@@ -310,7 +314,10 @@ export default function Dashboard() {
     }
   }, [loadCampaigns, handleModalClose, editingCampaign, router])
 
-  if (loading) {
+  // Show UI immediately if we have a user, even if still loading
+  const showUI = user || !loading
+
+  if (!showUI) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
@@ -318,7 +325,7 @@ export default function Dashboard() {
     )
   }
 
-  if (!user) {
+  if (!loading && !user) {
     return null // Will redirect to login
   }
 
@@ -405,9 +412,9 @@ export default function Dashboard() {
 
               {/* Loading State */}
               {loadingCampaigns && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {[...Array(4)].map((_, i) => (
-                    <Card key={i} className="animate-pulse">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...Array(6)].map((_, i) => (
+                    <Card key={i} className="animate-pulse h-80">
                       <CardHeader>
                         <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                         <div className="h-3 bg-gray-200 rounded w-1/2"></div>

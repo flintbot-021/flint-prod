@@ -22,10 +22,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const lastUserId = useRef<string | null>(null)
   const isTabActive = useRef(true)
   const posthog = usePostHog()
+  const lastAuthCheck = useRef<number>(0)
+  const authCacheTimeout = 5000 // Cache auth state for 5 seconds
 
-  const refreshUser = async () => {
+  const refreshUser = async (forceRefresh = false) => {
     try {
-      const { data: { user }, error } = await supabase.auth.getUser()
+      // Use cached result if recent and not forcing refresh
+      const now = Date.now()
+      if (!forceRefresh && (now - lastAuthCheck.current) < authCacheTimeout && user) {
+        return
+      }
+
+      const { data: { user: fetchedUser }, error } = await supabase.auth.getUser()
+      lastAuthCheck.current = now
+      
       if (error) {
         // Only log error if it's not AuthSessionMissingError
         if (error.name !== 'AuthSessionMissingError') {
@@ -33,15 +43,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         setUser(null)
       } else {
-        setUser(user)
+        setUser(fetchedUser)
         // Identify user in PostHog when user is set
-        if (user && posthog) {
-          posthog.identify(user.id, {
-            email: user.email,
-            created_at: user.created_at,
-            last_sign_in_at: user.last_sign_in_at,
-            app_metadata: user.app_metadata,
-            user_metadata: user.user_metadata
+        if (fetchedUser && posthog) {
+          posthog.identify(fetchedUser.id, {
+            email: fetchedUser.email,
+            created_at: fetchedUser.created_at,
+            last_sign_in_at: fetchedUser.last_sign_in_at,
+            app_metadata: fetchedUser.app_metadata,
+            user_metadata: fetchedUser.user_metadata
           })
         }
       }
@@ -109,6 +119,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         
         console.log('Auth state changed:', event, session?.user?.email)
+        
+        // Update auth cache timestamp when we get fresh data
+        lastAuthCheck.current = Date.now()
         
         // Only update state if there's an actual change
         if (newUserId !== lastUserId.current) {
