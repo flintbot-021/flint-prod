@@ -45,6 +45,7 @@ export function PrimaryNavigation({ currentPage, onShowOnboarding }: PrimaryNavi
             <nav className="flex items-center space-x-2">
               <Button
                 variant="ghost"
+                onMouseEnter={() => router.prefetch('/dashboard')}
                 onClick={() => router.push('/dashboard')}
                 className={`text-sm font-medium ${
                   currentPage === 'dashboard' || currentPage === 'tools'
@@ -56,6 +57,7 @@ export function PrimaryNavigation({ currentPage, onShowOnboarding }: PrimaryNavi
               </Button>
               <Button
                 variant="ghost"
+                onMouseEnter={() => router.prefetch('/dashboard/leads')}
                 onClick={() => router.push('/dashboard/leads')}
                 className={`text-sm font-medium ${
                   currentPage === 'leads' 

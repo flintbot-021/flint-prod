@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { getCampaignById, updateCampaign, getCampaignSections, createSection, updateSection, deleteSection, reorderSections } from '@/lib/data-access'
@@ -143,6 +143,7 @@ export default function ToolBuilderPage() {
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [allSectionsCollapsed, setAllSectionsCollapsed] = useState(true)
   const [persistenceVersion, setPersistenceVersion] = useState(0)
+  const hasLoadedRef = useRef(false)
 
   useEffect(() => {
     // Only show onboarding if not seen before
@@ -193,7 +194,9 @@ export default function ToolBuilderPage() {
   )
 
   useEffect(() => {
-    if (user && params.id) {
+    // Start loading campaign immediately if user exists and we have params
+    if (user && params.id && !hasLoadedRef.current) {
+      hasLoadedRef.current = true
       loadCampaign()
     }
   }, [user, params.id])
@@ -1303,7 +1306,10 @@ export default function ToolBuilderPage() {
     }
   };
 
-  if (loading || isLoading) {
+  // Show UI immediately if we have a user, even if still loading
+  const showUI = user || !loading
+
+  if (!showUI) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -1314,8 +1320,23 @@ export default function ToolBuilderPage() {
     )
   }
 
-  if (!user) {
+  if (!loading && !user) {
     return null
+  }
+
+  // Show loading state for campaign data while keeping navigation visible
+  if (isLoading && !campaign) {
+    return (
+      <div className="min-h-screen bg-background">
+        <PrimaryNavigation currentPage="builder" onShowOnboarding={() => setShowOnboarding(true)} />
+        <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading tool builder...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (error) {

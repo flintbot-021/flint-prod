@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -643,18 +643,21 @@ export default function LeadsPage() {
 
   // Delete state
   const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null)
+  const hasLoadedRef = useRef(false)
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/auth/login')
-    }
-  }, [user, loading, router])
-
-  useEffect(() => {
+    // Start loading data immediately if user exists
     if (user) {
       loadData()
     }
   }, [user, currentPage, searchTerm, selectedCampaign, sortField, sortDirection])
+
+  useEffect(() => {
+    // Handle redirect only after auth is fully resolved
+    if (!loading && !user) {
+      router.push('/auth/login')
+    }
+  }, [user, loading, router])
 
   // Memoize sorted leads to prevent unnecessary re-sorting
   const sortedLeads = useMemo(() => {

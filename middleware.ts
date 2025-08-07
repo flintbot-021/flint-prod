@@ -17,71 +17,18 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: any) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          supabaseResponse = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          supabaseResponse.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-        },
-        remove(name: string, options: any) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          supabaseResponse = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          supabaseResponse.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-        },
-      },
-    }
-  )
-
-  // Get the current session
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  // Define protected routes that require authentication
-  const protectedRoutes = ['/dashboard', '/campaigns', '/leads', '/settings']
+  // Define auth routes that need special handling
+  const authRoutes = ['/auth/login', '/auth/signup', '/auth/sign-up']
+  const publicRoutes = ['/', '/c/'] // Public campaign routes
   
-  // Define auth routes that should redirect authenticated users
-  const authRoutes = ['/auth/login', '/auth/signup']
-
-  // Check if current path is a protected route
-  const isProtectedRoute = protectedRoutes.some(route => 
-    url.pathname.startsWith(route)
-  )
-
   // Check if current path is an auth route
   const isAuthRoute = authRoutes.some(route => 
     url.pathname.startsWith(route)
+  )
+  
+  // Check if current path is a public route
+  const isPublicRoute = publicRoutes.some(route => 
+    url.pathname === route || url.pathname.startsWith(route)
   )
 
   // Special handling for password reset flows - don't redirect to dashboard
@@ -90,18 +37,67 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  // If user is not authenticated and trying to access protected route
-  if (!user && isProtectedRoute) {
-    const redirectUrl = new URL('/auth/login', request.url)
-    redirectUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname)
-    return NextResponse.redirect(redirectUrl)
+  // Only check auth for auth routes and public routes that might need redirects
+  if (isAuthRoute || isPublicRoute) {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            request.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+            supabaseResponse = NextResponse.next({
+              request: {
+                headers: request.headers,
+              },
+            })
+            supabaseResponse.cookies.set({
+              name,
+              value,
+              ...options,
+            })
+          },
+          remove(name: string, options: any) {
+            request.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
+            supabaseResponse = NextResponse.next({
+              request: {
+                headers: request.headers,
+              },
+            })
+            supabaseResponse.cookies.set({
+              name,
+              value: '',
+              ...options,
+            })
+          },
+        },
+      }
+    )
+
+    // Get the current session only when needed
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    // If user is authenticated and trying to access auth routes, redirect to dashboard
+    if (user && isAuthRoute) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
   }
 
-  // If user is authenticated and trying to access auth routes
-  if (user && isAuthRoute) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
+  // For protected routes, let the client-side handle auth checks
+  // This eliminates the middleware bottleneck for authenticated users
   return supabaseResponse
 }
 
