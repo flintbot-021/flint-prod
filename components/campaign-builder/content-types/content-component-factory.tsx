@@ -3,6 +3,7 @@
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { InfoSection } from './info-section'
 import { OutputSection } from './output-section'
+import { AdvancedOutputBuilder } from '../output-advanced/AdvancedOutputBuilder'
 import { HeroSection } from './hero-section'
 import { BasicSection } from './basic-section'
 import { AILogicSection } from '../logic-types/ai-logic-section'
@@ -145,6 +146,16 @@ export function ContentComponentFactory({
           onUpdate={onUpdate}
           className={className}
           allSections={allSections}
+        />
+      )
+
+    case 'output-advanced':
+      return (
+        <AdvancedOutputBuilder
+          section={section}
+          isPreview={isPreview}
+          onUpdate={onUpdate}
+          className={className}
           campaignId={campaignId}
         />
       )
@@ -157,7 +168,6 @@ export function ContentComponentFactory({
           onUpdate={onUpdate}
           className={className}
           allSections={allSections}
-          campaignId={campaignId}
         />
       )
 
@@ -169,7 +179,6 @@ export function ContentComponentFactory({
           onUpdate={onUpdate}
           className={className}
           allSections={allSections}
-          campaignId={campaignId}
         />
       )
 

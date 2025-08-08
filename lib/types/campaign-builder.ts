@@ -259,6 +259,28 @@ export const SECTION_TYPES: SectionType[] = [
       alignment: 'center'
     }
   },
+  {
+    id: 'output-advanced',
+    name: 'Advanced Output',
+    description: 'Design flexible result pages with a 3-column grid, rows and content blocks',
+    icon: 'LayoutGrid',
+    category: 'output',
+    color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    defaultSettings: {
+      mode: 'advanced',
+      rows: [], // rows: [{ id, blocks: [...] }]
+      // Theme defaults for new blocks
+      defaultBlock: {
+        backgroundColor: '#FFFFFF',
+        textColor: '#0F172A',
+        borderColor: '#E5E7EB',
+        outlineColor: '#CBD5E1',
+        textAlignment: 'center',
+        padding: 24,
+        spacing: 12
+      }
+    }
+  },
   // Temporarily hidden HTML embed section
   // {
   //   id: 'output-html-embed',

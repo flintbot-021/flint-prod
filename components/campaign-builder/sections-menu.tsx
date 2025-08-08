@@ -22,7 +22,7 @@ interface SectionsMenuProps {
 export function SectionsMenu({ className, onSectionAdd }: SectionsMenuProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(['input']) // Start with input category expanded
+    new Set(['input', 'output']) // Start with input & output expanded to promote Advanced Output
   )
 
   // Filter sections based on search term
