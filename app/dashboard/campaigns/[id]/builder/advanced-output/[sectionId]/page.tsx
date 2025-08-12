@@ -8,7 +8,7 @@ import { Loader2, ChevronLeft, Eye } from 'lucide-react'
 import { getCampaignById, getSectionById, getCampaignSections, updateSection } from '@/lib/data-access/campaigns'
 import type { CampaignSection } from '@/lib/types/campaign-builder'
 import type { Campaign } from '@/lib/types/database'
-import { AdvancedOutputBuilder } from '@/components/campaign-builder/output-advanced/AdvancedOutputBuilder'
+import AdvancedOutputBuilder from '@/components/campaign-builder/output-advanced/AdvancedOutputBuilder'
 import { toast } from '@/components/ui/use-toast'
 
 export default function AdvancedOutputEditorPage() {

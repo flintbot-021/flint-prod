@@ -80,15 +80,17 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
         key={block.id}
         className={cn('rounded-lg')}
         style={{
-          background: block.backgroundColor,
-          color: block.textColor,
+          background: block.backgroundColor || 'transparent',
+          color: block.textColor || undefined,
           border: block.borderColor ? `1px solid ${block.borderColor}` : undefined,
           padding: block.padding ?? 24,
           gridColumnStart: String(block.startPosition),
           gridColumnEnd: `span ${block.width}`,
         }}
       >
-        <div className={cn(align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center', 'space-y-3')}>
+        <div className={cn(
+          align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center'
+        )} style={{ rowGap: (block.spacing ?? 12), display: 'grid' }}>
           {(block.content || []).map((item: any) => (
             <div key={item.id}>{renderItem(item)}</div>
           ))}
@@ -109,8 +111,8 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
     <div className="h-full flex flex-col pb-20">
       <div className="flex-1 px-6 py-12">
         <div className="w-full max-w-4xl mx-auto space-y-8">
-          {rows.map((row: any) => (
-            <div key={row.id} className="grid grid-cols-3 gap-4">
+          {rows.map((row: any, idx: number) => (
+            <div key={row.id} className="grid grid-cols-3 gap-4" style={{ marginBottom: idx === rows.length - 1 ? 0 : 24 }}>
               {(row.blocks || []).map(renderBlock)}
             </div>
           ))}

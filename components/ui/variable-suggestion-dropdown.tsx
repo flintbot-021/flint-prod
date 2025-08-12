@@ -62,7 +62,7 @@ export function VariableSuggestionDropdown({
   
   // Auto-resize textarea
   const autoResize = useCallback(() => {
-    if (multiline && inputRef.current) {
+    if (inputRef.current) {
       const textarea = inputRef.current as HTMLTextAreaElement
       // Force reset height to 0 first, then auto to properly recalculate
       textarea.style.height = '0px'
@@ -361,10 +361,10 @@ export function VariableSuggestionDropdown({
         )}
         style={{
           zIndex: 1,
-          lineHeight: '1.8', // Match input line height exactly
-          fontSize: 'inherit', // Ensure font size matches
-          fontFamily: 'inherit', // Ensure font family matches
-          padding: '0.25rem' // Default padding, overridden by inputClassName
+          lineHeight: '1.8',
+          fontSize: 'inherit',
+          fontFamily: 'inherit',
+          padding: 0 // Keep overlay padding in sync with inputs; use inputClassName if padding is needed
         }}
       >
         {renderHighlightedText(value)}
@@ -378,14 +378,13 @@ export function VariableSuggestionDropdown({
         onBlur={handleBlur}
         placeholder={placeholder}
         className={cn(
-          'w-full relative z-10 bg-transparent leading-relaxed',
+          'w-full relative z-10 bg-transparent leading-relaxed caret-current resize-none',
           inputClassName,
           '!text-transparent' // Hide input text so overlay chips show
         )}
         style={{ 
           backgroundColor: 'transparent',
-          lineHeight: '1.8', // Match overlay line height
-          caretColor: '#374151' // Make cursor visible with gray color
+          lineHeight: '1.8'
         }}
         {...(multiline ? { rows: 1 } : {})}
       />

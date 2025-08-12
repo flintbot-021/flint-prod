@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Plus, LayoutGrid, Trash2, ArrowLeftRight, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal } from 'lucide-react'
+import { Plus, LayoutGrid, Trash2, ArrowLeftRight, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical } from 'lucide-react'
+import { ContentToolbar } from './ContentToolbar'
 import { VariableSuggestionDropdown } from '@/components/ui/variable-suggestion-dropdown'
 import { VariableInterpolator } from '@/lib/utils/variable-interpolator'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
@@ -50,9 +51,17 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const rows: Row[] = settings.rows || []
   const defaultBlock = settings.defaultBlock || {}
   const [toolbarOpenFor, setToolbarOpenFor] = useState<string | null>(null)
+  const [activeCardRect, setActiveCardRect] = useState<{ left: number; top: number; width: number } | null>(null)
   const [propsOpenFor, setPropsOpenFor] = useState<string | null>(null)
   const [draftRows, setDraftRows] = useState<Row[]>(rows)
   const [activeRowId, setActiveRowId] = useState<string | null>(null)
+  const toolbarRef = useRef<HTMLDivElement>(null)
+  const propsPanelRef = useRef<HTMLDivElement>(null)
+  // Drag state
+  const [dragRowId, setDragRowId] = useState<string | null>(null)
+  const [dragOverRowId, setDragOverRowId] = useState<string | null>(null)
+  const [dragBlock, setDragBlock] = useState<{ rowId: string; blockId: string; width: 1|2|3 } | null>(null)
+  const [dragOverCol, setDragOverCol] = useState<1|2|3 | null>(null)
 
   // Keep local draftRows in sync with external settings
   useEffect(() => {
@@ -61,6 +70,32 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       setActiveRowId(rows[0].id)
     }
   }, [rows])
+
+  // Close floating toolbar when clicking outside the selected card and outside the toolbar
+  useEffect(() => {
+    function handleDocumentMouseDown(e: MouseEvent) {
+      if (!toolbarOpenFor) return
+      const target = e.target as Node
+      if (toolbarRef.current && toolbarRef.current.contains(target)) return
+      const selectedCardEl = document.querySelector(`[data-card-id="${toolbarOpenFor}"]`)
+      if (selectedCardEl && selectedCardEl.contains(target as Node)) return
+      setToolbarOpenFor(null)
+    }
+    document.addEventListener('mousedown', handleDocumentMouseDown)
+    return () => document.removeEventListener('mousedown', handleDocumentMouseDown)
+  }, [toolbarOpenFor])
+
+  // Close properties panel when clicking outside of it
+  useEffect(() => {
+    function handleOutsidePropsClick(e: MouseEvent) {
+      if (!propsOpenFor) return
+      const target = e.target as Node
+      if (propsPanelRef.current && propsPanelRef.current.contains(target)) return
+      setPropsOpenFor(null)
+    }
+    document.addEventListener('mousedown', handleOutsidePropsClick)
+    return () => document.removeEventListener('mousedown', handleOutsidePropsClick)
+  }, [propsOpenFor])
 
   const saveRows = async (nextRows: Row[]) => {
     await onUpdate({ settings: { ...settings, mode: 'advanced', rows: nextRows, defaultBlock } })
@@ -132,6 +167,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     }
 
     const renderBlock = (b: Block) => {
+      const align = b.textAlignment || 'center'
       const styles: string[] = [
         `padding:${b.padding ?? 24}px`,
         `grid-column-start:${b.startPosition}`,
@@ -140,10 +176,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       if (b.backgroundColor) styles.push(`background:${b.backgroundColor}`)
       if (b.textColor) styles.push(`color:${b.textColor}`)
       if (b.borderColor) styles.push(`border:1px solid ${b.borderColor}`)
-      return `<div class=\"rounded-lg\" style=\"${styles.join(';')}\">${b.content.map(renderItem).join('')}</div>`
+      const innerStyle = `display:grid;row-gap:${b.spacing ?? 12}px;text-align:${align}`
+      return `<div class=\"rounded-lg\" style=\"${styles.join(';')}\"><div style=\"${innerStyle}\">${b.content.map(renderItem).join('')}</div></div>`
     }
 
-    const html = rows.map(r => `<div class=\"grid grid-cols-3 gap-4\">${r.blocks.map(renderBlock).join('')}</div>`).join('')
+    const html = rows.map(r => `<div class=\"grid grid-cols-3 gap-4 mb-6\">${r.blocks.map(renderBlock).join('')}</div>`).join('')
     return html
   }, [isPreview, rows, previewVariables])
 
@@ -220,6 +257,16 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     return { next, added: true }
   }
 
+  // Try to add a block at a specific start position within a row
+  const tryAddBlockToRowAtPosition = (rowsState: Row[], rowId: string, start: 1|2|3, width: 1 | 2 | 3): { next: Row[]; added: boolean } => {
+    const next = rowsState.map(r => ({ ...r, blocks: [...r.blocks] }))
+    const row = next.find(r => r.id === rowId)
+    if (!row) return { next: rowsState, added: false }
+    if (!canPlace(row, start, width)) return { next: rowsState, added: false }
+    row.blocks.push({ id: uid('block'), width, startPosition: start, content: [], ...defaultBlock })
+    return { next, added: true }
+  }
+
   const addBlock = async (rowId: string, width: 1 | 2 | 3) => {
     // Try to add to current rows first
     let attempt = tryAddBlockToRow(draftRows, rowId, width)
@@ -236,6 +283,15 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     setDraftRows(attempt2.next)
     setActiveRowId(newRow.id)
     await saveRows(attempt2.next)
+  }
+
+  const addBlockAtPosition = async (rowId: string, start: 1|2|3, width: 1 | 2 | 3) => {
+    const attempt = tryAddBlockToRowAtPosition(draftRows, rowId, start, width)
+    if (attempt.added) {
+      setDraftRows(attempt.next)
+      setActiveRowId(rowId)
+      await saveRows(attempt.next)
+    }
   }
 
   const deleteBlock = async (rowId: string, blockId: string) => {
@@ -284,6 +340,42 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     }
   }
 
+  // Row reordering helpers
+  const reorderRows = async (fromId: string, toId: string) => {
+    if (fromId === toId) return
+    const next = [...draftRows]
+    const fromIdx = next.findIndex(r => r.id === fromId)
+    const toIdx = next.findIndex(r => r.id === toId)
+    if (fromIdx === -1 || toIdx === -1) return
+    const [moved] = next.splice(fromIdx, 1)
+    next.splice(toIdx, 0, moved)
+    setDraftRows(next)
+    await saveRows(next)
+  }
+
+  // Choose best starting column near desired, respecting width and collisions
+  const findBestStart = (row: Row, desired: 1|2|3, width: 1|2|3, excludeId?: string): 1|2|3 | null => {
+    // Clamp so the block fits in 3 columns
+    const maxStart = (3 - width + 1) as 1|2|3
+    const clamped = Math.max(1, Math.min(maxStart, desired)) as 1|2|3
+    const candidates: number[] = [clamped]
+    for (let delta = 1; delta <= 2; delta++) {
+      const left = clamped - delta
+      const right = clamped + delta
+      if (left >= 1) candidates.push(left)
+      if (right <= maxStart) candidates.push(right)
+    }
+    for (const c of candidates) {
+      const start = c as 1|2|3
+      if (canPlace(row, start, width, excludeId)) return start
+    }
+    // Fallback: any valid start
+    for (let s = 1 as 1|2|3; s <= maxStart; s = (s + 1) as 1|2|3) {
+      if (canPlace(row, s, width, excludeId)) return s
+    }
+    return null
+  }
+
   // Content item helpers
   const addContentItem = async (rowId: string, blockId: string, type: ContentItem['type']) => {
     const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b })) }))
@@ -297,7 +389,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     block.content = [...(block.content || []), newItem]
     setDraftRows(next)
     await saveRows(next)
-    setToolbarOpenFor(null)
+    // Keep toolbar open on the same card until user clicks elsewhere
+    setToolbarOpenFor(blockId)
   }
 
   const deleteContentItem = async (rowId: string, blockId: string, itemId: string) => {
@@ -339,6 +432,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   }
 
   return (
+    <>
     <div className={cn('p-4 space-y-6', className)}>
       {/* Header row controls */}
       <div className="flex items-center justify-between">
@@ -350,185 +444,270 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         // Remaining capacity calc
         const remaining = 3 - row.blocks.reduce((s,b)=> s + b.width, 0)
         return (
-          <div key={row.id} className="space-y-3">
+          <div
+            key={row.id}
+            className={cn('space-y-3 relative', dragOverRowId === row.id && 'ring-2 ring-primary/30 rounded-md')}
+            onDragOver={(e)=>{ if (dragRowId) { e.preventDefault(); setDragOverRowId(row.id) } }}
+            onDrop={async ()=>{ if (dragRowId) { await reorderRows(dragRowId, row.id); setDragRowId(null); setDragOverRowId(null) } }}
+          >
             {/* Grid + add-another side panel */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
               {/* Left: the 3-col grid */}
               <div className="lg:col-span-3">
-                <div className="grid grid-cols-3 gap-4">
+                <div
+                  className="grid grid-cols-3 gap-4"
+                  onDragOver={(e)=>{
+                    if (!dragBlock || dragBlock.rowId !== row.id) return
+                    e.preventDefault()
+                    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+                    const relX = Math.max(0, Math.min(rect.width, e.clientX - rect.left))
+                    const colWidth = rect.width / 3
+                    const col = (Math.floor(relX / colWidth) + 1) as 1|2|3
+                    setDragOverCol(col)
+                  }}
+                  onDragEnter={(e)=>{ if (dragBlock) e.preventDefault() }}
+                  onDrop={async ()=>{
+                    if (!dragBlock || dragBlock.rowId !== row.id) return
+                    const desired = (dragOverCol || 1) as 1|2|3
+                    const best = findBestStart(row, desired, dragBlock.width, dragBlock.blockId)
+                    if (best) {
+                      await updateBlock(row.id, dragBlock.blockId, { startPosition: best })
+                    }
+                    setDragBlock(null); setDragOverCol(null)
+                  }}
+                >
+                  {/* Render existing blocks */}
                   {row.blocks.map(block => (
-                    <div
-                      key={block.id}
-                      className={cn('rounded-lg border p-4 relative')}
-                      style={{
-                        background: block.backgroundColor,
-                        color: block.textColor,
-                        borderColor: block.borderColor,
-                        outline: block.outlineColor ? `2px solid ${block.outlineColor}` : undefined,
-                        gridColumnStart: String(block.startPosition),
-                        gridColumnEnd: `span ${block.width}`,
-                      }}
-                    >
-                      {/* Top-right icons */}
-                      <div className="absolute top-2 right-2 flex items-center gap-1 opacity-80">
-                        <Button size="icon" variant="ghost" title="Properties" onClick={()=> setPropsOpenFor(propsOpenFor===block.id? null : block.id)}><SlidersHorizontal className="h-4 w-4"/></Button>
-                        <Button size="icon" variant="ghost" title="Move left" onClick={() => moveBlock(row.id, block.id, -1)}><ArrowLeftRight className="h-4 w-4 -scale-x-100"/></Button>
-                        <Button size="icon" variant="ghost" title="Move right" onClick={() => moveBlock(row.id, block.id, +1)}><ArrowLeftRight className="h-4 w-4"/></Button>
-                        <select className="text-xs border rounded p-1" value={block.width} onChange={(e)=>changeBlockWidth(row.id, block.id, Number(e.target.value) as 1|2|3)}>
-                          <option value={1}>1/3</option>
-                          <option value={2}>2/3</option>
-                          <option value={3}>Full</option>
-                        </select>
-                        <Button size="icon" variant="ghost" className="text-red-600" title="Delete" onClick={() => deleteBlock(row.id, block.id)}><Trash2 className="h-4 w-4"/></Button>
-                      </div>
-
-                      {/* Properties panel */}
-                      {propsOpenFor === block.id && (
-                        <div className="absolute z-10 right-2 top-10 w-80 bg-popover border border-border rounded-lg shadow-xl p-4 space-y-3">
-                          <div className="text-sm font-medium">Customize</div>
-                          <div className="grid grid-cols-2 gap-3 text-xs items-center">
-                            <label>Background</label>
-                            <input type="color" value={block.backgroundColor || '#ffffff'} onChange={(e)=>updateBlock(row.id, block.id, { backgroundColor: e.target.value })} className="w-8 h-6 border rounded"/>
-                            <label>Text</label>
-                            <input type="color" value={block.textColor || '#0f172a'} onChange={(e)=>updateBlock(row.id, block.id, { textColor: e.target.value })} className="w-8 h-6 border rounded"/>
-                            <label>Border</label>
-                            <input type="color" value={block.borderColor || '#e5e7eb'} onChange={(e)=>updateBlock(row.id, block.id, { borderColor: e.target.value })} className="w-8 h-6 border rounded"/>
-                            <label>Outline</label>
-                            <input type="color" value={block.outlineColor || '#000000'} onChange={(e)=>updateBlock(row.id, block.id, { outlineColor: e.target.value })} className="w-8 h-6 border rounded"/>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button size="icon" variant={block.textAlignment==='left'?'default':'outline'} onClick={()=>updateBlock(row.id, block.id, { textAlignment: 'left' })}><AlignLeft className="h-4 w-4"/></Button>
-                            <Button size="icon" variant={block.textAlignment==='center'?'default':'outline'} onClick={()=>updateBlock(row.id, block.id, { textAlignment: 'center' })}><AlignCenter className="h-4 w-4"/></Button>
-                            <Button size="icon" variant={block.textAlignment==='right'?'default':'outline'} onClick={()=>updateBlock(row.id, block.id, { textAlignment: 'right' })}><AlignRight className="h-4 w-4"/></Button>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3 text-xs items-center">
-                            <label>Padding (px)</label>
-                            <input type="range" min={0} max={64} value={block.padding ?? 24} onChange={(e)=>updateBlock(row.id, block.id, { padding: parseInt(e.target.value) || 0 })} />
-                            <label>Spacing (px)</label>
-                            <input type="range" min={0} max={48} value={block.spacing ?? 12} onChange={(e)=>updateBlock(row.id, block.id, { spacing: parseInt(e.target.value) || 0 })} />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Content area */}
-                      <div className={cn(block.textAlignment === 'left' ? 'text-left' : block.textAlignment === 'right' ? 'text-right' : 'text-center')} style={{ rowGap: (block.spacing ?? 12) + 'px', display: 'grid' }}>
-                        {(block.content || []).map(item => (
-                          <div key={item.id} className="group relative">
-                            <Button size="icon" variant="ghost" className="absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 text-red-600" onClick={()=>deleteContentItem(row.id, block.id, item.id)}><Trash2 className="h-4 w-4"/></Button>
-                            {item.type === 'headline' || item.type === 'subheading' || item.type === 'paragraph' ? (
-                      <VariableSuggestionDropdown
-                                value={(item as any).content || ''}
-                                onChange={(v)=>{
-                                  const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, content: v } : ci) })) }))
-                                  setDraftRows(next)
-                                }}
-                                onSave={async (v)=>{
-                                  const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, content: v } : ci) })) }))
-                                  setDraftRows(next)
-                                  await saveRows(next)
-                                }}
-                                autoSave={true}
-                                placeholder={item.type === 'headline' ? 'Your headline (supports @variables)' : item.type === 'subheading' ? 'Your subheading' : 'Write your paragraph...'}
-                                className="w-full"
-                                inputClassName={cn('!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none', item.type==='headline'?'!text-3xl !font-bold':'', item.type==='subheading'?'!text-xl !font-medium':'')}
-                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
-                                multiline={item.type !== 'headline'}
-                              />
-                            ) : item.type === 'button' ? (
-                              <div className="flex items-center justify-center gap-2">
-                              <input className="border rounded px-2 py-1 text-sm" value={(item as any).content} onChange={(e)=>{
-                                  const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, content: e.target.value } : ci) })) }))
-                                  setDraftRows(next)
-                                }} onBlur={async()=>{ await saveRows(draftRows) }} />
-                                <input className="border rounded px-2 py-1 text-sm w-48" placeholder="https://..." value={(item as any).href || ''} onChange={(e)=>{
-                                  const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, href: e.target.value } : ci) })) }))
-                                  setDraftRows(next)
-                                }} onBlur={async()=>{ await saveRows(draftRows) }} />
+                    
+                          <div
+                            key={block.id}
+                            className={cn('group rounded-lg p-4 relative bg-transparent', toolbarOpenFor === block.id && 'ring-2 ring-ring')}
+                            style={{
+                              background: block.backgroundColor || undefined,
+                              color: block.textColor,
+                              borderColor: block.borderColor,
+                              outline: block.outlineColor ? `2px solid ${block.outlineColor}` : undefined,
+                              gridColumnStart: String(block.startPosition),
+                              gridColumnEnd: `span ${block.width}`,
+                            }}
+                            data-card-id={block.id}
+                            draggable
+                            onDragStart={(e)=>{ e.dataTransfer.effectAllowed = 'move'; setDragBlock({ rowId: row.id, blockId: block.id, width: block.width }) }}
+                            onDragEnd={()=> { setDragBlock(null); setDragOverCol(null) }}
+                            onMouseEnter={(e)=>{
+                              const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+                              setActiveCardRect({ left: rect.left + rect.width/2, top: rect.bottom, width: rect.width })
+                            }}
+                            onMouseLeave={()=>{
+                              // don't clear here to allow toolbar to remain while interacting
+                            }}
+                            onClick={(e)=>{
+                              const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
+                              setActiveCardRect({ left: rect.left + rect.width/2, top: rect.bottom, width: rect.width })
+                              setToolbarOpenFor(block.id)
+                            }}
+                          >
+                            {/* Minimal top bar controls */}
+                            <div className="flex items-center justify-between mb-2 pb-1 border-b border-muted/30 text-muted-foreground/80">
+                              <span
+                                className="inline-flex items-center justify-center h-5 w-5 opacity-70 cursor-grab"
+                                title="Drag card"
+                                draggable
+                                onDragStart={(e)=>{ e.dataTransfer.effectAllowed='move'; setDragBlock({ rowId: row.id, blockId: block.id, width: block.width }) }}
+                                onDragEnd={()=> { setDragBlock(null); setDragOverCol(null) }}
+                              >
+                                <GripVertical className="h-3.5 w-3.5" />
+                              </span>
+                              <div className="flex items-center gap-1">
+                                <Button size="icon" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground/80 hover:text-foreground" title="Properties" onClick={()=> setPropsOpenFor(propsOpenFor===block.id? null : block.id)}>
+                                  <SlidersHorizontal className="h-3.5 w-3.5"/>
+                                </Button>
+                                <Button size="icon" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground/80 hover:text-red-600" title="Delete" onClick={() => deleteBlock(row.id, block.id)}>
+                                  <Trash2 className="h-3.5 w-3.5"/>
+                                </Button>
                               </div>
-                            ) : item.type === 'image' ? (
-                              <input className="border rounded px-2 py-1 text-sm w-full" placeholder="Image URL" value={(item as any).src || ''} onChange={(e)=>{
-                                const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, src: e.target.value } : ci) })) }))
-                                setDraftRows(next)
-                              }} onBlur={async()=>{ await saveRows(draftRows) }} />
-                            ) : item.type === 'divider' ? (
-                              <hr className="border-input" />
-                            ) : (item.type === 'numbered-list' || item.type === 'bullet-list') ? (
-                              <div className="space-y-2">
-                                {((item as any).items || []).map((val: string, idx: number) => (
-                                  <VariableSuggestionDropdown
-                                    key={idx}
-                                    value={val}
-                                    onChange={(v)=>{
-                                      const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, items: (ci as any).items.map((x:string,i:number)=> i===idx? v : x) } : ci) })) }))
-                                      setDraftRows(next)
-                                    }}
-                                    onSave={async (v)=>{
-                                      const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, items: (ci as any).items.map((x:string,i:number)=> i===idx? v : x) } : ci) })) }))
-                                      setDraftRows(next)
-                                      await saveRows(next)
-                                    }}
-                                    autoSave={true}
-                                    placeholder="List item..."
-                                    className="w-full"
-                                    inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent"
-                                    variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
-                                    multiline={false}
-                                  />
-                                ))}
-                                <Button size="sm" variant="outline" onClick={async ()=>{
-                                  const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, items: ([...(ci as any).items || [], '']) } : ci) })) }))
-                                  setDraftRows(next)
-                                  await saveRows(next)
-                                }}>Add item</Button>
-                              </div>
-                            ) : null}
-                          </div>
-                        ))}
+                            </div>
 
-                        {/* Empty content call-to-action */}
-                        {(!block.content || block.content.length === 0) && (
-                          <div className="border-2 border-dashed rounded-xl py-10 text-center text-muted-foreground bg-background/40">
-                            <div>Click below to add content</div>
-                            <div className="mt-3">
-                              <Button size="icon" variant="outline" className="rounded-full h-10 w-10" onClick={()=> setToolbarOpenFor(block.id)}>
-                                <Plus className="h-5 w-5"/>
-                              </Button>
+                            {/* Properties panel */}
+                            {propsOpenFor === block.id && (
+                              <div ref={propsPanelRef} className="absolute z-50 right-2 top-10 w-80 bg-popover border border-border rounded-lg shadow-xl p-4 space-y-3">
+                                <div className="text-sm font-medium">Customize</div>
+                                <div className="grid grid-cols-2 gap-3 text-xs items-center">
+                                  <label>Background</label>
+                                  <input type="color" value={block.backgroundColor || '#ffffff'} onChange={(e)=>updateBlock(row.id, block.id, { backgroundColor: e.target.value })} className="w-8 h-6 border rounded"/>
+                                  <label>Text</label>
+                                  <input type="color" value={block.textColor || '#0f172a'} onChange={(e)=>updateBlock(row.id, block.id, { textColor: e.target.value })} className="w-8 h-6 border rounded"/>
+                                  <label>Border</label>
+                                  <input type="color" value={block.borderColor || '#e5e7eb'} onChange={(e)=>updateBlock(row.id, block.id, { borderColor: e.target.value })} className="w-8 h-6 border rounded"/>
+                                  <label>Outline</label>
+                                  <input type="color" value={block.outlineColor || '#000000'} onChange={(e)=>updateBlock(row.id, block.id, { outlineColor: e.target.value })} className="w-8 h-6 border rounded"/>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 text-xs items-center">
+                                  <label>Width</label>
+                                  <select className="border rounded p-1 text-xs" value={block.width} onChange={(e)=>changeBlockWidth(row.id, block.id, Number(e.target.value) as 1|2|3)}>
+                                    <option value={1}>1/3</option>
+                                    <option value={2}>2/3</option>
+                                    <option value={3}>Full</option>
+                                  </select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button size="icon" variant={block.textAlignment==='left'?'default':'outline'} onClick={()=>updateBlock(row.id, block.id, { textAlignment: 'left' })}><AlignLeft className="h-4 w-4"/></Button>
+                                  <Button size="icon" variant={block.textAlignment==='center'?'default':'outline'} onClick={()=>updateBlock(row.id, block.id, { textAlignment: 'center' })}><AlignCenter className="h-4 w-4"/></Button>
+                                  <Button size="icon" variant={block.textAlignment==='right'?'default':'outline'} onClick={()=>updateBlock(row.id, block.id, { textAlignment: 'right' })}><AlignRight className="h-4 w-4"/></Button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 text-xs items-center">
+                                  <label>Padding (px)</label>
+                                  <input type="range" min={0} max={64} value={block.padding ?? 24} onChange={(e)=>updateBlock(row.id, block.id, { padding: parseInt(e.target.value) || 0 })} />
+                                  <label>Spacing (px)</label>
+                                  <input type="range" min={0} max={48} value={block.spacing ?? 12} onChange={(e)=>updateBlock(row.id, block.id, { spacing: parseInt(e.target.value) || 0 })} />
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Content area */}
+                            <div className={cn(block.textAlignment === 'left' ? 'text-left' : block.textAlignment === 'right' ? 'text-right' : 'text-center')} style={{ rowGap: (block.spacing ?? 12) + 'px', display: 'grid' }}>
+                              {(block.content || []).map(item => (
+                                <div key={item.id} className="group relative">
+                                  <Button size="icon" variant="ghost" className="absolute -right-2 -top-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-red-600" onClick={()=>deleteContentItem(row.id, block.id, item.id)}><Trash2 className="h-4 w-4"/></Button>
+                              {item.type === 'headline' || item.type === 'subheading' || item.type === 'paragraph' ? (
+                            <VariableSuggestionDropdown
+                                      value={(item as any).content || ''}
+                                      onChange={(v)=>{
+                                        const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, content: v } : ci) })) }))
+                                        setDraftRows(next)
+                                      }}
+                                      onSave={async (v)=>{
+                                        const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, content: v } : ci) })) }))
+                                        setDraftRows(next)
+                                        await saveRows(next)
+                                      }}
+                                      autoSave={true}
+                                      placeholder={item.type === 'headline' ? 'Your headline (supports @variables)' : item.type === 'subheading' ? 'Your subheading' : 'Write your paragraph...'}
+                                      className="w-full"
+                                      inputClassName={cn('!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none', item.type==='headline'?'!text-3xl !font-bold':'', item.type==='subheading'?'!text-xl !font-medium':'')}
+                              variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
+                                      multiline={true}
+                                    />
+                                  ) : item.type === 'button' ? (
+                                    <div className="flex items-center justify-center gap-2">
+                                    <input className="border rounded px-2 py-1 text-sm" value={(item as any).content} onChange={(e)=>{
+                                        const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, content: e.target.value } : ci) })) }))
+                                        setDraftRows(next)
+                                      }} onBlur={async()=>{ await saveRows(draftRows) }} />
+                                      <input className="border rounded px-2 py-1 text-sm w-48" placeholder="https://..." value={(item as any).href || ''} onChange={(e)=>{
+                                        const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, href: e.target.value } : ci) })) }))
+                                        setDraftRows(next)
+                                      }} onBlur={async()=>{ await saveRows(draftRows) }} />
+                                    </div>
+                                  ) : item.type === 'image' ? (
+                                    <input className="border rounded px-2 py-1 text-sm w-full" placeholder="Image URL" value={(item as any).src || ''} onChange={(e)=>{
+                                      const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, src: e.target.value } : ci) })) }))
+                                      setDraftRows(next)
+                                    }} onBlur={async()=>{ await saveRows(draftRows) }} />
+                                  ) : item.type === 'divider' ? (
+                                    <hr className="border-input" />
+                                  ) : (item.type === 'numbered-list' || item.type === 'bullet-list') ? (
+                                    <div className="space-y-2">
+                                      {((item as any).items || []).map((val: string, idx: number) => (
+                                        <VariableSuggestionDropdown
+                                          key={idx}
+                                          value={val}
+                                          onChange={(v)=>{
+                                            const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, items: (ci as any).items.map((x:string,i:number)=> i===idx? v : x) } : ci) })) }))
+                                            setDraftRows(next)
+                                          }}
+                                          onSave={async (v)=>{
+                                            const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, items: (ci as any).items.map((x:string,i:number)=> i===idx? v : x) } : ci) })) }))
+                                            setDraftRows(next)
+                                            await saveRows(next)
+                                          }}
+                                          autoSave={true}
+                                          placeholder="List item..."
+                                          className="w-full"
+                                          inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent"
+                                          variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
+                                          multiline={false}
+                                        />
+                                      ))}
+                                      <Button size="sm" variant="outline" onClick={async ()=>{
+                                        const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, items: ([...(ci as any).items || [], '']) } : ci) })) }))
+                                        setDraftRows(next)
+                                        await saveRows(next)
+                                      }}>Add item</Button>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ))}
+
+                              {/* Empty content call-to-action */}
+                              {(!block.content || block.content.length === 0) && (
+                                <div className="rounded-xl py-10 text-center text-muted-foreground bg-muted/20 relative">
+                                  <div className="text-lg">Click below to add content</div>
+                                  <div className="mt-3">
+                                    <Button size="icon" variant="secondary" className="rounded-full h-10 w-10" onClick={()=> setToolbarOpenFor(block.id)}>
+                                      <Plus className="h-5 w-5"/>
+                                    </Button>
+                                  </div>
+                                  {/* Floating toolbar appears anchored near bottom bar instead */}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Quick expand controls if space available */}
+                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                              {block.width < 2 && canPlace(row, block.startPosition, 2, block.id) && (
+                                <Button size="sm" variant="outline" onClick={()=> changeBlockWidth(row.id, block.id, 2)}>Expand to 2/3</Button>
+                              )}
+                              {block.width < 3 && canPlace(row, block.startPosition, 3, block.id) && (
+                                <Button size="sm" variant="outline" onClick={()=> changeBlockWidth(row.id, block.id, 3)}>Expand to Full</Button>
+                              )}
                             </div>
                           </div>
-                        )}
-                      </div>
-
-                      {/* Content toolbar (revealed by +) */}
-                      {toolbarOpenFor === block.id && (
-                        <div className="mt-3 border rounded-lg p-3 bg-card/60 flex flex-wrap items-center gap-3">
-                          <ToolbarButton label="Headline" onClick={()=>addContentItem(row.id, block.id, 'headline')}/>
-                          <ToolbarButton label="Subheading" onClick={()=>addContentItem(row.id, block.id, 'subheading')}/>
-                          <ToolbarButton label="Paragraph" onClick={()=>addContentItem(row.id, block.id, 'paragraph')}/>
-                          <ToolbarButton label="Button" onClick={()=>addContentItem(row.id, block.id, 'button')}/>
-                          <ToolbarButton label="Image" onClick={()=>addContentItem(row.id, block.id, 'image')}/>
-                          <ToolbarButton label="Numbered List" onClick={()=>addContentItem(row.id, block.id, 'numbered-list')}/>
-                          <ToolbarButton label="Bullet List" onClick={()=>addContentItem(row.id, block.id, 'bullet-list')}/>
-                          <ToolbarButton label="Divider" onClick={()=>addContentItem(row.id, block.id, 'divider')}/>
-                        </div>
-                      )}
-                    </div>
                   ))}
+
+                  {/* Single placeholder spanning first available contiguous empty space */}
+                  {(() => {
+                    const occupied = getOccupied(row)
+                    let start: 1|2|3 | null = null
+                    for (let s = 1 as 1|2|3; s <= 3; s = (s + 1) as 1|2|3) {
+                      if (!occupied.has(s)) { start = s as 1|2|3; break }
+                    }
+                    if (!start) return null
+                    let span = 0
+                    for (let s = start; s <= 3; s = (s + 1) as 1|2|3) {
+                      if (!occupied.has(s)) span++
+                      else break
+                    }
+                    return (
+                      <div key={`ph-${row.id}-${start}`} className="rounded-lg border-2 border-dashed border-input/60 bg-muted/10 flex items-center justify-center min-h-[120px]"
+                           style={{ gridColumnStart: String(start), gridColumnEnd: `span ${span}` }}>
+                        <div className="text-center space-y-2">
+                          <div className="text-xs text-muted-foreground">Empty slot</div>
+                          <div className="flex items-center gap-2 justify-center">
+                            {span >= 1 && <Button size="sm" variant="outline" onClick={()=> addBlockAtPosition(row.id, start!, 1)}>Add 1/3</Button>}
+                            {span >= 2 && <Button size="sm" variant="outline" onClick={()=> addBlockAtPosition(row.id, start!, 2)}>Add 2/3</Button>}
+                            {span >= 3 && <Button size="sm" variant="outline" onClick={()=> addBlockAtPosition(row.id, start!, 3)}>Add Full</Button>}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
               </div>
 
-              {/* Right: Add Another Card panel (only for active row) */}
-              {activeRowId === row.id && (
-              <div className="lg:col-span-1">
-                <div className="border rounded-lg p-2 text-center bg-background">
-                  <div className="text-xs font-medium text-foreground">Add Another Card</div>
-                  <div className="grid grid-cols-3 gap-2 w-full mt-2">
-                    <button className="border rounded px-2 py-1 text-xs" onClick={()=> addBlock(row.id, 1)}>1/3</button>
-                    <button className="border rounded px-2 py-1 text-xs" onClick={()=> addBlock(row.id, 2)}>2/3</button>
-                    <button className="border rounded px-2 py-1 text-xs" onClick={()=> addBlock(row.id, 3)}>Full</button>
-                  </div>
-                </div>
+              {/* Right: Add Another Card panel removed in-row; now pinned footer toolbar */}
+            </div>
+            {/* Row drag handle */}
+            <div className="absolute -left-3 top-0 h-full flex items-start">
+              <div
+                className="mt-1 p-1 rounded bg-muted/40 text-muted-foreground hover:bg-muted cursor-grab"
+                draggable
+                onDragStart={()=> setDragRowId(row.id)}
+                onDragEnd={()=> { setDragRowId(null); setDragOverRowId(null) }}
+                title="Drag row"
+              >
+                <GripVertical className="h-4 w-4" />
               </div>
-              )}
             </div>
           </div>
         )
@@ -548,6 +727,17 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         </div>
       )}
     </div>
+    {/* Elements toolbar fixed 20px from viewport bottom when a card is active */}
+    {toolbarOpenFor && (
+      <div ref={toolbarRef} className="fixed z-40 left-1/2 -translate-x-1/2" style={{ bottom: 20 }}>
+        <ContentToolbar onAdd={(type)=>{
+          const row = draftRows.find(r => r.blocks.some(b => b.id === toolbarOpenFor))
+          if (!row) return
+          addContentItem(row.id, toolbarOpenFor, type)
+        }} />
+      </div>
+    )}
+    </>
   )
 }
 
