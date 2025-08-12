@@ -52,10 +52,14 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const [toolbarOpenFor, setToolbarOpenFor] = useState<string | null>(null)
   const [propsOpenFor, setPropsOpenFor] = useState<string | null>(null)
   const [draftRows, setDraftRows] = useState<Row[]>(rows)
+  const [activeRowId, setActiveRowId] = useState<string | null>(null)
 
   // Keep local draftRows in sync with external settings
   useEffect(() => {
     setDraftRows(rows)
+    if (!activeRowId && rows.length) {
+      setActiveRowId(rows[0].id)
+    }
   }, [rows])
 
   const saveRows = async (nextRows: Row[]) => {
@@ -181,39 +185,68 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const addFirstBlock = async (width: 1 | 2 | 3) => {
     const newRows: Row[] = draftRows.length ? [...draftRows] : [{ id: uid('row'), blocks: [] }]
     const startPosition: 1 | 2 | 3 = 1
-    newRows[0].blocks.push({ id: uid('block'), width, startPosition, content: [], ...defaultBlock })
+    const block = { id: uid('block'), width, startPosition, content: [], ...defaultBlock }
+    newRows[0].blocks.push(block)
     setDraftRows(newRows)
+    setActiveRowId(newRows[0].id)
     await saveRows(newRows)
   }
 
-  const addRow = async () => {
-    const next = [...draftRows, { id: uid('row'), blocks: [] }]
+  const addRow = async (): Promise<string> => {
+    const newRow = { id: uid('row'), blocks: [] as Block[] }
+    const next = [...draftRows, newRow]
     setDraftRows(next)
     await saveRows(next)
+    setActiveRowId(newRow.id)
+    return newRow.id
   }
 
   const removeRow = async (rowId: string) => {
     const next = draftRows.filter(r => r.id !== rowId)
     setDraftRows(next)
     await saveRows(next)
+    // Update active row to the last available
+    setActiveRowId(next.length ? next[next.length - 1].id : null)
+  }
+
+  const tryAddBlockToRow = (rowsState: Row[], rowId: string, width: 1 | 2 | 3): { next: Row[]; added: boolean } => {
+    const next = rowsState.map(r => ({ ...r, blocks: [...r.blocks] }))
+    const row = next.find(r => r.id === rowId)
+    if (!row) return { next: rowsState, added: false }
+    const starts: (1|2|3)[] = [1,2,3]
+    const start = starts.find(s => canPlace(row, s as 1|2|3, width)) as 1|2|3 | undefined
+    if (!start) return { next: rowsState, added: false }
+    row.blocks.push({ id: uid('block'), width, startPosition: start, content: [], ...defaultBlock })
+    return { next, added: true }
   }
 
   const addBlock = async (rowId: string, width: 1 | 2 | 3) => {
-    const next = draftRows.map(r => ({ ...r, blocks: [...r.blocks] }))
-    const row = next.find(r => r.id === rowId)!
-    // Find first valid start position
-    const starts: (1|2|3)[] = [1,2,3]
-    const start = starts.find(s => canPlace(row, s as 1|2|3, width)) as 1|2|3 | undefined
-    if (!start) return // no space
-    row.blocks.push({ id: uid('block'), width, startPosition: start, content: [], ...defaultBlock })
-    setDraftRows(next)
-    await saveRows(next)
+    // Try to add to current rows first
+    let attempt = tryAddBlockToRow(draftRows, rowId, width)
+    if (attempt.added) {
+      setDraftRows(attempt.next)
+      setActiveRowId(rowId)
+      await saveRows(attempt.next)
+      return
+    }
+    // If it doesn't fit, create a new row locally (without relying on async state), then add to that row
+    const newRow: Row = { id: uid('row'), blocks: [] }
+    const next = [...draftRows, newRow]
+    const attempt2 = tryAddBlockToRow(next, newRow.id, width)
+    setDraftRows(attempt2.next)
+    setActiveRowId(newRow.id)
+    await saveRows(attempt2.next)
   }
 
   const deleteBlock = async (rowId: string, blockId: string) => {
-    const next = draftRows.map(r => ({ ...r, blocks: r.blocks.filter(b => b.id !== blockId) }))
-    setDraftRows(next)
-    await saveRows(next)
+    let next = draftRows.map(r => ({ ...r, blocks: r.blocks.filter(b => b.id !== blockId) }))
+    // Prune any rows that became empty after deletion
+    const pruned = next.filter(r => r.blocks.length > 0)
+    setDraftRows(pruned)
+    await saveRows(pruned)
+    if (!pruned.some(r => r.id === activeRowId)) {
+      setActiveRowId(pruned.length ? pruned[pruned.length - 1].id : null)
+    }
     if (toolbarOpenFor === blockId) setToolbarOpenFor(null)
     if (propsOpenFor === blockId) setPropsOpenFor(null)
   }
@@ -319,7 +352,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         return (
           <div key={row.id} className="space-y-3">
             {/* Grid + add-another side panel */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
               {/* Left: the 3-col grid */}
               <div className="lg:col-span-3">
                 <div className="grid grid-cols-3 gap-4">
@@ -483,37 +516,37 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                 </div>
               </div>
 
-              {/* Right: Add Another Card panel */}
+              {/* Right: Add Another Card panel (only for active row) */}
+              {activeRowId === row.id && (
               <div className="lg:col-span-1">
-                <div className="h-full border-2 border-dashed rounded-xl p-4 text-center flex flex-col items-center justify-center bg-muted/10">
-                  <div className="text-sm font-medium text-foreground">Add Another Card</div>
-                  <div className="text-xs text-muted-foreground mb-3">Choose width for this row</div>
-                  <div className="grid grid-cols-3 gap-2 w-full">
-                    <button className="border rounded-md py-2 text-xs" onClick={()=> addBlock(row.id, 1)}>1/3</button>
-                    <button className="border rounded-md py-2 text-xs" onClick={()=> addBlock(row.id, 2)}>2/3</button>
-                    <button className="border rounded-md py-2 text-xs" onClick={async()=> { const ok = canPlace(row, 1, 3); if (ok) await addBlock(row.id, 3); else { await addRow(); const newRowId = (await (async ()=> rows[rows.length-1]?.id)()) || row.id; await addBlock(newRowId, 3) } }}>Full</button>
+                <div className="border rounded-lg p-2 text-center bg-background">
+                  <div className="text-xs font-medium text-foreground">Add Another Card</div>
+                  <div className="grid grid-cols-3 gap-2 w-full mt-2">
+                    <button className="border rounded px-2 py-1 text-xs" onClick={()=> addBlock(row.id, 1)}>1/3</button>
+                    <button className="border rounded px-2 py-1 text-xs" onClick={()=> addBlock(row.id, 2)}>2/3</button>
+                    <button className="border rounded px-2 py-1 text-xs" onClick={()=> addBlock(row.id, 3)}>Full</button>
                   </div>
-                  {remaining <= 0 && (
-                    <div className="text-[11px] text-muted-foreground mt-2">Row full</div>
-                  )}
                 </div>
               </div>
+              )}
             </div>
           </div>
         )
       })}
 
-      {/* Global empty-state chooser for additional rows */}
-      <div className="p-8 border-2 border-dashed rounded-2xl text-center bg-muted/10">
-        <h3 className="text-lg font-medium text-foreground">Create a Content Card</h3>
-        <p className="text-sm text-muted-foreground mt-1">Choose a width for your new content card</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-          <WidthOption onClick={async()=>{await addRow(); await addBlock(rows[rows.length-1]?.id || uid('row'), 1)}} label="1/3 Column" caption="Narrow card" bars={[true,false,false]}/>
-          <WidthOption onClick={async()=>{await addRow(); await addBlock(rows[rows.length-1]?.id || uid('row'), 2)}} label="2/3 Column" caption="Wide card" bars={[true,true,false]}/>
-          <WidthOption onClick={async()=>{await addRow(); await addBlock(rows[rows.length-1]?.id || uid('row'), 3)}} label="Full Width" caption="Full row card" bars={[true,true,true]}/>
+      {/* Global empty-state chooser for additional rows: show only when there are no rows */}
+      {draftRows.length === 0 && (
+        <div className="p-8 border-2 border-dashed rounded-2xl text-center bg-muted/10">
+          <h3 className="text-lg font-medium text-foreground">Create a Content Card</h3>
+          <p className="text-sm text-muted-foreground mt-1">Choose a width for your new content card</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
+            <WidthOption onClick={async()=>{const id = await addRow(); await addBlock(id, 1)}} label="1/3 Column" caption="Narrow card" bars={[true,false,false]}/>
+            <WidthOption onClick={async()=>{const id = await addRow(); await addBlock(id, 2)}} label="2/3 Column" caption="Wide card" bars={[true,true,false]}/>
+            <WidthOption onClick={async()=>{const id = await addRow(); await addBlock(id, 3)}} label="Full Width" caption="Full row card" bars={[true,true,true]}/>
+          </div>
+          <div className="mt-4 text-xs text-muted-foreground">Cards will be arranged in a 3-column grid layout</div>
         </div>
-        <div className="mt-4 text-xs text-muted-foreground">Cards will be arranged in a 3-column grid layout</div>
-      </div>
+      )}
     </div>
   )
 }
