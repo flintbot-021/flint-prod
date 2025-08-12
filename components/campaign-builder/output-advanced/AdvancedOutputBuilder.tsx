@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Plus, LayoutGrid, Trash2, ArrowLeftRight, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal } from 'lucide-react'
 import { VariableSuggestionDropdown } from '@/components/ui/variable-suggestion-dropdown'
 import { VariableInterpolator } from '@/lib/utils/variable-interpolator'
+import { getAITestResults } from '@/lib/utils/ai-test-storage'
+import { titleToVariableName, isQuestionSection } from '@/lib/utils/section-variables'
 
 type ContentItem =
   | { id: string; type: 'headline' | 'subheading' | 'paragraph'; content: string }
@@ -37,12 +39,13 @@ interface AdvancedOutputBuilderProps {
   onUpdate: (updates: Partial<CampaignSection>) => Promise<void>
   className?: string
   campaignId: string
+  allSections?: CampaignSection[]
 }
 
 // Lightweight ID helper
 const uid = (p = 'id') => `${p}_${Math.random().toString(36).slice(2, 9)}`
 
-export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, className }: AdvancedOutputBuilderProps) {
+export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, className, allSections }: AdvancedOutputBuilderProps) {
   const settings: any = section.settings || {}
   const rows: Row[] = settings.rows || []
   const defaultBlock = settings.defaultBlock || {}
@@ -78,12 +81,28 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     return true
   }
 
+  // Build preview variable context similar to output-section
+  const previewVariables = useMemo(() => {
+    const vars: Record<string, string> = {}
+    if (allSections && allSections.length) {
+      const available = getSimpleVariablesForBuilder(allSections, section.order || 0)
+      available.forEach(v => { vars[v.name] = v.sampleValue })
+    }
+    // Merge AI test results last so they take precedence
+    const ai = getAITestResults() || {}
+    Object.assign(vars, ai)
+    // Ensure capture defaults
+    if (!vars.name) vars.name = 'Joe Bloggs'
+    if (!vars.email) vars.email = 'joe@email.com'
+    if (!vars.phone) vars.phone = '+12 345 6789'
+    return vars
+  }, [allSections, section.order])
+
   // Preview uses variable interpolator to show a basic rendering
   const previewHtml = useMemo(() => {
     if (!isPreview) return null
     const interpolator = new VariableInterpolator()
-    // Simple variable map; builder preview doesn’t have live inputs, so keep empty
-    const variables: Record<string, any> = {}
+    const variables: Record<string, any> = previewVariables
 
     const renderItem = (item: ContentItem) => {
       switch (item.type) {
@@ -122,7 +141,42 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
 
     const html = rows.map(r => `<div class=\"grid grid-cols-3 gap-4\">${r.blocks.map(renderBlock).join('')}</div>`).join('')
     return html
-  }, [isPreview, rows])
+  }, [isPreview, rows, previewVariables])
+
+  // Build available variables like output-section.tsx
+  function getSimpleVariablesForBuilder(sections: CampaignSection[], currentOrder: number) {
+    const variables: { name: string; type: 'input' | 'output' | 'capture'; description: string; sampleValue: string }[] = []
+    const preceding = sections.filter(s => (s.order || 0) < currentOrder)
+    preceding.forEach(section => {
+      if (section.type.includes('capture')) {
+        const captureSettings: any = section.settings || {}
+        const enabledFields = captureSettings?.enabledFields || { name: true, email: true, phone: false }
+        const fieldLabels = captureSettings?.fieldLabels || { name: 'Full Name', email: 'Email Address', phone: 'Phone Number' }
+        if (enabledFields.name) variables.push({ name: 'name', type: 'capture', description: fieldLabels.name || 'Full Name', sampleValue: 'Joe Bloggs' })
+        if (enabledFields.email) variables.push({ name: 'email', type: 'capture', description: fieldLabels.email || 'Email Address', sampleValue: 'joe@email.com' })
+        if (enabledFields.phone) variables.push({ name: 'phone', type: 'capture', description: fieldLabels.phone || 'Phone Number', sampleValue: '+12 345 6789' })
+      } else if (isQuestionSection(section.type) && section.title && !section.type.includes('capture')) {
+        const settings: any = section.settings || {}
+        const variableName = settings?.variableName || titleToVariableName(section.title)
+        variables.push({ name: variableName, type: 'input', description: section.title || 'User input', sampleValue: settings?.placeholder || 'Sample answer' })
+      } else if (section.type === 'logic-ai') {
+        const aiSettings: any = section.settings || {}
+        if (aiSettings?.outputVariables && Array.isArray(aiSettings.outputVariables)) {
+          aiSettings.outputVariables.forEach((variable: any) => {
+            if (variable.name) variables.push({ name: variable.name, type: 'output', description: variable.description || 'AI generated output', sampleValue: variable.name })
+          })
+        }
+      }
+    })
+    // Merge AI test results as additional candidates (if present)
+    const ai = getAITestResults() || {}
+    Object.keys(ai).forEach(key => {
+      if (!variables.find(v => v.name === key)) {
+        variables.push({ name: key, type: 'output', description: 'AI output', sampleValue: String(ai[key]) })
+      }
+    })
+    return variables
+  }
 
   const addFirstBlock = async (width: 1 | 2 | 3) => {
     const newRows: Row[] = draftRows.length ? [...draftRows] : [{ id: uid('row'), blocks: [] }]
@@ -329,7 +383,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                           <div key={item.id} className="group relative">
                             <Button size="icon" variant="ghost" className="absolute -right-2 -top-2 opacity-0 group-hover:opacity-100 text-red-600" onClick={()=>deleteContentItem(row.id, block.id, item.id)}><Trash2 className="h-4 w-4"/></Button>
                             {item.type === 'headline' || item.type === 'subheading' || item.type === 'paragraph' ? (
-                              <VariableSuggestionDropdown
+                      <VariableSuggestionDropdown
                                 value={(item as any).content || ''}
                                 onChange={(v)=>{
                                   const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, content: v } : ci) })) }))
@@ -344,7 +398,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                 placeholder={item.type === 'headline' ? 'Your headline (supports @variables)' : item.type === 'subheading' ? 'Your subheading' : 'Write your paragraph...'}
                                 className="w-full"
                                 inputClassName={cn('!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none', item.type==='headline'?'!text-3xl !font-bold':'', item.type==='subheading'?'!text-xl !font-medium':'')}
-                                variables={[]}
+                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
                                 multiline={item.type !== 'headline'}
                               />
                             ) : item.type === 'button' ? (
@@ -384,7 +438,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                     placeholder="List item..."
                                     className="w-full"
                                     inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent"
-                                    variables={[]}
+                                    variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
                                     multiline={false}
                                   />
                                 ))}

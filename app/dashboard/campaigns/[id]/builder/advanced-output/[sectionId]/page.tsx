@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Loader2, ChevronLeft, Eye } from 'lucide-react'
-import { getCampaignById, getSectionById, updateSection } from '@/lib/data-access/campaigns'
+import { getCampaignById, getSectionById, getCampaignSections, updateSection } from '@/lib/data-access/campaigns'
 import type { CampaignSection } from '@/lib/types/campaign-builder'
 import type { Campaign } from '@/lib/types/database'
 import { AdvancedOutputBuilder } from '@/components/campaign-builder/output-advanced/AdvancedOutputBuilder'
@@ -23,14 +23,16 @@ export default function AdvancedOutputEditorPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isPreview, setIsPreview] = useState(false)
+  const [allSections, setAllSections] = useState<CampaignSection[] | null>(null)
 
   useEffect(() => {
     const load = async () => {
       try {
         setIsLoading(true)
-        const [c, s] = await Promise.all([
+        const [c, s, list] = await Promise.all([
           getCampaignById(campaignId),
-          getSectionById(sectionId)
+          getSectionById(sectionId),
+          getCampaignSections(campaignId)
         ])
         if (!c.success || !c.data) throw new Error(c.error || 'Failed to load campaign')
         if (!s.success || !s.data) throw new Error(s.error || 'Failed to load section')
@@ -49,6 +51,34 @@ export default function AdvancedOutputEditorPage() {
           updatedAt: dbSection.updated_at
         }
         setSection(mapped)
+        // Map list of sections for variable suggestions
+        if (list.success && list.data) {
+          const mapDbToBuilderType = (dbType: string): string => {
+            switch (dbType) {
+              case 'text_question': return 'question-text'
+              case 'multiple_choice': return 'question-multiple-choice'
+              case 'slider': return 'question-slider'
+              case 'question-slider-multiple': return 'question-slider-multiple'
+              case 'date_time_question': return 'question-date-time'
+              case 'upload_question': return 'question-upload'
+              case 'capture': return 'capture-details'
+              case 'logic': return 'logic-ai'
+              case 'output': return 'output-results'
+              default: return dbType
+            }
+          }
+          const mappedSections: CampaignSection[] = list.data.map((sec: any) => ({
+            id: sec.id,
+            type: mapDbToBuilderType(sec.type),
+            title: sec.title || '',
+            settings: (sec.configuration || {}),
+            order: sec.order_index,
+            isVisible: sec.configuration?.isVisible ?? true,
+            createdAt: sec.created_at,
+            updatedAt: sec.updated_at
+          }))
+          setAllSections(mappedSections)
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Load failed')
       } finally {
@@ -136,6 +166,7 @@ export default function AdvancedOutputEditorPage() {
           onUpdate={handleUpdate}
           className=""
           campaignId={campaignId}
+          allSections={allSections || undefined}
         />
       </div>
     </div>
