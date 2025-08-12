@@ -78,12 +78,14 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
     return (
       <div
         key={block.id}
-        className={cn(`col-span-${block.width} col-start-${block.startPosition}`, 'rounded-lg')}
+        className={cn('rounded-lg')}
         style={{
           background: block.backgroundColor,
           color: block.textColor,
           border: block.borderColor ? `1px solid ${block.borderColor}` : undefined,
           padding: block.padding ?? 24,
+          gridColumnStart: String(block.startPosition),
+          gridColumnEnd: `span ${block.width}`,
         }}
       >
         <div className={cn(align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center', 'space-y-3')}>

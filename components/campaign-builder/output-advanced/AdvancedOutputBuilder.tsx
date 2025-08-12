@@ -109,13 +109,18 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     }
 
     const renderBlock = (b: Block) => {
-      const colSpan = b.width
-      const colStart = b.startPosition
-      const style = `padding:${b.padding ?? 24}px;` + (b.backgroundColor ? `background:${b.backgroundColor};` : '') + (b.textColor ? `color:${b.textColor};` : '') + (b.borderColor ? `border:1px solid ${b.borderColor};` : '')
-      return `<div class="col-span-${colSpan} col-start-${colStart} rounded-lg" style="${style}">${b.content.map(renderItem).join('')}</div>`
+      const styles: string[] = [
+        `padding:${b.padding ?? 24}px`,
+        `grid-column-start:${b.startPosition}`,
+        `grid-column-end:span ${b.width}`
+      ]
+      if (b.backgroundColor) styles.push(`background:${b.backgroundColor}`)
+      if (b.textColor) styles.push(`color:${b.textColor}`)
+      if (b.borderColor) styles.push(`border:1px solid ${b.borderColor}`)
+      return `<div class=\"rounded-lg\" style=\"${styles.join(';')}\">${b.content.map(renderItem).join('')}</div>`
     }
 
-    const html = rows.map(r => `<div class="grid grid-cols-3 gap-4">${r.blocks.map(renderBlock).join('')}</div>`).join('')
+    const html = rows.map(r => `<div class=\"grid grid-cols-3 gap-4\">${r.blocks.map(renderBlock).join('')}</div>`).join('')
     return html
   }, [isPreview, rows])
 
@@ -265,7 +270,18 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
               <div className="lg:col-span-3">
                 <div className="grid grid-cols-3 gap-4">
                   {row.blocks.map(block => (
-                    <div key={block.id} className={cn(`col-span-${block.width} col-start-${block.startPosition}`, 'rounded-lg border p-4 relative')} style={{background:block.backgroundColor,color:block.textColor,borderColor:block.borderColor, outline: block.outlineColor ? `2px solid ${block.outlineColor}` : undefined}}>
+                    <div
+                      key={block.id}
+                      className={cn('rounded-lg border p-4 relative')}
+                      style={{
+                        background: block.backgroundColor,
+                        color: block.textColor,
+                        borderColor: block.borderColor,
+                        outline: block.outlineColor ? `2px solid ${block.outlineColor}` : undefined,
+                        gridColumnStart: String(block.startPosition),
+                        gridColumnEnd: `span ${block.width}`,
+                      }}
+                    >
                       {/* Top-right icons */}
                       <div className="absolute top-2 right-2 flex items-center gap-1 opacity-80">
                         <Button size="icon" variant="ghost" title="Properties" onClick={()=> setPropsOpenFor(propsOpenFor===block.id? null : block.id)}><SlidersHorizontal className="h-4 w-4"/></Button>

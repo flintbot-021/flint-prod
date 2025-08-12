@@ -324,7 +324,8 @@ export default function ToolBuilderPage() {
       s.type === 'output-download' || 
       s.type === 'output-redirect' || 
       s.type === 'output-dynamic-redirect' ||
-      s.type === 'output-html-embed'
+      s.type === 'output-html-embed' ||
+      s.type === 'output-advanced'
     )
     
     return {

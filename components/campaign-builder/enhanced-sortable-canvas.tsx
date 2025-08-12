@@ -65,8 +65,8 @@ export function EnhancedSortableCanvas({
   const isEmpty = sections.length === 0
   
   // Define mandatory section types and their order
-  const mandatorySectionTypes = ['capture-details', 'logic-ai', 'output-results', 'output-download', 'output-redirect', 'output-dynamic-redirect']
-  const outputSectionTypes = ['output-results', 'output-download', 'output-redirect', 'output-dynamic-redirect']
+  const mandatorySectionTypes = ['capture-details', 'logic-ai', 'output-results', 'output-download', 'output-redirect', 'output-dynamic-redirect', 'output-advanced']
+  const outputSectionTypes = ['output-results', 'output-download', 'output-redirect', 'output-dynamic-redirect', 'output-advanced']
   
   // Split sections into optional and mandatory
   const optionalSections = sections.filter(s => !mandatorySectionTypes.includes(s.type))
