@@ -265,8 +265,7 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
       }
       return <OutputSection {...enhancedProps} />
     case 'output-advanced':
-      // For initial scaffolding, reuse OutputSection; a dedicated advanced renderer will be added next
-      return <OutputSection {...enhancedProps} />
+      return <OutputAdvancedSection {...enhancedProps} />
     
     case 'dynamic_redirect':
       return <DynamicRedirectSection {...enhancedProps} />

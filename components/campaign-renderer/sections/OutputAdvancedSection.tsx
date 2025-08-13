@@ -18,6 +18,7 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
   }, [sections, userInputs])
 
   const rows = (config as any)?.rows || []
+  const pageSettings = (config as any)?.settings || {}
   const interpolator = useMemo(() => new VariableInterpolator(), [])
 
   const renderItem = (item: any) => {
@@ -43,14 +44,28 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
       case 'divider':
         return <hr className="border-input" />
       case 'button':
+        const buttonHref = interpolator.interpolate((item as any).href || '#', { variables: variableMap, availableVariables: [] }).content
+        const buttonText = interpolator.interpolate(item.content || 'Button', { variables: variableMap, availableVariables: [] }).content
         return (
-          <a className="inline-flex items-center px-6 py-3 rounded-lg bg-blue-600 text-white">
-            {item.content || 'Button'}
+          <a 
+            href={buttonHref}
+            className="inline-flex items-center px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            target={buttonHref.startsWith('http') ? '_blank' : undefined}
+            rel={buttonHref.startsWith('http') ? 'noopener noreferrer' : undefined}
+          >
+            {buttonText}
           </a>
         )
       case 'image':
-        return item.src ? (
-          <img src={item.src} alt={item.alt || ''} className="rounded-lg w-full object-cover" />
+        const imageSrc = interpolator.interpolate(item.src || '', { variables: variableMap, availableVariables: [] }).content
+        const maxHeightStyle = (item as any).maxHeight ? { maxHeight: `${(item as any).maxHeight}px`, height: 'auto' } : {}
+        return imageSrc ? (
+          <img 
+            src={imageSrc} 
+            alt={item.alt || ''} 
+            className="rounded-lg w-full object-cover" 
+            style={maxHeightStyle}
+          />
         ) : null
       case 'numbered-list':
         return (
@@ -83,6 +98,7 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
           background: block.backgroundColor || 'transparent',
           color: block.textColor || undefined,
           border: block.borderColor ? `1px solid ${block.borderColor}` : undefined,
+          borderRadius: block.borderRadius ? `${block.borderRadius}px` : undefined,
           padding: block.padding ?? 24,
           gridColumnStart: String(block.startPosition),
           gridColumnEnd: `span ${block.width}`,
@@ -107,12 +123,29 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
     )
   }
 
+  // Get page settings with defaults
+  const maxColumns = pageSettings.maxColumns || 3
+  const gridGap = pageSettings.gridGap || 16
+  const rowSpacing = pageSettings.rowSpacing || 24
+  const backgroundColor = pageSettings.backgroundColor
+
   return (
-    <div className="h-full flex flex-col pb-20">
+    <div 
+      className="h-full flex flex-col pb-20"
+      style={{ backgroundColor: backgroundColor || undefined }}
+    >
       <div className="flex-1 px-6 py-12">
         <div className="w-full max-w-4xl mx-auto space-y-8">
           {rows.map((row: any, idx: number) => (
-            <div key={row.id} className="grid grid-cols-3 gap-4" style={{ marginBottom: idx === rows.length - 1 ? 0 : 24 }}>
+            <div 
+              key={row.id} 
+              className="grid gap-4" 
+              style={{ 
+                gridTemplateColumns: `repeat(${maxColumns}, 1fr)`,
+                gap: `${gridGap}px`,
+                marginBottom: idx === rows.length - 1 ? 0 : `${rowSpacing}px`
+              }}
+            >
               {(row.blocks || []).map(renderBlock)}
             </div>
           ))}

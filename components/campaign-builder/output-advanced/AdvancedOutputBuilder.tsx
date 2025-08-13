@@ -323,10 +323,13 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         case 'divider':
           return `<hr class="border-input my-4"/>`
         case 'button':
-          return `<a class="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white">${item.content || 'Button'}</a>`
+          const buttonHref = interpolator.interpolate((item as any).href || '#', { variables, availableVariables: [] }).content
+          const buttonText = interpolator.interpolate(item.content || 'Button', { variables, availableVariables: [] }).content
+          return `<a href="${buttonHref}" class="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white">${buttonText}</a>`
         case 'image':
           const maxHeightStyle = (item as any).maxHeight ? `max-height:${(item as any).maxHeight}px;height:${(item as any).maxHeight}px;` : 'height:192px;max-height:192px;'
-          return item.src ? `<img class="rounded-lg w-full object-cover" style="${maxHeightStyle}" src="${item.src}" alt="${item.alt || ''}"/>` : ''
+          const imageSrc = interpolator.interpolate(item.src || '', { variables, availableVariables: [] }).content
+          return imageSrc ? `<img class="rounded-lg w-full object-cover" style="${maxHeightStyle}" src="${imageSrc}" alt="${item.alt || ''}"/>` : ''
         case 'numbered-list':
           return `<ol class="list-decimal pl-5">${(item.items||[]).map(li=>`<li>${interpolator.interpolate(li, { variables, availableVariables: [] }).content}</li>`).join('')}</ol>`
         case 'bullet-list':
@@ -1432,26 +1435,32 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                       multiline={true}
                                     />
                                   ) : item.type === 'button' ? (
-                                    <div className="flex items-center justify-center gap-2">
-                                      <Input 
-                                        className="text-sm" 
-                                        value={(item as any).content} 
-                                        onChange={(e)=>{
-                                        const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, content: e.target.value } : ci) })) }))
-                                        setDraftRows(next)
-                                        }} 
-                                        onBlur={async()=>{ await saveRows(draftRows) }} 
-                                        placeholder="Button text"
+                                    <div className="space-y-2">
+                                      <VariableSuggestionDropdown
+                                        value={(item as any).content || ''}
+                                        onChange={(v) => {
+                                          const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, content: v } : ci) })) }))
+                                          setDraftRows(next)
+                                        }}
+                                        onBlur={async()=>{ await saveRows(draftRows) }}
+                                        placeholder="Button text (use @variableName for dynamic content)"
+                                        className="text-sm"
+                                        inputClassName="text-sm"
+                                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
+                                        multiline={false}
                                       />
-                                      <Input 
-                                        className="text-sm w-48" 
-                                        placeholder="https://..." 
-                                        value={(item as any).href || ''} 
-                                        onChange={(e)=>{
-                                        const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, href: e.target.value } : ci) })) }))
-                                        setDraftRows(next)
-                                        }} 
-                                        onBlur={async()=>{ await saveRows(draftRows) }} 
+                                      <VariableSuggestionDropdown
+                                        value={(item as any).href || ''}
+                                        onChange={(v) => {
+                                          const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, href: v } : ci) })) }))
+                                          setDraftRows(next)
+                                        }}
+                                        onBlur={async()=>{ await saveRows(draftRows) }}
+                                        placeholder="Button URL (use @variableName for dynamic links)"
+                                        className="text-sm"
+                                        inputClassName="text-sm"
+                                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
+                                        multiline={false}
                                       />
                                     </div>
                                   ) : item.type === 'image' ? (
@@ -1684,6 +1693,45 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                       isUploading={isUploading}
                       placeholder="Search for images or paste URL..."
                     />
+                  </CardContent>
+                </Card>
+
+                {/* Image URL with Variable Support */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Direct Image URL</CardTitle>
+                    <CardDescription>Paste an image URL or use variables for dynamic images</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Label htmlFor={`image-url-${activeImageId}`}>Image URL</Label>
+                      <VariableSuggestionDropdown
+                        value={(activeImageItem as any).src || ''}
+                        onChange={(v) => {
+                          const next = draftRows.map(r => ({ 
+                            ...r, 
+                            blocks: r.blocks.map(b => ({ 
+                              ...b, 
+                              content: b.content.map(ci => 
+                                ci.id === activeImageId 
+                                  ? { ...ci, src: v } 
+                                  : ci
+                              )
+                            }))
+                          }))
+                          setDraftRows(next)
+                        }}
+                        onBlur={async () => { await saveRows(draftRows) }}
+                        placeholder="https://example.com/image.jpg or @variableName"
+                        className="text-sm"
+                        inputClassName="text-sm"
+                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
+                        multiline={false}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use @variableName to insert dynamic image URLs from user inputs or AI outputs
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
 
