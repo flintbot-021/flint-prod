@@ -82,6 +82,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const [activeCardRect, setActiveCardRect] = useState<{ left: number; top: number; width: number } | null>(null)
   const [propsOpenFor, setPropsOpenFor] = useState<string | null>(null)
   const [pagePropsOpen, setPagePropsOpen] = useState(false)
+  const [draftPageSettings, setDraftPageSettings] = useState<PageSettings>(pageSettings)
   const [draftRows, setDraftRows] = useState<Row[]>(rows)
   const [activeRowId, setActiveRowId] = useState<string | null>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
@@ -96,6 +97,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const [dragOverPosition, setDragOverPosition] = useState<{rowId: string, position: number} | null>(null)
   const isSavingRef = useRef(false)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const pageSettingsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const recalcActiveCardRect = useCallback((blockId: string) => {
     if (typeof document === 'undefined') return
@@ -117,6 +119,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       setActiveRowId(rows[0].id)
     }
   }, [rows, activeRowId])
+
+  // Sync draftPageSettings with pageSettings prop
+  useEffect(() => {
+    setDraftPageSettings(pageSettings)
+  }, [pageSettings])
 
   // Close floating toolbar when clicking outside the selected card and outside the toolbar
   useEffect(() => {
@@ -155,11 +162,14 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     }
   }, [menuOpenFor])
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current)
+      }
+      if (pageSettingsTimeoutRef.current) {
+        clearTimeout(pageSettingsTimeoutRef.current)
       }
     }
   }, [])
@@ -188,6 +198,22 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     await saveRows(draftRows, newPageSettings)
     // Notify parent component of page settings change
     onPageSettingsChange?.(newPageSettings)
+  }
+
+  const updatePageSettingsDebounced = (updates: Partial<PageSettings>) => {
+    // Update draft settings immediately for instant visual feedback
+    const newDraftSettings = { ...draftPageSettings, ...updates }
+    setDraftPageSettings(newDraftSettings)
+    
+    // Clear existing timeout
+    if (pageSettingsTimeoutRef.current) {
+      clearTimeout(pageSettingsTimeoutRef.current)
+    }
+    
+    // Set new timeout for actual save
+    pageSettingsTimeoutRef.current = setTimeout(async () => {
+      await updatePageSettings(updates)
+    }, 300)
   }
 
   // Handle image upload (based on output-section.tsx)
@@ -253,7 +279,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   }
 
   const canPlace = (row: Row, start: number, width: number, excludeBlockId?: string) => {
-    const maxCols = pageSettings.maxColumns ?? 3
+    const maxCols = draftPageSettings.maxColumns ?? 3
     const occupied = getOccupied(row, excludeBlockId)
     for (let i = 0; i < width; i++) {
       const col = start + i
@@ -620,7 +646,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     const targetRow = draftRows.find(r => r.id === targetRowId)
     if (!targetRow) return false
 
-    const maxColumns = pageSettings.maxColumns ?? 3
+    const maxColumns = draftPageSettings.maxColumns ?? 3
     
     // Calculate occupied positions in target row
     const occupied = new Set<number>()
@@ -641,7 +667,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   }
 
   const findNextAvailablePosition = (targetRowId: string, preferredPosition: number, blockWidth: number): {rowId: string, position: number} | null => {
-    const maxColumns = pageSettings.maxColumns ?? 3
+    const maxColumns = draftPageSettings.maxColumns ?? 3
     
     // Try current row first
     for (let pos = preferredPosition; pos <= maxColumns - blockWidth + 1; pos++) {
@@ -700,7 +726,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     })
 
     // Inline wrapping logic: collect all blocks and reflow like CSS flexbox
-    const maxColumns = pageSettings.maxColumns ?? 3
+    const maxColumns = draftPageSettings.maxColumns ?? 3
     
     // Collect ALL blocks from ALL rows (we'll reflow everything)
     const allBlocks: (Block & { originalRowId: string })[] = []
@@ -847,7 +873,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     <div 
       className={cn('p-4', className)}
       style={{
-        gap: `${pageSettings.rowSpacing ?? 24}px`,
+        gap: `${draftPageSettings.rowSpacing ?? 24}px`,
         display: 'flex',
         flexDirection: 'column'
       }}
@@ -884,13 +910,25 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         <Input
                           id="page-background-color"
                           type="color"
-                          value={pageSettings.backgroundColor || '#ffffff'}
-                          onChange={(e) => updatePageSettings({ backgroundColor: e.target.value })}
+                          value={draftPageSettings.backgroundColor || '#ffffff'}
+                          onChange={(e) => updatePageSettingsDebounced({ backgroundColor: e.target.value })}
+                          onBlur={async () => {
+                            if (pageSettingsTimeoutRef.current) {
+                              clearTimeout(pageSettingsTimeoutRef.current)
+                              await updatePageSettings({ backgroundColor: draftPageSettings.backgroundColor })
+                            }
+                          }}
                           className="w-12 h-9 p-1 border rounded"
                         />
                         <Input
-                          value={pageSettings.backgroundColor || ''}
-                          onChange={(e) => updatePageSettings({ backgroundColor: e.target.value || undefined })}
+                          value={draftPageSettings.backgroundColor || ''}
+                          onChange={(e) => updatePageSettingsDebounced({ backgroundColor: e.target.value || undefined })}
+                          onBlur={async () => {
+                            if (pageSettingsTimeoutRef.current) {
+                              clearTimeout(pageSettingsTimeoutRef.current)
+                              await updatePageSettings({ backgroundColor: draftPageSettings.backgroundColor })
+                            }
+                          }}
                           placeholder="#ffffff"
                           className="flex-1 text-sm"
                         />
@@ -909,8 +947,16 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                     <div className="space-y-2">
                       <Label htmlFor="max-columns">Maximum Columns</Label>
                       <Select
-                        value={String(pageSettings.maxColumns)}
-                        onValueChange={(value) => updatePageSettings({ maxColumns: Number(value) as 2 | 3 | 4 })}
+                        value={String(draftPageSettings.maxColumns)}
+                        onValueChange={async (value) => {
+                          const newValue = Number(value) as 2 | 3 | 4
+                          updatePageSettingsDebounced({ maxColumns: newValue })
+                          // For select, save immediately since it's a discrete choice
+                          if (pageSettingsTimeoutRef.current) {
+                            clearTimeout(pageSettingsTimeoutRef.current)
+                          }
+                          await updatePageSettings({ maxColumns: newValue })
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -926,15 +972,22 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <Label htmlFor="grid-gap-slider">Grid Gap</Label>
-                        <span className="text-sm text-muted-foreground">{pageSettings.gridGap ?? 16}px</span>
+                        <span className="text-sm text-muted-foreground">{draftPageSettings.gridGap ?? 16}px</span>
                       </div>
                       <Slider
                         id="grid-gap-slider"
                         min={0}
                         max={48}
                         step={4}
-                        value={[pageSettings.gridGap ?? 16]}
-                        onValueChange={(value) => updatePageSettings({ gridGap: value[0] })}
+                        value={[draftPageSettings.gridGap ?? 16]}
+                        onValueChange={(value) => updatePageSettingsDebounced({ gridGap: value[0] })}
+                        onValueCommit={async () => {
+                          // Save immediately when user stops dragging
+                          if (pageSettingsTimeoutRef.current) {
+                            clearTimeout(pageSettingsTimeoutRef.current)
+                          }
+                          await updatePageSettings({ gridGap: draftPageSettings.gridGap })
+                        }}
                         className="w-full"
                       />
                     </div>
@@ -942,15 +995,22 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <Label htmlFor="row-spacing-slider">Row Spacing</Label>
-                        <span className="text-sm text-muted-foreground">{pageSettings.rowSpacing ?? 24}px</span>
+                        <span className="text-sm text-muted-foreground">{draftPageSettings.rowSpacing ?? 24}px</span>
                       </div>
                       <Slider
                         id="row-spacing-slider"
                         min={0}
                         max={64}
                         step={4}
-                        value={[pageSettings.rowSpacing ?? 24]}
-                        onValueChange={(value) => updatePageSettings({ rowSpacing: value[0] })}
+                        value={[draftPageSettings.rowSpacing ?? 24]}
+                        onValueChange={(value) => updatePageSettingsDebounced({ rowSpacing: value[0] })}
+                        onValueCommit={async () => {
+                          // Save immediately when user stops dragging
+                          if (pageSettingsTimeoutRef.current) {
+                            clearTimeout(pageSettingsTimeoutRef.current)
+                          }
+                          await updatePageSettings({ rowSpacing: draftPageSettings.rowSpacing })
+                        }}
                         className="w-full"
                       />
                     </div>
@@ -1034,8 +1094,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
             <div
               className="grid"
               style={{
-                gridTemplateColumns: `repeat(${pageSettings.maxColumns ?? 3}, 1fr)`,
-                gap: `${pageSettings.gridGap ?? 16}px`
+                gridTemplateColumns: `repeat(${draftPageSettings.maxColumns ?? 3}, 1fr)`,
+                gap: `${draftPageSettings.gridGap ?? 16}px`
               }}
             >
                   {/* Render existing blocks */}
