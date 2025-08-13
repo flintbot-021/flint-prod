@@ -92,6 +92,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const [isUploading, setIsUploading] = useState(false)
   const [imageSheetOpen, setImageSheetOpen] = useState(false)
   const [activeImageId, setActiveImageId] = useState<string | null>(null)
+  const [draggedBlock, setDraggedBlock] = useState<{rowId: string, blockId: string, block: Block} | null>(null)
+  const [dragOverPosition, setDragOverPosition] = useState<{rowId: string, position: number} | null>(null)
   const isSavingRef = useRef(false)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -579,6 +581,235 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     await saveRows(next)
   }
 
+  // Drag and Drop Handlers
+  const handleDragStart = (e: React.DragEvent, rowId: string, blockId: string, block: Block) => {
+    setDraggedBlock({ rowId, blockId, block })
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', blockId)
+    
+    // Add some visual feedback
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '0.5'
+    }
+  }
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    setDraggedBlock(null)
+    setDragOverPosition(null)
+    
+    // Reset visual feedback
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '1'
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent, rowId: string, position: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setDragOverPosition({ rowId, position })
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only clear if we're leaving the drop zone entirely
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverPosition(null)
+    }
+  }
+
+  const canBlockFitAtPosition = (targetRowId: string, position: number, blockWidth: number): boolean => {
+    const targetRow = draftRows.find(r => r.id === targetRowId)
+    if (!targetRow) return false
+
+    const maxColumns = pageSettings.maxColumns ?? 3
+    
+    // Calculate occupied positions in target row
+    const occupied = new Set<number>()
+    targetRow.blocks.forEach(block => {
+      for (let i = block.startPosition; i < block.startPosition + block.width; i++) {
+        occupied.add(i)
+      }
+    })
+
+    // Check if the block can fit at the desired position
+    for (let i = position; i < position + blockWidth; i++) {
+      if (i > maxColumns || occupied.has(i)) {
+        return false
+      }
+    }
+    
+    return true
+  }
+
+  const findNextAvailablePosition = (targetRowId: string, preferredPosition: number, blockWidth: number): {rowId: string, position: number} | null => {
+    const maxColumns = pageSettings.maxColumns ?? 3
+    
+    // Try current row first
+    for (let pos = preferredPosition; pos <= maxColumns - blockWidth + 1; pos++) {
+      if (canBlockFitAtPosition(targetRowId, pos, blockWidth)) {
+        return { rowId: targetRowId, position: pos }
+      }
+    }
+
+    // Try from the beginning of current row
+    for (let pos = 1; pos < preferredPosition; pos++) {
+      if (canBlockFitAtPosition(targetRowId, pos, blockWidth)) {
+        return { rowId: targetRowId, position: pos }
+      }
+    }
+
+    // Try next rows
+    const currentRowIndex = draftRows.findIndex(r => r.id === targetRowId)
+    for (let rowIndex = currentRowIndex + 1; rowIndex < draftRows.length; rowIndex++) {
+      const row = draftRows[rowIndex]
+      for (let pos = 1; pos <= maxColumns - blockWidth + 1; pos++) {
+        if (canBlockFitAtPosition(row.id, pos, blockWidth)) {
+          return { rowId: row.id, position: pos }
+        }
+      }
+    }
+
+    // Create new row if needed
+    return null // We'll handle row creation in handleDrop
+  }
+
+  const handleDrop = async (e: React.DragEvent, targetRowId: string, targetPosition: number) => {
+    e.preventDefault()
+    setDragOverPosition(null)
+
+    if (!draggedBlock) return
+
+    const { rowId: sourceRowId, blockId: sourceBlockId, block: draggedBlockData } = draggedBlock
+    
+    // Don't do anything if dropping in the same position
+    if (sourceRowId === targetRowId && draggedBlockData.startPosition === targetPosition) {
+      setDraggedBlock(null)
+      return
+    }
+
+    let newRows = [...draftRows]
+
+    // Remove block from source position
+    newRows = newRows.map(row => {
+      if (row.id === sourceRowId) {
+        return {
+          ...row,
+          blocks: row.blocks.filter(b => b.id !== sourceBlockId)
+        }
+      }
+      return row
+    })
+
+    // Inline wrapping logic: collect all blocks and reflow like CSS flexbox
+    const maxColumns = pageSettings.maxColumns ?? 3
+    
+    // Collect ALL blocks from ALL rows (we'll reflow everything)
+    const allBlocks: (Block & { originalRowId: string })[] = []
+    
+    // Add all existing blocks
+    for (const row of newRows) {
+      for (const block of row.blocks) {
+        allBlocks.push({ ...block, originalRowId: row.id })
+      }
+    }
+    
+    // Replace the dragged block with its new position info
+    const draggedBlockIndex = allBlocks.findIndex(b => b.id === draggedBlockData.id)
+    if (draggedBlockIndex !== -1) {
+      allBlocks[draggedBlockIndex] = { 
+        ...draggedBlockData, 
+        originalRowId: allBlocks[draggedBlockIndex].originalRowId 
+      }
+    }
+    
+    // Find where to insert the dragged block in the flow
+    const targetRowIndex = newRows.findIndex(r => r.id === targetRowId)
+    const targetRowBlocks = allBlocks.filter(b => b.originalRowId === targetRowId)
+    
+    // Sort target row blocks by position to find insertion point
+    targetRowBlocks.sort((a, b) => a.startPosition - b.startPosition)
+    
+    // Find the insertion index based on target position
+    let insertIndex = 0
+    for (let i = 0; i < targetRowBlocks.length; i++) {
+      if (targetRowBlocks[i].id === draggedBlockData.id) continue
+      if (targetRowBlocks[i].startPosition < targetPosition) {
+        insertIndex = i + 1
+      } else {
+        break
+      }
+    }
+    
+    // Remove dragged block from its current position in allBlocks
+    const filteredBlocks = allBlocks.filter(b => b.id !== draggedBlockData.id)
+    
+    // Calculate the global insertion index
+    let globalInsertIndex = 0
+    for (let rowIdx = 0; rowIdx < targetRowIndex; rowIdx++) {
+      const rowId = newRows[rowIdx].id
+      globalInsertIndex += filteredBlocks.filter(b => b.originalRowId === rowId).length
+    }
+    globalInsertIndex += insertIndex
+    
+    // Insert the dragged block at the calculated position
+    const reorderedBlocks = [
+      ...filteredBlocks.slice(0, globalInsertIndex),
+      { ...draggedBlockData, originalRowId: targetRowId },
+      ...filteredBlocks.slice(globalInsertIndex)
+    ]
+    
+    // Now reflow all blocks into rows using inline wrapping
+    const newRowsData: { id: string; blocks: Block[] }[] = []
+    let currentRowBlocks: Block[] = []
+    let currentRowWidth = 0
+    let currentRowId = newRows[0]?.id || uid('row')
+    
+    for (const block of reorderedBlocks) {
+      // Check if block fits in current row
+      if (currentRowWidth + block.width <= maxColumns) {
+        // Fits! Add to current row
+        currentRowBlocks.push({
+          ...block,
+          startPosition: currentRowWidth + 1
+        })
+        currentRowWidth += block.width
+      } else {
+        // Doesn't fit, wrap to new row
+        if (currentRowBlocks.length > 0) {
+          newRowsData.push({
+            id: currentRowId,
+            blocks: currentRowBlocks
+          })
+        }
+        
+        // Start new row
+        currentRowId = uid('row')
+        currentRowBlocks = [{
+          ...block,
+          startPosition: 1
+        }]
+        currentRowWidth = block.width
+      }
+    }
+    
+    // Add the last row if it has blocks
+    if (currentRowBlocks.length > 0) {
+      newRowsData.push({
+        id: currentRowId,
+        blocks: currentRowBlocks
+      })
+    }
+    
+    // Replace newRows with the reflowed data
+    newRows = newRowsData
+
+    // Clean up empty rows
+    newRows = newRows.filter(row => row.blocks.length > 0)
+
+    setDraftRows(newRows)
+    setDraggedBlock(null)
+    await saveRows(newRows)
+  }
+
   if (isPreview) {
     return (
       <div className={cn('py-8', className)}>
@@ -732,12 +963,71 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         </div>
       </div>
 
-      {draftRows.map(row => {
+      {draftRows.map((row, rowIndex) => {
         // Remaining capacity calc
         const remaining = 3 - row.blocks.reduce((s,b)=> s + b.width, 0)
         return (
-          <div
-            key={row.id}
+          <React.Fragment key={row.id}>
+            {/* Inter-row drop zone */}
+            {rowIndex > 0 && (
+              <div 
+                className={cn(
+                  "h-4 mx-4 rounded border-2 border-dashed transition-colors",
+                  draggedBlock && dragOverPosition?.rowId === `inter-${rowIndex}` 
+                    ? "border-primary bg-primary/10" 
+                    : "border-transparent hover:border-input/40"
+                )}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.dataTransfer.dropEffect = 'move'
+                  setDragOverPosition({ rowId: `inter-${rowIndex}`, position: 1 })
+                }}
+                onDragLeave={handleDragLeave}
+                onDrop={async (e) => {
+                  e.preventDefault()
+                  setDragOverPosition(null)
+                  
+                  if (!draggedBlock) return
+                  
+                  // Create a new row at this position
+                  const newRowId = uid('row')
+                  const newRows = [...draftRows]
+                  
+                  // Remove block from source
+                  const sourceRowIndex = newRows.findIndex(r => r.id === draggedBlock.rowId)
+                  if (sourceRowIndex !== -1) {
+                    newRows[sourceRowIndex] = {
+                      ...newRows[sourceRowIndex],
+                      blocks: newRows[sourceRowIndex].blocks.filter(b => b.id !== draggedBlock.blockId)
+                    }
+                  }
+                  
+                  // Insert new row
+                  newRows.splice(rowIndex, 0, {
+                    id: newRowId,
+                    blocks: [{
+                      ...draggedBlock.block,
+                      startPosition: 1
+                    }]
+                  })
+                  
+                  // Clean up empty rows
+                  const cleanRows = newRows.filter(row => row.blocks.length > 0)
+                  
+                  setDraftRows(cleanRows)
+                  setDraggedBlock(null)
+                  await saveRows(cleanRows)
+                }}
+              >
+                {draggedBlock && dragOverPosition?.rowId === `inter-${rowIndex}` && (
+                  <div className="text-center text-xs text-primary py-1">
+                    Drop to create new row
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div
             className={cn('space-y-3 relative')}
           >
             {/* Dynamic grid for cards */}
@@ -754,7 +1044,10 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                           <div
                             key={block.id}
                             className={cn(
-                              'group rounded-lg p-4 relative',
+                              'group rounded-lg p-4 relative transition-all duration-200',
+                              draggedBlock && dragOverPosition?.rowId === row.id && dragOverPosition?.position === block.startPosition
+                                ? 'ring-2 ring-primary ring-opacity-50 bg-primary/5'
+                                : '',
                               // Builder guide border when no custom border is set
                               !block.borderColor && (toolbarOpenFor === block.id
                                 ? 'border-2 border-solid border-amber-500'
@@ -770,6 +1063,17 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                               gridColumnEnd: `span ${block.width}`,
                             }}
                              data-card-id={block.id}
+                            draggable={true}
+                            onDragStart={(e) => handleDragStart(e, row.id, block.id, block)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => {
+                              e.preventDefault()
+                              e.dataTransfer.dropEffect = 'move'
+                              // Set drag over position to the start of this block for displacement
+                              setDragOverPosition({ rowId: row.id, position: block.startPosition })
+                            }}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, row.id, block.startPosition)}
                             onMouseEnter={(e)=>{
                               const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
                               setActiveCardRect({ left: rect.left + rect.width/2, top: rect.bottom, width: rect.width })
@@ -1197,8 +1501,19 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                       else break
                     }
                     return (
-                      <div key={`ph-${row.id}-${start}`} className="rounded-lg border-2 border-dashed border-input/60 bg-muted/10 flex items-center justify-center min-h-[120px]"
-                           style={{ gridColumnStart: String(start), gridColumnEnd: `span ${span}` }}>
+                      <div 
+                        key={`ph-${row.id}-${start}`} 
+                        className={cn(
+                          "rounded-lg border-2 border-dashed flex items-center justify-center min-h-[120px] transition-colors",
+                          dragOverPosition?.rowId === row.id && dragOverPosition?.position === start
+                            ? "border-primary bg-primary/10"
+                            : "border-input/60 bg-muted/10"
+                        )}
+                        style={{ gridColumnStart: String(start), gridColumnEnd: `span ${span}` }}
+                        onDragOver={(e) => handleDragOver(e, row.id, start!)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, row.id, start!)}
+                      >
                         <div className="text-center space-y-2">
                           <div className="text-xs text-muted-foreground">Empty slot</div>
                           <div className="flex items-center gap-2 justify-center">
@@ -1213,6 +1528,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
             </div>
             {/* Row drag handle removed */}
           </div>
+          </React.Fragment>
         )
       })}
 
