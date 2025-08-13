@@ -527,8 +527,6 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                   <input type="color" value={block.textColor || '#0f172a'} onChange={(e)=>updateBlock(row.id, block.id, { textColor: e.target.value })} className="w-8 h-6 border rounded"/>
                                   <label>Border</label>
                                   <input type="color" value={block.borderColor || '#e5e7eb'} onChange={(e)=>updateBlock(row.id, block.id, { borderColor: e.target.value })} className="w-8 h-6 border rounded"/>
-                                  <label>Outline</label>
-                                  <input type="color" value={block.outlineColor || '#000000'} onChange={(e)=>updateBlock(row.id, block.id, { outlineColor: e.target.value })} className="w-8 h-6 border rounded"/>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3 text-xs items-center">
                                   <label>Width</label>
@@ -570,7 +568,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                         await saveRows(next)
                                       }}
                                       autoSave={true}
-                                      placeholder={item.type === 'headline' ? 'Your headline (supports @variables)' : item.type === 'subheading' ? 'Your subheading' : 'Write your paragraph...'}
+                                      placeholder={item.type === 'headline' ? 'Your headline' : item.type === 'subheading' ? 'Your subheading' : 'Write your paragraph...'}
                                       className="w-full"
                                       inputClassName={cn('!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none',
                                         block.textAlignment === 'left' ? 'text-left' : block.textAlignment === 'right' ? 'text-right' : 'text-center',
