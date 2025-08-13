@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
-import { Plus, Trash2, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical, Heading1, Heading2, Text as TextIcon, MousePointerClick, Image as ImageIcon, ListOrdered, List, Minus } from 'lucide-react'
+import { Plus, Trash2, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical, Heading1, Heading2, Text as TextIcon, MousePointerClick, Image as ImageIcon, ListOrdered, List, Minus, ChevronUp, ChevronDown } from 'lucide-react'
 import { ContentToolbar } from './ContentToolbar'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem as UICommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
 import { VariableSuggestionDropdown } from '@/components/ui/variable-suggestion-dropdown'
@@ -554,6 +554,31 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     await saveRows(next)
   }
 
+  const moveContentItem = async (rowId: string, blockId: string, itemId: string, direction: 'up' | 'down') => {
+    const next = draftRows.map(r => {
+      if (r.id !== rowId) return r
+      return {
+        ...r,
+        blocks: r.blocks.map(b => {
+          if (b.id !== blockId) return b
+          const currentIndex = b.content.findIndex(ci => ci.id === itemId)
+          if (currentIndex === -1) return b
+          
+          const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+          if (newIndex < 0 || newIndex >= b.content.length) return b
+          
+          const newContent = [...b.content]
+          const [movedItem] = newContent.splice(currentIndex, 1)
+          newContent.splice(newIndex, 0, movedItem)
+          
+          return { ...b, content: newContent }
+        })
+      }
+    })
+    setDraftRows(next)
+    await saveRows(next)
+  }
+
   if (isPreview) {
     return (
       <div className={cn('py-8', className)}>
@@ -982,9 +1007,45 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
 
                             {/* Content area */}
                             <div className={cn(block.textAlignment === 'left' ? 'text-left' : block.textAlignment === 'right' ? 'text-right' : 'text-center')} style={{ rowGap: (block.spacing ?? 12) + 'px', display: 'grid' }}>
-                              {(block.content || []).map(item => (
+                              {(block.content || []).map((item, itemIndex) => (
                                 <div key={item.id} className="group/item relative">
-                                  <Button size="icon" variant="ghost" className="absolute -right-2 -top-2 z-20 opacity-0 group-hover/item:opacity-100 transition-opacity duration-150 text-red-600" onClick={()=>deleteContentItem(row.id, block.id, item.id)}><Trash2 className="h-4 w-4"/></Button>
+                                  {/* Reorder and Delete Controls */}
+                                  <div className="absolute -right-2 -top-2 z-20 opacity-0 group-hover/item:opacity-100 transition-opacity duration-150 flex gap-1">
+                                    {/* Move Up Button */}
+                                    {itemIndex > 0 && (
+                                      <Button 
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-6 w-6 text-muted-foreground hover:text-foreground" 
+                                        onClick={() => moveContentItem(row.id, block.id, item.id, 'up')}
+                                        title="Move up"
+                                      >
+                                        <ChevronUp className="h-3 w-3"/>
+                                      </Button>
+                                    )}
+                                    {/* Move Down Button */}
+                                    {itemIndex < (block.content || []).length - 1 && (
+                                      <Button 
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-6 w-6 text-muted-foreground hover:text-foreground" 
+                                        onClick={() => moveContentItem(row.id, block.id, item.id, 'down')}
+                                        title="Move down"
+                                      >
+                                        <ChevronDown className="h-3 w-3"/>
+                                      </Button>
+                                    )}
+                                    {/* Delete Button */}
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-6 w-6 text-red-600 hover:text-red-700" 
+                                      onClick={() => deleteContentItem(row.id, block.id, item.id)}
+                                      title="Delete"
+                                    >
+                                      <Trash2 className="h-3 w-3"/>
+                                    </Button>
+                                  </div>
                               {item.type === 'headline' || item.type === 'subheading' || item.type === 'paragraph' ? (
                             <VariableSuggestionDropdown
                                       value={(item as any).content || ''}
