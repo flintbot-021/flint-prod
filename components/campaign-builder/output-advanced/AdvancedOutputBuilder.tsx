@@ -4,8 +4,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Plus, Trash2, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical } from 'lucide-react'
+import { Plus, Trash2, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical, Heading1, Heading2, Text as TextIcon, MousePointerClick, Image as ImageIcon, ListOrdered, List, Minus } from 'lucide-react'
 import { ContentToolbar } from './ContentToolbar'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem as UICommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
 import { VariableSuggestionDropdown } from '@/components/ui/variable-suggestion-dropdown'
 import { VariableInterpolator } from '@/lib/utils/variable-interpolator'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
@@ -60,7 +61,18 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const [draftRows, setDraftRows] = useState<Row[]>(rows)
   const [activeRowId, setActiveRowId] = useState<string | null>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const propsPanelRef = useRef<HTMLDivElement>(null)
+  const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null)
+  const [activeCardSpan, setActiveCardSpan] = useState<1|2|3 | null>(null)
+
+  const recalcActiveCardRect = useCallback((blockId: string) => {
+    if (typeof document === 'undefined') return
+    const el = document.querySelector(`[data-card-id="${blockId}"]`) as HTMLDivElement | null
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    setActiveCardRect({ left: rect.left + rect.width/2, top: rect.bottom, width: rect.width })
+  }, [])
   // Drag-and-drop disabled
 
   // Keep local draftRows in sync with external settings
@@ -79,11 +91,34 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       if (toolbarRef.current && toolbarRef.current.contains(target)) return
       const selectedCardEl = document.querySelector(`[data-card-id="${toolbarOpenFor}"]`)
       if (selectedCardEl && selectedCardEl.contains(target as Node)) return
+      // Keep menu open while card is focused
       setToolbarOpenFor(null)
     }
     document.addEventListener('mousedown', handleDocumentMouseDown)
     return () => document.removeEventListener('mousedown', handleDocumentMouseDown)
   }, [toolbarOpenFor])
+
+  // Close command menu when clicking outside it and outside the active card
+  useEffect(() => {
+    function handleOutsideMenuClick(e: MouseEvent) {
+      if (!menuOpenFor) return
+      const target = e.target as Node
+      if (menuRef.current && menuRef.current.contains(target)) return
+      const selectedCardEl = document.querySelector(`[data-card-id="${menuOpenFor}"]`)
+      if (selectedCardEl && selectedCardEl.contains(target as Node)) return
+      // Do not close menu automatically; only Esc or clicking away from the card will close via UI logic
+      setMenuOpenFor(null)
+    }
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpenFor(null)
+    }
+    document.addEventListener('mousedown', handleOutsideMenuClick)
+    document.addEventListener('keydown', handleEsc)
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideMenuClick)
+      document.removeEventListener('keydown', handleEsc)
+    }
+  }, [menuOpenFor])
 
   // Close properties panel when clicking outside of it
   useEffect(() => {
@@ -426,11 +461,17 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                     
                           <div
                             key={block.id}
-                            className={cn('group rounded-lg p-4 relative bg-transparent', toolbarOpenFor === block.id && 'ring-2 ring-ring', (!block.borderColor) && 'border-2 border-dotted border-amber-500/90')}
+                            className={cn(
+                              'group rounded-lg p-4 relative bg-transparent',
+                              // Builder guide border when no custom border is set
+                              !block.borderColor && (toolbarOpenFor === block.id
+                                ? 'border-2 border-solid border-amber-500'
+                                : 'border-2 border-dotted border-amber-500/90')
+                            )}
                             style={{
                               background: block.backgroundColor || 'transparent',
                               color: block.textColor,
-                              border: block.borderColor ? `1px solid ${block.borderColor}` : '2px dotted #f59e0b',
+                              border: block.borderColor ? `1px solid ${block.borderColor}` : undefined,
                               outline: block.outlineColor ? `2px solid ${block.outlineColor}` : undefined,
                               gridColumnStart: String(block.startPosition),
                               gridColumnEnd: `span ${block.width}`,
@@ -447,6 +488,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                               const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
                               setActiveCardRect({ left: rect.left + rect.width/2, top: rect.bottom, width: rect.width })
                               setToolbarOpenFor(block.id)
+                              setMenuOpenFor(block.id)
+                              setActiveCardSpan(block.width)
                             }}
                           >
                             {/* Compact top bar controls */}
@@ -583,7 +626,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                 <div className="rounded-xl py-10 text-center text-muted-foreground bg-transparent relative">
                                   <div className="text-lg">Click below to add content</div>
                                   <div className="mt-3">
-                                    <Button size="icon" variant="secondary" className="rounded-full h-10 w-10" onClick={()=> setToolbarOpenFor(block.id)}>
+                                    <Button size="icon" variant="secondary" className="rounded-full h-10 w-10" onClick={()=> { setToolbarOpenFor(block.id); setMenuOpenFor(block.id) }}>
                                       <Plus className="h-5 w-5"/>
                                     </Button>
                                   </div>
@@ -651,14 +694,25 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         </div>
       )}
     </div>
-    {/* Elements toolbar fixed 20px from viewport bottom when a card is active */}
-    {toolbarOpenFor && (
-      <div ref={toolbarRef} className="fixed z-40 left-1/2 -translate-x-1/2" style={{ bottom: 20 }}>
-        <ContentToolbar onAdd={(type)=>{
-          const row = draftRows.find(r => r.blocks.some(b => b.id === toolbarOpenFor))
-          if (!row) return
-          addContentItem(row.id, toolbarOpenFor, type)
-        }} />
+    {/* Floating Notion-style command palette */}
+    {menuOpenFor && activeCardRect && (
+      <div ref={menuRef} className="fixed z-50" style={{ left: activeCardRect.left, top: activeCardRect.top + 8, transform: 'translateX(-50%)' }}>
+        <Command className="rounded-lg border bg-popover shadow-md w-[520px]" style={{ maxWidth: activeCardSpan ? Math.max(240, Math.floor(activeCardRect.width / activeCardSpan)) : undefined }}>
+          <CommandInput placeholder="Type a command or search..." />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandGroup heading="Basic blocks">
+              <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'headline'); recalcActiveCardRect(menuOpenFor) }}><Heading1 /><span>Headline</span></UICommandItem>
+              <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'subheading'); recalcActiveCardRect(menuOpenFor) }}><Heading2 /><span>Subheading</span></UICommandItem>
+              <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'paragraph'); recalcActiveCardRect(menuOpenFor) }}><TextIcon /><span>Paragraph</span></UICommandItem>
+              <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'button'); recalcActiveCardRect(menuOpenFor) }}><MousePointerClick /><span>Button</span></UICommandItem>
+              <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'image'); recalcActiveCardRect(menuOpenFor) }}><ImageIcon /><span>Image</span></UICommandItem>
+              <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'numbered-list'); recalcActiveCardRect(menuOpenFor) }}><ListOrdered /><span>Numbered list</span></UICommandItem>
+              <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'bullet-list'); recalcActiveCardRect(menuOpenFor) }}><List /><span>Bulleted list</span></UICommandItem>
+              <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'divider'); recalcActiveCardRect(menuOpenFor) }}><Minus /><span>Divider</span></UICommandItem>
+            </CommandGroup>
+          </CommandList>
+        </Command>
       </div>
     )}
     </>
@@ -689,3 +743,5 @@ function ToolbarButton({ label, onClick }: { label: string; onClick: () => void 
 export default AdvancedOutputBuilder
 
 
+
+// Deprecated local CommandItem retained for reference; not used now that shadcn Command is integrated
