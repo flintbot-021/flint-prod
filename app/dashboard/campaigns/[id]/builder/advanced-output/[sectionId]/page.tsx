@@ -10,12 +10,18 @@ import type { CampaignSection } from '@/lib/types/campaign-builder'
 import type { Campaign } from '@/lib/types/database'
 import AdvancedOutputBuilder from '@/components/campaign-builder/output-advanced/AdvancedOutputBuilder'
 import { toast } from '@/components/ui/use-toast'
+import { useAuth } from '@/lib/auth-context'
+import { AlertTriangle } from 'lucide-react'
 
 export default function AdvancedOutputEditorPage() {
   const params = useParams()
   const router = useRouter()
+  const { user } = useAuth()
   const campaignId = String(params.id)
   const sectionId = String(params.sectionId)
+
+  // Check if user has access to advanced output features
+  const hasAdvancedAccess = user?.email?.endsWith('@useflint.co') || false
 
   const [campaign, setCampaign] = useState<Campaign | null>(null)
   const [section, setSection] = useState<CampaignSection | null>(null)
@@ -139,6 +145,57 @@ export default function AdvancedOutputEditorPage() {
       <div className="p-6">
         <div className="text-red-600">{error || 'Section not found'}</div>
         <Button className="mt-4" onClick={goBack}><ChevronLeft className="h-4 w-4 mr-1"/>Back to Builder</Button>
+      </div>
+    )
+  }
+
+  // Access control check
+  if (!hasAdvancedAccess) {
+    return (
+      <div className="min-h-screen">
+        {/* Header */}
+        <div className="sticky top-0 z-10 border-b bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={goBack}><ChevronLeft className="h-4 w-4 mr-1"/>Back</Button>
+              <div className="text-sm text-muted-foreground">Advanced Output</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Access Denied Content */}
+        <div className="max-w-2xl mx-auto px-4 py-16">
+          <div className="text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-100 text-amber-600 rounded-full mb-6">
+              <AlertTriangle className="h-8 w-8" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground mb-4">
+              Advanced Output Access Restricted
+            </h1>
+            <p className="text-muted-foreground mb-6 leading-relaxed">
+              The Advanced Output Builder is currently available only to Flint team members. 
+              This feature provides enhanced layout capabilities and customization options 
+              for creating sophisticated output pages.
+            </p>
+            <div className="bg-muted/50 border rounded-lg p-4 mb-8">
+              <p className="text-sm text-muted-foreground">
+                <strong>Current user:</strong> {user?.email || 'Unknown'}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                <strong>Required domain:</strong> @useflint.co
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button onClick={goBack}>
+                <ChevronLeft className="h-4 w-4 mr-1"/>
+                Back to Builder
+              </Button>
+              <Button variant="outline" onClick={() => window.location.href = 'mailto:support@useflint.co?subject=Advanced%20Output%20Access%20Request'}>
+                Request Access
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }

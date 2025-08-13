@@ -13,6 +13,7 @@ import {
 import { Search, ChevronDown, ChevronRight } from 'lucide-react'
 import * as Icons from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/auth-context'
 
 interface SectionsMenuProps {
   className?: string
@@ -20,16 +21,26 @@ interface SectionsMenuProps {
 }
 
 export function SectionsMenu({ className, onSectionAdd }: SectionsMenuProps) {
+  const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(['input', 'output']) // Start with input & output expanded to promote Advanced Output
   )
 
-  // Filter sections based on search term
-  const filteredSections = SECTION_TYPES.filter(section =>
-    section.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    section.description.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Check if user has access to advanced features
+  const hasAdvancedAccess = user?.email?.endsWith('@useflint.co') || false
+
+  // Filter sections based on search term and access control
+  const filteredSections = SECTION_TYPES.filter(section => {
+    // Filter out advanced output for unauthorized users
+    if (section.id === 'output-advanced' && !hasAdvancedAccess) {
+      return false
+    }
+    
+    // Apply search filter
+    return section.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           section.description.toLowerCase().includes(searchTerm.toLowerCase())
+  })
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories(prev => {
@@ -45,24 +56,44 @@ export function SectionsMenu({ className, onSectionAdd }: SectionsMenuProps) {
 
   const getSectionCount = (categoryId: string) => {
     const categorySections = getSectionTypesByCategory(categoryId as SectionType['category'])
+    
+    // Apply access control filter
+    const accessFilteredSections = categorySections.filter(section => {
+      // Filter out advanced output for unauthorized users
+      if (section.id === 'output-advanced' && !hasAdvancedAccess) {
+        return false
+      }
+      return true
+    })
+    
     if (searchTerm) {
-      return categorySections.filter(section =>
+      return accessFilteredSections.filter(section =>
         section.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         section.description.toLowerCase().includes(searchTerm.toLowerCase())
       ).length
     }
-    return categorySections.length
+    return accessFilteredSections.length
   }
 
   const getCategorySections = (categoryId: string) => {
     const categorySections = getSectionTypesByCategory(categoryId as SectionType['category'])
+    
+    // Apply access control filter
+    const accessFilteredSections = categorySections.filter(section => {
+      // Filter out advanced output for unauthorized users
+      if (section.id === 'output-advanced' && !hasAdvancedAccess) {
+        return false
+      }
+      return true
+    })
+    
     if (searchTerm) {
-      return categorySections.filter(section =>
+      return accessFilteredSections.filter(section =>
         section.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         section.description.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
-    return categorySections
+    return accessFilteredSections
   }
 
   return (
