@@ -492,7 +492,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                               setActiveCardSpan(block.width)
                             }}
                           >
-                            {/* Compact top bar controls */}
+                            {/* Compact top bar controls with expand actions */}
                             <div className="flex items-center justify-between -mt-2 -mx-2 px-2 py-1 mb-1 border-b border-muted/30 text-muted-foreground/80">
                               <span
                                 className="inline-flex items-center justify-center h-5 w-5 opacity-70"
@@ -501,10 +501,16 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                 <GripVertical className="h-3.5 w-3.5" />
                               </span>
                               <div className="flex items-center gap-1">
-                                <Button size="icon" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground/80 hover:text-foreground" title="Properties" onClick={()=> setPropsOpenFor(propsOpenFor===block.id? null : block.id)}>
+                                {block.width < 2 && canPlace(row, block.startPosition, 2, block.id) && (
+                                  <Button size="sm" variant="outline" className="h-6 px-2" onClick={(e)=>{ e.stopPropagation(); changeBlockWidth(row.id, block.id, 2) }}>2/3</Button>
+                                )}
+                                {block.width < 3 && canPlace(row, block.startPosition, 3, block.id) && (
+                                  <Button size="sm" variant="outline" className="h-6 px-2" onClick={(e)=>{ e.stopPropagation(); changeBlockWidth(row.id, block.id, 3) }}>Full</Button>
+                                )}
+                                <Button size="icon" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground/80 hover:text-foreground" title="Properties" onClick={(e)=> { e.stopPropagation(); const next = propsOpenFor===block.id? null : block.id; setPropsOpenFor(next); if (next) setMenuOpenFor(null) }}>
                                   <SlidersHorizontal className="h-3.5 w-3.5"/>
                                 </Button>
-                                <Button size="icon" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground/80 hover:text-red-600" title="Delete" onClick={() => deleteBlock(row.id, block.id)}>
+                                <Button size="icon" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground/80 hover:text-red-600" title="Delete" onClick={(e) => { e.stopPropagation(); deleteBlock(row.id, block.id) }}>
                                   <Trash2 className="h-3.5 w-3.5"/>
                                 </Button>
                               </div>
@@ -512,7 +518,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
 
                             {/* Properties panel */}
                             {propsOpenFor === block.id && (
-                              <div ref={propsPanelRef} className="absolute z-50 right-2 top-10 w-80 bg-popover border border-border rounded-lg shadow-xl p-4 space-y-3">
+                              <div ref={propsPanelRef} className="absolute z-50 right-2 top-10 w-80 bg-popover border border-border rounded-lg shadow-xl p-4 space-y-3" onMouseDown={(e)=> e.stopPropagation()} onClick={(e)=> e.stopPropagation()}>
                                 <div className="text-sm font-medium">Customize</div>
                                 <div className="grid grid-cols-2 gap-3 text-xs items-center">
                                   <label>Background</label>
@@ -549,8 +555,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                             {/* Content area */}
                             <div className={cn(block.textAlignment === 'left' ? 'text-left' : block.textAlignment === 'right' ? 'text-right' : 'text-center')} style={{ rowGap: (block.spacing ?? 12) + 'px', display: 'grid' }}>
                               {(block.content || []).map(item => (
-                                <div key={item.id} className="group relative">
-                                  <Button size="icon" variant="ghost" className="absolute -right-2 -top-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-red-600" onClick={()=>deleteContentItem(row.id, block.id, item.id)}><Trash2 className="h-4 w-4"/></Button>
+                                <div key={item.id} className="group/item relative">
+                                  <Button size="icon" variant="ghost" className="absolute -right-2 -top-2 z-20 opacity-0 group-hover/item:opacity-100 transition-opacity duration-150 text-red-600" onClick={()=>deleteContentItem(row.id, block.id, item.id)}><Trash2 className="h-4 w-4"/></Button>
                               {item.type === 'headline' || item.type === 'subheading' || item.type === 'paragraph' ? (
                             <VariableSuggestionDropdown
                                       value={(item as any).content || ''}
@@ -566,7 +572,9 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                       autoSave={true}
                                       placeholder={item.type === 'headline' ? 'Your headline (supports @variables)' : item.type === 'subheading' ? 'Your subheading' : 'Write your paragraph...'}
                                       className="w-full"
-                                      inputClassName={cn('!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none', item.type==='headline'?'!text-3xl !font-bold':'', item.type==='subheading'?'!text-xl !font-medium':'')}
+                                      inputClassName={cn('!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none',
+                                        block.textAlignment === 'left' ? 'text-left' : block.textAlignment === 'right' ? 'text-right' : 'text-center',
+                                        item.type==='headline'?'!text-3xl !font-bold':'', item.type==='subheading'?'!text-xl !font-medium':'')}
                               variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
                                       multiline={true}
                                     />
@@ -606,7 +614,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                           autoSave={true}
                                           placeholder="List item..."
                                           className="w-full"
-                                          inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent"
+                                          inputClassName={cn('!border-0 !outline-none !ring-0 !shadow-none !bg-transparent',
+                                            block.textAlignment === 'left' ? 'text-left' : block.textAlignment === 'right' ? 'text-right' : 'text-center')}
                                           variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
                                           multiline={false}
                                         />
@@ -635,15 +644,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                               )}
                             </div>
 
-                            {/* Quick expand controls if space available */}
-                            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                              {block.width < 2 && canPlace(row, block.startPosition, 2, block.id) && (
-                                <Button size="sm" variant="outline" onClick={()=> changeBlockWidth(row.id, block.id, 2)}>Expand to 2/3</Button>
-                              )}
-                              {block.width < 3 && canPlace(row, block.startPosition, 3, block.id) && (
-                                <Button size="sm" variant="outline" onClick={()=> changeBlockWidth(row.id, block.id, 3)}>Expand to Full</Button>
-                              )}
-                            </div>
+                            {/* Quick expand controls moved to top bar */}
                           </div>
                   ))}
 
@@ -695,7 +696,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       )}
     </div>
     {/* Floating Notion-style command palette */}
-    {menuOpenFor && activeCardRect && (
+    {menuOpenFor && activeCardRect && propsOpenFor !== menuOpenFor && (
       <div ref={menuRef} className="fixed z-50" style={{ left: activeCardRect.left, top: activeCardRect.top + 8, transform: 'translateX(-50%)' }}>
         <Command className="rounded-lg border bg-popover shadow-md w-[520px]" style={{ maxWidth: activeCardSpan ? Math.max(240, Math.floor(activeCardRect.width / activeCardSpan)) : undefined }}>
           <CommandInput placeholder="Type a command or search..." />

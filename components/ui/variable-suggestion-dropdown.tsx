@@ -378,7 +378,7 @@ export function VariableSuggestionDropdown({
         onBlur={handleBlur}
         placeholder={placeholder}
         className={cn(
-          'w-full relative z-10 bg-transparent leading-relaxed caret-current resize-none',
+          'w-full relative z-10 bg-transparent leading-relaxed caret-amber-500 resize-none',
           inputClassName,
           '!text-transparent' // Hide input text so overlay chips show
         )}
