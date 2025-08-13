@@ -4,6 +4,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Slider } from '@/components/ui/slider'
 import { Plus, Trash2, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical, Heading1, Heading2, Text as TextIcon, MousePointerClick, Image as ImageIcon, ListOrdered, List, Minus } from 'lucide-react'
 import { ContentToolbar } from './ContentToolbar'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem as UICommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
@@ -21,8 +27,8 @@ type ContentItem =
 
 type Block = {
   id: string
-  width: 1 | 2 | 3
-  startPosition: 1 | 2 | 3
+  width: number
+  startPosition: number
   backgroundColor?: string
   textColor?: string
   borderColor?: string
@@ -30,10 +36,26 @@ type Block = {
   textAlignment?: 'left' | 'center' | 'right'
   padding?: number
   spacing?: number
+  borderRadius?: number
   content: ContentItem[]
 }
 
 type Row = { id: string; blocks: Block[] }
+
+type PageSettings = {
+  backgroundColor?: string
+  gridGap?: number
+  maxColumns?: 2 | 3 | 4
+  rowSpacing?: number
+  typography?: {
+    fontFamily?: string
+    h1Size?: number
+    h2Size?: number
+    h3Size?: number
+    paragraphSize?: number
+    lineHeight?: number
+  }
+}
 
 interface AdvancedOutputBuilderProps {
   section: CampaignSection
@@ -42,15 +64,30 @@ interface AdvancedOutputBuilderProps {
   className?: string
   campaignId: string
   allSections?: CampaignSection[]
+  onPageSettingsChange?: (pageSettings: PageSettings) => void
 }
 
 // Lightweight ID helper
 const uid = (p = 'id') => `${p}_${Math.random().toString(36).slice(2, 9)}`
 
-export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, className, allSections }: AdvancedOutputBuilderProps) {
+export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, className, allSections, onPageSettingsChange }: AdvancedOutputBuilderProps) {
   const settings: any = section.settings || {}
   const rows: Row[] = settings.rows || []
   const defaultBlock = settings.defaultBlock || {}
+  const pageSettings: PageSettings = settings.pageSettings || {
+    backgroundColor: undefined,
+    gridGap: 16,
+    maxColumns: 3,
+    rowSpacing: 24,
+    typography: {
+      fontFamily: 'Inter, system-ui, sans-serif',
+      h1Size: 32,
+      h2Size: 24,
+      h3Size: 20,
+      paragraphSize: 16,
+      lineHeight: 1.6
+    }
+  }
   const sanitizedDefaultBlock = useMemo(() => {
     const { backgroundColor, borderColor, outlineColor, ...rest } = defaultBlock || {}
     return rest
@@ -58,13 +95,16 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const [toolbarOpenFor, setToolbarOpenFor] = useState<string | null>(null)
   const [activeCardRect, setActiveCardRect] = useState<{ left: number; top: number; width: number } | null>(null)
   const [propsOpenFor, setPropsOpenFor] = useState<string | null>(null)
+  const [pagePropsOpen, setPagePropsOpen] = useState(false)
   const [draftRows, setDraftRows] = useState<Row[]>(rows)
   const [activeRowId, setActiveRowId] = useState<string | null>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-  const propsPanelRef = useRef<HTMLDivElement>(null)
+
   const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null)
-  const [activeCardSpan, setActiveCardSpan] = useState<1|2|3 | null>(null)
+  const [activeCardSpan, setActiveCardSpan] = useState<number | null>(null)
+  const isSavingRef = useRef(false)
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const recalcActiveCardRect = useCallback((blockId: string) => {
     if (typeof document === 'undefined') return
@@ -77,11 +117,15 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
 
   // Keep local draftRows in sync with external settings
   useEffect(() => {
+    // Don't update draftRows if we're currently saving to prevent overriding local changes
+    if (!isSavingRef.current) {
     setDraftRows(rows)
+    }
+    
     if (!activeRowId && rows.length) {
       setActiveRowId(rows[0].id)
     }
-  }, [rows])
+  }, [rows, activeRowId])
 
   // Close floating toolbar when clicking outside the selected card and outside the toolbar
   useEffect(() => {
@@ -120,20 +164,39 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     }
   }, [menuOpenFor])
 
-  // Close properties panel when clicking outside of it
+  // Cleanup timeout on unmount
   useEffect(() => {
-    function handleOutsidePropsClick(e: MouseEvent) {
-      if (!propsOpenFor) return
-      const target = e.target as Node
-      if (propsPanelRef.current && propsPanelRef.current.contains(target)) return
-      setPropsOpenFor(null)
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
     }
-    document.addEventListener('mousedown', handleOutsidePropsClick)
-    return () => document.removeEventListener('mousedown', handleOutsidePropsClick)
-  }, [propsOpenFor])
+  }, [])
 
-  const saveRows = async (nextRows: Row[]) => {
-    await onUpdate({ settings: { ...settings, mode: 'advanced', rows: nextRows, defaultBlock } })
+  // Notify parent of initial page settings
+  useEffect(() => {
+    onPageSettingsChange?.(pageSettings)
+  }, [pageSettings, onPageSettingsChange])
+
+
+    const saveRows = async (nextRows: Row[], newPageSettings?: PageSettings) => {
+    isSavingRef.current = true
+    try {
+      const updatedPageSettings = newPageSettings || pageSettings
+      await onUpdate({ settings: { ...settings, mode: 'advanced', rows: nextRows, defaultBlock, pageSettings: updatedPageSettings } })
+    } finally {
+      // Use a small delay to ensure the save operation is complete before allowing updates
+      setTimeout(() => {
+        isSavingRef.current = false
+      }, 100)
+    }
+  }
+
+  const updatePageSettings = async (updates: Partial<PageSettings>) => {
+    const newPageSettings = { ...pageSettings, ...updates }
+    await saveRows(draftRows, newPageSettings)
+    // Notify parent component of page settings change
+    onPageSettingsChange?.(newPageSettings)
   }
 
   // Helpers to compute occupancy per row
@@ -145,11 +208,12 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     return occupied
   }
 
-  const canPlace = (row: Row, start: 1 | 2 | 3, width: 1 | 2 | 3, excludeBlockId?: string) => {
+  const canPlace = (row: Row, start: number, width: number, excludeBlockId?: string) => {
+    const maxCols = pageSettings.maxColumns ?? 3
     const occupied = getOccupied(row, excludeBlockId)
     for (let i = 0; i < width; i++) {
       const col = start + i
-      if (col < 1 || col > 3) return false
+      if (col < 1 || col > maxCols) return false
       if (occupied.has(col)) return false
     }
     return true
@@ -211,13 +275,26 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       if (b.backgroundColor) styles.push(`background:${b.backgroundColor}`)
       if (b.textColor) styles.push(`color:${b.textColor}`)
       if (b.borderColor) styles.push(`border:1px solid ${b.borderColor}`)
+      if (b.borderRadius) styles.push(`border-radius:${b.borderRadius}px`)
       const innerStyle = `display:grid;row-gap:${b.spacing ?? 12}px;text-align:${align}`
       return `<div class=\"rounded-lg\" style=\"${styles.join(';')}\"><div style=\"${innerStyle}\">${b.content.map(renderItem).join('')}</div></div>`
     }
 
-    const html = rows.map(r => `<div class=\"grid grid-cols-3 gap-4 mb-6\">${r.blocks.map(renderBlock).join('')}</div>`).join('')
+    const containerStyle = [
+      pageSettings.backgroundColor ? `background-color:${pageSettings.backgroundColor}` : '',
+      'padding:16px'
+    ].filter(Boolean).join(';')
+    
+    const gridStyle = [
+      `display:grid`,
+      `grid-template-columns:repeat(${pageSettings.maxColumns ?? 3}, 1fr)`,
+      `gap:${pageSettings.gridGap ?? 16}px`,
+      `margin-bottom:${pageSettings.rowSpacing ?? 24}px`
+    ].join(';')
+    
+    const html = `<div style="${containerStyle}">${rows.map(r => `<div style="${gridStyle}">${r.blocks.map(renderBlock).join('')}</div>`).join('')}</div>`
     return html
-  }, [isPreview, rows, previewVariables])
+  }, [isPreview, rows, previewVariables, pageSettings])
 
   // Build available variables like output-section.tsx
   function getSimpleVariablesForBuilder(sections: CampaignSection[], currentOrder: number) {
@@ -330,14 +407,22 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   }
 
   const deleteBlock = async (rowId: string, blockId: string) => {
-    let next = draftRows.map(r => ({ ...r, blocks: r.blocks.filter(b => b.id !== blockId) }))
-    // Prune any rows that became empty after deletion
-    const pruned = next.filter(r => r.blocks.length > 0)
-    setDraftRows(pruned)
-    await saveRows(pruned)
-    if (!pruned.some(r => r.id === activeRowId)) {
-      setActiveRowId(pruned.length ? pruned[pruned.length - 1].id : null)
+    const next = draftRows.map(r => ({ ...r, blocks: r.blocks.filter(b => b.id !== blockId) }))
+    
+    // Only remove empty rows if there are multiple rows and at least one has content
+    const hasContentRows = next.filter(r => r.blocks.length > 0)
+    const finalRows = (next.length > 1 && hasContentRows.length > 0) 
+      ? next.filter(r => r.blocks.length > 0)  // Remove empty rows if conditions met
+      : next  // Keep all rows (including empty ones) otherwise
+    
+    setDraftRows(finalRows)
+    await saveRows(finalRows)
+    
+    // Update active row if needed
+    if (!finalRows.some(r => r.id === activeRowId)) {
+      setActiveRowId(finalRows.length ? finalRows[finalRows.length - 1].id : null)
     }
+    
     if (toolbarOpenFor === blockId) setToolbarOpenFor(null)
     if (propsOpenFor === blockId) setPropsOpenFor(null)
   }
@@ -353,6 +438,29 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     setDraftRows(next)
     await saveRows(next)
   }
+
+  // Debounced version for real-time controls like sliders
+  const updateBlockDebounced = useCallback((rowId: string, blockId: string, updates: Partial<Block>) => {
+    // Immediately update local state for instant visual feedback
+    const next = draftRows.map(r => {
+      if (r.id !== rowId) return r
+      return {
+        ...r,
+        blocks: r.blocks.map(b => b.id === blockId ? { ...b, ...updates } : b)
+      }
+    })
+    setDraftRows(next)
+
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+
+    // Debounce the save operation
+    saveTimeoutRef.current = setTimeout(() => {
+      saveRows(next)
+    }, 300) // 300ms delay
+  }, [draftRows])
 
   const moveBlock = async (rowId: string, blockId: string, delta: number) => {
     const row = draftRows.find(r => r.id === rowId)
@@ -417,19 +525,19 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     )
   }
 
-  // Build Mode (scaffold): show dotted chooser when empty; otherwise simple grid list (editing to be expanded next)
+  // Build Mode (scaffold): show simple dotted chooser when empty
   if (rows.length === 0 || rows.every(r => r.blocks.length === 0)) {
     return (
-      <div className={cn('p-10 border-2 border-dashed rounded-2xl text-center bg-muted/10', className)}>
-        <div className="mx-auto max-w-4xl">
-          <h3 className="text-2xl font-semibold text-foreground">Create a Content Card</h3>
-          <p className="text-muted-foreground mt-2">Choose a width for your new content card</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-8">
-            <WidthOption label="1/3 Column" caption="Narrow card" bars={[true,false,false]} onClick={() => addFirstBlock(1)} />
-            <WidthOption label="2/3 Column" caption="Wide card" bars={[true,true,false]} onClick={() => addFirstBlock(2)} />
-            <WidthOption label="Full Width" caption="Full row card" bars={[true,true,true]} onClick={() => addFirstBlock(3)} />
+      <div className={cn('p-4', className)}>
+        <div className="rounded-lg border-2 border-dashed border-input/60 bg-muted/10 flex items-center justify-center min-h-[120px]">
+          <div className="text-center space-y-2">
+            <div className="text-xs text-muted-foreground">Empty layout</div>
+            <div className="flex items-center gap-2 justify-center">
+              <Button size="sm" variant="outline" onClick={() => addFirstBlock(1)}>Add 1/3</Button>
+              <Button size="sm" variant="outline" onClick={() => addFirstBlock(2)}>Add 2/3</Button>
+              <Button size="sm" variant="outline" onClick={() => addFirstBlock(3)}>Add Full</Button>
+            </div>
           </div>
-          <div className="mt-8 text-xs text-muted-foreground">Cards will be arranged in a 3-column grid layout</div>
         </div>
       </div>
     )
@@ -437,11 +545,123 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
 
   return (
     <>
-    <div className={cn('p-4 space-y-6', className)}>
+    <div 
+      className={cn('p-4', className)}
+      style={{
+        gap: `${pageSettings.rowSpacing ?? 24}px`,
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
       {/* Header row controls */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">Advanced Output Layout</div>
-        <Button size="sm" onClick={addRow}><Plus className="h-4 w-4 mr-1"/>Add Row</Button>
+        <div className="flex items-center gap-2">
+          <Sheet open={pagePropsOpen} onOpenChange={setPagePropsOpen}>
+            <SheetTrigger asChild>
+              <Button size="sm" variant="outline">
+                <SlidersHorizontal className="h-4 w-4 mr-1"/>
+                Page Properties
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-96 overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Page Properties</SheetTitle>
+                <SheetDescription>
+                  Customize the overall layout and appearance of your advanced output page.
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-6 space-y-6">
+                {/* Page Background */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Page Background</CardTitle>
+                    <CardDescription>Set the overall page background color</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="page-background-color">Background Color</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="page-background-color"
+                          type="color"
+                          value={pageSettings.backgroundColor || '#ffffff'}
+                          onChange={(e) => updatePageSettings({ backgroundColor: e.target.value })}
+                          className="w-12 h-9 p-1 border rounded"
+                        />
+                        <Input
+                          value={pageSettings.backgroundColor || ''}
+                          onChange={(e) => updatePageSettings({ backgroundColor: e.target.value || undefined })}
+                          placeholder="#ffffff"
+                          className="flex-1 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Grid Settings */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Grid Layout</CardTitle>
+                    <CardDescription>Control the grid system and spacing</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="max-columns">Maximum Columns</Label>
+                      <Select
+                        value={String(pageSettings.maxColumns)}
+                        onValueChange={(value) => updatePageSettings({ maxColumns: Number(value) as 2 | 3 | 4 })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="2">2 Columns</SelectItem>
+                          <SelectItem value="3">3 Columns</SelectItem>
+                          <SelectItem value="4">4 Columns</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="grid-gap-slider">Grid Gap</Label>
+                        <span className="text-sm text-muted-foreground">{pageSettings.gridGap ?? 16}px</span>
+                      </div>
+                      <Slider
+                        id="grid-gap-slider"
+                        min={0}
+                        max={48}
+                        step={4}
+                        value={[pageSettings.gridGap ?? 16]}
+                        onValueChange={(value) => updatePageSettings({ gridGap: value[0] })}
+                        className="w-full"
+                      />
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="row-spacing-slider">Row Spacing</Label>
+                        <span className="text-sm text-muted-foreground">{pageSettings.rowSpacing ?? 24}px</span>
+                      </div>
+                      <Slider
+                        id="row-spacing-slider"
+                        min={0}
+                        max={64}
+                        step={4}
+                        value={[pageSettings.rowSpacing ?? 24]}
+                        onValueChange={(value) => updatePageSettings({ rowSpacing: value[0] })}
+                        className="w-full"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </SheetContent>
+          </Sheet>
+          <Button size="sm" onClick={addRow}><Plus className="h-4 w-4 mr-1"/>Add Row</Button>
+        </div>
       </div>
 
       {draftRows.map(row => {
@@ -452,9 +672,13 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
             key={row.id}
             className={cn('space-y-3 relative')}
           >
-            {/* Full-width 3-column grid for cards */}
+            {/* Dynamic grid for cards */}
             <div
-              className="grid grid-cols-3 gap-4"
+              className="grid"
+              style={{
+                gridTemplateColumns: `repeat(${pageSettings.maxColumns ?? 3}, 1fr)`,
+                gap: `${pageSettings.gridGap ?? 16}px`
+              }}
             >
                   {/* Render existing blocks */}
                   {row.blocks.map(block => (
@@ -462,17 +686,18 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                           <div
                             key={block.id}
                             className={cn(
-                              'group rounded-lg p-4 relative bg-transparent',
+                              'group rounded-lg p-4 relative',
                               // Builder guide border when no custom border is set
                               !block.borderColor && (toolbarOpenFor === block.id
                                 ? 'border-2 border-solid border-amber-500'
                                 : 'border-2 border-dotted border-amber-500/90')
                             )}
                             style={{
-                              background: block.backgroundColor || 'transparent',
-                              color: block.textColor,
+                              backgroundColor: block.backgroundColor || undefined,
+                              color: block.textColor || undefined,
                               border: block.borderColor ? `1px solid ${block.borderColor}` : undefined,
                               outline: block.outlineColor ? `2px solid ${block.outlineColor}` : undefined,
+                              borderRadius: block.borderRadius ? `${block.borderRadius}px` : undefined,
                               gridColumnStart: String(block.startPosition),
                               gridColumnEnd: `span ${block.width}`,
                             }}
@@ -507,48 +732,209 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                 {block.width < 3 && canPlace(row, block.startPosition, 3, block.id) && (
                                   <Button size="sm" variant="outline" className="h-6 px-2" onClick={(e)=>{ e.stopPropagation(); changeBlockWidth(row.id, block.id, 3) }}>Full</Button>
                                 )}
-                                <Button size="icon" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground/80 hover:text-foreground" title="Properties" onClick={(e)=> { e.stopPropagation(); const next = propsOpenFor===block.id? null : block.id; setPropsOpenFor(next); if (next) setMenuOpenFor(null) }}>
+                                <Sheet open={propsOpenFor === block.id} onOpenChange={(open: boolean) => {
+                                  if (!open) setPropsOpenFor(null);
+                                  else { setPropsOpenFor(block.id); setMenuOpenFor(null); }
+                                }}>
+                                  <SheetTrigger asChild>
+                                    <Button size="icon" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground/80 hover:text-foreground" title="Properties" onClick={(e)=> e.stopPropagation()}>
                                   <SlidersHorizontal className="h-3.5 w-3.5"/>
                                 </Button>
+                                  </SheetTrigger>
+                                  <SheetContent side="right" className="w-96 overflow-y-auto">
+                                    <SheetHeader>
+                                      <SheetTitle>Block Properties</SheetTitle>
+                                      <SheetDescription>
+                                        Customize the appearance and layout of this content block.
+                                      </SheetDescription>
+                                    </SheetHeader>
+                                    <div className="mt-6 space-y-6">
+                                      {/* Color Settings */}
+                                      <Card>
+                                        <CardHeader className="pb-3">
+                                          <CardTitle className="text-base">Colors</CardTitle>
+                                          <CardDescription>Customize the block colors</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                          <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                              <Label htmlFor="background-color">Background</Label>
+                                              <div className="flex gap-2">
+                                                <Input
+                                                  id="background-color"
+                                                  type="color"
+                                                  value={block.backgroundColor || '#ffffff'}
+                                                  onChange={(e) => updateBlock(row.id, block.id, { backgroundColor: e.target.value })}
+                                                  className="w-12 h-9 p-1 border rounded"
+                                                />
+                                                <Input
+                                                  value={block.backgroundColor || ''}
+                                                  onChange={(e) => updateBlock(row.id, block.id, { backgroundColor: e.target.value || undefined })}
+                                                  placeholder="#ffffff"
+                                                  className="flex-1 text-sm"
+                                                />
+                                              </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                              <Label htmlFor="text-color">Text</Label>
+                                              <div className="flex gap-2">
+                                                <Input
+                                                  id="text-color"
+                                                  type="color"
+                                                  value={block.textColor || '#0f172a'}
+                                                  onChange={(e) => updateBlock(row.id, block.id, { textColor: e.target.value })}
+                                                  className="w-12 h-9 p-1 border rounded"
+                                                />
+                                                <Input
+                                                  value={block.textColor || ''}
+                                                  onChange={(e) => updateBlock(row.id, block.id, { textColor: e.target.value || undefined })}
+                                                  placeholder="#0f172a"
+                                                  className="flex-1 text-sm"
+                                                />
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="space-y-2">
+                                            <Label htmlFor="border-color">Border</Label>
+                                            <div className="flex gap-2">
+                                              <Input
+                                                id="border-color"
+                                                type="color"
+                                                value={block.borderColor || '#e5e7eb'}
+                                                onChange={(e) => updateBlock(row.id, block.id, { borderColor: e.target.value })}
+                                                className="w-12 h-9 p-1 border rounded"
+                                              />
+                                              <Input
+                                                value={block.borderColor || ''}
+                                                onChange={(e) => updateBlock(row.id, block.id, { borderColor: e.target.value || undefined })}
+                                                placeholder="#e5e7eb"
+                                                className="flex-1 text-sm"
+                                              />
+                                            </div>
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+
+                                      {/* Layout Settings */}
+                                      <Card>
+                                        <CardHeader className="pb-3">
+                                          <CardTitle className="text-base">Layout</CardTitle>
+                                          <CardDescription>Control block size and alignment</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                          <div className="space-y-2">
+                                            <Label htmlFor="width-select">Width</Label>
+                                            <Select
+                                              value={String(block.width)}
+                                              onValueChange={(value) => changeBlockWidth(row.id, block.id, Number(value) as 1|2|3)}
+                                            >
+                                              <SelectTrigger>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="1">1/3 Column</SelectItem>
+                                                <SelectItem value="2">2/3 Column</SelectItem>
+                                                <SelectItem value="3">Full Width</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+
+                                          <div className="space-y-3">
+                                            <Label>Text Alignment</Label>
+                                            <div className="flex gap-2">
+                                              <Button
+                                                size="sm"
+                                                variant={block.textAlignment === 'left' ? 'default' : 'outline'}
+                                                onClick={() => updateBlock(row.id, block.id, { textAlignment: 'left' })}
+                                                className="flex-1"
+                                              >
+                                                <AlignLeft className="h-4 w-4" />
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant={block.textAlignment === 'center' ? 'default' : 'outline'}
+                                                onClick={() => updateBlock(row.id, block.id, { textAlignment: 'center' })}
+                                                className="flex-1"
+                                              >
+                                                <AlignCenter className="h-4 w-4" />
+                                              </Button>
+                                              <Button
+                                                size="sm"
+                                                variant={block.textAlignment === 'right' ? 'default' : 'outline'}
+                                                onClick={() => updateBlock(row.id, block.id, { textAlignment: 'right' })}
+                                                className="flex-1"
+                                              >
+                                                <AlignRight className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                                        </CardContent>
+                                      </Card>
+
+                                      {/* Spacing Settings */}
+                                      <Card>
+                                        <CardHeader className="pb-3">
+                                          <CardTitle className="text-base">Spacing & Appearance</CardTitle>
+                                          <CardDescription>Adjust padding, content spacing, and corner rounding</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-6">
+                                          <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                              <Label htmlFor="padding-slider">Padding</Label>
+                                              <span className="text-sm text-muted-foreground">{block.padding ?? 24}px</span>
+                                </div>
+                                            <Slider
+                                              id="padding-slider"
+                                              min={0}
+                                              max={64}
+                                              step={4}
+                                              value={[block.padding ?? 24]}
+                                              onValueChange={(value) => updateBlockDebounced(row.id, block.id, { padding: value[0] })}
+                                              className="w-full"
+                                            />
+                                </div>
+                                          <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                              <Label htmlFor="spacing-slider">Content Spacing</Label>
+                                              <span className="text-sm text-muted-foreground">{block.spacing ?? 12}px</span>
+                                </div>
+                                            <Slider
+                                              id="spacing-slider"
+                                              min={0}
+                                              max={48}
+                                              step={4}
+                                              value={[block.spacing ?? 12]}
+                                              onValueChange={(value) => updateBlockDebounced(row.id, block.id, { spacing: value[0] })}
+                                              className="w-full"
+                                            />
+                                </div>
+                                          <div className="space-y-3">
+                                            <div className="flex items-center justify-between">
+                                              <Label htmlFor="border-radius-slider">Corner Rounding</Label>
+                                              <span className="text-sm text-muted-foreground">{block.borderRadius ?? 8}px</span>
+                              </div>
+                                            <Slider
+                                              id="border-radius-slider"
+                                              min={0}
+                                              max={32}
+                                              step={2}
+                                              value={[block.borderRadius ?? 8]}
+                                              onValueChange={(value) => updateBlockDebounced(row.id, block.id, { borderRadius: value[0] })}
+                                              className="w-full"
+                                            />
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                    </div>
+                                  </SheetContent>
+                                </Sheet>
                                 <Button size="icon" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground/80 hover:text-red-600" title="Delete" onClick={(e) => { e.stopPropagation(); deleteBlock(row.id, block.id) }}>
                                   <Trash2 className="h-3.5 w-3.5"/>
                                 </Button>
                               </div>
                             </div>
 
-                            {/* Properties panel */}
-                            {propsOpenFor === block.id && (
-                              <div ref={propsPanelRef} className="absolute z-50 right-2 top-10 w-80 bg-popover border border-border rounded-lg shadow-xl p-4 space-y-3" onMouseDown={(e)=> e.stopPropagation()} onClick={(e)=> e.stopPropagation()}>
-                                <div className="text-sm font-medium">Customize</div>
-                                <div className="grid grid-cols-2 gap-3 text-xs items-center">
-                                  <label>Background</label>
-                                  <input type="color" value={block.backgroundColor || '#ffffff'} onChange={(e)=>updateBlock(row.id, block.id, { backgroundColor: e.target.value })} className="w-8 h-6 border rounded"/>
-                                  <label>Text</label>
-                                  <input type="color" value={block.textColor || '#0f172a'} onChange={(e)=>updateBlock(row.id, block.id, { textColor: e.target.value })} className="w-8 h-6 border rounded"/>
-                                  <label>Border</label>
-                                  <input type="color" value={block.borderColor || '#e5e7eb'} onChange={(e)=>updateBlock(row.id, block.id, { borderColor: e.target.value })} className="w-8 h-6 border rounded"/>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3 text-xs items-center">
-                                  <label>Width</label>
-                                  <select className="border rounded p-1 text-xs" value={block.width} onChange={(e)=>changeBlockWidth(row.id, block.id, Number(e.target.value) as 1|2|3)}>
-                                    <option value={1}>1/3</option>
-                                    <option value={2}>2/3</option>
-                                    <option value={3}>Full</option>
-                                  </select>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Button size="icon" variant={block.textAlignment==='left'?'default':'outline'} onClick={()=>updateBlock(row.id, block.id, { textAlignment: 'left' })}><AlignLeft className="h-4 w-4"/></Button>
-                                  <Button size="icon" variant={block.textAlignment==='center'?'default':'outline'} onClick={()=>updateBlock(row.id, block.id, { textAlignment: 'center' })}><AlignCenter className="h-4 w-4"/></Button>
-                                  <Button size="icon" variant={block.textAlignment==='right'?'default':'outline'} onClick={()=>updateBlock(row.id, block.id, { textAlignment: 'right' })}><AlignRight className="h-4 w-4"/></Button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3 text-xs items-center">
-                                  <label>Padding (px)</label>
-                                  <input type="range" min={0} max={64} value={block.padding ?? 24} onChange={(e)=>updateBlock(row.id, block.id, { padding: parseInt(e.target.value) || 0 })} />
-                                  <label>Spacing (px)</label>
-                                  <input type="range" min={0} max={48} value={block.spacing ?? 12} onChange={(e)=>updateBlock(row.id, block.id, { spacing: parseInt(e.target.value) || 0 })} />
-                                </div>
-                              </div>
-                            )}
+
 
                             {/* Content area */}
                             <div className={cn(block.textAlignment === 'left' ? 'text-left' : block.textAlignment === 'right' ? 'text-right' : 'text-center')} style={{ rowGap: (block.spacing ?? 12) + 'px', display: 'grid' }}>
@@ -578,20 +964,38 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                     />
                                   ) : item.type === 'button' ? (
                                     <div className="flex items-center justify-center gap-2">
-                                    <input className="border rounded px-2 py-1 text-sm" value={(item as any).content} onChange={(e)=>{
+                                      <Input 
+                                        className="text-sm" 
+                                        value={(item as any).content} 
+                                        onChange={(e)=>{
                                         const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, content: e.target.value } : ci) })) }))
                                         setDraftRows(next)
-                                      }} onBlur={async()=>{ await saveRows(draftRows) }} />
-                                      <input className="border rounded px-2 py-1 text-sm w-48" placeholder="https://..." value={(item as any).href || ''} onChange={(e)=>{
+                                        }} 
+                                        onBlur={async()=>{ await saveRows(draftRows) }} 
+                                        placeholder="Button text"
+                                      />
+                                      <Input 
+                                        className="text-sm w-48" 
+                                        placeholder="https://..." 
+                                        value={(item as any).href || ''} 
+                                        onChange={(e)=>{
                                         const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, href: e.target.value } : ci) })) }))
                                         setDraftRows(next)
-                                      }} onBlur={async()=>{ await saveRows(draftRows) }} />
+                                        }} 
+                                        onBlur={async()=>{ await saveRows(draftRows) }} 
+                                      />
                                     </div>
                                   ) : item.type === 'image' ? (
-                                    <input className="border rounded px-2 py-1 text-sm w-full" placeholder="Image URL" value={(item as any).src || ''} onChange={(e)=>{
+                                    <Input 
+                                      className="text-sm w-full" 
+                                      placeholder="Image URL" 
+                                      value={(item as any).src || ''} 
+                                      onChange={(e)=>{
                                       const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, src: e.target.value } : ci) })) }))
                                       setDraftRows(next)
-                                    }} onBlur={async()=>{ await saveRows(draftRows) }} />
+                                      }} 
+                                      onBlur={async()=>{ await saveRows(draftRows) }} 
+                                    />
                                   ) : item.type === 'divider' ? (
                                     <hr className="border-input" />
                                   ) : (item.type === 'numbered-list' || item.type === 'bullet-list') ? (
@@ -681,15 +1085,15 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
 
       {/* Global empty-state chooser for additional rows: show only when there are no rows */}
       {draftRows.length === 0 && (
-        <div className="p-8 border-2 border-dashed rounded-2xl text-center bg-muted/10">
-          <h3 className="text-lg font-medium text-foreground">Create a Content Card</h3>
-          <p className="text-sm text-muted-foreground mt-1">Choose a width for your new content card</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-            <WidthOption onClick={async()=>{const id = await addRow(); await addBlock(id, 1)}} label="1/3 Column" caption="Narrow card" bars={[true,false,false]}/>
-            <WidthOption onClick={async()=>{const id = await addRow(); await addBlock(id, 2)}} label="2/3 Column" caption="Wide card" bars={[true,true,false]}/>
-            <WidthOption onClick={async()=>{const id = await addRow(); await addBlock(id, 3)}} label="Full Width" caption="Full row card" bars={[true,true,true]}/>
+        <div className="rounded-lg border-2 border-dashed border-input/60 bg-muted/10 flex items-center justify-center min-h-[120px]">
+          <div className="text-center space-y-2">
+            <div className="text-xs text-muted-foreground">Empty layout</div>
+            <div className="flex items-center gap-2 justify-center">
+              <Button size="sm" variant="outline" onClick={async()=>{const id = await addRow(); await addBlock(id, 1)}}>Add 1/3</Button>
+              <Button size="sm" variant="outline" onClick={async()=>{const id = await addRow(); await addBlock(id, 2)}}>Add 2/3</Button>
+              <Button size="sm" variant="outline" onClick={async()=>{const id = await addRow(); await addBlock(id, 3)}}>Add Full</Button>
+            </div>
           </div>
-          <div className="mt-4 text-xs text-muted-foreground">Cards will be arranged in a 3-column grid layout</div>
         </div>
       )}
     </div>

@@ -24,6 +24,7 @@ export default function AdvancedOutputEditorPage() {
   const [error, setError] = useState<string | null>(null)
   const [isPreview, setIsPreview] = useState(false)
   const [allSections, setAllSections] = useState<CampaignSection[] | null>(null)
+  const [pageBackgroundColor, setPageBackgroundColor] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     const load = async () => {
@@ -120,6 +121,10 @@ export default function AdvancedOutputEditorPage() {
 
   const goBack = () => router.push(`/dashboard/campaigns/${campaignId}/builder`)
   const openPreview = () => window.open(`/campaigns/${campaignId}/preview`, '_blank')
+  
+  const handlePageSettingsChange = (pageSettings: any) => {
+    setPageBackgroundColor(pageSettings.backgroundColor)
+  }
 
   if (isLoading) {
     return (
@@ -139,7 +144,10 @@ export default function AdvancedOutputEditorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div 
+      className="min-h-screen"
+      style={{ backgroundColor: pageBackgroundColor || undefined }}
+    >
       {/* Header */}
       <div className="sticky top-0 z-10 border-b bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -167,6 +175,7 @@ export default function AdvancedOutputEditorPage() {
           className=""
           campaignId={campaignId}
           allSections={allSections || undefined}
+          onPageSettingsChange={handlePageSettingsChange}
         />
       </div>
     </div>
