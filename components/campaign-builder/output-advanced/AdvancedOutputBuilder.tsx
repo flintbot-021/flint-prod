@@ -14,14 +14,16 @@ import { Plus, Trash2, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, Gr
 import { ContentToolbar } from './ContentToolbar'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem as UICommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
 import { VariableSuggestionDropdown } from '@/components/ui/variable-suggestion-dropdown'
+import { UnsplashImageSelector } from '@/components/ui/unsplash-image-selector'
 import { VariableInterpolator } from '@/lib/utils/variable-interpolator'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
 import { titleToVariableName, isQuestionSection } from '@/lib/utils/section-variables'
+import { uploadFiles } from '@/lib/supabase/storage'
 
 type ContentItem =
   | { id: string; type: 'headline' | 'subheading' | 'paragraph'; content: string }
   | { id: string; type: 'button'; content: string; href?: string }
-  | { id: string; type: 'image'; src?: string; alt?: string }
+  | { id: string; type: 'image'; src?: string; alt?: string; maxHeight?: number }
   | { id: string; type: 'numbered-list' | 'bullet-list'; items: string[] }
   | { id: string; type: 'divider' }
 
@@ -47,14 +49,6 @@ type PageSettings = {
   gridGap?: number
   maxColumns?: 2 | 3 | 4
   rowSpacing?: number
-  typography?: {
-    fontFamily?: string
-    h1Size?: number
-    h2Size?: number
-    h3Size?: number
-    paragraphSize?: number
-    lineHeight?: number
-  }
 }
 
 interface AdvancedOutputBuilderProps {
@@ -70,7 +64,7 @@ interface AdvancedOutputBuilderProps {
 // Lightweight ID helper
 const uid = (p = 'id') => `${p}_${Math.random().toString(36).slice(2, 9)}`
 
-export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, className, allSections, onPageSettingsChange }: AdvancedOutputBuilderProps) {
+export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, className, allSections, onPageSettingsChange, campaignId }: AdvancedOutputBuilderProps) {
   const settings: any = section.settings || {}
   const rows: Row[] = settings.rows || []
   const defaultBlock = settings.defaultBlock || {}
@@ -78,15 +72,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     backgroundColor: undefined,
     gridGap: 16,
     maxColumns: 3,
-    rowSpacing: 24,
-    typography: {
-      fontFamily: 'Inter, system-ui, sans-serif',
-      h1Size: 32,
-      h2Size: 24,
-      h3Size: 20,
-      paragraphSize: 16,
-      lineHeight: 1.6
-    }
+    rowSpacing: 24
   }
   const sanitizedDefaultBlock = useMemo(() => {
     const { backgroundColor, borderColor, outlineColor, ...rest } = defaultBlock || {}
@@ -103,6 +89,9 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
 
   const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null)
   const [activeCardSpan, setActiveCardSpan] = useState<number | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [imageSheetOpen, setImageSheetOpen] = useState(false)
+  const [activeImageId, setActiveImageId] = useState<string | null>(null)
   const isSavingRef = useRef(false)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -199,6 +188,59 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     onPageSettingsChange?.(newPageSettings)
   }
 
+  // Handle image upload (based on output-section.tsx)
+  const handleImageUpload = useCallback(async (files: FileList, itemId: string) => {
+    if (!files.length) return
+
+    const file = files[0]
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      alert('Image size must be less than 10MB')
+      return
+    }
+
+    setIsUploading(true)
+    
+    try {
+      // Use the campaignId from props
+      const uploadedFiles = await uploadFiles(
+        [file],
+        campaignId,
+        'output-sections'
+      )
+      
+      if (uploadedFiles.length > 0) {
+        const imageUrl = uploadedFiles[0].url
+        
+        // Update the image in the content block immediately
+        const next = draftRows.map(r => ({ 
+          ...r, 
+          blocks: r.blocks.map(b => ({ 
+            ...b, 
+            content: b.content.map(ci => 
+              ci.id === itemId 
+                ? { ...ci, src: imageUrl } 
+                : ci
+            ) 
+          })) 
+        }))
+        setDraftRows(next)
+        await saveRows(next)
+        
+        return imageUrl
+      }
+    } catch (error) {
+      console.error('Upload failed:', error)
+      alert('Upload failed. Please try again.')
+    } finally {
+      setIsUploading(false)
+    }
+  }, [campaignId, draftRows, saveRows])
+
   // Helpers to compute occupancy per row
   const getOccupied = (row: Row, excludeBlockId?: string) => {
     const occupied = new Set<number>()
@@ -255,7 +297,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         case 'button':
           return `<a class="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white">${item.content || 'Button'}</a>`
         case 'image':
-          return item.src ? `<img class="rounded-lg w-full object-cover" src="${item.src}" alt="${item.alt || ''}"/>` : ''
+          const maxHeightStyle = (item as any).maxHeight ? `max-height:${(item as any).maxHeight}px;height:${(item as any).maxHeight}px;` : 'height:192px;max-height:192px;'
+          return item.src ? `<img class="rounded-lg w-full object-cover" style="${maxHeightStyle}" src="${item.src}" alt="${item.alt || ''}"/>` : ''
         case 'numbered-list':
           return `<ol class="list-decimal pl-5">${(item.items||[]).map(li=>`<li>${interpolator.interpolate(li, { variables, availableVariables: [] }).content}</li>`).join('')}</ol>`
         case 'bullet-list':
@@ -536,7 +579,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
               <Button size="sm" variant="outline" onClick={() => addFirstBlock(1)}>Add 1/3</Button>
               <Button size="sm" variant="outline" onClick={() => addFirstBlock(2)}>Add 2/3</Button>
               <Button size="sm" variant="outline" onClick={() => addFirstBlock(3)}>Add Full</Button>
-            </div>
+          </div>
           </div>
         </div>
       </div>
@@ -660,7 +703,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
               </div>
             </SheetContent>
           </Sheet>
-          <Button size="sm" onClick={addRow}><Plus className="h-4 w-4 mr-1"/>Add Row</Button>
+        <Button size="sm" onClick={addRow}><Plus className="h-4 w-4 mr-1"/>Add Row</Button>
         </div>
       </div>
 
@@ -814,6 +857,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                           </div>
                                         </CardContent>
                                       </Card>
+
 
                                       {/* Layout Settings */}
                                       <Card>
@@ -986,16 +1030,44 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                       />
                                     </div>
                                   ) : item.type === 'image' ? (
-                                    <Input 
-                                      className="text-sm w-full" 
-                                      placeholder="Image URL" 
-                                      value={(item as any).src || ''} 
-                                      onChange={(e)=>{
-                                      const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, src: e.target.value } : ci) })) }))
-                                      setDraftRows(next)
-                                      }} 
-                                      onBlur={async()=>{ await saveRows(draftRows) }} 
-                                    />
+                                    <div 
+                                      className="w-full cursor-pointer group relative"
+                                      onClick={() => {
+                                        setActiveImageId(item.id)
+                                        setImageSheetOpen(true)
+                                      }}
+                                    >
+                                      {(item as any).src ? (
+                                        <>
+                                          <img 
+                                            src={(item as any).src} 
+                                            alt={(item as any).alt || 'Image'} 
+                                            className="w-full object-cover rounded-lg border border-input group-hover:border-primary transition-colors"
+                                            style={{
+                                              height: (item as any).maxHeight ? `${(item as any).maxHeight}px` : '192px',
+                                              maxHeight: (item as any).maxHeight ? `${(item as any).maxHeight}px` : '192px'
+                                            }}
+                                          />
+                                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                            <div className="bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 text-sm font-medium text-foreground">
+                                              Click to edit image
+                                            </div>
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <div 
+                                          className="w-full border-2 border-dashed border-input group-hover:border-primary rounded-lg flex items-center justify-center bg-muted/10 group-hover:bg-muted/20 transition-colors"
+                                          style={{
+                                            height: (item as any).maxHeight ? `${(item as any).maxHeight}px` : '192px'
+                                          }}
+                                        >
+                                          <div className="text-center text-muted-foreground">
+                                            <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-50 group-hover:opacity-70" />
+                                            <p className="text-sm">Click to add an image</p>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
                                   ) : item.type === 'divider' ? (
                                     <hr className="border-input" />
                                   ) : (item.type === 'numbered-list' || item.type === 'bullet-list') ? (
@@ -1092,7 +1164,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
               <Button size="sm" variant="outline" onClick={async()=>{const id = await addRow(); await addBlock(id, 1)}}>Add 1/3</Button>
               <Button size="sm" variant="outline" onClick={async()=>{const id = await addRow(); await addBlock(id, 2)}}>Add 2/3</Button>
               <Button size="sm" variant="outline" onClick={async()=>{const id = await addRow(); await addBlock(id, 3)}}>Add Full</Button>
-            </div>
+          </div>
           </div>
         </div>
       )}
@@ -1118,6 +1190,141 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         </Command>
       </div>
     )}
+
+    {/* Dedicated Image Properties Sheet */}
+    <Sheet open={imageSheetOpen} onOpenChange={setImageSheetOpen}>
+      <SheetContent side="right" className="w-96 overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Image Properties</SheetTitle>
+          <SheetDescription>
+            Select, upload, and customize your image
+          </SheetDescription>
+        </SheetHeader>
+        <div className="mt-6 space-y-6">
+          {activeImageId && (() => {
+            // Find the active image item
+            let activeImageItem = null
+            for (const row of draftRows) {
+              for (const block of row.blocks) {
+                const found = block.content.find(item => item.id === activeImageId && item.type === 'image')
+                if (found) {
+                  activeImageItem = found
+                  break
+                }
+              }
+              if (activeImageItem) break
+            }
+            
+            if (!activeImageItem) return null
+            
+            return (
+              <>
+                {/* Image Selector */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Select Image</CardTitle>
+                    <CardDescription>Choose from Unsplash, upload your own, or paste a URL</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <UnsplashImageSelector
+                      onImageSelect={async (imageUrl) => {
+                        const next = draftRows.map(r => ({ 
+                          ...r, 
+                          blocks: r.blocks.map(b => ({ 
+                            ...b, 
+                            content: b.content.map(ci => 
+                              ci.id === activeImageId 
+                                ? { ...ci, src: imageUrl } 
+                                : ci
+                            ) 
+                          })) 
+                        }))
+                        setDraftRows(next)
+                        await saveRows(next)
+                      }}
+                      onUpload={(files) => handleImageUpload(files, activeImageId)}
+                      currentImage={(activeImageItem as any).src || ''}
+                      isUploading={isUploading}
+                      placeholder="Search for images or paste URL..."
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Image Details */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Image Details</CardTitle>
+                    <CardDescription>Add accessibility information and customize appearance</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor={`alt-text-${activeImageId}`}>Alt Text</Label>
+                      <Input
+                        id={`alt-text-${activeImageId}`}
+                        value={(activeImageItem as any).alt || ''}
+                        onChange={(e) => {
+                          const next = draftRows.map(r => ({ 
+                            ...r, 
+                            blocks: r.blocks.map(b => ({ 
+                              ...b, 
+                              content: b.content.map(ci => 
+                                ci.id === activeImageId 
+                                  ? { ...ci, alt: e.target.value } 
+                                  : ci
+                              ) 
+                            })) 
+                          }))
+                          setDraftRows(next)
+                        }}
+                        onBlur={async () => { await saveRows(draftRows) }}
+                        placeholder="Describe the image for accessibility"
+                        className="text-sm"
+                      />
+                                                            <p className="text-xs text-muted-foreground">
+                                        Alt text helps screen readers describe the image to visually impaired users
+                                      </p>
+                                    </div>
+                                    
+                                    <div className="space-y-3">
+                                      <div className="flex items-center justify-between">
+                                        <Label htmlFor={`max-height-${activeImageId}`}>Max Height</Label>
+                                        <span className="text-sm text-muted-foreground">{(activeImageItem as any).maxHeight ?? 192}px</span>
+                                      </div>
+                                      <Slider
+                                        id={`max-height-${activeImageId}`}
+                                        min={100}
+                                        max={800}
+                                        step={10}
+                                        value={[(activeImageItem as any).maxHeight ?? 192]}
+                                        onValueChange={(value) => {
+                                          const next = draftRows.map(r => ({ 
+                                            ...r, 
+                                            blocks: r.blocks.map(b => ({ 
+                                              ...b, 
+                                              content: b.content.map(ci => 
+                                                ci.id === activeImageId 
+                                                  ? { ...ci, maxHeight: value[0] } 
+                                                  : ci
+                                              ) 
+                                            })) 
+                                          }))
+                                          setDraftRows(next)
+                                        }}
+                                        onValueCommit={async () => { await saveRows(draftRows) }}
+                                        className="w-full"
+                                      />
+                                      <p className="text-xs text-muted-foreground">
+                                        Control the maximum height of the image display
+                                      </p>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+              </>
+            )
+          })()}
+        </div>
+      </SheetContent>
+    </Sheet>
     </>
   )
 }
