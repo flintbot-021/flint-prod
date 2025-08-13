@@ -3,6 +3,7 @@
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { InfoSection } from './info-section'
 import { OutputSection } from './output-section'
+import { AdvancedOutputBuilder } from '../output-advanced/AdvancedOutputBuilder'
 import { HeroSection } from './hero-section'
 import { BasicSection } from './basic-section'
 import { AILogicSection } from '../logic-types/ai-logic-section'
@@ -145,8 +146,22 @@ export function ContentComponentFactory({
           onUpdate={onUpdate}
           className={className}
           allSections={allSections}
-          campaignId={campaignId}
         />
+      )
+
+    case 'output-advanced':
+      // Render a compact message with link to full-screen advanced builder
+      return (
+        <div className={cn('p-6 border rounded-lg bg-muted/30 text-center', className)}>
+          <div className="text-sm text-muted-foreground mb-2">This section uses the Advanced Output Builder.</div>
+          <a
+            href={`/dashboard/campaigns/${campaignId}/builder/advanced-output/${section.id}`}
+            target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+          >
+            Open Advanced Builder
+          </a>
+        </div>
       )
 
     case 'output-dynamic-redirect':
@@ -157,7 +172,6 @@ export function ContentComponentFactory({
           onUpdate={onUpdate}
           className={className}
           allSections={allSections}
-          campaignId={campaignId}
         />
       )
 
@@ -169,7 +183,6 @@ export function ContentComponentFactory({
           onUpdate={onUpdate}
           className={className}
           allSections={allSections}
-          campaignId={campaignId}
         />
       )
 

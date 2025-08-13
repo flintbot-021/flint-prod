@@ -17,6 +17,7 @@ export { LogicSection } from './LogicSection'
 export { OutputSection } from './OutputSection'
 export { DynamicRedirectSection } from './DynamicRedirectSection'
 export { HtmlEmbedSection } from './HtmlEmbedSection'
+export { OutputAdvancedSection } from './OutputAdvancedSection'
 
 // Re-export types for convenience
 export type { SectionRendererProps } from '../types' 

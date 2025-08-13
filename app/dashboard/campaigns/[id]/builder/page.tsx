@@ -64,6 +64,7 @@ const mapCampaignBuilderTypeToDatabase = (builderType: string): string => {
     'output-results': 'output',
     'output-download': 'output',
     'output-redirect': 'output',
+    'output-advanced': 'output',
     'output-dynamic-redirect': 'dynamic_redirect',
     'output-html-embed': 'html_embed'
   }
@@ -95,9 +96,15 @@ const mapDatabaseTypeToCampaignBuilder = (dbType: string): string => {
 const convertDatabaseSectionToCampaignSection = (dbSection: SectionWithOptions): CampaignSection => {
   const config = (dbSection.configuration as any) || {}
   
+  // Determine builder type with special handling for advanced output mode
+  let mappedType = mapDatabaseTypeToCampaignBuilder(dbSection.type)
+  if (dbSection.type === 'output' && config?.mode === 'advanced') {
+    mappedType = 'output-advanced'
+  }
+  
   return {
     id: dbSection.id,
-    type: mapDatabaseTypeToCampaignBuilder(dbSection.type),
+    type: mappedType,
     title: dbSection.title || '',
     settings: (() => {
       const { isVisible, ...settings } = config
@@ -317,7 +324,8 @@ export default function ToolBuilderPage() {
       s.type === 'output-download' || 
       s.type === 'output-redirect' || 
       s.type === 'output-dynamic-redirect' ||
-      s.type === 'output-html-embed'
+      s.type === 'output-html-embed' ||
+      s.type === 'output-advanced'
     )
     
     return {

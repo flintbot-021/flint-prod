@@ -20,7 +20,8 @@ import {
   LogicSection,
   OutputSection,
   DynamicRedirectSection,
-  HtmlEmbedSection
+  HtmlEmbedSection,
+  OutputAdvancedSection
 } from './sections'
 
 // =============================================================================
@@ -162,7 +163,7 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
   }), [props, config, sectionTitle, sectionDescription, deviceInfo, userInputs, sections, campaign])
 
   // Route to appropriate section component based on type
-  switch (section.type) {
+  switch (section.type as any) {
     case 'capture':
       return <CaptureSection {...enhancedProps} />
     
@@ -259,6 +260,12 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
       return <LogicSection {...enhancedProps} />
     
     case 'output':
+      if ((config as any)?.mode === 'advanced') {
+        return <OutputAdvancedSection {...enhancedProps} />
+      }
+      return <OutputSection {...enhancedProps} />
+    case 'output-advanced':
+      // For initial scaffolding, reuse OutputSection; a dedicated advanced renderer will be added next
       return <OutputSection {...enhancedProps} />
     
     case 'dynamic_redirect':
