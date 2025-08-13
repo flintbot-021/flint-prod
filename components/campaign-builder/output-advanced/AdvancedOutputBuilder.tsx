@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { Plus, LayoutGrid, Trash2, ArrowLeftRight, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical } from 'lucide-react'
+import { Plus, Trash2, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical } from 'lucide-react'
 import { ContentToolbar } from './ContentToolbar'
 import { VariableSuggestionDropdown } from '@/components/ui/variable-suggestion-dropdown'
 import { VariableInterpolator } from '@/lib/utils/variable-interpolator'
@@ -57,11 +57,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const [activeRowId, setActiveRowId] = useState<string | null>(null)
   const toolbarRef = useRef<HTMLDivElement>(null)
   const propsPanelRef = useRef<HTMLDivElement>(null)
-  // Drag state
-  const [dragRowId, setDragRowId] = useState<string | null>(null)
-  const [dragOverRowId, setDragOverRowId] = useState<string | null>(null)
-  const [dragBlock, setDragBlock] = useState<{ rowId: string; blockId: string; width: 1|2|3 } | null>(null)
-  const [dragOverCol, setDragOverCol] = useState<1|2|3 | null>(null)
+  // Drag-and-drop disabled
 
   // Keep local draftRows in sync with external settings
   useEffect(() => {
@@ -340,6 +336,48 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     }
   }
 
+  // Reorder blocks within a row by inserting the dragged block before the block covering dropCol
+  const reorderBlocksWithinRow = async (rowId: string, draggedBlockId: string, dropCol: 1|2|3) => {
+    const row = draftRows.find(r => r.id === rowId)
+    if (!row) return
+    if (!row.blocks.find(b => b.id === draggedBlockId)) return
+    const sorted = [...row.blocks].sort((a,b)=> a.startPosition - b.startPosition)
+    const fromIdx = sorted.findIndex(b => b.id === draggedBlockId)
+
+    // Build occupancy map of 3 columns
+    const columns: (string | null)[] = [null, null, null]
+    sorted.forEach(b => {
+      for (let i=0;i<b.width;i++) {
+        const idx = b.startPosition - 1 + i
+        if (idx >=0 && idx < 3) columns[idx] = b.id
+      }
+    })
+    const coveringId = columns[dropCol - 1]
+    let targetIdx: number
+    if (coveringId) {
+      targetIdx = sorted.findIndex(b => b.id === coveringId)
+    } else {
+      // No block on that column: insert after the last block whose end is before dropCol
+      targetIdx = sorted.filter(b => (b.startPosition + b.width - 1) < dropCol).length
+    }
+    // Remove dragged and insert at target index
+    const [dragged] = sorted.splice(fromIdx, 1)
+    if (fromIdx < targetIdx) targetIdx -= 1
+    sorted.splice(targetIdx, 0, dragged)
+
+    // Recompute contiguous start positions from left to right
+    let pos: 1|2|3 = 1
+    const recomputed = sorted.map(b => {
+      const updated = { ...b, startPosition: pos as 1|2|3 }
+      pos = Math.min(3 as 1|2|3, (pos + b.width) as 1|2|3)
+      return updated
+    })
+
+    const next = draftRows.map(r => r.id === rowId ? ({ ...r, blocks: recomputed }) : r)
+    setDraftRows(next)
+    await saveRows(next)
+  }
+
   // Row reordering helpers
   const reorderRows = async (fromId: string, toId: string) => {
     if (fromId === toId) return
@@ -353,28 +391,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     await saveRows(next)
   }
 
-  // Choose best starting column near desired, respecting width and collisions
-  const findBestStart = (row: Row, desired: 1|2|3, width: 1|2|3, excludeId?: string): 1|2|3 | null => {
-    // Clamp so the block fits in 3 columns
-    const maxStart = (3 - width + 1) as 1|2|3
-    const clamped = Math.max(1, Math.min(maxStart, desired)) as 1|2|3
-    const candidates: number[] = [clamped]
-    for (let delta = 1; delta <= 2; delta++) {
-      const left = clamped - delta
-      const right = clamped + delta
-      if (left >= 1) candidates.push(left)
-      if (right <= maxStart) candidates.push(right)
-    }
-    for (const c of candidates) {
-      const start = c as 1|2|3
-      if (canPlace(row, start, width, excludeId)) return start
-    }
-    // Fallback: any valid start
-    for (let s = 1 as 1|2|3; s <= maxStart; s = (s + 1) as 1|2|3) {
-      if (canPlace(row, s, width, excludeId)) return s
-    }
-    return null
-  }
+  // findBestStart removed (drag disabled)
 
   // Content item helpers
   const addContentItem = async (rowId: string, blockId: string, type: ContentItem['type']) => {
@@ -446,9 +463,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         return (
           <div
             key={row.id}
-            className={cn('space-y-3 relative', dragOverRowId === row.id && 'ring-2 ring-primary/30 rounded-md')}
-            onDragOver={(e)=>{ if (dragRowId) { e.preventDefault(); setDragOverRowId(row.id) } }}
-            onDrop={async ()=>{ if (dragRowId) { await reorderRows(dragRowId, row.id); setDragRowId(null); setDragOverRowId(null) } }}
+            className={cn('space-y-3 relative')}
           >
             {/* Grid + add-another side panel */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
@@ -456,25 +471,6 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
               <div className="lg:col-span-3">
                 <div
                   className="grid grid-cols-3 gap-4"
-                  onDragOver={(e)=>{
-                    if (!dragBlock || dragBlock.rowId !== row.id) return
-                    e.preventDefault()
-                    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-                    const relX = Math.max(0, Math.min(rect.width, e.clientX - rect.left))
-                    const colWidth = rect.width / 3
-                    const col = (Math.floor(relX / colWidth) + 1) as 1|2|3
-                    setDragOverCol(col)
-                  }}
-                  onDragEnter={(e)=>{ if (dragBlock) e.preventDefault() }}
-                  onDrop={async ()=>{
-                    if (!dragBlock || dragBlock.rowId !== row.id) return
-                    const desired = (dragOverCol || 1) as 1|2|3
-                    const best = findBestStart(row, desired, dragBlock.width, dragBlock.blockId)
-                    if (best) {
-                      await updateBlock(row.id, dragBlock.blockId, { startPosition: best })
-                    }
-                    setDragBlock(null); setDragOverCol(null)
-                  }}
                 >
                   {/* Render existing blocks */}
                   {row.blocks.map(block => (
@@ -490,10 +486,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                               gridColumnStart: String(block.startPosition),
                               gridColumnEnd: `span ${block.width}`,
                             }}
-                            data-card-id={block.id}
-                            draggable
-                            onDragStart={(e)=>{ e.dataTransfer.effectAllowed = 'move'; setDragBlock({ rowId: row.id, blockId: block.id, width: block.width }) }}
-                            onDragEnd={()=> { setDragBlock(null); setDragOverCol(null) }}
+                             data-card-id={block.id}
                             onMouseEnter={(e)=>{
                               const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
                               setActiveCardRect({ left: rect.left + rect.width/2, top: rect.bottom, width: rect.width })
@@ -510,11 +503,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                             {/* Minimal top bar controls */}
                             <div className="flex items-center justify-between mb-2 pb-1 border-b border-muted/30 text-muted-foreground/80">
                               <span
-                                className="inline-flex items-center justify-center h-5 w-5 opacity-70 cursor-grab"
-                                title="Drag card"
-                                draggable
-                                onDragStart={(e)=>{ e.dataTransfer.effectAllowed='move'; setDragBlock({ rowId: row.id, blockId: block.id, width: block.width }) }}
-                                onDragEnd={()=> { setDragBlock(null); setDragOverCol(null) }}
+                                className="inline-flex items-center justify-center h-5 w-5 opacity-70"
+                                title="Card"
                               >
                                 <GripVertical className="h-3.5 w-3.5" />
                               </span>
@@ -697,18 +687,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
 
               {/* Right: Add Another Card panel removed in-row; now pinned footer toolbar */}
             </div>
-            {/* Row drag handle */}
-            <div className="absolute -left-3 top-0 h-full flex items-start">
-              <div
-                className="mt-1 p-1 rounded bg-muted/40 text-muted-foreground hover:bg-muted cursor-grab"
-                draggable
-                onDragStart={()=> setDragRowId(row.id)}
-                onDragEnd={()=> { setDragRowId(null); setDragOverRowId(null) }}
-                title="Drag row"
-              >
-                <GripVertical className="h-4 w-4" />
-              </div>
-            </div>
+            {/* Row drag handle removed */}
           </div>
         )
       })}
