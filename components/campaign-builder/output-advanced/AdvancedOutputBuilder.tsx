@@ -50,6 +50,10 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const settings: any = section.settings || {}
   const rows: Row[] = settings.rows || []
   const defaultBlock = settings.defaultBlock || {}
+  const sanitizedDefaultBlock = useMemo(() => {
+    const { backgroundColor, borderColor, outlineColor, ...rest } = defaultBlock || {}
+    return rest
+  }, [defaultBlock])
   const [toolbarOpenFor, setToolbarOpenFor] = useState<string | null>(null)
   const [activeCardRect, setActiveCardRect] = useState<{ left: number; top: number; width: number } | null>(null)
   const [propsOpenFor, setPropsOpenFor] = useState<string | null>(null)
@@ -218,7 +222,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const addFirstBlock = async (width: 1 | 2 | 3) => {
     const newRows: Row[] = draftRows.length ? [...draftRows] : [{ id: uid('row'), blocks: [] }]
     const startPosition: 1 | 2 | 3 = 1
-    const block = { id: uid('block'), width, startPosition, content: [], ...defaultBlock }
+    const block = { id: uid('block'), width, startPosition, content: [], ...sanitizedDefaultBlock }
     newRows[0].blocks.push(block)
     setDraftRows(newRows)
     setActiveRowId(newRows[0].id)
@@ -249,7 +253,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     const starts: (1|2|3)[] = [1,2,3]
     const start = starts.find(s => canPlace(row, s as 1|2|3, width)) as 1|2|3 | undefined
     if (!start) return { next: rowsState, added: false }
-    row.blocks.push({ id: uid('block'), width, startPosition: start, content: [], ...defaultBlock })
+    row.blocks.push({ id: uid('block'), width, startPosition: start, content: [], ...sanitizedDefaultBlock })
     return { next, added: true }
   }
 
@@ -259,7 +263,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     const row = next.find(r => r.id === rowId)
     if (!row) return { next: rowsState, added: false }
     if (!canPlace(row, start, width)) return { next: rowsState, added: false }
-    row.blocks.push({ id: uid('block'), width, startPosition: start, content: [], ...defaultBlock })
+    row.blocks.push({ id: uid('block'), width, startPosition: start, content: [], ...sanitizedDefaultBlock })
     return { next, added: true }
   }
 
@@ -337,59 +341,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   }
 
   // Reorder blocks within a row by inserting the dragged block before the block covering dropCol
-  const reorderBlocksWithinRow = async (rowId: string, draggedBlockId: string, dropCol: 1|2|3) => {
-    const row = draftRows.find(r => r.id === rowId)
-    if (!row) return
-    if (!row.blocks.find(b => b.id === draggedBlockId)) return
-    const sorted = [...row.blocks].sort((a,b)=> a.startPosition - b.startPosition)
-    const fromIdx = sorted.findIndex(b => b.id === draggedBlockId)
-
-    // Build occupancy map of 3 columns
-    const columns: (string | null)[] = [null, null, null]
-    sorted.forEach(b => {
-      for (let i=0;i<b.width;i++) {
-        const idx = b.startPosition - 1 + i
-        if (idx >=0 && idx < 3) columns[idx] = b.id
-      }
-    })
-    const coveringId = columns[dropCol - 1]
-    let targetIdx: number
-    if (coveringId) {
-      targetIdx = sorted.findIndex(b => b.id === coveringId)
-    } else {
-      // No block on that column: insert after the last block whose end is before dropCol
-      targetIdx = sorted.filter(b => (b.startPosition + b.width - 1) < dropCol).length
-    }
-    // Remove dragged and insert at target index
-    const [dragged] = sorted.splice(fromIdx, 1)
-    if (fromIdx < targetIdx) targetIdx -= 1
-    sorted.splice(targetIdx, 0, dragged)
-
-    // Recompute contiguous start positions from left to right
-    let pos: 1|2|3 = 1
-    const recomputed = sorted.map(b => {
-      const updated = { ...b, startPosition: pos as 1|2|3 }
-      pos = Math.min(3 as 1|2|3, (pos + b.width) as 1|2|3)
-      return updated
-    })
-
-    const next = draftRows.map(r => r.id === rowId ? ({ ...r, blocks: recomputed }) : r)
-    setDraftRows(next)
-    await saveRows(next)
-  }
-
-  // Row reordering helpers
-  const reorderRows = async (fromId: string, toId: string) => {
-    if (fromId === toId) return
-    const next = [...draftRows]
-    const fromIdx = next.findIndex(r => r.id === fromId)
-    const toIdx = next.findIndex(r => r.id === toId)
-    if (fromIdx === -1 || toIdx === -1) return
-    const [moved] = next.splice(fromIdx, 1)
-    next.splice(toIdx, 0, moved)
-    setDraftRows(next)
-    await saveRows(next)
-  }
+  // Drag reordering removed
 
   // findBestStart removed (drag disabled)
 
@@ -465,23 +417,20 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
             key={row.id}
             className={cn('space-y-3 relative')}
           >
-            {/* Grid + add-another side panel */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-start">
-              {/* Left: the 3-col grid */}
-              <div className="lg:col-span-3">
-                <div
-                  className="grid grid-cols-3 gap-4"
-                >
+            {/* Full-width 3-column grid for cards */}
+            <div
+              className="grid grid-cols-3 gap-4"
+            >
                   {/* Render existing blocks */}
                   {row.blocks.map(block => (
                     
                           <div
                             key={block.id}
-                            className={cn('group rounded-lg p-4 relative bg-transparent', toolbarOpenFor === block.id && 'ring-2 ring-ring')}
+                            className={cn('group rounded-lg p-4 relative bg-transparent', toolbarOpenFor === block.id && 'ring-2 ring-ring', (!block.borderColor) && 'border-2 border-dotted border-amber-500/90')}
                             style={{
-                              background: block.backgroundColor || undefined,
+                              background: block.backgroundColor || 'transparent',
                               color: block.textColor,
-                              borderColor: block.borderColor,
+                              border: block.borderColor ? `1px solid ${block.borderColor}` : '2px dotted #f59e0b',
                               outline: block.outlineColor ? `2px solid ${block.outlineColor}` : undefined,
                               gridColumnStart: String(block.startPosition),
                               gridColumnEnd: `span ${block.width}`,
@@ -500,8 +449,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                               setToolbarOpenFor(block.id)
                             }}
                           >
-                            {/* Minimal top bar controls */}
-                            <div className="flex items-center justify-between mb-2 pb-1 border-b border-muted/30 text-muted-foreground/80">
+                            {/* Compact top bar controls */}
+                            <div className="flex items-center justify-between -mt-2 -mx-2 px-2 py-1 mb-1 border-b border-muted/30 text-muted-foreground/80">
                               <span
                                 className="inline-flex items-center justify-center h-5 w-5 opacity-70"
                                 title="Card"
@@ -509,10 +458,10 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                 <GripVertical className="h-3.5 w-3.5" />
                               </span>
                               <div className="flex items-center gap-1">
-                                <Button size="icon" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground/80 hover:text-foreground" title="Properties" onClick={()=> setPropsOpenFor(propsOpenFor===block.id? null : block.id)}>
+                                <Button size="icon" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground/80 hover:text-foreground" title="Properties" onClick={()=> setPropsOpenFor(propsOpenFor===block.id? null : block.id)}>
                                   <SlidersHorizontal className="h-3.5 w-3.5"/>
                                 </Button>
-                                <Button size="icon" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground/80 hover:text-red-600" title="Delete" onClick={() => deleteBlock(row.id, block.id)}>
+                                <Button size="icon" variant="ghost" className="h-5 w-5 p-0 text-muted-foreground/80 hover:text-red-600" title="Delete" onClick={() => deleteBlock(row.id, block.id)}>
                                   <Trash2 className="h-3.5 w-3.5"/>
                                 </Button>
                               </div>
@@ -631,7 +580,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
 
                               {/* Empty content call-to-action */}
                               {(!block.content || block.content.length === 0) && (
-                                <div className="rounded-xl py-10 text-center text-muted-foreground bg-muted/20 relative">
+                                <div className="rounded-xl py-10 text-center text-muted-foreground bg-transparent relative">
                                   <div className="text-lg">Click below to add content</div>
                                   <div className="mt-3">
                                     <Button size="icon" variant="secondary" className="rounded-full h-10 w-10" onClick={()=> setToolbarOpenFor(block.id)}>
@@ -682,10 +631,6 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                       </div>
                     )
                   })()}
-                </div>
-              </div>
-
-              {/* Right: Add Another Card panel removed in-row; now pinned footer toolbar */}
             </div>
             {/* Row drag handle removed */}
           </div>
