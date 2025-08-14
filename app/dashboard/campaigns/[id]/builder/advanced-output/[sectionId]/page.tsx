@@ -233,6 +233,7 @@ export default function AdvancedOutputEditorPage() {
           campaignId={campaignId}
           allSections={allSections || undefined}
           onPageSettingsChange={handlePageSettingsChange}
+          campaign={campaign || undefined}
         />
       </div>
     </div>

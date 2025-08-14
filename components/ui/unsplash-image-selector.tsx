@@ -233,17 +233,17 @@ export function UnsplashImageSelector({
 
           {/* Search Bar */}
           <div className="space-y-3">
-            <form onSubmit={handleSearch} className="flex gap-0 border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+            <form onSubmit={handleSearch} className="flex gap-0 border border-input rounded-md overflow-hidden focus-within:!ring-[0.25px] focus-within:!ring-black focus-within:!border-black">
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={placeholder}
-                className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
+                className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none h-8 px-3 py-1 text-sm"
               />
               <Button 
                 type="submit" 
                 disabled={loading}
-                className="rounded-none border-0 px-4 bg-gray-900 hover:bg-gray-800"
+                className="rounded-none border-0 px-3 h-8 bg-gray-900 hover:bg-gray-800 flex items-center justify-center"
               >
                 {loading ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
