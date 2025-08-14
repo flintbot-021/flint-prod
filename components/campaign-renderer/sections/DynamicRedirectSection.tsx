@@ -67,7 +67,7 @@ export function DynamicRedirectSection({
       const inputVariables = buildVariablesFromInputs(sections, userInputs)
       console.log('📊 Input variables result:', inputVariables)
       
-      const aiVariables = getAITestResults() || {}
+      const aiVariables = campaign?.id ? getAITestResults(campaign.id) : {}
       console.log('🤖 AI variables result:', aiVariables)
       
       const allData = {

@@ -146,6 +146,7 @@ export function ContentComponentFactory({
           onUpdate={onUpdate}
           className={className}
           allSections={allSections}
+          campaignId={campaignId}
         />
       )
 
@@ -183,6 +184,7 @@ export function ContentComponentFactory({
           onUpdate={onUpdate}
           className={className}
           allSections={allSections}
+          campaignId={campaignId}
         />
       )
 

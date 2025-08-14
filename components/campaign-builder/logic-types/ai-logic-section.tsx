@@ -603,8 +603,10 @@ export function AILogicSection({
     handleSettingChange('testInputs', newTestInputs)
     
     // Also update the stored test results so dropdown shows updated sample data immediately
-    storeAITestResults(newTestInputs)
-  }, [settings.testInputs, handleSettingChange])
+    if (campaignId) {
+      storeAITestResults(newTestInputs, campaignId)
+    }
+  }, [settings.testInputs, handleSettingChange, campaignId])
 
   const updateTestFile = useCallback((variableName: string, file: File | null) => {
     const newTestFiles = { ...(settings.testFiles || {}) }
@@ -738,7 +740,9 @@ export function AILogicSection({
               ...(settings.testInputs || {}),  // User input data from Step 1
               ...result.outputs        // AI-generated outputs from Step 4
             }
-            storeAITestResults(allTestData)
+            if (campaignId) {
+              storeAITestResults(allTestData, campaignId)
+            }
           } else {
             setTestResult('⚠️ AI processed successfully but returned no structured outputs.')
           }
@@ -799,7 +803,9 @@ export function AILogicSection({
             ...(settings.testInputs || {}),  // User input data from Step 1
             ...result.outputs        // AI-generated outputs from Step 4
           }
-          storeAITestResults(allTestData)
+          if (campaignId) {
+            storeAITestResults(allTestData, campaignId)
+          }
         } else {
           setTestResult('⚠️ AI processed successfully but returned no structured outputs.')
         }

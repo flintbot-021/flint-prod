@@ -92,7 +92,7 @@ export function OutputSection({
     })
     
     // Add AI output variables from stored results
-    const aiResults = getAITestResults()
+    const aiResults = campaign?.id ? getAITestResults(campaign.id) : {}
     if (aiResults) {
       Object.entries(aiResults).forEach(([key, value]) => {
         map[key] = value

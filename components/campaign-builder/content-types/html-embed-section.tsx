@@ -20,6 +20,7 @@ interface HtmlEmbedSectionProps {
   onUpdate: (updates: Partial<CampaignSection>) => Promise<void>
   className?: string
   allSections?: CampaignSection[]
+  campaignId?: string
 }
 
 interface HtmlEmbedSettings {
@@ -32,7 +33,8 @@ export function HtmlEmbedSection({
   isPreview = false,
   onUpdate,
   className,
-  allSections = []
+  allSections = [],
+  campaignId
 }: HtmlEmbedSectionProps) {
   const [showPreviewModal, setShowPreviewModal] = useState(false)
 
@@ -161,7 +163,7 @@ The final HTML should be ready to paste directly into our system and will automa
       )
     }
 
-    const hasTestData = hasAITestResults()
+    const hasTestData = campaignId ? hasAITestResults(campaignId) : false
     const processedHtml = hasTestData ? processHtmlWithTestData(settings.htmlContent) : settings.htmlContent
 
     return (

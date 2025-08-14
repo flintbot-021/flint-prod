@@ -89,7 +89,9 @@ function LogicSectionComponent({
     isProcessingRef.current = true
 
     // Clear any existing test data from campaign builder before processing real data
-    clearAITestResults()
+    if (campaign?.id) {
+      clearAITestResults(campaign.id)
+    }
     processAILogic()
   }, []) // Empty dependency array - only run once on mount
 
@@ -415,7 +417,9 @@ function LogicSectionComponent({
         console.log('📤 Requested outputs:', requestedOutputs)
         
         // Store only the requested AI results for output sections to use
-        storeAITestResults(requestedOutputs)
+        if (campaign?.id) {
+          storeAITestResults(requestedOutputs, campaign.id)
+        }
         
         // Complete the section with AI outputs
         setTimeout(() => {
