@@ -29,7 +29,7 @@ export function SliderSection({
   const step = configData.step || 1
   const minLabel = configData.minLabel || 'Low'
   const maxLabel = configData.maxLabel || 'High'
-  const isRequired = configData.required ?? true
+  const isRequired = configData.required ?? false
   const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
 
   // Initialize with existing response if available, otherwise use default

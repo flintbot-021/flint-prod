@@ -36,7 +36,7 @@ export function TextQuestionSection({
   const subheading = description || ''
   const fieldLabel = configData.label || configData.fieldLabel || ''
   const placeholder = configData.placeholder || 'Type your answer here...'
-  const isRequired = configData.required ?? true
+  const isRequired = configData.required ?? false
   const minLength = configData.minLength || 1
   const maxLength = configData.maxLength || 500
   const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
@@ -51,7 +51,8 @@ export function TextQuestionSection({
       return 'This field is required'
     }
     
-    if (value.length < minLength) {
+    // Only enforce minLength if the field is required OR if the user has entered some text
+    if (value.length > 0 && value.length < minLength) {
       return `Please enter at least ${minLength} character${minLength !== 1 ? 's' : ''}`
     }
     
@@ -100,14 +101,10 @@ export function TextQuestionSection({
     }
   }
 
-  const canContinue = !isRequired || (inputValue.trim().length >= minLength && inputValue.length <= maxLength)
+  const canContinue = !isRequired || (inputValue.trim().length > 0 && inputValue.trim().length >= minLength && inputValue.length <= maxLength)
 
   // Generate validation text for bottom bar
-  const validationText = isRequired ? (
-    minLength > 1 ? 
-      `Minimum ${minLength} characters required` : 
-      'This field is required'
-  ) : undefined
+  const validationText = isRequired ? 'This field is required' : undefined
 
   return (
     <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>

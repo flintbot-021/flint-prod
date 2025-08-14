@@ -11,6 +11,8 @@ import { Upload, File, Image, FileAudio, FileText, X, CheckCircle, AlertCircle }
 import { uploadFiles, UploadedFileInfo, UploadProgress } from '@/lib/supabase/storage'
 import { useAuth } from '@/lib/auth-context'
 import { createClient } from '@/lib/auth'
+import { Campaign } from '@/lib/types/database'
+import { getCampaignTheme } from '@/components/campaign-renderer/utils'
 
 interface UploadQuestionProps {
   section: CampaignSection
@@ -18,6 +20,7 @@ interface UploadQuestionProps {
   isPreview?: boolean
   onUpdate: (updates: Partial<CampaignSection>) => Promise<void>
   className?: string
+  campaign?: Campaign
 }
 
 interface UploadSettings {
@@ -47,7 +50,8 @@ export function UploadQuestion({
   campaignId,
   isPreview = false, 
   onUpdate, 
-  className 
+  className,
+  campaign
 }: UploadQuestionProps) {
   const { user } = useAuth()
   const supabase = createClient()
@@ -71,6 +75,10 @@ export function UploadQuestion({
     required = false,
     buttonLabel = 'Next'
   } = settings
+
+  // Get campaign theme for styling
+  const theme = getCampaignTheme(campaign)
+  const spinnerColor = theme.buttonColor
 
   // Handle settings updates
   const updateSettings = async (newSettings: Partial<UploadSettings>) => {
@@ -363,8 +371,11 @@ export function UploadQuestion({
 
           {isUploading && (
             <div className="text-center py-4">
-              <div className="inline-flex items-center space-x-2 text-blue-500">
-                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <div className="inline-flex items-center space-x-2" style={{ color: spinnerColor }}>
+                <div 
+                  className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" 
+                  style={{ borderColor: spinnerColor, borderTopColor: 'transparent' }}
+                />
                 <span className="text-sm">Uploading files...</span>
               </div>
             </div>

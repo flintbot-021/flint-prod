@@ -1512,6 +1512,7 @@ export default function ToolBuilderPage() {
                           campaignName={campaign?.name}
                           sectionPersistence={sectionPersistence}
                           onPersistenceChange={() => setPersistenceVersion(prev => prev + 1)}
+                          campaign={campaign}
                         />
                       </CardContent>
                     </Card>

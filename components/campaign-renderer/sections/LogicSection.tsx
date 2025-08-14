@@ -489,10 +489,13 @@ function LogicSectionComponent({
               </>
             ) : isProcessing ? (
               <>
-                <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
+                <div 
+                  className="w-16 h-16 mx-auto rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: `${theme.buttonColor}20` }}
+                >
                   <div className="relative">
-                    <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
-                    <Zap className="h-4 w-4 text-blue-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                    <Loader2 className="h-8 w-8 animate-spin" style={{ color: theme.buttonColor }} />
+                    <Zap className="h-4 w-4 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" style={{ color: theme.buttonColor }} />
                   </div>
                 </div>
                 <div className="space-y-2">

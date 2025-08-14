@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { CampaignSection, getSectionTypeById } from '@/lib/types/campaign-builder'
+import { Campaign } from '@/lib/types/database'
 import { SectionTopBar } from './section-top-bar'
 import { SectionBottomBar } from './section-bottom-bar'
 import { Card } from '@/components/ui/card'
@@ -29,6 +30,7 @@ interface SectionBlockProps {
   allSections?: CampaignSection[]
   campaignId: string
   showDragHandle?: boolean // Controls whether the drag handle is visible
+  campaign?: Campaign
 }
 
 export function SectionBlock({
@@ -46,7 +48,8 @@ export function SectionBlock({
   onCollapseChange,
   allSections,
   campaignId,
-  showDragHandle = true
+  showDragHandle = true,
+  campaign
 }: SectionBlockProps) {
   const [isPreview, setIsPreview] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(initiallyCollapsed)
@@ -204,6 +207,7 @@ export function SectionBlock({
           isPreview={isPreview}
           onUpdate={(updates) => onUpdate(section.id, updates)}
           campaignId={campaignId}
+          campaign={campaign}
         />
       )
     }

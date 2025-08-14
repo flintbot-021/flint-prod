@@ -94,10 +94,16 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
   }
 
   // Extract configuration from section - memoized
-  const config: SectionConfiguration = useMemo(() => 
-    (section.configuration || {}) as SectionConfiguration, 
-    [section.configuration]
-  )
+  // Merge both configuration and settings to ensure builder settings are available in renderer
+  const config: SectionConfiguration = useMemo(() => {
+    const baseConfig = (section.configuration || {}) as SectionConfiguration
+    const builderSettings = ('settings' in section && section.settings) ? section.settings : {}
+    
+    return {
+      ...baseConfig,
+      ...builderSettings
+    } as SectionConfiguration
+  }, [section.configuration, ('settings' in section) ? section.settings : {}])
 
 
 
