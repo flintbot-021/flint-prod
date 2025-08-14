@@ -6,8 +6,39 @@ import { cn } from '@/lib/utils'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
 import { buildVariablesFromInputs } from '@/lib/utils/section-variables'
 import { VariableInterpolator } from '@/lib/utils/variable-interpolator'
+import { getCampaignTheme } from '../utils'
 
 export function OutputAdvancedSection({ section, config, userInputs = {}, sections = [], deviceInfo, campaign }: SectionRendererProps) {
+  // Get campaign theme colors
+  const campaignTheme = getCampaignTheme(campaign)
+
+  // Helper function to get button color (item color override or campaign theme default)
+  const getButtonColor = (buttonItem: any) => {
+    if (buttonItem?.color) {
+      return buttonItem.color
+    }
+    return campaignTheme.buttonColor
+  }
+
+  // Helper function to generate button hover color (slightly darker)
+  const getButtonHoverColor = (baseColor: string) => {
+    // Simple color darkening - convert hex to RGB, darken by 20%, convert back
+    if (baseColor.startsWith('#')) {
+      const r = parseInt(baseColor.slice(1, 3), 16)
+      const g = parseInt(baseColor.slice(3, 5), 16)
+      const b = parseInt(baseColor.slice(5, 7), 16)
+      
+      const darken = (value: number) => Math.max(0, Math.floor(value * 0.8))
+      
+      const darkR = darken(r).toString(16).padStart(2, '0')
+      const darkG = darken(g).toString(16).padStart(2, '0')
+      const darkB = darken(b).toString(16).padStart(2, '0')
+      
+      return `#${darkR}${darkG}${darkB}`
+    }
+    return baseColor
+  }
+
   // Build variable map from inputs and AI outputs
   const variableMap = useMemo(() => {
     const map: Record<string, any> = {}
@@ -47,11 +78,22 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
       case 'button':
         const buttonHref = interpolator.interpolate((item as any).href || '#', { variables: variableMap, availableVariables: [] }).content
         const buttonText = interpolator.interpolate(item.content || 'Button', { variables: variableMap, availableVariables: [] }).content
+        const buttonColor = getButtonColor(item)
+        const buttonHoverColor = getButtonHoverColor(buttonColor)
         return (
           <div className="flex justify-center">
             <a 
               href={buttonHref}
-              className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-blue-600 text-white font-medium text-center hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-lg text-white font-medium text-center transition-colors"
+              style={{
+                backgroundColor: buttonColor
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = buttonHoverColor
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = buttonColor
+              }}
               target={buttonHref.startsWith('http') ? '_blank' : undefined}
               rel={buttonHref.startsWith('http') ? 'noopener noreferrer' : undefined}
             >
