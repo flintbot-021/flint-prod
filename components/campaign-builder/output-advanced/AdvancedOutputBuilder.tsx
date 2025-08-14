@@ -93,6 +93,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const [isUploading, setIsUploading] = useState(false)
   const [imageSheetOpen, setImageSheetOpen] = useState(false)
   const [activeImageId, setActiveImageId] = useState<string | null>(null)
+  const [buttonSheetOpen, setButtonSheetOpen] = useState(false)
+  const [activeButtonId, setActiveButtonId] = useState<string | null>(null)
   const [draggedBlock, setDraggedBlock] = useState<{rowId: string, blockId: string, block: Block} | null>(null)
   const [dragOverPosition, setDragOverPosition] = useState<{rowId: string, position: number} | null>(null)
   const isSavingRef = useRef(false)
@@ -325,7 +327,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         case 'button':
           const buttonHref = interpolator.interpolate((item as any).href || '#', { variables, availableVariables: [] }).content
           const buttonText = interpolator.interpolate(item.content || 'Button', { variables, availableVariables: [] }).content
-          return `<a href="${buttonHref}" class="inline-flex items-center px-4 py-2 rounded-lg bg-blue-600 text-white">${buttonText}</a>`
+          return `<div class="flex justify-center"><a href="${buttonHref}" class="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-blue-600 text-white font-medium text-center hover:bg-blue-700 transition-colors">${buttonText}</a></div>`
         case 'image':
           const maxHeightStyle = (item as any).maxHeight ? `max-height:${(item as any).maxHeight}px;height:${(item as any).maxHeight}px;` : 'height:192px;max-height:192px;'
           const imageSrc = interpolator.interpolate(item.src || '', { variables, availableVariables: [] }).content
@@ -1435,33 +1437,24 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                       multiline={true}
                                     />
                                   ) : item.type === 'button' ? (
-                                    <div className="space-y-2">
-                                      <VariableSuggestionDropdown
-                                        value={(item as any).content || ''}
-                                        onChange={(v) => {
-                                          const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, content: v } : ci) })) }))
-                                          setDraftRows(next)
-                                        }}
-                                        onBlur={async()=>{ await saveRows(draftRows) }}
-                                        placeholder="Button text (use @variableName for dynamic content)"
-                                        className="text-sm"
-                                        inputClassName="text-sm"
-                                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
-                                        multiline={false}
-                                      />
-                                      <VariableSuggestionDropdown
-                                        value={(item as any).href || ''}
-                                        onChange={(v) => {
-                                          const next = draftRows.map(r => ({ ...r, blocks: r.blocks.map(b => ({ ...b, content: b.content.map(ci => ci.id===item.id? { ...ci, href: v } : ci) })) }))
-                                          setDraftRows(next)
-                                        }}
-                                        onBlur={async()=>{ await saveRows(draftRows) }}
-                                        placeholder="Button URL (use @variableName for dynamic links)"
-                                        className="text-sm"
-                                        inputClassName="text-sm"
-                                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
-                                        multiline={false}
-                                      />
+                                    <div 
+                                      className="flex justify-center cursor-pointer group relative"
+                                      onClick={() => {
+                                        setActiveButtonId(item.id)
+                                        setButtonSheetOpen(true)
+                                      }}
+                                    >
+                                      <button 
+                                        className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-center group-hover:ring-2 group-hover:ring-primary group-hover:ring-offset-2"
+                                        type="button"
+                                      >
+                                        {(item as any).content || 'Button Text'}
+                                      </button>
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
+                                        <div className="bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 text-sm font-medium text-foreground">
+                                          Click to edit button
+                                        </div>
+                                      </div>
                                     </div>
                                   ) : item.type === 'image' ? (
                                     <div 
@@ -1804,6 +1797,149 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                     </div>
                                   </CardContent>
                                 </Card>
+              </>
+            )
+          })()}
+        </div>
+      </SheetContent>
+    </Sheet>
+
+    {/* Dedicated Button Properties Sheet */}
+    <Sheet open={buttonSheetOpen} onOpenChange={setButtonSheetOpen}>
+      <SheetContent side="right" className="w-96 overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Button Properties</SheetTitle>
+          <SheetDescription>
+            Configure button text, URL, and behavior
+          </SheetDescription>
+        </SheetHeader>
+        <div className="mt-6 space-y-6">
+          {activeButtonId && (() => {
+            let activeButtonItem = null
+            for (const row of draftRows) {
+              for (const block of row.blocks) {
+                const found = block.content.find(item => item.id === activeButtonId && item.type === 'button')
+                if (found) {
+                  activeButtonItem = found
+                  break
+                }
+              }
+              if (activeButtonItem) break
+            }
+            
+            if (!activeButtonItem) return null
+            
+            return (
+              <>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Button Text</CardTitle>
+                    <CardDescription>Set the button label with support for dynamic variables</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Label htmlFor={`button-text-${activeButtonId}`}>Button Text</Label>
+                      <VariableSuggestionDropdown
+                        value={(activeButtonItem as any).content || ''}
+                        onChange={(v) => {
+                          const next = draftRows.map(r => ({ 
+                            ...r, 
+                            blocks: r.blocks.map(b => ({ 
+                              ...b, 
+                              content: b.content.map(ci => 
+                                ci.id === activeButtonId 
+                                  ? { ...ci, content: v } 
+                                  : ci
+                              ) 
+                            })) 
+                          }))
+                          setDraftRows(next)
+                        }}
+                        onBlur={async () => { await saveRows(draftRows) }}
+                        placeholder="Button text or @variableName"
+                        className="text-sm"
+                        inputClassName="text-sm"
+                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
+                        multiline={false}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use @variableName to insert dynamic text from user inputs or AI outputs
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Button URL</CardTitle>
+                    <CardDescription>Set the destination URL with support for dynamic variables</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <Label htmlFor={`button-url-${activeButtonId}`}>Button URL</Label>
+                      <VariableSuggestionDropdown
+                        value={(activeButtonItem as any).href || ''}
+                        onChange={(v) => {
+                          const next = draftRows.map(r => ({ 
+                            ...r, 
+                            blocks: r.blocks.map(b => ({ 
+                              ...b, 
+                              content: b.content.map(ci => 
+                                ci.id === activeButtonId 
+                                  ? { ...ci, href: v } 
+                                  : ci
+                              ) 
+                            })) 
+                          }))
+                          setDraftRows(next)
+                        }}
+                        onBlur={async () => { await saveRows(draftRows) }}
+                        placeholder="https://example.com or @variableName"
+                        className="text-sm"
+                        inputClassName="text-sm"
+                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
+                        multiline={false}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Use @variableName to create dynamic URLs based on user data
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Button Preview</CardTitle>
+                    <CardDescription>See how your button will appear to users</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="p-4 bg-muted/20 rounded-lg">
+                      <div className="flex justify-center">
+                        <button 
+                          className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-center"
+                          type="button"
+                          disabled
+                        >
+                          {(() => {
+                            const buttonText = (activeButtonItem as any).content || 'Button Text'
+                            // Use the same variable values as the main preview (includes AI results and real data)
+                            const buttonInterpolator = new VariableInterpolator()
+                            return buttonInterpolator.interpolate(buttonText, { variables: previewVariables, availableVariables: [] }).content
+                          })()}
+                        </button>
+                      </div>
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        <strong>URL:</strong> {(() => {
+                          const buttonUrl = (activeButtonItem as any).href || 'No URL set'
+                          if (buttonUrl === 'No URL set') return buttonUrl
+                          // Use the same variable values as the main preview (includes AI results and real data)
+                          const urlInterpolator = new VariableInterpolator()
+                          return urlInterpolator.interpolate(buttonUrl, { variables: previewVariables, availableVariables: [] }).content
+                        })()}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </>
             )
           })()}

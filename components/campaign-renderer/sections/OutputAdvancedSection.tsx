@@ -47,14 +47,16 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
         const buttonHref = interpolator.interpolate((item as any).href || '#', { variables: variableMap, availableVariables: [] }).content
         const buttonText = interpolator.interpolate(item.content || 'Button', { variables: variableMap, availableVariables: [] }).content
         return (
-          <a 
-            href={buttonHref}
-            className="inline-flex items-center px-6 py-3 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-            target={buttonHref.startsWith('http') ? '_blank' : undefined}
-            rel={buttonHref.startsWith('http') ? 'noopener noreferrer' : undefined}
-          >
-            {buttonText}
-          </a>
+          <div className="flex justify-center">
+            <a 
+              href={buttonHref}
+              className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-blue-600 text-white font-medium text-center hover:bg-blue-700 transition-colors"
+              target={buttonHref.startsWith('http') ? '_blank' : undefined}
+              rel={buttonHref.startsWith('http') ? 'noopener noreferrer' : undefined}
+            >
+              {buttonText}
+            </a>
+          </div>
         )
       case 'image':
         const imageSrc = interpolator.interpolate(item.src || '', { variables: variableMap, availableVariables: [] }).content
