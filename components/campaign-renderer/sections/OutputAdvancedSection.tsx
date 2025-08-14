@@ -13,9 +13,10 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
     const map: Record<string, any> = {}
     const inputVars = buildVariablesFromInputs(sections, userInputs)
     Object.assign(map, inputVars)
-    Object.assign(map, getAITestResults() || {})
+    // Use campaign-scoped AI test results
+    Object.assign(map, campaign?.id ? getAITestResults(campaign.id) : {})
     return map
-  }, [sections, userInputs])
+  }, [sections, userInputs, campaign?.id])
 
   const rows = (config as any)?.rows || []
   const pageSettings = (config as any)?.settings || {}

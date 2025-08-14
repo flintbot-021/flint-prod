@@ -602,7 +602,9 @@ export default function ToolBuilderPage() {
       // If variable name changed, update all references in other sections
       if (variableNameChanged && oldVariableName && newVariableName) {
         // Update stored AI test results with new variable name
-        updateAITestResultVariableName(oldVariableName, newVariableName)
+        if (campaign?.id) {
+          updateAITestResultVariableName(oldVariableName, newVariableName, campaign.id)
+        }
         
         const sectionsToUpdate: { id: string; updates: Partial<CampaignSection> }[] = []
         
@@ -701,7 +703,9 @@ export default function ToolBuilderPage() {
       // Handle AI logic output variable changes
       if (outputVariablesChanged && Object.keys(outputVariableNameMap).length > 0) {
         // Update stored AI test results with new output variable names
-        updateAITestResultVariableNames(outputVariableNameMap)
+        if (campaign?.id) {
+          updateAITestResultVariableNames(outputVariableNameMap, campaign.id)
+        }
         
         const sectionsToUpdate: { id: string; updates: Partial<CampaignSection> }[] = []
         

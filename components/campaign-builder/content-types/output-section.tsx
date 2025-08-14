@@ -29,6 +29,7 @@ interface OutputSectionProps {
   onUpdate: (updates: Partial<CampaignSection>) => Promise<void>
   className?: string
   allSections?: CampaignSection[]
+  campaignId?: string
 }
 
 interface OutputSettings {
@@ -62,7 +63,7 @@ interface SimpleVariable {
 // =============================================================================
 
 // Simple variable extraction
-function getSimpleVariables(sections: CampaignSection[], currentOrder: number): SimpleVariable[] {
+function getSimpleVariables(sections: CampaignSection[], currentOrder: number, campaignId?: string): SimpleVariable[] {
   const variables: SimpleVariable[] = []
   const precedingSections = sections.filter(s => s.order < currentOrder)
   
@@ -140,7 +141,7 @@ function getSimpleVariables(sections: CampaignSection[], currentOrder: number): 
               name: variable.name,
               type: 'output',
               description: variable.description || 'AI generated output',
-              sampleValue: getSampleValue(variable.name)
+              sampleValue: getSampleValue(variable.name, campaignId)
             })
             console.log(`✅ Added AI variable: ${variable.name}`)
           }
@@ -156,7 +157,7 @@ function getSimpleVariables(sections: CampaignSection[], currentOrder: number): 
 }
 
 // Generate sample values - Use AI test results if available, fallback to defaults
-function getSampleValue(variableName: string): string {
+function getSampleValue(variableName: string, campaignId?: string): string {
   // First, check for hardcoded capture section values
   switch (variableName.toLowerCase()) {
     case 'name':
@@ -168,7 +169,7 @@ function getSampleValue(variableName: string): string {
   }
   
   // Then, try to get real AI test result
-  const aiTestValue = getAITestResult(variableName)
+  const aiTestValue = campaignId ? getAITestResult(variableName, campaignId) : null
   console.log(`🔍 getSampleValue for "${variableName}":`, { 
     aiTestValue, 
     aiTestValueType: typeof aiTestValue,
@@ -209,11 +210,11 @@ function getSampleValue(variableName: string): string {
 }
 
 // Generate sample data context - Enhanced with AI test results
-function generateSampleContext(variables: SimpleVariable[]): Record<string, string> {
+function generateSampleContext(variables: SimpleVariable[], campaignId?: string): Record<string, string> {
   const context: Record<string, string> = {}
   
   // Get any stored AI test results
-  const aiTestResults = getAITestResults()
+  const aiTestResults = campaignId ? getAITestResults(campaignId) : {}
   
   variables.forEach(variable => {
     context[variable.name] = variable.sampleValue
@@ -247,12 +248,13 @@ function generateSampleContext(variables: SimpleVariable[]): Record<string, stri
 // MAIN COMPONENT
 // =============================================================================
 
-export function OutputSection({
-  section,
-  isPreview = false,
-  onUpdate,
+export function OutputSection({ 
+  section, 
+  isPreview = false, 
+  onUpdate, 
   className,
-  allSections = []
+  allSections = [],
+  campaignId
 }: OutputSectionProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [aiTestDataTimestamp, setAiTestDataTimestamp] = useState(0)
@@ -332,8 +334,8 @@ export function OutputSection({
   
   // Extract variables from campaign sections
   const availableVariables = useMemo(() => 
-    getSimpleVariables(allSections, section.order || 0), 
-    [allSections, section.order]
+    getSimpleVariables(allSections, section.order || 0, campaignId), 
+    [allSections, section.order, campaignId]
   )
 
   // Listen for localStorage changes to refresh AI test data
@@ -356,8 +358,8 @@ export function OutputSection({
 
   // Generate sample data - Include AI test results in dependency array
   const sampleValues = useMemo(() => {
-    return generateSampleContext(availableVariables)
-  }, [availableVariables, aiTestDataTimestamp]) // Re-compute when AI test results change
+    return generateSampleContext(availableVariables, campaignId)
+  }, [availableVariables, aiTestDataTimestamp, campaignId]) // Re-compute when AI test results change
 
   // Create variable interpolation context
   const variableContext: VariableInterpolationContext = {
@@ -664,6 +666,7 @@ export function OutputSection({
           inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!border-0 focus-visible:!outline-none focus-visible:!ring-0 !resize-none !overflow-hidden !text-4xl !font-bold !leading-tight !text-center !block !w-full !text-black placeholder:!text-gray-400"
           variables={availableVariables}
           multiline={false}
+          campaignId={campaignId}
         />
       </div>
 
@@ -679,6 +682,7 @@ export function OutputSection({
           inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!border-0 focus-visible:!outline-none focus-visible:!ring-0 !resize-none !overflow-hidden !text-xl !font-medium !leading-normal !text-center !block !w-full !text-black placeholder:!text-gray-400 !whitespace-pre-wrap"
           variables={availableVariables}
           multiline={true}
+          campaignId={campaignId}
         />
       </div>
 
@@ -694,6 +698,7 @@ export function OutputSection({
           inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!border-0 focus-visible:!outline-none focus-visible:!ring-0 !resize-none !overflow-hidden !text-base !font-normal !leading-normal !text-center !block !w-full !text-black placeholder:!text-gray-400 !whitespace-pre-wrap"
           variables={availableVariables}
           multiline={true}
+          campaignId={campaignId}
         />
       </div>
 

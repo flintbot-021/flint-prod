@@ -125,7 +125,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   // Sync draftPageSettings with pageSettings prop
   useEffect(() => {
     setDraftPageSettings(pageSettings)
-  }, [pageSettings])
+  }, [pageSettings.backgroundColor, pageSettings.gridGap, pageSettings.maxColumns, pageSettings.rowSpacing])
 
   // Close floating toolbar when clicking outside the selected card and outside the toolbar
   useEffect(() => {
@@ -179,7 +179,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   // Notify parent of initial page settings
   useEffect(() => {
     onPageSettingsChange?.(pageSettings)
-  }, [pageSettings, onPageSettingsChange])
+  }, [pageSettings.backgroundColor, pageSettings.gridGap, pageSettings.maxColumns, pageSettings.rowSpacing, onPageSettingsChange])
 
 
     const saveRows = async (nextRows: Row[], newPageSettings?: PageSettings) => {
@@ -295,18 +295,18 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const previewVariables = useMemo(() => {
     const vars: Record<string, string> = {}
     if (allSections && allSections.length) {
-      const available = getSimpleVariablesForBuilder(allSections, section.order || 0)
+      const available = getSimpleVariablesForBuilder(allSections, section.order || 0, campaignId)
       available.forEach(v => { vars[v.name] = v.sampleValue })
     }
-    // Merge AI test results last so they take precedence
-    const ai = getAITestResults() || {}
+    // Merge AI test results last so they take precedence (campaign-scoped)
+    const ai = campaignId ? getAITestResults(campaignId) : {}
     Object.assign(vars, ai)
     // Ensure capture defaults
     if (!vars.name) vars.name = 'Joe Bloggs'
     if (!vars.email) vars.email = 'joe@email.com'
     if (!vars.phone) vars.phone = '+12 345 6789'
     return vars
-  }, [allSections, section.order])
+  }, [allSections, section.order, campaignId])
 
   // Preview uses variable interpolator to show a basic rendering
   const previewHtml = useMemo(() => {
@@ -370,10 +370,10 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     
     const html = `<div style="${containerStyle}">${rows.map(r => `<div style="${gridStyle}">${r.blocks.map(renderBlock).join('')}</div>`).join('')}</div>`
     return html
-  }, [isPreview, rows, previewVariables, pageSettings])
+  }, [isPreview, rows, previewVariables, pageSettings.backgroundColor, pageSettings.gridGap, pageSettings.maxColumns, pageSettings.rowSpacing])
 
   // Build available variables like output-section.tsx
-  function getSimpleVariablesForBuilder(sections: CampaignSection[], currentOrder: number) {
+  function getSimpleVariablesForBuilder(sections: CampaignSection[], currentOrder: number, campaignId?: string) {
     const variables: { name: string; type: 'input' | 'output' | 'capture'; description: string; sampleValue: string }[] = []
     const preceding = sections.filter(s => (s.order || 0) < currentOrder)
     preceding.forEach(section => {
@@ -397,8 +397,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         }
       }
     })
-    // Merge AI test results as additional candidates (if present)
-    const ai = getAITestResults() || {}
+    // Merge AI test results as additional candidates (if present) - campaign-scoped
+    const ai = campaignId ? getAITestResults(campaignId) : {}
     Object.keys(ai).forEach(key => {
       if (!variables.find(v => v.name === key)) {
         variables.push({ name: key, type: 'output', description: 'AI output', sampleValue: String(ai[key]) })
@@ -1433,8 +1433,9 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                       inputClassName={cn('!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none',
                                         block.textAlignment === 'left' ? 'text-left' : block.textAlignment === 'right' ? 'text-right' : 'text-center',
                                         item.type==='headline'?'!text-3xl !font-bold':'', item.type==='subheading'?'!text-xl !font-medium':'')}
-                              variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
+                              variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                                       multiline={true}
+                                      campaignId={campaignId}
                                     />
                                   ) : item.type === 'button' ? (
                                     <div 
@@ -1517,8 +1518,9 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                           className="w-full"
                                           inputClassName={cn('!border-0 !outline-none !ring-0 !shadow-none !bg-transparent',
                                             block.textAlignment === 'left' ? 'text-left' : block.textAlignment === 'right' ? 'text-right' : 'text-center')}
-                                          variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
+                                          variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                                           multiline={false}
+                                          campaignId={campaignId}
                                         />
                                       ))}
                                       <Button size="sm" variant="outline" onClick={async ()=>{
@@ -1718,8 +1720,9 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         placeholder="https://example.com/image.jpg or @variableName"
                         className="text-sm border border-input rounded-md [&>input]:!pl-5 [&>input]:!pr-5 [&>input]:!py-3"
                         inputClassName="text-sm !pl-5 !pr-5 !py-3 flex items-center min-h-[44px] !box-border"
-                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
+                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                         multiline={false}
+                        campaignId={campaignId}
                       />
                       <p className="text-xs text-muted-foreground">
                         Use @variableName to insert dynamic image URLs from user inputs or AI outputs
@@ -1859,8 +1862,9 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         placeholder="Button text or @variableName"
                         className="text-sm border border-input rounded-md [&>input]:!pl-5 [&>input]:!pr-5 [&>input]:!py-3"
                         inputClassName="text-sm !pl-5 !pr-5 !py-3 flex items-center min-h-[44px] !box-border"
-                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
+                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                         multiline={false}
+                        campaignId={campaignId}
                       />
                       <p className="text-xs text-muted-foreground">
                         Use @variableName to insert dynamic text from user inputs or AI outputs
@@ -1897,8 +1901,9 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         placeholder="https://example.com or @variableName"
                         className="text-sm border border-input rounded-md [&>input]:!pl-5 [&>input]:!pr-5 [&>input]:!py-3"
                         inputClassName="text-sm !pl-5 !pr-5 !py-3 flex items-center min-h-[44px] !box-border"
-                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
+                        variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                         multiline={false}
+                        campaignId={campaignId}
                       />
                       <p className="text-xs text-muted-foreground">
                         Use @variableName to create dynamic URLs based on user data

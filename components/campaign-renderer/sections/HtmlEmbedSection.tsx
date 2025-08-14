@@ -71,7 +71,7 @@ export function HtmlEmbedSection({
     const inputVariables = buildVariablesFromInputs(sections, userInputs)
     console.log('📊 Input variables result:', inputVariables)
     
-    const aiVariables = getAITestResults() || {}
+    const aiVariables = campaign?.id ? getAITestResults(campaign.id) : {}
     console.log('🤖 AI variables result:', aiVariables)
     
     const allData = {
@@ -137,7 +137,7 @@ export function HtmlEmbedSection({
                 hasContent: !!settings.htmlContent,
                 contentLength: settings.htmlContent.length,
                 variableCount: Object.keys(buildVariablesFromInputs(sections, userInputs)).length,
-                availableVariables: Object.keys(buildVariablesFromInputs(sections, userInputs)).concat(Object.keys(getAITestResults() || {}))
+                availableVariables: Object.keys(buildVariablesFromInputs(sections, userInputs)).concat(Object.keys(campaign?.id ? getAITestResults(campaign.id) : {}))
               }, null, 2)}
             </pre>
           </details>

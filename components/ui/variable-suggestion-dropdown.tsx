@@ -24,6 +24,7 @@ interface VariableSuggestionDropdownProps {
   multiline?: boolean
   variables: Variable[]
   autoSave?: boolean
+  campaignId?: string
 }
 
 interface DropdownState {
@@ -43,7 +44,8 @@ export function VariableSuggestionDropdown({
   inputClassName,
   multiline = false,
   variables = [],
-  autoSave = false
+  autoSave = false,
+  campaignId
 }: VariableSuggestionDropdownProps) {
   const [dropdown, setDropdown] = useState<DropdownState>({
     show: false,
@@ -87,18 +89,21 @@ export function VariableSuggestionDropdown({
     autoResize()
   }, [autoResize])
   
-  // Load AI test data
+  // Load AI test data (campaign-scoped)
   useEffect(() => {
     const loadTestData = () => {
-      const testResults = getAITestResults()
+      const testResults = campaignId ? getAITestResults(campaignId) : {}
       setAiTestData(testResults)
     }
     
     loadTestData()
     
     // Listen for storage changes to update when AI test data changes
-    const handleStorageChange = () => {
-      loadTestData()
+    const handleStorageChange = (event: any) => {
+      // Check if the event is for our campaign
+      if (event.detail?.campaignId === campaignId || !event.detail?.campaignId) {
+        loadTestData()
+      }
     }
     
     window.addEventListener('storage', handleStorageChange)
@@ -109,7 +114,7 @@ export function VariableSuggestionDropdown({
       window.removeEventListener('storage', handleStorageChange)
       window.removeEventListener('aiTestResultsUpdated', handleStorageChange)
     }
-  }, [])
+  }, [campaignId])
   
     // Get actual sample value for a variable
   const getSampleValue = (variable: Variable): string => {
