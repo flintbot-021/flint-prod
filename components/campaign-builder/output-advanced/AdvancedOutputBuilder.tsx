@@ -125,7 +125,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   // Sync draftPageSettings with pageSettings prop
   useEffect(() => {
     setDraftPageSettings(pageSettings)
-  }, [pageSettings])
+  }, [pageSettings.backgroundColor, pageSettings.gridGap, pageSettings.maxColumns, pageSettings.rowSpacing])
 
   // Close floating toolbar when clicking outside the selected card and outside the toolbar
   useEffect(() => {
@@ -179,7 +179,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   // Notify parent of initial page settings
   useEffect(() => {
     onPageSettingsChange?.(pageSettings)
-  }, [pageSettings, onPageSettingsChange])
+  }, [pageSettings.backgroundColor, pageSettings.gridGap, pageSettings.maxColumns, pageSettings.rowSpacing, onPageSettingsChange])
 
 
     const saveRows = async (nextRows: Row[], newPageSettings?: PageSettings) => {
@@ -370,7 +370,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     
     const html = `<div style="${containerStyle}">${rows.map(r => `<div style="${gridStyle}">${r.blocks.map(renderBlock).join('')}</div>`).join('')}</div>`
     return html
-  }, [isPreview, rows, previewVariables, pageSettings])
+  }, [isPreview, rows, previewVariables, pageSettings.backgroundColor, pageSettings.gridGap, pageSettings.maxColumns, pageSettings.rowSpacing])
 
   // Build available variables like output-section.tsx
   function getSimpleVariablesForBuilder(sections: CampaignSection[], currentOrder: number, campaignId?: string) {
@@ -1435,6 +1435,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                         item.type==='headline'?'!text-3xl !font-bold':'', item.type==='subheading'?'!text-xl !font-medium':'')}
                               variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                                       multiline={true}
+                                      campaignId={campaignId}
                                     />
                                   ) : item.type === 'button' ? (
                                     <div 
@@ -1519,6 +1520,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                             block.textAlignment === 'left' ? 'text-left' : block.textAlignment === 'right' ? 'text-right' : 'text-center')}
                                           variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                                           multiline={false}
+                                          campaignId={campaignId}
                                         />
                                       ))}
                                       <Button size="sm" variant="outline" onClick={async ()=>{
@@ -1720,6 +1722,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         inputClassName="text-sm !pl-5 !pr-5 !py-3 flex items-center min-h-[44px] !box-border"
                         variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                         multiline={false}
+                        campaignId={campaignId}
                       />
                       <p className="text-xs text-muted-foreground">
                         Use @variableName to insert dynamic image URLs from user inputs or AI outputs
@@ -1861,6 +1864,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         inputClassName="text-sm !pl-5 !pr-5 !py-3 flex items-center min-h-[44px] !box-border"
                         variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                         multiline={false}
+                        campaignId={campaignId}
                       />
                       <p className="text-xs text-muted-foreground">
                         Use @variableName to insert dynamic text from user inputs or AI outputs
@@ -1899,6 +1903,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         inputClassName="text-sm !pl-5 !pr-5 !py-3 flex items-center min-h-[44px] !box-border"
                         variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                         multiline={false}
+                        campaignId={campaignId}
                       />
                       <p className="text-xs text-muted-foreground">
                         Use @variableName to create dynamic URLs based on user data

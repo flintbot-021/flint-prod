@@ -666,6 +666,7 @@ export function OutputSection({
           inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!border-0 focus-visible:!outline-none focus-visible:!ring-0 !resize-none !overflow-hidden !text-4xl !font-bold !leading-tight !text-center !block !w-full !text-black placeholder:!text-gray-400"
           variables={availableVariables}
           multiline={false}
+          campaignId={campaignId}
         />
       </div>
 
@@ -681,6 +682,7 @@ export function OutputSection({
           inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!border-0 focus-visible:!outline-none focus-visible:!ring-0 !resize-none !overflow-hidden !text-xl !font-medium !leading-normal !text-center !block !w-full !text-black placeholder:!text-gray-400 !whitespace-pre-wrap"
           variables={availableVariables}
           multiline={true}
+          campaignId={campaignId}
         />
       </div>
 
@@ -696,6 +698,7 @@ export function OutputSection({
           inputClassName="!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none focus-visible:!border-0 focus-visible:!outline-none focus-visible:!ring-0 !resize-none !overflow-hidden !text-base !font-normal !leading-normal !text-center !block !w-full !text-black placeholder:!text-gray-400 !whitespace-pre-wrap"
           variables={availableVariables}
           multiline={true}
+          campaignId={campaignId}
         />
       </div>
 
