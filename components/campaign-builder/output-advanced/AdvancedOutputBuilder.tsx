@@ -1698,7 +1698,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                   <CardContent>
                     <div className="space-y-2">
                       <Label htmlFor={`image-url-${activeImageId}`}>Image URL</Label>
-                      <VariableSuggestionDropdown
+                                            <VariableSuggestionDropdown
                         value={(activeImageItem as any).src || ''}
                         onChange={(v) => {
                           const next = draftRows.map(r => ({ 
@@ -1709,15 +1709,15 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                 ci.id === activeImageId 
                                   ? { ...ci, src: v } 
                                   : ci
-                              )
-                            }))
+                              ) 
+                            })) 
                           }))
                           setDraftRows(next)
                         }}
                         onBlur={async () => { await saveRows(draftRows) }}
                         placeholder="https://example.com/image.jpg or @variableName"
-                        className="text-sm"
-                        inputClassName="text-sm"
+                        className="text-sm border border-input rounded-md [&>input]:!pl-5 [&>input]:!pr-5 [&>input]:!py-3"
+                        inputClassName="text-sm !pl-5 !pr-5 !py-3 flex items-center min-h-[44px] !box-border"
                         variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
                         multiline={false}
                       />
@@ -1857,8 +1857,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         }}
                         onBlur={async () => { await saveRows(draftRows) }}
                         placeholder="Button text or @variableName"
-                        className="text-sm"
-                        inputClassName="text-sm"
+                        className="text-sm border border-input rounded-md [&>input]:!pl-5 [&>input]:!pr-5 [&>input]:!py-3"
+                        inputClassName="text-sm !pl-5 !pr-5 !py-3 flex items-center min-h-[44px] !box-border"
                         variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
                         multiline={false}
                       />
@@ -1895,8 +1895,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         }}
                         onBlur={async () => { await saveRows(draftRows) }}
                         placeholder="https://example.com or @variableName"
-                        className="text-sm"
-                        inputClassName="text-sm"
+                        className="text-sm border border-input rounded-md [&>input]:!pl-5 [&>input]:!pr-5 [&>input]:!py-3"
+                        inputClassName="text-sm !pl-5 !pr-5 !py-3 flex items-center min-h-[44px] !box-border"
                         variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0) : []}
                         multiline={false}
                       />
