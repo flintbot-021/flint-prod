@@ -12,7 +12,7 @@ export const hasEnvVars =
 
 /**
  * Apply consistent section ordering that matches the campaign builder
- * Optional sections first, then mandatory sections in fixed order: capture -> logic -> output
+ * New flow: Optional sections (questions) first, then mandatory sections in fixed order: logic -> capture -> output
  */
 export function applySectionOrdering(sections: any[]): any[] {
   // Define mandatory section types and their order (using renderer section types)
@@ -23,12 +23,13 @@ export function applySectionOrdering(sections: any[]): any[] {
   const optionalSections = sections.filter(s => !mandatorySectionTypes.includes(s.type))
   const mandatorySections = sections.filter(s => mandatorySectionTypes.includes(s.type))
   
-  // Sort mandatory sections in the correct order: capture -> logic -> output
+  // Sort mandatory sections in the NEW order: logic -> capture -> output
+  // This creates the better UX flow: Questions -> Process -> Capture to unlock -> Output
   const sortedMandatorySections = mandatorySections.sort((a, b) => {
     const getOrder = (type: string) => {
-      if (type === 'capture') return 1
-      if (type === 'logic') return 2
-      if (type === 'output') return 3
+      if (type === 'logic') return 1      // Process the answers first
+      if (type === 'capture') return 2    // Then ask for email to unlock results
+      if (type === 'output') return 3     // Finally show the unlocked results
       return 999
     }
     return getOrder(a.type) - getOrder(b.type)

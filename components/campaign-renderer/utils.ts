@@ -320,4 +320,45 @@ export function debounce<T extends (...args: any[]) => any>(
     clearTimeout(timeoutId)
     timeoutId = setTimeout(() => func(...args), delay)
   }
+}
+
+/**
+ * Determines the appropriate button text based on what the next section type is
+ * This supports the new flow: Questions -> Process -> Capture -> Output
+ */
+export function getNextSectionButtonText(
+  currentIndex: number, 
+  sections?: any[], 
+  defaultText: string = 'Continue'
+): string {
+  if (!sections || currentIndex >= sections.length - 1) {
+    return defaultText
+  }
+  
+  const nextSection = sections[currentIndex + 1]
+  if (!nextSection) {
+    return defaultText
+  }
+  
+  // Determine button text based on next section type
+  switch (nextSection.type) {
+    case 'logic':
+      // If the next section is logic (AI processing), show "Generate Results"
+      return 'Generate Results'
+    
+    case 'capture':
+      // If the next section is capture (after showing results), show "Unlock Results"  
+      return 'Unlock Results'
+    
+    case 'output':
+    case 'output-advanced':
+    case 'dynamic_redirect':
+    case 'html_embed':
+      // If the next section is output, show "View Results"
+      return 'View Results'
+    
+    default:
+      // For all other sections (questions, content, etc.), use default
+      return defaultText
+  }
 } 

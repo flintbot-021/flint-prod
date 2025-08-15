@@ -4,7 +4,7 @@ import React from 'react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { HeroContentConfiguration } from '@/lib/types/database'
-import { getCampaignTheme, getCampaignButtonStyles, getCampaignTextColor } from '../utils'
+import { getCampaignTheme, getCampaignButtonStyles, getCampaignTextColor, getNextSectionButtonText } from '../utils'
 
 export function HeroContentSection({
   section,
@@ -15,7 +15,8 @@ export function HeroContentSection({
   deviceInfo,
   onPrevious,
   onSectionComplete,
-  campaign
+  campaign,
+  sections
 }: SectionRendererProps) {
   // Get hero configuration from section configuration
   const heroConfig = section.configuration as HeroContentConfiguration
@@ -29,7 +30,14 @@ export function HeroContentSection({
     backgroundImage: configAny.backgroundImage || configAny.image || '',
     overlayColor: heroConfig.overlayColor || '#000000',
     overlayOpacity: heroConfig.overlayOpacity ?? 40,
-    buttonText: heroConfig.buttonText || 'Get Started',
+    buttonText: (() => {
+      // Use dynamic button text for better UX flow - prioritize smart flow over stored config
+      const dynamicButtonText = getNextSectionButtonText(index, sections, 'Get Started')
+      const storedButtonText = heroConfig.buttonText || 'Get Started'
+      
+      // If our dynamic text is different from default, use it (this means next section is special)
+      return dynamicButtonText !== 'Get Started' ? dynamicButtonText : storedButtonText
+    })(),
     showButton: heroConfig.showButton ?? true
   }
 

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
-import { getMobileClasses, getCampaignTheme, getCampaignTextColor } from '../utils'
+import { getMobileClasses, getCampaignTheme, getCampaignTextColor, getNextSectionButtonText } from '../utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 import { ComplianceNotice } from '../ComplianceNotice'
 import { ChevronDown, ChevronRight, Activity } from 'lucide-react'
@@ -56,6 +56,10 @@ export function MultipleSlidersSection({
   const theme = getCampaignTheme(campaign)
   const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
   const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
+  
+  // Dynamic button text logic
+  const dynamicButtonText = getNextSectionButtonText(index, sections, 'Continue')
+  const buttonLabel = dynamicButtonText !== 'Continue' ? dynamicButtonText : 'Continue'
   
   // Initialize values and expansion state with existing responses if available
   useEffect(() => {
@@ -351,7 +355,7 @@ export function MultipleSlidersSection({
             : undefined
         }
         actionButton={{
-          label: 'Next',
+          label: buttonLabel,
           onClick: handleContinue,
           disabled: !canContinue()
         }}

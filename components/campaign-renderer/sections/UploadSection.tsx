@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { SectionRendererProps } from '../types'
-import { getMobileClasses, getCampaignTheme, getCampaignTextColor, getCampaignButtonStyles } from '../utils'
+import { getMobileClasses, getCampaignTheme, getCampaignTextColor, getCampaignButtonStyles, getNextSectionButtonText } from '../utils'
 import { cn } from '@/lib/utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 import { ComplianceNotice } from '../ComplianceNotice'
@@ -75,7 +75,12 @@ export function UploadSection({
   const headline = title || 'Upload your file'
   const subheading = description || ''
   const isRequired = configData.required ?? false
-  const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
+  // Use dynamic button text for better UX flow - prioritize smart flow over stored config
+  const dynamicButtonText = getNextSectionButtonText(index, sections, 'Continue')
+  const storedButtonText = configData.buttonText || config.buttonLabel || 'Continue'
+  
+  // If our dynamic text is different from default, use it (this means next section is special)
+  const buttonLabel = dynamicButtonText !== 'Continue' ? dynamicButtonText : storedButtonText
   const allowMultiple = configData.allowMultiple ?? false
   const maxFiles = configData.maxFiles || 1
   

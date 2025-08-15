@@ -33,7 +33,7 @@ import {
 
 import { EnhancedSortableCanvas } from '@/components/campaign-builder/enhanced-sortable-canvas'
 import { DragPreview } from '@/components/campaign-builder/drag-preview'
-import { cn } from '@/lib/utils'
+import { cn, applySectionOrdering } from '@/lib/utils'
 import { isQuestionSection, titleToVariableName, updateAILogicVariableReferences, updateOutputSectionVariableReferences } from '@/lib/utils/section-variables'
 import { updateAITestResultVariableName, updateAITestResultVariableNames } from '@/lib/utils/ai-test-storage'
 import { createVariableName } from '@/lib/utils/variable-extractor'
@@ -231,13 +231,17 @@ export default function ToolBuilderPage() {
       const sectionsResult = await getCampaignSections(params.id)
       if (sectionsResult.success && sectionsResult.data) {
         const campaignSections = sectionsResult.data.map(convertDatabaseSectionToCampaignSection)
-        console.log('Loaded sections from database:', campaignSections.map(s => ({ 
+        
+        // Apply consistent section ordering (Questions -> Logic -> Capture -> Output)
+        const properlyOrderedSections = applySectionOrdering(campaignSections)
+        
+        console.log('Loaded sections from database:', properlyOrderedSections.map(s => ({ 
           id: s.id, 
           title: s.title, 
           order: s.order, 
           order_index: sectionsResult.data?.find(ds => ds.id === s.id)?.order_index 
         })))
-        setSections(campaignSections)
+        setSections(properlyOrderedSections)
       } else {
         console.error('Error loading sections:', sectionsResult.error)
         setSections([])
@@ -482,8 +486,11 @@ export default function ToolBuilderPage() {
         // Insert at the calculated position
         newSections.splice(insertIndex, 0, newCampaignSection)
         
+        // Apply consistent section ordering (Questions -> Logic -> Capture -> Output)
+        const properlyOrderedSections = applySectionOrdering(newSections)
+        
         // Update order indices for all sections
-        return newSections.map((section, index) => ({
+        return properlyOrderedSections.map((section, index) => ({
           ...section,
           order: index + 1
         }))
@@ -493,7 +500,10 @@ export default function ToolBuilderPage() {
       const allSectionsWithNew = [...sections]
       allSectionsWithNew.splice(insertIndex, 0, newCampaignSection)
       
-      const reorderData = allSectionsWithNew.map((section, index) => ({
+      // Apply consistent ordering before saving to database
+      const properlyOrderedForDB = applySectionOrdering(allSectionsWithNew)
+      
+      const reorderData = properlyOrderedForDB.map((section, index) => ({
         id: section.id,
         order_index: index + 1
       }))
@@ -1107,8 +1117,12 @@ export default function ToolBuilderPage() {
           }
           
           const reorderedItems = arrayMove(items, oldIndex, newIndex)
+          
+          // Apply consistent section ordering (Questions -> Logic -> Capture -> Output)
+          const properlyOrderedItems = applySectionOrdering(reorderedItems)
+          
           // Update order property for all affected sections
-          const updatedItems = reorderedItems.map((section, index) => ({
+          const updatedItems = properlyOrderedItems.map((section, index) => ({
             ...section,
             order: index + 1,
             updatedAt: new Date().toISOString()
@@ -1228,7 +1242,7 @@ export default function ToolBuilderPage() {
         required: true,
       });
 
-      // 4. Logic: to generate output
+      // 4. Logic: to generate output (NEW FLOW: Process answers first!)
       const logicType = getSectionTypeById('logic-ai');
       await createSection({
         campaign_id: campaign.id,
@@ -1252,7 +1266,7 @@ export default function ToolBuilderPage() {
         required: true,
       });
 
-      // 5. Capture: to get the user's name
+      // 5. Capture: to unlock results (NEW FLOW: Ask for email after showing results!)
       const captureType = getSectionTypeById('capture-details');
       await createSection({
         campaign_id: campaign.id,
@@ -1271,12 +1285,13 @@ export default function ToolBuilderPage() {
             name: true,
             email: true,
             phone: false
-          }
+          },
+          submitButtonText: 'Unlock My Results'
         } as any,
         required: true,
       });
 
-      // 6. Output
+      // 6. Output: Final unlocked results (NEW FLOW: Results shown after email capture!)
       const outputType = getSectionTypeById('output-results');
       await createSection({
         campaign_id: campaign.id,

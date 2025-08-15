@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 import { BasicContentConfiguration } from '@/lib/types/database'
 import { FileText } from 'lucide-react'
-import { getCampaignTheme, getCampaignTextColor } from '../utils'
+import { getCampaignTheme, getCampaignTextColor, getNextSectionButtonText } from '../utils'
 
 interface BasicContentSettings {
   alignment: 'left' | 'center' | 'right',
@@ -25,7 +25,8 @@ export function BasicContentSection({
   deviceInfo,
   onPrevious,
   onSectionComplete,
-  campaign
+  campaign,
+  sections
 }: SectionRendererProps) {
   // Get basic configuration from section configuration
   const basicConfig = section.configuration as BasicContentConfiguration
@@ -142,7 +143,7 @@ export function BasicContentSection({
         icon={<FileText className="h-5 w-5 text-primary" />}
         label={`Section ${index + 1}`}
         actionButton={{
-          label: 'Next',
+          label: getNextSectionButtonText(index, sections, 'Next'),
           onClick: handleContinue
         }}
         deviceInfo={deviceInfo}
