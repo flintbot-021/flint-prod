@@ -19,7 +19,8 @@ export function MultipleChoiceSection({
   onSectionComplete,
   onResponseUpdate,
   userInputs,
-  campaign
+  campaign,
+  sections
 }: SectionRendererProps) {
   // Initialize with existing response if available
   const existingResponse = userInputs?.[section.id] || ''
@@ -146,7 +147,7 @@ export function MultipleChoiceSection({
       </div>
 
       {/* Compliance Notice */}
-      <ComplianceNotice campaign={campaign} isFirstQuestion={index === 0} />
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
       {/* Shared Navigation Bar */}
       <SectionNavigationBar

@@ -24,7 +24,8 @@ export function TextQuestionSection({
   onSectionComplete,
   onResponseUpdate,
   userInputs,
-  campaign
+  campaign,
+  sections
 }: SectionRendererProps) {
   // Initialize with existing response if available
   const existingResponse = userInputs?.[section.id] || ''
@@ -181,7 +182,7 @@ export function TextQuestionSection({
       </div>
 
       {/* Compliance Notice */}
-      <ComplianceNotice campaign={campaign} isFirstQuestion={index === 0} />
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
       {/* Shared Navigation Bar */}
       <SectionNavigationBar

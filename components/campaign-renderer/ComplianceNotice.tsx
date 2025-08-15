@@ -3,19 +3,26 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { PrivacyNoticeModal } from '@/components/ui/privacy-notice-modal'
-import { getCampaignTextColor } from './utils'
+import { getCampaignTextColor, isFirstQuestionScreen } from './utils'
 import type { Campaign } from '@/lib/types/database'
 
 interface ComplianceNoticeProps {
   campaign: Campaign
   isFirstQuestion?: boolean
+  currentIndex?: number
+  sections?: any[]
 }
 
-export function ComplianceNotice({ campaign, isFirstQuestion = false }: ComplianceNoticeProps) {
+export function ComplianceNotice({ campaign, isFirstQuestion = false, currentIndex, sections }: ComplianceNoticeProps) {
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false)
 
-  // Only show on first question and if privacy is configured
-  if (!isFirstQuestion || !campaign.settings?.privacy?.configured) {
+  // Determine if this is the first question screen
+  const isFirstQuestionScr = currentIndex !== undefined && sections 
+    ? isFirstQuestionScreen(currentIndex, sections) 
+    : isFirstQuestion
+
+  // Only show on first question screen and if privacy is configured
+  if (!isFirstQuestionScr || !campaign.settings?.privacy?.configured) {
     return null
   }
 

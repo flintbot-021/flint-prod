@@ -19,7 +19,8 @@ export function SliderSection({
   onSectionComplete,
   onResponseUpdate,
   userInputs,
-  campaign
+  campaign,
+  sections
 }: SectionRendererProps) {
   // Get configuration
   const configData = config as any
@@ -154,7 +155,7 @@ export function SliderSection({
       </div>
 
       {/* Compliance Notice */}
-      {campaign && <ComplianceNotice campaign={campaign} isFirstQuestion={index === 0} />}
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
       {/* Shared Navigation Bar */}
       <SectionNavigationBar

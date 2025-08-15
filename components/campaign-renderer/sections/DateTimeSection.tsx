@@ -26,7 +26,8 @@ export function DateTimeSection({
   onSectionComplete,
   onResponseUpdate,
   userInputs,
-  campaign
+  campaign,
+  sections
 }: SectionRendererProps) {
   // Initialize with existing response if available
   const existingResponse = userInputs?.[section.id] || ''
@@ -234,7 +235,7 @@ export function DateTimeSection({
       </div>
 
       {/* Compliance Notice */}
-      {campaign && <ComplianceNotice campaign={campaign} isFirstQuestion={index === 0} />}
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
       {/* Shared Navigation Bar */}
       <SectionNavigationBar

@@ -49,7 +49,8 @@ export function UploadSection({
   onSectionComplete,
   onResponseUpdate,
   userInputs,
-  campaign
+  campaign,
+  sections
 }: SectionRendererProps) {
   const supabase = createClient()
   
@@ -525,7 +526,7 @@ export function UploadSection({
       </div>
 
       {/* Compliance Notice */}
-      <ComplianceNotice campaign={campaign} isFirstQuestion={index === 0} />
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
       {/* Navigation Bar */}
       <SectionNavigationBar

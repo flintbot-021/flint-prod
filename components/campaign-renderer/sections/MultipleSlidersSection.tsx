@@ -40,7 +40,8 @@ export function MultipleSlidersSection({
   onSectionComplete,
   onResponseUpdate,
   userInputs,
-  campaign
+  campaign,
+  sections
 }: SectionRendererProps) {
   const [values, setValues] = useState<Record<string, number>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -337,7 +338,7 @@ export function MultipleSlidersSection({
       </div>
 
       {/* Compliance Notice */}
-      {campaign && <ComplianceNotice campaign={campaign} isFirstQuestion={index === 0} />}
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
       {/* Navigation */}
       <SectionNavigationBar

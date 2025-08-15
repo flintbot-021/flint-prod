@@ -185,6 +185,67 @@ export function getSectionWeight(sectionType: string): number {
 }
 
 /**
+ * Check if a section type is a question (requires user input)
+ */
+export function isQuestionSection(sectionType: string, config?: any): boolean {
+  const questionTypes = [
+    'text_question',
+    'upload_question', 
+    'date_time_question',
+    'multiple_choice',
+    'slider',
+    'question-slider-multiple',
+    'capture'
+  ]
+  
+  // For text_question, check if it's actually an upload or date-time question
+  if (sectionType === 'text_question' && config) {
+    // If it has upload config, it's still a question
+    if (config.maxFiles || config.allowImages || config.allowDocuments || 
+        config.allowVideo || config.allowAudio || config.maxFileSize) {
+      return true
+    }
+    // If it has date-time config, it's still a question
+    if (config.includeDate || config.includeTime) {
+      return true
+    }
+  }
+  
+  return questionTypes.includes(sectionType)
+}
+
+/**
+ * Find the index of the first question section in the sections array
+ */
+export function findFirstQuestionIndex(sections?: any[]): number {
+  if (!sections || sections.length === 0) return -1
+  
+  for (let i = 0; i < sections.length; i++) {
+    const section = sections[i]
+    
+    // Skip hidden sections
+    const isHidden = ('isVisible' in section && section.isVisible === false) || 
+                     (section.configuration && section.configuration.isVisible === false)
+    if (isHidden) continue
+    
+    // Check if this is a question section
+    if (isQuestionSection(section.type, section.configuration || section.settings)) {
+      return i
+    }
+  }
+  
+  return -1
+}
+
+/**
+ * Check if current section is the first question screen
+ */
+export function isFirstQuestionScreen(currentIndex: number, sections?: any[]): boolean {
+  const firstQuestionIndex = findFirstQuestionIndex(sections)
+  return firstQuestionIndex !== -1 && currentIndex === firstQuestionIndex
+}
+
+/**
  * Create error object with context
  */
 export function createError(
