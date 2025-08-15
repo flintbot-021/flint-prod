@@ -1228,7 +1228,7 @@ export default function ToolBuilderPage() {
         required: true,
       });
 
-      // 4. Logic: to generate output
+      // 4. Logic: to generate output (NEW FLOW: Process answers first!)
       const logicType = getSectionTypeById('logic-ai');
       await createSection({
         campaign_id: campaign.id,
@@ -1252,7 +1252,7 @@ export default function ToolBuilderPage() {
         required: true,
       });
 
-      // 5. Capture: to get the user's name
+      // 5. Capture: to unlock results (NEW FLOW: Ask for email after showing results!)
       const captureType = getSectionTypeById('capture-details');
       await createSection({
         campaign_id: campaign.id,
@@ -1271,12 +1271,13 @@ export default function ToolBuilderPage() {
             name: true,
             email: true,
             phone: false
-          }
+          },
+          submitButtonText: 'Unlock My Results'
         } as any,
         required: true,
       });
 
-      // 6. Output
+      // 6. Output: Final unlocked results (NEW FLOW: Results shown after email capture!)
       const outputType = getSectionTypeById('output-results');
       await createSection({
         campaign_id: campaign.id,

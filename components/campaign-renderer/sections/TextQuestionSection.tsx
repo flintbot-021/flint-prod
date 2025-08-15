@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { MessageSquare } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
-import { getMobileClasses, getCampaignTheme, getCampaignTextColor } from '../utils'
+import { getMobileClasses, getCampaignTheme, getCampaignTextColor, getNextSectionButtonText } from '../utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 import { ComplianceNotice } from '../ComplianceNotice'
 
@@ -41,7 +41,12 @@ export function TextQuestionSection({
   const isRequired = configData.required ?? false
   const minLength = configData.minLength || 1
   const maxLength = configData.maxLength || 500
-  const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
+  // Use dynamic button text for better UX flow - prioritize smart flow over stored config
+  const dynamicButtonText = getNextSectionButtonText(index, sections, 'Continue')
+  const storedButtonText = configData.buttonText || config.buttonLabel || 'Continue'
+  
+  // If our dynamic text is different from default, use it (this means next section is special)
+  const buttonLabel = dynamicButtonText !== 'Continue' ? dynamicButtonText : storedButtonText
   
   // Theme styles
   const theme = getCampaignTheme(campaign)

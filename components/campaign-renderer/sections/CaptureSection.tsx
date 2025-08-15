@@ -120,7 +120,7 @@ export function CaptureSection({
       email: configData.fieldPlaceholders?.email ?? 'your@email.com',
       phone: configData.fieldPlaceholders?.phone ?? '+61 400 000 000 or 0400 000 000'
     },
-    submitButtonText: configData.submitButtonText || configData.buttonText || config.buttonLabel || 'Generate My Results',
+    submitButtonText: configData.submitButtonText || configData.buttonText || config.buttonLabel || 'Unlock Results',
     businessName: configData.businessName || '',
     privacyPolicyLink: configData.privacyPolicyLink || ''
   }
@@ -423,7 +423,7 @@ export function CaptureSection({
         label="Contact"
         validationText={getValidationText()}
         actionButton={{
-          label: settings.submitButtonText || 'Generate My Results',
+          label: settings.submitButtonText || 'Unlock Results',
           onClick: handleContinue,
           disabled: !isFormValid()
         }}

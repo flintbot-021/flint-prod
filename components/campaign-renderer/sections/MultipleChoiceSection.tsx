@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { CheckCircle2, Circle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
-import { getMobileClasses, getDefaultChoices, getCampaignTheme, getCampaignTextColor, getCampaignButtonStyles } from '../utils'
+import { getMobileClasses, getDefaultChoices, getCampaignTheme, getCampaignTextColor, getCampaignButtonStyles, getNextSectionButtonText } from '../utils'
 import { cn } from '@/lib/utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 import { ComplianceNotice } from '../ComplianceNotice'
@@ -36,7 +36,13 @@ export function MultipleChoiceSection({
   
   // Cast config to access additional properties
   const configData = config as any
-  const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
+  
+  // Use dynamic button text for better UX flow - prioritize smart flow over stored config
+  const dynamicButtonText = getNextSectionButtonText(index, sections, 'Continue')
+  const storedButtonText = configData.buttonText || config.buttonLabel || 'Continue'
+  
+  // If our dynamic text is different from default, use it (this means next section is special)
+  const buttonLabel = dynamicButtonText !== 'Continue' ? dynamicButtonText : storedButtonText
   const question = title || 'Please select an option'
   const helpText = description
 

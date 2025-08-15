@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { Activity } from 'lucide-react'
 import { SectionRendererProps } from '../types'
-import { getMobileClasses, getCampaignTheme, getCampaignButtonStyles, getCampaignTextColor } from '../utils'
+import { getMobileClasses, getCampaignTheme, getCampaignButtonStyles, getCampaignTextColor, getNextSectionButtonText } from '../utils'
 import { cn } from '@/lib/utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 import { ComplianceNotice } from '../ComplianceNotice'
@@ -32,7 +32,13 @@ export function SliderSection({
   const minLabel = configData.minLabel || 'Low'
   const maxLabel = configData.maxLabel || 'High'
   const isRequired = configData.required ?? false
-  const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
+  
+  // Use dynamic button text for better UX flow - prioritize smart flow over stored config
+  const dynamicButtonText = getNextSectionButtonText(index, sections, 'Continue')
+  const storedButtonText = configData.buttonText || config.buttonLabel || 'Continue'
+  
+  // If our dynamic text is different from default, use it (this means next section is special)
+  const buttonLabel = dynamicButtonText !== 'Continue' ? dynamicButtonText : storedButtonText
 
   // Initialize with existing response if available, otherwise use default
   const existingResponse = userInputs?.[section.id] 
