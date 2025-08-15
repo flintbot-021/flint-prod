@@ -39,7 +39,7 @@ export function DateTimeSection({
   
   // Get configuration
   const configData = config as any
-  const question = title || 'Select a date and time'
+  const question = title || 'Select Date'
   const subheading = description || ''
   const includeDate = configData.includeDate ?? true
   const includeTime = configData.includeTime ?? false
@@ -145,96 +145,138 @@ export function DateTimeSection({
   ) : undefined
 
   return (
-    <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-2xl mx-auto space-y-8">
-          <div className="text-center space-y-4">
-            <h1 
-              className={cn(
-                "font-bold",
-                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
-              )}
-              style={primaryTextStyle}
-            >
-              {question}
-              {isRequired && <span className="text-red-500 ml-1">*</span>}
-            </h1>
-            
-            {subheading && (
-              <p 
+    <div className="min-h-screen flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
+      {/* Main Content Area */}
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
+        <div className="w-full max-w-4xl mx-auto">
+          {/* Header Section */}
+          <div className="text-center space-y-6 mb-12">
+            <div className="space-y-3">
+              <h1 
                 className={cn(
-                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                  "font-black tracking-tight leading-tight text-gray-900",
+                  deviceInfo?.type === 'mobile' 
+                    ? "text-4xl sm:text-5xl" 
+                    : "text-5xl sm:text-6xl lg:text-7xl"
                 )}
-                style={mutedTextStyle}
+                style={primaryTextStyle}
               >
-                {subheading}
-              </p>
-            )}
+                {question}
+                {isRequired && <span className="text-red-500 ml-2">*</span>}
+              </h1>
+              
+              {subheading && (
+                <p 
+                  className={cn(
+                    "font-medium leading-relaxed max-w-3xl mx-auto",
+                    deviceInfo?.type === 'mobile' 
+                      ? "text-lg sm:text-xl" 
+                      : "text-xl sm:text-2xl lg:text-3xl"
+                  )}
+                  style={mutedTextStyle}
+                >
+                  {subheading}
+                </p>
+              )}
+            </div>
+
+            {/* Progress Indicator */}
+            <div className="flex items-center justify-center space-x-2">
+              <Calendar className="h-5 w-5 opacity-60" style={primaryTextStyle} />
+              <span className="text-sm font-medium opacity-60" style={primaryTextStyle}>
+                Date & Time {index + 1}
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-6">
-            {/* Date Input - Only if includeDate is true */}
-            {includeDate && (
-              <div className="space-y-3">
-                <Label htmlFor={`date-${section.id}`} className="text-sm font-medium flex items-center gap-2" style={primaryTextStyle}>
-                  <Calendar className="h-4 w-4" style={primaryTextStyle} />
-                  Date
-                </Label>
-                <Input
-                  id={`date-${section.id}`}
-                  type="date"
-                  value={selectedDate}
-                  onChange={handleDateChange}
-                  className={cn(
-                    "w-full",
-                    error && includeDate && !selectedDate 
-                      ? "border-red-500 focus:ring-red-500" 
-                      : "border-gray-300",
-                    getMobileClasses("text-base", deviceInfo?.type)
-                  )}
-                  style={{
-                    ...primaryTextStyle,
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    borderColor: theme.buttonColor + '40'
-                  }}
-                />
-              </div>
-            )}
+          {/* Input Section */}
+          <div className="max-w-2xl mx-auto space-y-8">
 
-            {/* Time Input - Only if includeTime is true */}
-            {includeTime && (
-              <div className="space-y-3">
-                <Label htmlFor={`time-${section.id}`} className="text-sm font-medium flex items-center gap-2" style={primaryTextStyle}>
-                  <Clock className="h-4 w-4" style={primaryTextStyle} />
-                  Time
-                </Label>
-                <Input
-                  id={`time-${section.id}`}
-                  type="time"
-                  value={selectedTime}
-                  onChange={handleTimeChange}
-                  className={cn(
-                    "w-full",
-                    error && includeTime && !selectedTime 
-                      ? "border-red-500 focus:ring-red-500" 
-                      : "border-gray-300",
-                    getMobileClasses("text-base", deviceInfo?.type)
-                  )}
-                  style={{
-                    ...primaryTextStyle,
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    borderColor: theme.buttonColor + '40'
-                  }}
-                />
-              </div>
-            )}
+            <div className="grid gap-6">
+              {/* Date Input - Only if includeDate is true */}
+              {includeDate && (
+                <div className="space-y-3">
+                  <Label htmlFor={`date-${section.id}`} className="text-lg font-semibold flex items-center gap-3" style={primaryTextStyle}>
+                    <Calendar className="h-5 w-5" style={primaryTextStyle} />
+                    Select Date {isRequired && <span className="text-red-500">*</span>}
+                  </Label>
+                  <Input
+                    id={`date-${section.id}`}
+                    type="date"
+                    value={selectedDate}
+                    onChange={handleDateChange}
+                    className={cn(
+                      "w-full !h-auto !px-6 !py-6 border-2 rounded-2xl text-lg font-medium",
+                      "focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500",
+                      "transition-all duration-300 ease-out",
+                      "shadow-lg hover:shadow-xl",
+                      "bg-white border-gray-300 hover:border-gray-400",
+                      "text-gray-900 placeholder:text-gray-500",
+                      "focus-visible:ring-4 focus-visible:ring-blue-500/20",
+                      error && includeDate && !selectedDate 
+                        ? "border-red-400 focus:ring-red-500/20 focus:border-red-500" 
+                        : "",
+                      getMobileClasses("!px-4 !py-4 text-base", deviceInfo?.type)
+                    )}
+                    style={{
+                      colorScheme: 'light'
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Time Input - Only if includeTime is true */}
+              {includeTime && (
+                <div className="space-y-3">
+                  <Label htmlFor={`time-${section.id}`} className="text-lg font-semibold flex items-center gap-3" style={primaryTextStyle}>
+                    <Clock className="h-5 w-5" style={primaryTextStyle} />
+                    Select Time {isRequired && <span className="text-red-500">*</span>}
+                  </Label>
+                  <Input
+                    id={`time-${section.id}`}
+                    type="time"
+                    value={selectedTime}
+                    onChange={handleTimeChange}
+                    className={cn(
+                      "w-full !h-auto !px-6 !py-6 border-2 rounded-2xl text-lg font-medium",
+                      "focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500",
+                      "transition-all duration-300 ease-out",
+                      "shadow-lg hover:shadow-xl",
+                      "bg-white border-gray-300 hover:border-gray-400",
+                      "text-gray-900 placeholder:text-gray-500",
+                      "focus-visible:ring-4 focus-visible:ring-blue-500/20",
+                      error && includeTime && !selectedTime 
+                        ? "border-red-400 focus:ring-red-500/20 focus:border-red-500" 
+                        : "",
+                      getMobileClasses("!px-4 !py-4 text-base", deviceInfo?.type)
+                    )}
+                    style={{
+                      colorScheme: 'light'
+                    }}
+                  />
+                </div>
+              )}
+            </div>
 
             {/* Error Message */}
             {error && (
-              <div className="text-center">
-                <span className="text-red-600 text-sm">{error}</span>
+              <div className="flex items-center space-x-2 text-red-600 bg-red-50 p-4 rounded-xl border border-red-200">
+                <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></div>
+                <span className="text-sm font-medium">{error}</span>
               </div>
             )}
+
+            {/* Helper Text */}
+            <div className="text-center">
+              <p className="text-sm opacity-60" style={mutedTextStyle}>
+                {includeDate && includeTime 
+                  ? "Select both date and time to continue"
+                  : includeDate 
+                  ? "Pick your preferred date"
+                  : "Choose your preferred time"
+                }
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -242,11 +284,11 @@ export function DateTimeSection({
       {/* Compliance Notice */}
       {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
-      {/* Shared Navigation Bar */}
+      {/* Enhanced Navigation Bar */}
       <SectionNavigationBar
         onPrevious={onPrevious}
         icon={<Calendar className="h-5 w-5" style={primaryTextStyle} />}
-        label={`Question ${index + 1}`}
+        label={`Date & Time ${index + 1}`}
         validationText={validationText}
         actionButton={{
           label: buttonLabel,

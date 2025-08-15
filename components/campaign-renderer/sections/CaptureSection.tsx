@@ -277,39 +277,59 @@ export function CaptureSection({
   }
 
     return (
-    <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-2xl mx-auto space-y-8">
-          {/* Header */}
-          <div className="text-center space-y-4">
-            <h1 
-              className={cn(
-                "font-bold",
-                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
-              )}
-              style={primaryTextStyle}
-            >
-              {settings.headline}
-            </h1>
-            
-            <p 
-              className={cn(
-                deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
-              )}
-              style={mutedTextStyle}
-            >
-              {settings.subheading}
-            </p>
+    <div className="min-h-screen flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
+        <div className="w-full max-w-4xl mx-auto">
+          {/* Header Section */}
+          <div className="text-center space-y-6 mb-12">
+            <div className="space-y-3">
+              <h1 
+                className={cn(
+                  "font-black tracking-tight leading-tight text-gray-900",
+                  deviceInfo?.type === 'mobile' 
+                    ? "text-4xl sm:text-5xl" 
+                    : "text-5xl sm:text-6xl lg:text-7xl"
+                )}
+                style={primaryTextStyle}
+              >
+                {settings.headline}
+              </h1>
+              
+              <p 
+                className={cn(
+                  "font-medium leading-relaxed max-w-3xl mx-auto",
+                  deviceInfo?.type === 'mobile' 
+                    ? "text-lg sm:text-xl" 
+                    : "text-xl sm:text-2xl lg:text-3xl"
+                )}
+                style={mutedTextStyle}
+              >
+                {settings.subheading}
+              </p>
+            </div>
+
+            {/* Progress Indicator */}
+            <div className="flex items-center justify-center space-x-2">
+              <Target className="h-5 w-5 opacity-60" style={primaryTextStyle} />
+              <span className="text-sm font-medium opacity-60" style={primaryTextStyle}>
+                Contact Details
+              </span>
+            </div>
           </div>
           
-          {/* Form */}
-          <div className="space-y-6">
+          {/* Enhanced Form Section */}
+          <div className="max-w-2xl mx-auto space-y-8">
             {/* Name Field */}
             {settings.enabledFields?.name && (
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium" style={primaryTextStyle}>
+              <div className="space-y-3">
+                <Label 
+                  htmlFor="name" 
+                  className="text-lg font-semibold flex items-center gap-3" 
+                  style={primaryTextStyle}
+                >
+                  <User className="h-5 w-5" style={primaryTextStyle} />
                   {settings.fieldLabels?.name}
-                  {settings.requiredFields?.name && <span className="text-destructive ml-1">*</span>}
+                  {settings.requiredFields?.name && <span className="text-red-500">*</span>}
                 </Label>
                 <Input
                   id="name"
@@ -318,14 +338,23 @@ export function CaptureSection({
                   onChange={(e) => handleFieldChange('name', e.target.value)}
                   placeholder={settings.fieldPlaceholders?.name}
                   className={cn(
-                    "h-12 text-base bg-background border-input",
-                    errors.name && "border-destructive focus-visible:ring-destructive"
+                    "w-full !h-auto !px-6 !py-6 border-2 rounded-2xl text-lg font-medium",
+                    "focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500",
+                    "transition-all duration-300 ease-out",
+                    "shadow-lg hover:shadow-xl",
+                    "bg-white border-gray-300 hover:border-gray-400",
+                    "text-gray-900 placeholder:text-gray-500",
+                    "focus-visible:ring-4 focus-visible:ring-blue-500/20",
+                    errors.name 
+                      ? "border-red-400 focus:ring-red-500/20 focus:border-red-500" 
+                      : "",
+                    getMobileClasses("!px-4 !py-4 text-base", deviceInfo?.type)
                   )}
                 />
                 {errors.name && (
-                  <div className="flex items-center space-x-1 text-destructive text-sm">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>{errors.name}</span>
+                  <div className="flex items-center space-x-2 text-red-600 bg-red-50 p-4 rounded-xl border border-red-200">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium">{errors.name}</span>
                   </div>
                 )}
               </div>
@@ -333,10 +362,15 @@ export function CaptureSection({
 
             {/* Email Field */}
             {settings.enabledFields?.email && (
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium" style={primaryTextStyle}>
+              <div className="space-y-3">
+                <Label 
+                  htmlFor="email" 
+                  className="text-lg font-semibold flex items-center gap-3" 
+                  style={primaryTextStyle}
+                >
+                  <Mail className="h-5 w-5" style={primaryTextStyle} />
                   {settings.fieldLabels?.email}
-                  {settings.requiredFields?.email && <span className="text-destructive ml-1">*</span>}
+                  {settings.requiredFields?.email && <span className="text-red-500">*</span>}
                 </Label>
                 <Input
                   id="email"
@@ -345,14 +379,23 @@ export function CaptureSection({
                   onChange={(e) => handleFieldChange('email', e.target.value)}
                   placeholder={settings.fieldPlaceholders?.email}
                   className={cn(
-                    "h-12 text-base bg-background border-input",
-                    errors.email && "border-destructive focus-visible:ring-destructive"
+                    "w-full !h-auto !px-6 !py-6 border-2 rounded-2xl text-lg font-medium",
+                    "focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500",
+                    "transition-all duration-300 ease-out",
+                    "shadow-lg hover:shadow-xl",
+                    "bg-white border-gray-300 hover:border-gray-400",
+                    "text-gray-900 placeholder:text-gray-500",
+                    "focus-visible:ring-4 focus-visible:ring-blue-500/20",
+                    errors.email 
+                      ? "border-red-400 focus:ring-red-500/20 focus:border-red-500" 
+                      : "",
+                    getMobileClasses("!px-4 !py-4 text-base", deviceInfo?.type)
                   )}
                 />
                 {errors.email && (
-                  <div className="flex items-center space-x-1 text-destructive text-sm">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>{errors.email}</span>
+                  <div className="flex items-center space-x-2 text-red-600 bg-red-50 p-4 rounded-xl border border-red-200">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium">{errors.email}</span>
                   </div>
                 )}
               </div>
@@ -360,10 +403,15 @@ export function CaptureSection({
 
             {/* Phone Field */}
             {settings.enabledFields?.phone && (
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-sm font-medium text-foreground">
+              <div className="space-y-3">
+                <Label 
+                  htmlFor="phone" 
+                  className="text-lg font-semibold flex items-center gap-3" 
+                  style={primaryTextStyle}
+                >
+                  <Phone className="h-5 w-5" style={primaryTextStyle} />
                   {settings.fieldLabels?.phone}
-                  {settings.requiredFields?.phone && <span className="text-destructive ml-1">*</span>}
+                  {settings.requiredFields?.phone && <span className="text-red-500">*</span>}
                 </Label>
                 <Input
                   id="phone"
@@ -372,40 +420,60 @@ export function CaptureSection({
                   onChange={(e) => handleFieldChange('phone', e.target.value)}
                   placeholder={settings.fieldPlaceholders?.phone}
                   className={cn(
-                    "h-12 text-base bg-background border-input",
-                    errors.phone && "border-destructive focus-visible:ring-destructive"
+                    "w-full !h-auto !px-6 !py-6 border-2 rounded-2xl text-lg font-medium",
+                    "focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500",
+                    "transition-all duration-300 ease-out",
+                    "shadow-lg hover:shadow-xl",
+                    "bg-white border-gray-300 hover:border-gray-400",
+                    "text-gray-900 placeholder:text-gray-500",
+                    "focus-visible:ring-4 focus-visible:ring-blue-500/20",
+                    errors.phone 
+                      ? "border-red-400 focus:ring-red-500/20 focus:border-red-500" 
+                      : "",
+                    getMobileClasses("!px-4 !py-4 text-base", deviceInfo?.type)
                   )}
                 />
                 {errors.phone && (
-                  <div className="flex items-center space-x-1 text-destructive text-sm">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>{errors.phone}</span>
+                  <div className="flex items-center space-x-2 text-red-600 bg-red-50 p-4 rounded-xl border border-red-200">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-sm font-medium">{errors.phone}</span>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Consent Checkboxes */}
-            <div className="space-y-3 pt-2">
+            {/* Enhanced Consent Section */}
+            <div className="space-y-4 pt-6">
               {/* Marketing Consent - Only show if at least one contact field is enabled */}
               {(settings.enabledFields?.name || settings.enabledFields?.email || settings.enabledFields?.phone) && (
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="marketing-consent"
-                    checked={formData.marketingConsent || false}
-                    onCheckedChange={(checked) => handleFieldChange('marketingConsent', !!checked)}
-                    className="mt-1"
-                  />
-                  <label htmlFor="marketing-consent" className="text-sm leading-relaxed cursor-pointer" style={primaryTextStyle}>
-                    I agree to receive relevant marketing communications from {campaign?.settings?.privacy?.organization_name || 'this business'} in accordance with their{' '}
-                    {campaign?.settings?.privacy?.privacy_policy_url ? (
-                      <a href={campaign.settings.privacy.privacy_policy_url} target="_blank" rel="noopener noreferrer" className="underline inline">
-                        Privacy Policy
-                      </a>
-                    ) : (
-                      <span className="inline">Privacy Policy</span>
-                    )}.
-                  </label>
+                <div className="bg-gray-50 p-6 rounded-2xl border-2 border-gray-200">
+                  <div className="flex items-start space-x-4">
+                    <Checkbox
+                      id="marketing-consent"
+                      checked={formData.marketingConsent || false}
+                      onCheckedChange={(checked) => handleFieldChange('marketingConsent', !!checked)}
+                      className="mt-1 h-5 w-5"
+                    />
+                    <label 
+                      htmlFor="marketing-consent" 
+                      className="text-base leading-relaxed cursor-pointer font-medium" 
+                      style={primaryTextStyle}
+                    >
+                      I agree to receive relevant marketing communications from {campaign?.settings?.privacy?.organization_name || 'this business'} in accordance with their{' '}
+                      {campaign?.settings?.privacy?.privacy_policy_url ? (
+                        <a 
+                          href={campaign.settings.privacy.privacy_policy_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="underline inline text-blue-600 hover:text-blue-800"
+                        >
+                          Privacy Policy
+                        </a>
+                      ) : (
+                        <span className="inline">Privacy Policy</span>
+                      )}.
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
@@ -416,11 +484,11 @@ export function CaptureSection({
         </div>
       </div>
 
-      {/* Shared Navigation Bar */}
+      {/* Enhanced Navigation Bar */}
       <SectionNavigationBar
         onPrevious={onPrevious}
-        icon={<User className="h-5 w-5 text-primary" />}
-        label="Contact"
+        icon={<Target className="h-5 w-5" style={primaryTextStyle} />}
+        label="Contact Details"
         validationText={getValidationText()}
         actionButton={{
           label: settings.submitButtonText || 'Unlock Results',

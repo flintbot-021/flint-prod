@@ -113,16 +113,18 @@ export function SectionNavigationBar({
   const actions = actionButtons || (actionButton ? [actionButton] : [])
   
   return (
-    <div className={cn("fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-lg", className)}>
-      <div className="max-w-4xl mx-auto px-6 py-4">
+    <div className={cn("fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-md border-t border-border/50 shadow-2xl", className)}>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
-          {/* Left: Previous Button */}
+          {/* Left: Previous Button - Enhanced */}
           <button
             onClick={onPrevious}
             disabled={!canGoPrevious}
             className={cn(
-              "flex items-center text-muted-foreground hover:text-foreground transition-colors",
-              !canGoPrevious && "opacity-50 cursor-not-allowed",
+              "flex items-center px-4 py-2.5 rounded-xl font-medium transition-all duration-200",
+              "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+              "active:scale-95 transform",
+              !canGoPrevious && "opacity-40 cursor-not-allowed hover:bg-transparent",
               isFull && deviceInfo?.type === 'mobile' && "px-6 py-3"
             )}
           >
@@ -283,7 +285,7 @@ export function SectionNavigationBar({
               )} />
             </button>
           ) : actions.length > 0 ? (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
               {actions.map((action, index) => {
                 const buttonStyles = getCampaignButtonStyles(campaign, action.variant === 'secondary' ? 'secondary' : 'primary')
                 
@@ -293,12 +295,21 @@ export function SectionNavigationBar({
                     onClick={action.onClick}
                     disabled={action.disabled}
                     className={cn(
-                      "px-6 py-2 rounded-lg font-medium transition-all duration-200",
-                      "flex items-center space-x-2 shadow-md hover:shadow-lg",
-                      action.disabled && "cursor-not-allowed opacity-50",
-                      getMobileClasses("", deviceInfo?.type)
+                      "px-8 py-3 rounded-2xl font-bold text-base transition-all duration-200",
+                      "flex items-center space-x-3 shadow-lg hover:shadow-xl",
+                      "transform hover:scale-105 active:scale-95",
+                      "border-2 border-transparent",
+                      action.disabled && "cursor-not-allowed opacity-50 hover:scale-100",
+                      getMobileClasses("px-6 py-2.5 text-sm", deviceInfo?.type)
                     )}
-                    style={action.disabled ? { backgroundColor: '#e5e7eb', color: '#6b7280' } : buttonStyles}
+                    style={action.disabled ? { 
+                      backgroundColor: '#e5e7eb', 
+                      color: '#6b7280',
+                      borderColor: '#d1d5db'
+                    } : {
+                      ...buttonStyles,
+                      borderColor: action.variant === 'secondary' ? buttonStyles.backgroundColor : 'transparent'
+                    }}
                   >
                     {action.icon && action.icon}
                     <span>{action.label}</span>

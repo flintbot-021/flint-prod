@@ -114,74 +114,114 @@ export function TextQuestionSection({
   const validationText = isRequired ? 'This field is required' : undefined
 
   return (
-    <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-2xl mx-auto space-y-8">
-          <div className="text-center space-y-4">
-            <h1 
-              className={cn(
-                "font-bold",
-                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
-              )}
-              style={primaryTextStyle}
-            >
-              {question}
-              {isRequired && <span className="text-red-500 ml-1">*</span>}
-            </h1>
-            
-            {subheading && (
-              <p 
+    <div className="min-h-screen flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
+      {/* Main Content Area */}
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
+        <div className="w-full max-w-4xl mx-auto">
+          {/* Header Section */}
+          <div className="text-center space-y-6 mb-12">
+            <div className="space-y-3">
+              <h1 
                 className={cn(
-                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                  "font-black tracking-tight leading-tight",
+                  deviceInfo?.type === 'mobile' 
+                    ? "text-4xl sm:text-5xl" 
+                    : "text-5xl sm:text-6xl lg:text-7xl"
                 )}
-                style={mutedTextStyle}
+                style={primaryTextStyle}
               >
-                {subheading}
-              </p>
-            )}
+                {question}
+                {isRequired && <span className="text-red-500 ml-2">*</span>}
+              </h1>
+              
+              {subheading && (
+                <p 
+                  className={cn(
+                    "font-medium leading-relaxed max-w-3xl mx-auto",
+                    deviceInfo?.type === 'mobile' 
+                      ? "text-lg sm:text-xl" 
+                      : "text-xl sm:text-2xl lg:text-3xl"
+                  )}
+                  style={mutedTextStyle}
+                >
+                  {subheading}
+                </p>
+              )}
+            </div>
+
+            {/* Progress Indicator */}
+            <div className="flex items-center justify-center space-x-2">
+              <MessageSquare className="h-5 w-5 opacity-60" style={primaryTextStyle} />
+              <span className="text-sm font-medium opacity-60" style={primaryTextStyle}>
+                Question {index + 1}
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-4">
+          {/* Input Section */}
+          <div className="max-w-3xl mx-auto space-y-6">
             {fieldLabel && (
-              <label className="block text-sm font-medium" style={primaryTextStyle}>
+              <label className="block text-lg font-semibold mb-3" style={primaryTextStyle}>
                 {fieldLabel}
               </label>
             )}
+            
+            <div className="relative">
               <textarea
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyPress={handleKeyPress}
+                value={inputValue}
+                onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
                 placeholder={placeholder}
-                rows={6}
-              maxLength={maxLength}
+                rows={deviceInfo?.type === 'mobile' ? 4 : 6}
+                maxLength={maxLength}
                 className={cn(
-                "w-full p-4 border rounded-lg resize-none",
-                "focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                "transition-all duration-200",
-                error 
-                  ? "border-red-500 focus:ring-red-500" 
-                  : "border-gray-300",
-                getMobileClasses("text-base", deviceInfo?.type)
+                  "w-full p-6 border-2 rounded-2xl resize-none",
+                  "text-lg leading-relaxed",
+                  "focus:ring-4 focus:ring-opacity-20 focus:border-transparent",
+                  "transition-all duration-300 ease-out",
+                  "shadow-lg hover:shadow-xl",
+                  "bg-white/90 backdrop-blur-sm",
+                  error 
+                    ? "border-red-400 focus:ring-red-500 focus:border-red-500" 
+                    : "border-gray-200 hover:border-gray-300 focus:border-blue-500 focus:ring-blue-500",
+                  getMobileClasses("text-base", deviceInfo?.type)
                 )}
+                style={{
+                  minHeight: deviceInfo?.type === 'mobile' ? '120px' : '160px'
+                }}
               />
-
-            {/* Character Counter */}
-            <div className="flex justify-between items-center text-sm">
-              <div>
-                {error && (
-                  <span className="text-red-600">{error}</span>
-                )}
+              
+              {/* Floating Character Counter */}
+              <div className="absolute bottom-3 right-4">
+                <span className={cn(
+                  "text-xs font-medium px-2 py-1 rounded-full",
+                  "transition-colors duration-200",
+                  inputValue.length > maxLength * 0.9 
+                    ? "bg-amber-100 text-amber-700" 
+                    : inputValue.length >= maxLength 
+                    ? "bg-red-100 text-red-700"
+                    : "bg-gray-100 text-gray-600"
+                )}>
+                  {inputValue.length}/{maxLength}
+                </span>
               </div>
-              <span className={cn(
-                "text-muted-foreground",
-                inputValue.length > maxLength * 0.9 && "text-amber-600",
-                inputValue.length >= maxLength && "text-red-600"
-              )}>
-                {inputValue.length}/{maxLength}
-              </span>
-          </div>
+            </div>
 
+            {/* Error Message */}
+            {error && (
+              <div className="flex items-center space-x-2 text-red-600 bg-red-50 p-4 rounded-xl border border-red-200">
+                <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></div>
+                <span className="text-sm font-medium">{error}</span>
+              </div>
+            )}
 
+            {/* Helper Text */}
+            <div className="text-center">
+              <p className="text-sm opacity-60" style={mutedTextStyle}>
+                {deviceInfo?.type === 'desktop' && "Press Ctrl+Enter to continue, or use the button below"}
+                {deviceInfo?.type !== 'desktop' && "Tap the button below when you're ready to continue"}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -189,10 +229,10 @@ export function TextQuestionSection({
       {/* Compliance Notice */}
       {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
-      {/* Shared Navigation Bar */}
+      {/* Enhanced Navigation Bar */}
       <SectionNavigationBar
         onPrevious={onPrevious}
-        icon={<MessageSquare className="h-5 w-5 text-primary" />}
+        icon={<MessageSquare className="h-5 w-5" style={primaryTextStyle} />}
         label={`Question ${index + 1}`}
         validationText={validationText}
         actionButton={{

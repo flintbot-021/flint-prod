@@ -36,18 +36,18 @@ const useCyclingLoadingMessage = (messages: string[], isLoading: boolean, interv
   return messages[currentMessageIndex] || messages[0]
 }
 
-// Engaging loading messages for the public-facing campaign
+// Clean and powerful loading messages for the public-facing campaign
 const AI_PROCESSING_MESSAGES = [
-  "Analyzing your inputs...",
-  "Generating personalized results...",
-  "Processing your unique profile...",
+  "Analyzing your unique responses...",
+  "Generating your personalized results...",
+  "Processing your individual profile...",
   "Crafting tailored recommendations...",
-  "Evaluating your responses...",
-  "Creating custom insights...",
+  "Evaluating your insights...",
+  "Creating custom strategies...",
   "Personalizing your experience...",
-  "Optimizing your results...",
-  "Finalizing your analysis...",
-  "Preparing your insights..."
+  "Optimizing your outcomes...",
+  "Finalizing your breakthrough insights...",
+  "Preparing your personalized results..."
 ]
 
 function LogicSectionComponent({
@@ -462,74 +462,181 @@ function LogicSectionComponent({
   }
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: theme.backgroundColor }}>
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-lg mx-auto space-y-8">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: theme.backgroundColor }}>
+      {/* Main Content Area */}
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
+        <div className="w-full max-w-4xl mx-auto">
           {/* Processing Display */}
-          <div className="text-center space-y-6">
+          <div className="text-center space-y-12">
             {error ? (
               <>
-                <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-                  <AlertCircle className="h-8 w-8 text-red-600" />
+                {/* Error State */}
+                <div className="relative">
+                  <div className="w-32 h-32 mx-auto bg-red-50 rounded-full flex items-center justify-center shadow-2xl">
+                    <AlertCircle className="h-16 w-16 text-red-500" />
+                  </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <h1 
                     className={cn(
-                      "font-bold",
-                      deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
+                      "font-black tracking-tight leading-tight text-gray-900",
+                      deviceInfo?.type === 'mobile' 
+                        ? "text-4xl sm:text-5xl" 
+                        : "text-5xl sm:text-6xl lg:text-7xl"
                     )}
                     style={primaryTextStyle}
                   >
                     Analysis Error
                   </h1>
-                  <p className="text-sm text-red-600">{error}</p>
-                  <p className="text-xs" style={mutedTextStyle}>Continuing to next section...</p>
+                  <p className="text-xl font-medium text-red-600 max-w-2xl mx-auto">{error}</p>
+                  <p className="text-lg opacity-60 max-w-xl mx-auto" style={mutedTextStyle}>
+                    Continuing to next section...
+                  </p>
                 </div>
               </>
             ) : isProcessing ? (
               <>
-                <div 
-                  className="w-16 h-16 mx-auto rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: `${theme.buttonColor}20` }}
-                >
-                  <div className="relative">
-                    <Loader2 className="h-8 w-8 animate-spin" style={{ color: theme.buttonColor }} />
-                    <Zap className="h-4 w-4 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" style={{ color: theme.buttonColor }} />
+                {/* Sleek Loading State */}
+                <div className="relative">
+                  {/* Animated Background Ring */}
+                  <div className="absolute inset-0 w-32 h-32 mx-auto">
+                    <div 
+                      className="w-full h-full rounded-full animate-pulse opacity-20"
+                      style={{ backgroundColor: theme.buttonColor }}
+                    />
+                  </div>
+                  
+                  {/* Main Loading Icon - Clean Circle */}
+                  <div 
+                    className="relative w-32 h-32 mx-auto rounded-full flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all duration-300"
+                    style={{ 
+                      backgroundColor: `${theme.buttonColor}20`
+                    }}
+                  >
+                    <div className="relative">
+                      <Loader2 
+                        className="h-16 w-16 animate-spin" 
+                        style={{ color: theme.buttonColor }} 
+                      />
+                      <Zap 
+                        className="h-8 w-8 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-pulse" 
+                        style={{ color: theme.buttonColor }} 
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Floating Particles */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div 
+                      className="absolute top-8 left-8 w-2 h-2 rounded-full animate-bounce opacity-60"
+                      style={{ backgroundColor: theme.buttonColor, animationDelay: '0s' }}
+                    />
+                    <div 
+                      className="absolute top-12 right-12 w-1.5 h-1.5 rounded-full animate-bounce opacity-40"
+                      style={{ backgroundColor: theme.buttonColor, animationDelay: '0.5s' }}
+                    />
+                    <div 
+                      className="absolute bottom-8 left-16 w-1 h-1 rounded-full animate-bounce opacity-50"
+                      style={{ backgroundColor: theme.buttonColor, animationDelay: '1s' }}
+                    />
                   </div>
                 </div>
-                <div className="space-y-2">
+                
+                <div className="space-y-6">
                   <h1 
                     className={cn(
-                      "font-bold",
-                      deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
+                      "font-black tracking-tight leading-tight text-gray-900",
+                      deviceInfo?.type === 'mobile' 
+                        ? "text-4xl sm:text-5xl" 
+                        : "text-5xl sm:text-6xl lg:text-7xl"
                     )}
                     style={primaryTextStyle}
                   >
                     Analyzing Your Responses
                   </h1>
-                  <p className="text-sm" style={mutedTextStyle}>{cyclingMessage}</p>
-                  {description && (
-                    <p className="text-xs mt-4" style={mutedTextStyle}>{description}</p>
-                  )}
+                  
+                  <div className="space-y-3">
+                    <p 
+                      className={cn(
+                        "font-medium leading-relaxed max-w-3xl mx-auto",
+                        deviceInfo?.type === 'mobile' 
+                          ? "text-lg sm:text-xl" 
+                          : "text-xl sm:text-2xl lg:text-3xl"
+                      )}
+                      style={mutedTextStyle}
+                    >
+                      {cyclingMessage}
+                    </p>
+                    
+                    {description && (
+                      <p 
+                        className="text-lg opacity-60 max-w-2xl mx-auto mt-6" 
+                        style={mutedTextStyle}
+                      >
+                        {description}
+                      </p>
+                    )}
+                  </div>
+                  
+
+                  
+                  {/* Animated Progress Dots */}
+                  <div className="flex justify-center space-x-2 mt-6">
+                    <div 
+                      className="w-2 h-2 rounded-full animate-pulse"
+                      style={{ 
+                        backgroundColor: theme.buttonColor,
+                        animationDelay: '0s'
+                      }}
+                    />
+                    <div 
+                      className="w-2 h-2 rounded-full animate-pulse"
+                      style={{ 
+                        backgroundColor: theme.buttonColor,
+                        animationDelay: '0.2s'
+                      }}
+                    />
+                    <div 
+                      className="w-2 h-2 rounded-full animate-pulse"
+                      style={{ 
+                        backgroundColor: theme.buttonColor,
+                        animationDelay: '0.4s'
+                      }}
+                    />
+                  </div>
                 </div>
               </>
             ) : (
               <>
-                <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
-                  <Zap className="h-8 w-8 text-green-600" />
+                {/* Success State */}
+                <div className="relative">
+                  <div className="w-32 h-32 mx-auto bg-green-50 rounded-full flex items-center justify-center shadow-2xl transform hover:scale-105 transition-all duration-300">
+                    <Zap className="h-16 w-16 text-green-500" />
+                  </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <h1 
                     className={cn(
-                      "font-bold",
-                      deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
+                      "font-black tracking-tight leading-tight text-gray-900",
+                      deviceInfo?.type === 'mobile' 
+                        ? "text-4xl sm:text-5xl" 
+                        : "text-5xl sm:text-6xl lg:text-7xl"
                     )}
                     style={primaryTextStyle}
                   >
                     Analysis Complete
                   </h1>
-                  <p className="text-sm" style={mutedTextStyle}>Your personalized results are ready!</p>
+                  <p 
+                    className={cn(
+                      "font-medium leading-relaxed max-w-2xl mx-auto",
+                      deviceInfo?.type === 'mobile' 
+                        ? "text-lg sm:text-xl" 
+                        : "text-xl sm:text-2xl"
+                    )}
+                    style={mutedTextStyle}
+                  >
+                    Your personalized results are ready!
+                  </p>
                 </div>
               </>
             )}

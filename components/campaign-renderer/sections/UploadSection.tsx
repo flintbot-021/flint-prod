@@ -312,44 +312,65 @@ export function UploadSection({
   const validationText = isRequired && totalFiles === 0 ? 'Please upload at least one file to continue' : undefined
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: theme.backgroundColor }}>
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-2xl mx-auto space-y-8">
-          {/* Header */}
-          <div className="text-center space-y-4">
-            <h1 
-              className={cn(
-                "font-bold",
-                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl lg:text-4xl"
-              )}
-              style={primaryTextStyle}
-            >
-              {headline}
-              {isRequired && <span className="text-destructive ml-1">*</span>}
-            </h1>
-            
-            {subheading && (
-              <p 
+    <div className="min-h-screen flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
+      {/* Main Content Area */}
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
+        <div className="w-full max-w-4xl mx-auto">
+          {/* Header Section */}
+          <div className="text-center space-y-6 mb-12">
+            <div className="space-y-3">
+              <h1 
                 className={cn(
-                  "max-w-lg mx-auto",
-                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                  "font-black tracking-tight leading-tight",
+                  deviceInfo?.type === 'mobile' 
+                    ? "text-4xl sm:text-5xl" 
+                    : "text-5xl sm:text-6xl lg:text-7xl"
                 )}
-                style={mutedTextStyle}
+                style={primaryTextStyle}
               >
-                {subheading}
-              </p>
-            )}
+                {headline}
+                {isRequired && <span className="text-red-500 ml-2">*</span>}
+              </h1>
+              
+              {subheading && (
+                <p 
+                  className={cn(
+                    "font-medium leading-relaxed max-w-3xl mx-auto",
+                    deviceInfo?.type === 'mobile' 
+                      ? "text-lg sm:text-xl" 
+                      : "text-xl sm:text-2xl lg:text-3xl"
+                  )}
+                  style={mutedTextStyle}
+                >
+                  {subheading}
+                </p>
+              )}
+            </div>
+
+            {/* Progress Indicator */}
+            <div className="flex items-center justify-center space-x-2">
+              <Upload className="h-5 w-5 opacity-60" style={primaryTextStyle} />
+              <span className="text-sm font-medium opacity-60" style={primaryTextStyle}>
+                Upload {index + 1}
+              </span>
+            </div>
           </div>
 
-          {/* Upload Card */}
-          <Card className={`mt-4 p-4 rounded-lg border-2 border-dashed transition-colors ${
-            isDragging
-              ? "border-blue-400 bg-blue-50"
-              : uploadStatus === 'success'
-              ? "border-green-300 bg-green-50/30"
-              : "border-gray-300 hover:border-gray-400"
-          }`}>
-            <CardContent className="p-8">
+          {/* Upload Section */}
+          <div className="max-w-3xl mx-auto space-y-8">
+
+            {/* Upload Card - Enhanced */}
+            <Card className={cn(
+              "p-8 rounded-2xl border-2 border-dashed transition-all duration-300 ease-out",
+              "shadow-lg hover:shadow-xl bg-white/90 backdrop-blur-sm",
+              isDragging
+                ? "border-blue-400 bg-blue-50 scale-105 shadow-2xl"
+                : uploadStatus === 'success'
+                ? "border-green-400 bg-green-50/50 shadow-green-200/50"
+                : "border-gray-300 hover:border-gray-400 hover:bg-gray-50/50",
+              getMobileClasses("p-6", deviceInfo?.type)
+            )}>
+              <CardContent className="p-8">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -513,8 +534,8 @@ export function UploadSection({
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
 
           {/* Error Message */}
           {errorMessage && (
@@ -527,6 +548,7 @@ export function UploadSection({
               </CardContent>
             </Card>
           )}
+          </div>
         </div>
       </div>
 
