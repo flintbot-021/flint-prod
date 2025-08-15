@@ -5,6 +5,7 @@ import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { getMobileClasses, getCampaignTheme, getCampaignTextColor } from '../utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
+import { ComplianceNotice } from '../ComplianceNotice'
 import { ChevronDown, ChevronRight, Activity } from 'lucide-react'
 
 interface SliderConfig {
@@ -334,6 +335,9 @@ export function MultipleSlidersSection({
           )}
         </div>
       </div>
+
+      {/* Compliance Notice */}
+      {campaign && <ComplianceNotice campaign={campaign} isFirstQuestion={index === 0} />}
 
       {/* Navigation */}
       <SectionNavigationBar

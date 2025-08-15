@@ -61,6 +61,7 @@ export function QuestionComponentFactory({
           isEditing={!isPreview}
           onChange={(newSettings) => onUpdate({ settings: newSettings })}
           className={className}
+          campaign={campaign}
         />
       )
 
@@ -114,6 +115,7 @@ export function QuestionComponentFactory({
           isPreview={isPreview}
           onUpdate={onUpdate}
           className={className}
+          campaign={campaign}
         />
       )
 

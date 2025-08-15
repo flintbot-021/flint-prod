@@ -255,6 +255,14 @@ export interface CampaignSettings {
     keywords?: string[];
     canonical_url?: string;
   };
+  privacy?: {
+    organization_name: string;
+    privacy_contact_email: string;
+    organization_location: string;
+    privacy_policy_url?: string;
+    configured: boolean;
+    configured_at: string;
+  };
 }
 
 /**

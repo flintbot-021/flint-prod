@@ -128,9 +128,9 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
         const res = sessionData.responses[key];
         // Check inside the 'value' property for consent data
         if (res && res.value && typeof res.value === 'object' && ('marketingConsent' in res.value || 'flintTermsConsent' in res.value)) {
-            const captureSection = sections.find(s => s.id === key || (s.configuration as any)?.variable_name === key);
-            const businessName = (captureSection?.configuration as any)?.businessName || campaign?.name || 'the business';
-            const privacyPolicyLink = (captureSection?.configuration as any)?.privacyPolicyLink || null;
+            // Use privacy settings from campaign instead of section configuration
+            const businessName = campaign?.settings?.privacy?.organization_name || campaign?.name || 'the business';
+            const privacyPolicyLink = campaign?.settings?.privacy?.privacy_policy_url || null;
 
             return {
                 marketingConsent: res.value.marketingConsent,
@@ -420,23 +420,20 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                   <div className="mt-6 pt-4 border-t border-border">
                     <h4 className="text-sm font-medium text-muted-foreground mb-3">Consents Given</h4>
                     <div className="space-y-3">
-                      <div className="flex items-start space-x-3">
-                        <Checkbox id="flint-terms-consent-display" checked={!!captureResponse.flintTermsConsent} disabled className="mt-1" />
-                        <Label htmlFor="flint-terms-consent-display" className="text-sm font-normal text-foreground leading-relaxed">
-                          Agreed to Flint’s <a href="https://launch.useflint.co/terms-conditions" target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">Terms & Conditions</a>
-                        </Label>
-                      </div>
-                      <div className="flex items-start space-x-3">
-                        <Checkbox id="marketing-consent-display" checked={!!captureResponse.marketingConsent} disabled className="mt-1" />
-                        <Label htmlFor="marketing-consent-display" className="text-sm font-normal text-foreground leading-relaxed">
-                          Agreed to receive marketing communications from {captureResponse.businessName || 'the business'}{' '}
-                          {captureResponse.privacyPolicyLink ? (
-                              <>in accordance with their <a href={captureResponse.privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">Privacy Policy</a>.</>
-                          ) : (
-                              'in accordance with their Privacy Policy.'
-                          )}
-                        </Label>
-                      </div>
+                      {/* Marketing Consent - Only show if contact fields are enabled and marketing consent was captured */}
+                      {captureResponse.marketingConsent !== undefined && (
+                        <div className="flex items-start space-x-3">
+                          <Checkbox id="marketing-consent-display" checked={!!captureResponse.marketingConsent} disabled className="mt-1" />
+                          <Label htmlFor="marketing-consent-display" className="text-sm font-normal text-foreground leading-relaxed">
+                            Agreed to receive marketing communications from {captureResponse.businessName || 'the business'}{' '}
+                            {captureResponse.privacyPolicyLink ? (
+                                <>in accordance with their <a href={captureResponse.privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline hover:text-blue-600">Privacy Policy</a>.</>
+                            ) : (
+                                'in accordance with their Privacy Policy.'
+                            )}
+                          </Label>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

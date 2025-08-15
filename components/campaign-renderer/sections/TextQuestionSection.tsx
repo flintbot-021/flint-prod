@@ -6,6 +6,7 @@ import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { getMobileClasses, getCampaignTheme, getCampaignTextColor } from '../utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
+import { ComplianceNotice } from '../ComplianceNotice'
 
 // =============================================================================
 // TEXT QUESTION SECTION COMPONENT
@@ -178,6 +179,9 @@ export function TextQuestionSection({
           </div>
         </div>
       </div>
+
+      {/* Compliance Notice */}
+      <ComplianceNotice campaign={campaign} isFirstQuestion={index === 0} />
 
       {/* Shared Navigation Bar */}
       <SectionNavigationBar

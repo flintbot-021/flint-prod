@@ -6,6 +6,7 @@ import { SectionRendererProps } from '../types'
 import { getMobileClasses, getDefaultChoices, getCampaignTheme, getCampaignTextColor, getCampaignButtonStyles } from '../utils'
 import { cn } from '@/lib/utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
+import { ComplianceNotice } from '../ComplianceNotice'
 
 export function MultipleChoiceSection({
   section,
@@ -143,6 +144,9 @@ export function MultipleChoiceSection({
 
         </div>
       </div>
+
+      {/* Compliance Notice */}
+      <ComplianceNotice campaign={campaign} isFirstQuestion={index === 0} />
 
       {/* Shared Navigation Bar */}
       <SectionNavigationBar

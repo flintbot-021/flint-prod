@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { Switch } from '@/components/ui/switch'
 import { InlineEditableText } from '@/components/ui/inline-editable-text'
+import { getCampaignTheme, getCampaignTextColor } from '@/components/campaign-renderer/utils'
 
 interface SliderQuestionProps {
   settings: {
@@ -29,6 +30,7 @@ interface SliderQuestionProps {
   onChange?: (settings: any) => void
   onNext?: () => void
   className?: string
+  campaign?: any
 }
 
 export function SliderQuestion({
@@ -37,10 +39,16 @@ export function SliderQuestion({
   isEditing = false,
   onChange,
   onNext,
-  className
+  className,
+  campaign
 }: SliderQuestionProps) {
   const [sliderValue, setSliderValue] = useState<number[]>([settings.defaultValue])
   const [editingField, setEditingField] = useState<string | null>(null)
+
+  // Get campaign theme colors
+  const theme = getCampaignTheme(campaign)
+  const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
+  const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
 
   const handleSettingChange = useCallback((key: string, value: any) => {
     if (onChange) {
@@ -70,15 +78,15 @@ export function SliderQuestion({
 
   if (isPreview) {
     return (
-      <div className={cn('py-16 px-6 max-w-2xl mx-auto', className)}>
+      <div className={cn('py-16 px-6 max-w-2xl mx-auto', className)} style={{ backgroundColor: theme.backgroundColor }}>
         {/* Question */}
         <div className="pt-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-900">
+          <h1 className="text-4xl font-bold" style={primaryTextStyle}>
             {settings.headline || 'Your question text here...'}
           </h1>
           {settings.subheading && (
             <div className="pt-4">
-              <p className="text-xl text-gray-600">
+              <p className="text-xl" style={mutedTextStyle}>
                 {settings.subheading}
               </p>
             </div>
@@ -89,7 +97,13 @@ export function SliderQuestion({
         <div className="pt-8 space-y-6">
           {settings.showValue && (
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-500 text-white text-2xl font-bold shadow-lg">
+              <div 
+                className="inline-flex items-center justify-center w-16 h-16 rounded-full text-2xl font-bold shadow-lg"
+                style={{
+                  backgroundColor: theme.buttonColor,
+                  color: theme.backgroundColor
+                }}
+              >
                 {sliderValue[0]}
               </div>
             </div>
@@ -104,7 +118,7 @@ export function SliderQuestion({
               step={settings.step}
               className="w-full"
             />
-            <div className="flex justify-between text-sm text-gray-400">
+            <div className="flex justify-between text-sm" style={mutedTextStyle}>
               <div className="text-center space-y-2">
                 <div>{settings.minValue}</div>
                 <div className="text-xs">{settings.minLabel || 'Low'}</div>

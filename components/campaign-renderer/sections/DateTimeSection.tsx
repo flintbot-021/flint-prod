@@ -6,6 +6,7 @@ import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { getMobileClasses, getCampaignTheme, getCampaignTextColor } from '../utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
+import { ComplianceNotice } from '../ComplianceNotice'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -170,7 +171,7 @@ export function DateTimeSection({
             {includeDate && (
               <div className="space-y-3">
                 <Label htmlFor={`date-${section.id}`} className="text-sm font-medium flex items-center gap-2" style={primaryTextStyle}>
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="h-4 w-4" style={primaryTextStyle} />
                   Date
                 </Label>
                 <Input
@@ -185,6 +186,11 @@ export function DateTimeSection({
                       : "border-gray-300",
                     getMobileClasses("text-base", deviceInfo?.type)
                   )}
+                  style={{
+                    ...primaryTextStyle,
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    borderColor: theme.buttonColor + '40'
+                  }}
                 />
               </div>
             )}
@@ -193,7 +199,7 @@ export function DateTimeSection({
             {includeTime && (
               <div className="space-y-3">
                 <Label htmlFor={`time-${section.id}`} className="text-sm font-medium flex items-center gap-2" style={primaryTextStyle}>
-                  <Clock className="h-4 w-4" />
+                  <Clock className="h-4 w-4" style={primaryTextStyle} />
                   Time
                 </Label>
                 <Input
@@ -208,6 +214,11 @@ export function DateTimeSection({
                       : "border-gray-300",
                     getMobileClasses("text-base", deviceInfo?.type)
                   )}
+                  style={{
+                    ...primaryTextStyle,
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    borderColor: theme.buttonColor + '40'
+                  }}
                 />
               </div>
             )}
@@ -222,10 +233,13 @@ export function DateTimeSection({
         </div>
       </div>
 
+      {/* Compliance Notice */}
+      {campaign && <ComplianceNotice campaign={campaign} isFirstQuestion={index === 0} />}
+
       {/* Shared Navigation Bar */}
       <SectionNavigationBar
         onPrevious={onPrevious}
-        icon={<Calendar className="h-5 w-5 text-primary" />}
+        icon={<Calendar className="h-5 w-5" style={primaryTextStyle} />}
         label={`Question ${index + 1}`}
         validationText={validationText}
         actionButton={{

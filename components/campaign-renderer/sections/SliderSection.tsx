@@ -3,9 +3,10 @@
 import React, { useState } from 'react'
 import { Activity } from 'lucide-react'
 import { SectionRendererProps } from '../types'
-import { getMobileClasses, getCampaignTheme, getCampaignButtonStyles } from '../utils'
+import { getMobileClasses, getCampaignTheme, getCampaignButtonStyles, getCampaignTextColor } from '../utils'
 import { cn } from '@/lib/utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
+import { ComplianceNotice } from '../ComplianceNotice'
 
 export function SliderSection({
   section,
@@ -58,27 +59,28 @@ export function SliderSection({
 
   // Get campaign theme colors
   const theme = getCampaignTheme(campaign)
+  const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
+  const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
 
 
 
   return (
-    <div className="h-full bg-background flex flex-col pb-20">
+    <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           <div className="text-center space-y-4">
             <h1 className={cn(
-              "font-bold text-foreground",
+              "font-bold",
               deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
-            )}>
+            )} style={primaryTextStyle}>
               {question}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
             </h1>
             
             {subheading && (
               <p className={cn(
-                "text-muted-foreground",
                 deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
-              )}>
+              )} style={mutedTextStyle}>
                 {subheading}
               </p>
             )}
@@ -137,19 +139,22 @@ export function SliderSection({
               </div>
 
               {/* Labels */}
-              <div className="flex justify-between items-center text-sm text-muted-foreground">
+              <div className="flex justify-between items-center text-sm" style={mutedTextStyle}>
                 <span>{minLabel}</span>
                 <span>{maxLabel}</span>
               </div>
             </div>
 
             {/* Additional context */}
-            <div className="text-center text-sm text-muted-foreground">
+            <div className="text-center text-sm" style={mutedTextStyle}>
               Move the slider to select your rating from {minValue} to {maxValue}
           </div>
           </div>
         </div>
       </div>
+
+      {/* Compliance Notice */}
+      {campaign && <ComplianceNotice campaign={campaign} isFirstQuestion={index === 0} />}
 
       {/* Shared Navigation Bar */}
       <SectionNavigationBar
