@@ -140,7 +140,8 @@ export async function getKnowledgeBaseForAI(campaignId: string): Promise<{
   }
 
   try {
-    await requireAuth()
+    // Don't require auth for public campaign knowledge base access
+    // RLS policies handle the security for published campaigns
     const supabase = await getSupabaseClient()
     
     const { data, error } = await supabase
