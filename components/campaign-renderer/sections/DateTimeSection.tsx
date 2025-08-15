@@ -41,7 +41,7 @@ export function DateTimeSection({
   const subheading = description || ''
   const includeDate = configData.includeDate ?? true
   const includeTime = configData.includeTime ?? false
-  const isRequired = configData.required ?? true
+  const isRequired = configData.required ?? false
   const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
   
   // Theme styles

@@ -32,6 +32,7 @@ export function KnowledgeBaseModal({
   const [entries, setEntries] = useState<KnowledgeBaseEntry[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
+  const [editingEntry, setEditingEntry] = useState<KnowledgeBaseEntry | null>(null)
   const [uploadError, setUploadError] = useState<string>('')
   const [newEntry, setNewEntry] = useState<NewEntry>({
     title: '',
@@ -129,8 +130,109 @@ export function KnowledgeBaseModal({
     }
   }
 
-  const handleDeleteEntry = async (entryId: string) => {
+  const handleEditEntry = (entry: KnowledgeBaseEntry) => {
+    setEditingEntry(entry)
+    setNewEntry({
+      title: entry.title,
+      content: entry.content,
+      type: entry.content_type === 'document' ? 'file' : 'text'
+    })
+    setShowAddForm(false)
+    setUploadError('')
+  }
+
+  const handleUpdateEntry = async () => {
+    if (!editingEntry) return
+    
+    // Clear any previous errors
+    setUploadError('')
+    
+    // For text entries, both title and content are required
+    // For file entries when editing, only title is required (content and file are optional)
+    if (!newEntry.title.trim() || (newEntry.type === 'text' && !newEntry.content.trim())) {
+      return
+    }
+
     setIsLoading(true)
+    try {
+      // If there's a new file, we need to create a new entry instead of updating
+      // because the current API doesn't handle file updates in PUT method
+      if (newEntry.file) {
+        // Delete the old entry and create a new one with the file
+        await handleDeleteEntry(editingEntry.id)
+        
+        // Create new entry with file
+        const formData = new FormData()
+        formData.append('title', newEntry.title)
+        formData.append('content', newEntry.content)
+        formData.append('content_type', newEntry.type)
+        formData.append('campaign_id', campaignId)
+        formData.append('file', newEntry.file)
+
+        const response = await fetch(`/api/knowledge-base`, {
+          method: 'POST',
+          body: formData
+        })
+
+        const result = await response.json()
+        
+        if (response.ok && result.success) {
+          await loadEntries()
+          setNewEntry({ title: '', content: '', type: 'text' })
+          setEditingEntry(null)
+          setUploadError('')
+        } else {
+          setUploadError(result.error || 'Failed to update entry with new file.')
+        }
+      } else {
+        // Regular update without file - use JSON
+        const updateData = {
+          id: editingEntry.id,
+          title: newEntry.title,
+          content: newEntry.content,
+          content_type: editingEntry.content_type, // Keep original content type
+          is_active: true,
+          metadata: editingEntry.metadata // Preserve existing metadata
+        }
+
+        const response = await fetch(`/api/knowledge-base`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(updateData)
+        })
+
+        const result = await response.json()
+        
+        if (response.ok && result.success) {
+          await loadEntries()
+          setNewEntry({ title: '', content: '', type: 'text' })
+          setEditingEntry(null)
+          setUploadError('')
+        } else {
+          setUploadError(result.error || 'Failed to update entry.')
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update knowledge base entry:', error)
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        setUploadError('Network error. Please check your connection and try again.')
+      } else {
+        setUploadError('An unexpected error occurred. Please try again.')
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingEntry(null)
+    setNewEntry({ title: '', content: '', type: 'text' })
+    setUploadError('')
+  }
+
+  const handleDeleteEntry = async (entryId: string) => {
     try {
       const response = await fetch(`/api/knowledge-base?id=${entryId}`, {
         method: 'DELETE'
@@ -139,14 +241,14 @@ export function KnowledgeBaseModal({
       const result = await response.json()
       
       if (response.ok && result.success) {
-        await loadEntries()
+        return true
       } else {
         console.error('Failed to delete entry:', result.error || 'Unknown error')
+        return false
       }
     } catch (error) {
       console.error('Failed to delete knowledge base entry:', error)
-    } finally {
-      setIsLoading(false)
+      return false
     }
   }
 
@@ -203,9 +305,14 @@ export function KnowledgeBaseModal({
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
-          {/* Add Entry Form */}
-          {showAddForm && (
+          {/* Add/Edit Entry Form */}
+          {(showAddForm || editingEntry) && (
             <Card className="p-4 mb-6 border-blue-200 bg-blue-50">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  {editingEntry ? 'Edit Knowledge Base Entry' : 'Add Knowledge Base Entry'}
+                </h3>
+              </div>
               {/* Error Message */}
               {uploadError && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
@@ -263,7 +370,9 @@ export function KnowledgeBaseModal({
                   </div>
                 ) : (
                   <div>
-                    <Label htmlFor="entry-file">Upload File</Label>
+                    <Label htmlFor="entry-file">
+                      {editingEntry && editingEntry.content_type === 'document' ? 'Replace File (Optional)' : 'Upload File'}
+                    </Label>
                     <input
                       id="entry-file"
                       type="file"
@@ -271,36 +380,41 @@ export function KnowledgeBaseModal({
                       accept=".txt,.md,.pdf,.doc,.docx"
                       className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                     />
-                    {newEntry.file && (
-                      <div className="mt-2">
-                        <Textarea
-                          value={newEntry.content}
-                          onChange={(e) => setNewEntry(prev => ({ ...prev, content: e.target.value }))}
-                          placeholder="Add additional context or description for this file..."
-                          rows={3}
-                          className="mt-1"
-                        />
-                      </div>
+                    {editingEntry && editingEntry.content_type === 'document' && !newEntry.file && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Current file: {editingEntry.metadata?.file_name || 'Unknown file'}
+                      </p>
                     )}
+                    <div className="mt-2">
+                      <Textarea
+                        value={newEntry.content}
+                        onChange={(e) => setNewEntry(prev => ({ ...prev, content: e.target.value }))}
+                        placeholder={editingEntry && editingEntry.content_type === 'document' 
+                          ? "Edit description or context for this file..." 
+                          : "Add additional context or description for this file..."}
+                        rows={3}
+                        className="mt-1"
+                      />
+                    </div>
                   </div>
                 )}
 
                 <div className="flex items-center gap-2">
                   <Button
-                    onClick={handleAddEntry}
+                    onClick={editingEntry ? handleUpdateEntry : handleAddEntry}
                     disabled={
                       !newEntry.title.trim() || 
                       (newEntry.type === 'text' && !newEntry.content.trim()) ||
-                      (newEntry.type === 'file' && !newEntry.file && !newEntry.content.trim()) ||
+                      (newEntry.type === 'file' && !editingEntry && !newEntry.file && !newEntry.content.trim()) ||
                       isLoading
                     }
                     size="sm"
                   >
-                    Add Entry
+                    {editingEntry ? 'Update Entry' : 'Add Entry'}
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => {
+                    onClick={editingEntry ? handleCancelEdit : () => {
                       setShowAddForm(false)
                       setNewEntry({ title: '', content: '', type: 'text' })
                       setUploadError('') // Clear errors when canceling
@@ -315,7 +429,7 @@ export function KnowledgeBaseModal({
           )}
 
           {/* Add Entry Button */}
-          {!showAddForm && (
+          {!showAddForm && !editingEntry && (
             <Button
               onClick={() => setShowAddForm(true)}
               className="mb-6"
@@ -369,17 +483,35 @@ export function KnowledgeBaseModal({
                         </p>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDeleteEntry(entry.id)
-                      }}
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditEntry(entry)
+                        }}
+                        className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async (e) => {
+                          e.stopPropagation()
+                          setIsLoading(true)
+                          const success = await handleDeleteEntry(entry.id)
+                          if (success) {
+                            await loadEntries()
+                          }
+                          setIsLoading(false)
+                        }}
+                        className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 </Card>
               ))}

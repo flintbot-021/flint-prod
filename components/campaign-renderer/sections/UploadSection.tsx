@@ -72,7 +72,7 @@ export function UploadSection({
   const configData = config as any
   const headline = title || 'Upload your file'
   const subheading = description || ''
-  const isRequired = configData.required ?? true
+  const isRequired = configData.required ?? false
   const buttonLabel = configData.buttonText || config.buttonLabel || 'Continue'
   const allowMultiple = configData.allowMultiple ?? false
   const maxFiles = configData.maxFiles || 1
@@ -452,7 +452,7 @@ export function UploadSection({
                 >
                   {/* Upload Icon - Simple and Clean */}
                   {uploadStatus === 'uploading' ? (
-                    <Loader2 className="h-10 w-10 text-blue-600 animate-spin mx-auto" />
+                    <Loader2 className="h-10 w-10 animate-spin mx-auto" style={{ color: theme.buttonColor }} />
                   ) : uploadStatus === 'error' ? (
                     <AlertCircle className="h-10 w-10 text-destructive mx-auto" />
                   ) : (
@@ -464,14 +464,15 @@ export function UploadSection({
 
                   {/* Upload Text - Simplified */}
                   <div className="space-y-2">
-                    <p className={cn(
-                      "text-base font-medium transition-colors",
-                      uploadStatus === 'uploading'
-                        ? "text-blue-600"
-                        : isDragging 
-                        ? "text-primary"
-                        : "text-foreground"
-                    )}>
+                    <p 
+                      className={cn(
+                        "text-base font-medium transition-colors",
+                        isDragging 
+                          ? "text-primary"
+                          : uploadStatus !== 'uploading' && "text-foreground"
+                      )}
+                      style={uploadStatus === 'uploading' ? { color: theme.buttonColor } : undefined}
+                    >
                       {uploadStatus === 'uploading' 
                         ? "Uploading files..."
                         : isDragging 

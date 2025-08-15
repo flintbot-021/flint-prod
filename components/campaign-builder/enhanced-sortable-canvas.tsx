@@ -3,6 +3,7 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CampaignSection, SectionType } from '@/lib/types/campaign-builder'
+import { Campaign } from '@/lib/types/database'
 import { SectionBlock } from './section-block'
 import { MandatorySectionPlaceholder } from './mandatory-section-placeholder'
 import { OptionalSectionPlaceholder, TemplatePlaceholder } from './optional-section-placeholder'
@@ -35,6 +36,7 @@ interface EnhancedSortableCanvasProps {
   campaignName?: string
   sectionPersistence?: SectionPersistence
   onPersistenceChange?: () => void
+  campaign?: Campaign
 }
 
 export function EnhancedSortableCanvas({ 
@@ -53,7 +55,8 @@ export function EnhancedSortableCanvas({
   campaignId,
   campaignName,
   sectionPersistence,
-  onPersistenceChange
+  onPersistenceChange,
+  campaign
 }: EnhancedSortableCanvasProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: 'campaign-canvas',
@@ -193,6 +196,7 @@ export function EnhancedSortableCanvas({
                   allSections={sections}
                   campaignId={campaignId}
                   showDragHandle={true}
+                  campaign={campaign}
                 />
               ))}
             </SortableContext>
@@ -220,6 +224,7 @@ export function EnhancedSortableCanvas({
                 allSections={sections}
                 campaignId={campaignId}
                 showDragHandle={false}
+                campaign={campaign}
               />
             ))}
 

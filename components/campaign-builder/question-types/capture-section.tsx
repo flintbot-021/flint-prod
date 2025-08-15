@@ -429,25 +429,27 @@ export function CaptureSection({
                   </label>
                 </div>
                 
-                {/* Marketing Consent */}
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="marketing-consent"
-                    checked={!!formData.marketingConsent}
-                    onCheckedChange={(checked) => handleFieldChange('marketingConsent', !!checked)}
-                    className="mt-1"
-                  />
-                  <label htmlFor="marketing-consent" className="text-sm text-gray-300 leading-relaxed cursor-pointer">
-                    I agree to receive relevant marketing communications from {businessName || 'this business'} in accordance with their{' '}
-                    {privacyPolicyLink ? (
-                      <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline inline">
-                        Privacy Policy
-                      </a>
-                    ) : (
-                      <span className="inline">Privacy Policy</span>
-                    )}.
-                  </label>
-                </div>
+                {/* Marketing Consent - Only show if at least one contact field is enabled */}
+                {(enabledFields.name || enabledFields.email || enabledFields.phone) && (
+                  <div className="flex items-start space-x-2">
+                    <Checkbox
+                      id="marketing-consent"
+                      checked={!!formData.marketingConsent}
+                      onCheckedChange={(checked) => handleFieldChange('marketingConsent', !!checked)}
+                      className="mt-1"
+                    />
+                    <label htmlFor="marketing-consent" className="text-sm text-gray-300 leading-relaxed cursor-pointer">
+                      I agree to receive relevant marketing communications from {businessName || 'this business'} in accordance with their{' '}
+                      {privacyPolicyLink ? (
+                        <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline inline">
+                          Privacy Policy
+                        </a>
+                      ) : (
+                        <span className="inline">Privacy Policy</span>
+                      )}.
+                    </label>
+                  </div>
+                )}
                 
               </div>
 
@@ -588,18 +590,20 @@ export function CaptureSection({
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Marketing Consent Configuration */}
+      {/* Marketing Consent Configuration */}
+      {(enabledFields.name || enabledFields.email || enabledFields.phone) && (
         <div className="space-y-4 pt-6">
           <h3 className="text-sm font-medium text-foreground">Marketing Consent</h3>
           <p className="text-xs text-muted-foreground">
-            The marketing consent checkbox is always displayed. Configure its content below.
+            The marketing consent checkbox will be displayed when contact fields are enabled. Business name is required.
           </p>
           <div className="space-y-3">
             <div className="p-4 bg-background border border-border rounded-lg space-y-3">
               <div>
                 <Label htmlFor="businessName" className="text-sm font-medium text-foreground">
-                  Business Name (Optional)
+                  Business Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="businessName"
@@ -616,8 +620,16 @@ export function CaptureSection({
                       e.currentTarget.blur()
                     }
                   }}
-                  className="mt-1"
+                  className={cn(
+                    "mt-1",
+                    !localBusinessName.trim() && "border-red-500"
+                  )}
                 />
+                {!localBusinessName.trim() && (
+                  <p className="text-red-500 text-xs mt-1">
+                    Business name is required when contact fields are enabled
+                  </p>
+                )}
               </div>
               <div>
                 <Label htmlFor="privacyPolicyLink" className="text-sm font-medium text-foreground">
@@ -644,9 +656,7 @@ export function CaptureSection({
             </div>
           </div>
         </div>
-      </div>
-
-
+      )}
     </div>
   )
 } 

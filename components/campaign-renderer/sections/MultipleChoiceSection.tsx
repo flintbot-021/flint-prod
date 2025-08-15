@@ -25,7 +25,7 @@ export function MultipleChoiceSection({
   const [selectedValue, setSelectedValue] = useState<string>(existingResponse)
   
   const choices = config.options || getDefaultChoices()
-  const isRequired = config.required ?? true
+  const isRequired = config.required ?? false
   
   // Theme styles
   const theme = getCampaignTheme(campaign)

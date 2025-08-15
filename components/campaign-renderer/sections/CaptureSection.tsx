@@ -406,25 +406,27 @@ export function CaptureSection({
                 </label>
               </div>
 
-              {/* Marketing Consent */}
-              <div className="flex items-start space-x-3">
-                <Checkbox
-                  id="marketing-consent"
-                  checked={formData.marketingConsent || false}
-                  onCheckedChange={(checked) => handleFieldChange('marketingConsent', !!checked)}
-                  className="mt-1"
-                />
-                <label htmlFor="marketing-consent" className="text-sm leading-relaxed cursor-pointer" style={primaryTextStyle}>
-                  I agree to receive relevant marketing communications from {settings.businessName || 'this business'} in accordance with their{' '}
-                  {settings.privacyPolicyLink ? (
-                    <a href={settings.privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline inline">
-                      Privacy Policy
-                    </a>
-                  ) : (
-                    <span className="inline">Privacy Policy</span>
-                  )}.
-                </label>
-              </div>
+              {/* Marketing Consent - Only show if at least one contact field is enabled */}
+              {(settings.enabledFields?.name || settings.enabledFields?.email || settings.enabledFields?.phone) && (
+                <div className="flex items-start space-x-3">
+                  <Checkbox
+                    id="marketing-consent"
+                    checked={formData.marketingConsent || false}
+                    onCheckedChange={(checked) => handleFieldChange('marketingConsent', !!checked)}
+                    className="mt-1"
+                  />
+                  <label htmlFor="marketing-consent" className="text-sm leading-relaxed cursor-pointer" style={primaryTextStyle}>
+                    I agree to receive relevant marketing communications from {settings.businessName || 'this business'} in accordance with their{' '}
+                    {settings.privacyPolicyLink ? (
+                      <a href={settings.privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline inline">
+                        Privacy Policy
+                      </a>
+                    ) : (
+                      <span className="inline">Privacy Policy</span>
+                    )}.
+                  </label>
+                </div>
+              )}
             </div>
 
 

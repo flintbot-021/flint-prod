@@ -1,6 +1,7 @@
 'use client'
 
 import { CampaignSection } from '@/lib/types/campaign-builder'
+import { Campaign } from '@/lib/types/database'
 import { TextQuestion } from './text-question'
 import { MultipleChoiceQuestion } from './multiple-choice-question'
 import { RatingScaleQuestion } from './rating-scale-question'
@@ -19,6 +20,7 @@ interface QuestionComponentFactoryProps {
   onUpdate: (updates: Partial<CampaignSection>) => Promise<void>
   className?: string
   campaignId: string
+  campaign?: Campaign
 }
 
 export function QuestionComponentFactory({
@@ -26,7 +28,8 @@ export function QuestionComponentFactory({
   isPreview = false,
   onUpdate,
   className,
-  campaignId
+  campaignId,
+  campaign
 }: QuestionComponentFactoryProps) {
   // Route to appropriate question component based on section type
   switch (section.type) {
@@ -89,6 +92,7 @@ export function QuestionComponentFactory({
           onUpdate={onUpdate}
           className={className}
           campaignId={campaignId}
+          campaign={campaign}
         />
       )
     
@@ -255,6 +259,7 @@ export function QuestionComponentFactory({
           isPreview={isPreview}
           onUpdate={onUpdate}
           className={className}
+          campaignId={campaignId}
         />
       )
   }
