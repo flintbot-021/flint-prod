@@ -6,6 +6,7 @@ import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { getMobileClasses, getCampaignTheme, getCampaignTextColor } from '../utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
+import { ComplianceNotice } from '../ComplianceNotice'
 
 // =============================================================================
 // TEXT QUESTION SECTION COMPONENT
@@ -23,7 +24,8 @@ export function TextQuestionSection({
   onSectionComplete,
   onResponseUpdate,
   userInputs,
-  campaign
+  campaign,
+  sections
 }: SectionRendererProps) {
   // Initialize with existing response if available
   const existingResponse = userInputs?.[section.id] || ''
@@ -178,6 +180,9 @@ export function TextQuestionSection({
           </div>
         </div>
       </div>
+
+      {/* Compliance Notice */}
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
       {/* Shared Navigation Bar */}
       <SectionNavigationBar

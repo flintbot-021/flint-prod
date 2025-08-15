@@ -132,25 +132,27 @@ export function CaptureSection({
 
   // Initialize form data with existing responses if available
   const existingData = userInputs?.[section.id] || {}
+  
+  // Default marketing consent to true if any contact fields are enabled and not previously set
+  const defaultMarketingConsent = (settings.enabledFields?.name || settings.enabledFields?.email || settings.enabledFields?.phone) && 
+    existingData.marketingConsent === undefined ? true : (existingData.marketingConsent || false)
+  
   const [formData, setFormData] = useState<{
     name?: string
     email?: string
     phone?: string
     marketingConsent?: boolean
-    flintTermsConsent?: boolean
   }>({
     name: existingData.name || '',
     email: existingData.email || '',
     phone: existingData.phone || '',
-    marketingConsent: existingData.marketingConsent || false,
-    flintTermsConsent: existingData.flintTermsConsent || false,
+    marketingConsent: defaultMarketingConsent,
   })
   
   const [errors, setErrors] = useState<{ 
     name?: string
     email?: string
     phone?: string
-    flintTermsConsent?: string
   }>({})
 
   // Handle form field changes
@@ -199,10 +201,7 @@ export function CaptureSection({
       }
     }
 
-    // Validate Flint T&C
-    if (!formData.flintTermsConsent) {
-      newErrors.flintTermsConsent = 'You must accept Flint\'s Terms & Conditions to continue'
-    }
+
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -229,7 +228,6 @@ export function CaptureSection({
       }
       
       responseData.marketingConsent = formData.marketingConsent
-      responseData.flintTermsConsent = formData.flintTermsConsent
 
       onSectionComplete(index, {
         ...responseData,
@@ -264,10 +262,7 @@ export function CaptureSection({
       }
     }
     
-    // Check Flint T&C
-    if (!formData.flintTermsConsent) {
-      isValid = false
-    }
+
 
     return isValid
   }
@@ -392,20 +387,6 @@ export function CaptureSection({
 
             {/* Consent Checkboxes */}
             <div className="space-y-3 pt-2">
-              {/* Flint T&C */}
-              <div className="flex items-start space-x-3">
-                <Checkbox
-                  id="flint-terms-consent"
-                  checked={formData.flintTermsConsent || false}
-                  onCheckedChange={(checked) => handleFieldChange('flintTermsConsent', !!checked)}
-                  className="mt-1"
-                />
-                <label htmlFor="flint-terms-consent" className="text-sm leading-relaxed cursor-pointer" style={primaryTextStyle}>
-                  I agree to Flint's <a href="https://launch.useflint.co/terms-conditions" target="_blank" rel="noopener noreferrer" className="underline">Terms & Conditions</a>
-                  <span className="text-destructive ml-1">*</span>
-                </label>
-              </div>
-
               {/* Marketing Consent - Only show if at least one contact field is enabled */}
               {(settings.enabledFields?.name || settings.enabledFields?.email || settings.enabledFields?.phone) && (
                 <div className="flex items-start space-x-3">
@@ -416,9 +397,9 @@ export function CaptureSection({
                     className="mt-1"
                   />
                   <label htmlFor="marketing-consent" className="text-sm leading-relaxed cursor-pointer" style={primaryTextStyle}>
-                    I agree to receive relevant marketing communications from {settings.businessName || 'this business'} in accordance with their{' '}
-                    {settings.privacyPolicyLink ? (
-                      <a href={settings.privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline inline">
+                    I agree to receive relevant marketing communications from {campaign?.settings?.privacy?.organization_name || 'this business'} in accordance with their{' '}
+                    {campaign?.settings?.privacy?.privacy_policy_url ? (
+                      <a href={campaign.settings.privacy.privacy_policy_url} target="_blank" rel="noopener noreferrer" className="underline inline">
                         Privacy Policy
                       </a>
                     ) : (
@@ -430,12 +411,7 @@ export function CaptureSection({
             </div>
 
 
-            {errors.flintTermsConsent && (
-              <div className="flex items-center space-x-1 text-destructive text-sm">
-                <AlertCircle className="h-4 w-4" />
-                <span>{errors.flintTermsConsent}</span>
-              </div>
-            )}
+
           </div>
         </div>
       </div>

@@ -8,15 +8,19 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/use-toast'
+import { PrivacyConfigModal } from '@/components/ui/privacy-config-modal'
 import { 
   AlertTriangle, 
   CheckCircle, 
   Globe, 
   ExternalLink,
   Loader2,
-  X
+  X,
+  Shield,
+  Edit3
 } from 'lucide-react'
-import type { Campaign } from '@/lib/types/database'
+import type { Campaign, Profile } from '@/lib/types/database'
+import { getCurrentProfile } from '@/lib/data-access/profiles'
 
 interface PublishModalProps {
   campaign: Campaign
@@ -54,6 +58,8 @@ export function PublishModal({
   const [validationErrors, setValidationErrors] = useState<string[]>([])
   const [billingInfo, setBillingInfo] = useState<BillingInfo | null>(null)
   const [isLoadingBilling, setIsLoadingBilling] = useState(true)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false)
 
   // Generate URL preview
   const generateUrlSlug = (name: string) => {
@@ -72,11 +78,12 @@ export function PublishModal({
   
   const fullUrl = `${typeof window !== 'undefined' ? window.location.origin : 'yoursite.com'}/c/[user-key]/${previewUrl}`
 
-  // Load billing information and validation errors
+  // Load billing information, validation errors, and profile
   useEffect(() => {
     if (isOpen) {
       loadBillingInfo()
       loadValidationErrors()
+      loadProfile()
       
       // If campaign is published, populate the custom URL field with existing URL
       if (isPublished && campaign.published_url) {
@@ -121,11 +128,27 @@ export function PublishModal({
     }
   }
 
+  const loadProfile = async () => {
+    try {
+      const result = await getCurrentProfile()
+      if (result.success && result.data) {
+        setProfile(result.data)
+      }
+    } catch (error) {
+      console.error('Failed to load profile:', error)
+    }
+  }
+
   const loadValidationErrors = async () => {
     const errors: string[] = []
     
     if (!campaign.name || campaign.name.trim() === '') {
       errors.push('Campaign must have a name')
+    }
+
+    // Check if privacy is configured (required for publishing)
+    if (!campaign.settings?.privacy?.configured) {
+      errors.push('Privacy details must be configured before publishing')
     }
 
     setValidationErrors([...errors, ...mandatoryValidationErrors])
@@ -245,6 +268,55 @@ export function PublishModal({
     onClose()
   }
 
+  const handlePrivacySave = async (privacySettings: {
+    organization_name: string
+    privacy_contact_email: string
+    organization_location: string
+    privacy_policy_url?: string
+  }) => {
+    try {
+      const updatedSettings = {
+        ...campaign.settings,
+        privacy: {
+          ...privacySettings,
+          configured: true,
+          configured_at: new Date().toISOString()
+        }
+      }
+
+      const response = await fetch(`/api/campaigns/${campaign.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          settings: updatedSettings
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to save privacy settings')
+      }
+
+      // Update local campaign object
+      campaign.settings = updatedSettings
+      
+      // Reload validation errors to reflect privacy configuration
+      loadValidationErrors()
+
+      toast({
+        title: 'Privacy Settings Saved',
+        description: 'Your privacy configuration has been saved successfully.',
+      })
+
+    } catch (error) {
+      console.error('Error saving privacy settings:', error)
+      throw error // Re-throw so the modal can handle it
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -273,24 +345,7 @@ export function PublishModal({
           </div>
 
           <div className="space-y-4">
-            {/* Validation Errors */}
-            {validationErrors.length > 0 && (
-              <div className="border border-red-200 bg-red-50 rounded-lg p-4">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-red-800">Please fix these issues:</p>
-                    <ul className="list-disc list-inside text-red-700 text-sm mt-1 space-y-1">
-                      {validationErrors.map((error, index) => (
-                        <li key={index}>{error}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Billing Status */}
+            {/* Billing Status - Only show if there's a problem */}
             {isLoadingBilling ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mr-2" />
@@ -326,15 +381,27 @@ export function PublishModal({
                   </div>
                 </div>
               </div>
-            ) : (
-              <div className="border border-green-200 bg-green-50 rounded-lg p-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <p className="text-green-800 font-medium">Ready to publish</p>
+            ) : null}
+
+            {/* Privacy Configuration - Only show if billing is OK and privacy not configured */}
+            {billingInfo?.can_publish && !campaign.settings?.privacy?.configured && (
+              <div className="border border-gray-200 bg-gray-50 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Shield className="h-5 w-5 text-gray-600 mt-0.5" />
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-800">Final step before publishing</h3>
+                    <p className="text-sm text-gray-700 mt-1">
+                      Add your tool's privacy details so we can keep things transparent and compliant — it only takes a minute.
+                    </p>
+                    <Button
+                      onClick={() => setIsPrivacyModalOpen(true)}
+                      className="mt-3"
+                      size="sm"
+                    >
+                      Add
+                    </Button>
+                  </div>
                 </div>
-                <p className="text-sm text-green-700 mt-1">
-                  Your {billingInfo?.tier_name} plan allows publishing campaigns.
-                </p>
               </div>
             )}
 
@@ -433,47 +500,70 @@ export function PublishModal({
               Cancel
             </Button>
             
-{isPublished ? (
-              <Button
-                variant="destructive"
-                onClick={handleUnpublish}
-                disabled={isProcessing}
-                className="min-w-[120px]"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Unpublishing...
-                  </>
-                ) : (
-                  <>
-                    <X className="h-4 w-4 mr-2" />
-                    Unpublish
-                  </>
-                )}
-              </Button>
-            ) : (
-              <Button
-                onClick={handlePublish}
-                disabled={isProcessing || validationErrors.length > 0 || !billingInfo?.can_publish}
-                className="min-w-[120px]"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Publishing...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Publish Campaign
-                  </>
-                )}
-              </Button>
-            )}
+            <div className="flex items-center gap-3">
+              {/* Edit Privacy Details Button - Only show if privacy is configured */}
+              {campaign.settings?.privacy?.configured && (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsPrivacyModalOpen(true)}
+                >
+                  <Edit3 className="h-4 w-4 mr-2" />
+                  Edit Privacy
+                </Button>
+              )}
+              
+              {/* Main Action Button */}
+              {isPublished ? (
+                <Button
+                  variant="destructive"
+                  onClick={handleUnpublish}
+                  disabled={isProcessing}
+                  className="min-w-[120px]"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Unpublishing...
+                    </>
+                  ) : (
+                    <>
+                      <X className="h-4 w-4 mr-2" />
+                      Unpublish
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handlePublish}
+                  disabled={isProcessing || validationErrors.length > 0 || !billingInfo?.can_publish}
+                  className="min-w-[120px]"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Publishing...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Publish Campaign
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Privacy Configuration Modal */}
+      <PrivacyConfigModal
+        campaign={campaign}
+        profile={profile}
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
+        onSave={handlePrivacySave}
+      />
     </div>
   )
 } 

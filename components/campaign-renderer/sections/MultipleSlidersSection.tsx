@@ -5,6 +5,7 @@ import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { getMobileClasses, getCampaignTheme, getCampaignTextColor } from '../utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
+import { ComplianceNotice } from '../ComplianceNotice'
 import { ChevronDown, ChevronRight, Activity } from 'lucide-react'
 
 interface SliderConfig {
@@ -39,7 +40,8 @@ export function MultipleSlidersSection({
   onSectionComplete,
   onResponseUpdate,
   userInputs,
-  campaign
+  campaign,
+  sections
 }: SectionRendererProps) {
   const [values, setValues] = useState<Record<string, number>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -334,6 +336,9 @@ export function MultipleSlidersSection({
           )}
         </div>
       </div>
+
+      {/* Compliance Notice */}
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
       {/* Navigation */}
       <SectionNavigationBar

@@ -6,6 +6,7 @@ import { SectionRendererProps } from '../types'
 import { getMobileClasses, getDefaultChoices, getCampaignTheme, getCampaignTextColor, getCampaignButtonStyles } from '../utils'
 import { cn } from '@/lib/utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
+import { ComplianceNotice } from '../ComplianceNotice'
 
 export function MultipleChoiceSection({
   section,
@@ -18,7 +19,8 @@ export function MultipleChoiceSection({
   onSectionComplete,
   onResponseUpdate,
   userInputs,
-  campaign
+  campaign,
+  sections
 }: SectionRendererProps) {
   // Initialize with existing response if available
   const existingResponse = userInputs?.[section.id] || ''
@@ -143,6 +145,9 @@ export function MultipleChoiceSection({
 
         </div>
       </div>
+
+      {/* Compliance Notice */}
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
       {/* Shared Navigation Bar */}
       <SectionNavigationBar

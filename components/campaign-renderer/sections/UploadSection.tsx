@@ -9,6 +9,7 @@ import { SectionRendererProps } from '../types'
 import { getMobileClasses, getCampaignTheme, getCampaignTextColor, getCampaignButtonStyles } from '../utils'
 import { cn } from '@/lib/utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
+import { ComplianceNotice } from '../ComplianceNotice'
 import { uploadFiles, UploadedFileInfo, UploadProgress } from '@/lib/supabase/storage'
 import { createClient } from '@/lib/supabase/client'
 
@@ -48,7 +49,8 @@ export function UploadSection({
   onSectionComplete,
   onResponseUpdate,
   userInputs,
-  campaign
+  campaign,
+  sections
 }: SectionRendererProps) {
   const supabase = createClient()
   
@@ -522,6 +524,9 @@ export function UploadSection({
           )}
         </div>
       </div>
+
+      {/* Compliance Notice */}
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
       {/* Navigation Bar */}
       <SectionNavigationBar

@@ -2,10 +2,8 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
 import { InlineEditableText } from '@/components/ui/inline-editable-text'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
@@ -21,6 +19,7 @@ interface CaptureSectionProps {
   className?: string
   campaignId?: string
   onLeadCaptured?: (leadId: string) => void
+  campaign?: any
 }
 
 interface CaptureSettings {
@@ -47,8 +46,6 @@ interface CaptureSettings {
     phone: string
   }
   submitButtonText?: string
-  businessName?: string
-  privacyPolicyLink?: string
   // For backward compatibility
   content?: string
   title?: string
@@ -58,7 +55,6 @@ interface CaptureValidationErrors {
   name?: string
   email?: string
   phone?: string
-  flintTermsConsent?: string
 }
 
 // Validation functions
@@ -107,34 +103,29 @@ export function CaptureSection({
   onUpdate, 
   className,
   campaignId,
-  onLeadCaptured
+  onLeadCaptured,
+  campaign
 }: CaptureSectionProps) {
   const [isSaving, setIsSaving] = useState(false)
-  const [formData, setFormData] = useState<CaptureFormData>({})
-  const [validationErrors, setValidationErrors] = useState<CaptureValidationErrors>({})
   
   // Get current settings with defaults
   const settings = section.settings as CaptureSettings || {}
   const headline = (settings.headline || settings.content || settings.title || 'Get Your Results') as string
   const subheading = (settings.subheading || 'Enter your information to unlock your personalized results') as string
   const enabledFields = settings.enabledFields || { name: true, email: true, phone: false }
+  
+  // Default marketing consent to true if any contact fields are enabled
+  const defaultMarketingConsent = (enabledFields.name || enabledFields.email || enabledFields.phone)
+  
+  const [formData, setFormData] = useState<CaptureFormData>({
+    marketingConsent: defaultMarketingConsent
+  })
+  const [validationErrors, setValidationErrors] = useState<CaptureValidationErrors>({})
   const requiredFields = settings.requiredFields || { name: true, email: true, phone: false }
   const fieldLabels = settings.fieldLabels || { name: 'Full Name', email: 'Email Address', phone: 'Phone Number' }
   const fieldPlaceholders = settings.fieldPlaceholders || { name: 'Enter your full name', email: 'your@email.com', phone: '+61 400 000 000 or 0400 000 000' }
   const submitButtonText = settings.submitButtonText || 'Get my results'
-  const businessName = settings.businessName || ''
-  const privacyPolicyLink = settings.privacyPolicyLink || ''
 
-  const [localBusinessName, setLocalBusinessName] = useState(businessName)
-  const [localPrivacyPolicyLink, setLocalPrivacyPolicyLink] = useState(privacyPolicyLink)
-
-  useEffect(() => {
-    setLocalBusinessName(businessName)
-  }, [businessName])
-
-  useEffect(() => {
-    setLocalPrivacyPolicyLink(privacyPolicyLink)
-  }, [privacyPolicyLink])
 
 
   // Capture hooks
@@ -268,10 +259,7 @@ export function CaptureSection({
       }
     }
 
-    // Validate Flint T&C
-    if (!formData.flintTermsConsent) {
-      errors.flintTermsConsent = 'You must accept Flint\'s Terms & Conditions to continue.'
-    }
+
 
     setValidationErrors(errors)
     return Object.keys(errors).length === 0
@@ -416,19 +404,6 @@ export function CaptureSection({
 
               {/* Consent Checkboxes */}
               <div className="space-y-3 pt-2">
-                {/* Flint T&C */}
-                <div className="flex items-start space-x-2">
-                  <Checkbox
-                    id="flint-terms-consent"
-                    checked={!!formData.flintTermsConsent}
-                    onCheckedChange={(checked) => handleFieldChange('flintTermsConsent', !!checked)}
-                    className="mt-1"
-                  />
-                  <label htmlFor="flint-terms-consent" className="text-sm text-gray-300 leading-relaxed cursor-pointer">
-                    I agree to Flint's <a href="https://launch.useflint.co/terms-conditions" target="_blank" rel="noopener noreferrer" className="underline">Terms & Conditions</a><span className="text-red-500 ml-1">*</span>
-                  </label>
-                </div>
-                
                 {/* Marketing Consent - Only show if at least one contact field is enabled */}
                 {(enabledFields.name || enabledFields.email || enabledFields.phone) && (
                   <div className="flex items-start space-x-2">
@@ -439,9 +414,9 @@ export function CaptureSection({
                       className="mt-1"
                     />
                     <label htmlFor="marketing-consent" className="text-sm text-gray-300 leading-relaxed cursor-pointer">
-                      I agree to receive relevant marketing communications from {businessName || 'this business'} in accordance with their{' '}
-                      {privacyPolicyLink ? (
-                        <a href={privacyPolicyLink} target="_blank" rel="noopener noreferrer" className="underline inline">
+                      I agree to receive relevant marketing communications from {campaign?.settings?.privacy?.organization_name || 'this business'} in accordance with their{' '}
+                      {campaign?.settings?.privacy?.privacy_policy_url ? (
+                        <a href={campaign.settings.privacy.privacy_policy_url} target="_blank" rel="noopener noreferrer" className="underline inline">
                           Privacy Policy
                         </a>
                       ) : (
@@ -450,16 +425,7 @@ export function CaptureSection({
                     </label>
                   </div>
                 )}
-                
               </div>
-
-
-              {validationErrors.flintTermsConsent && (
-                <div className="flex items-center space-x-1 text-red-400 text-sm">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>{validationErrors.flintTermsConsent}</span>
-                </div>
-              )}
 
               {submitError && (
                 <div className="flex items-center space-x-2 text-red-400 text-sm p-3 bg-red-950/50 border border-red-800 rounded-md">
@@ -592,71 +558,7 @@ export function CaptureSection({
         </div>
       </div>
 
-      {/* Marketing Consent Configuration */}
-      {(enabledFields.name || enabledFields.email || enabledFields.phone) && (
-        <div className="space-y-4 pt-6">
-          <h3 className="text-sm font-medium text-foreground">Marketing Consent</h3>
-          <p className="text-xs text-muted-foreground">
-            The marketing consent checkbox will be displayed when contact fields are enabled. Business name is required.
-          </p>
-          <div className="space-y-3">
-            <div className="p-4 bg-background border border-border rounded-lg space-y-3">
-              <div>
-                <Label htmlFor="businessName" className="text-sm font-medium text-foreground">
-                  Business Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="businessName"
-                  placeholder="Your Company Name"
-                  value={localBusinessName}
-                  onChange={(e) => setLocalBusinessName(e.target.value)}
-                  onBlur={() => updateSettings({ businessName: localBusinessName.trim() })}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      updateSettings({ businessName: localBusinessName.trim() })
-                      e.currentTarget.blur()
-                    } else if (e.key === 'Escape') {
-                      setLocalBusinessName(businessName)
-                      e.currentTarget.blur()
-                    }
-                  }}
-                  className={cn(
-                    "mt-1",
-                    !localBusinessName.trim() && "border-red-500"
-                  )}
-                />
-                {!localBusinessName.trim() && (
-                  <p className="text-red-500 text-xs mt-1">
-                    Business name is required when contact fields are enabled
-                  </p>
-                )}
-              </div>
-              <div>
-                <Label htmlFor="privacyPolicyLink" className="text-sm font-medium text-foreground">
-                  Privacy Policy Link (Optional)
-                </Label>
-                <Input
-                  id="privacyPolicyLink"
-                  placeholder="https://yourcompany.com/privacy"
-                  value={localPrivacyPolicyLink}
-                  onChange={(e) => setLocalPrivacyPolicyLink(e.target.value)}
-                  onBlur={() => updateSettings({ privacyPolicyLink: localPrivacyPolicyLink.trim() })}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      updateSettings({ privacyPolicyLink: localPrivacyPolicyLink.trim() })
-                      e.currentTarget.blur()
-                    } else if (e.key === 'Escape') {
-                      setLocalPrivacyPolicyLink(privacyPolicyLink)
-                      e.currentTarget.blur()
-                    }
-                  }}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   )
 } 
