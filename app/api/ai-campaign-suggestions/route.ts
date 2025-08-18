@@ -39,10 +39,10 @@ interface AISuggestions {
 // AI SUGGESTION GENERATOR
 // =============================================================================
 
-async function generateSuggestions(idea: string): Promise<AISuggestions> {
-  // Use OpenAI to intelligently generate suggestions based on the campaign idea
+async function generateSuggestions(idea: string, inputType: 'idea' | 'business' = 'idea'): Promise<AISuggestions> {
+  // Use OpenAI to intelligently generate suggestions based on the campaign idea or business description
   try {
-    const aiResponse = await callOpenAIForSuggestions(idea)
+    const aiResponse = await callOpenAIForSuggestions(idea, inputType)
     return aiResponse
   } catch (error) {
     console.error('AI suggestion generation failed:', error)
@@ -51,17 +51,13 @@ async function generateSuggestions(idea: string): Promise<AISuggestions> {
   }
 }
 
-async function callOpenAIForSuggestions(idea: string): Promise<AISuggestions> {
+async function callOpenAIForSuggestions(idea: string, inputType: 'idea' | 'business' = 'idea'): Promise<AISuggestions> {
   const apiKey = process.env.OPENAI_API_KEY
   if (!apiKey) {
     throw new Error('OpenAI API key not configured')
   }
 
-  const prompt = `You are an expert campaign designer. A user wants to create: "${idea}"
-
-Based on this campaign idea, generate appropriate input questions, output results, and a compelling campaign name.
-
-REQUIREMENTS:
+  const baseRequirements = `
 1. Create a compelling campaign name (2-6 words, engaging and descriptive)
 2. Create 3-6 input questions that would be needed to provide personalized results
 3. For each input, determine the best question type:
@@ -106,6 +102,18 @@ Return JSON in this exact format:
 }
 
 Make the campaign name catchy and professional. Make the questions relevant and specific to the campaign idea. Ensure variable names are descriptive and use snake_case.`
+
+  const prompt = inputType === 'business' 
+    ? `You are an expert campaign designer. A user has described their business: "${idea}"
+
+Based on this business description, suggest a suitable campaign type and generate appropriate input questions, output results, and a compelling campaign name that would help this business engage their audience and generate leads.
+
+REQUIREMENTS:${baseRequirements}`
+    : `You are an expert campaign designer. A user wants to create: "${idea}"
+
+Based on this campaign idea, generate appropriate input questions, output results, and a compelling campaign name.
+
+REQUIREMENTS:${baseRequirements}`
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -440,7 +448,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json()
-    const { idea } = body
+    const { idea, inputType = 'idea' } = body
 
     if (!idea || typeof idea !== 'string') {
       return NextResponse.json({ 
@@ -449,7 +457,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate suggestions using AI
-    const suggestions = await generateSuggestions(idea)
+    const suggestions = await generateSuggestions(idea, inputType)
 
     return NextResponse.json({
       success: true,

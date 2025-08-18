@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   Brain, 
   Sparkles, 
@@ -83,7 +84,9 @@ export function AICampaignGeneratorModal({
   const [generationComplete, setGenerationComplete] = useState(false)
   
   // Step 1: Campaign Idea
+  const [inputType, setInputType] = useState<'idea' | 'business'>('idea')
   const [campaignIdea, setCampaignIdea] = useState('')
+  const [businessDescription, setBusinessDescription] = useState('')
   
   // Step 2: AI Suggestions
   const [suggestions, setSuggestions] = useState<AISuggestions | null>(null)
@@ -104,7 +107,8 @@ export function AICampaignGeneratorModal({
   }
 
   const handleGetSuggestions = async () => {
-    if (!campaignIdea.trim()) return
+    const inputText = inputType === 'idea' ? campaignIdea.trim() : businessDescription.trim()
+    if (!inputText) return
     
     setIsLoading(true)
     try {
@@ -114,7 +118,8 @@ export function AICampaignGeneratorModal({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          idea: campaignIdea.trim()
+          idea: inputText,
+          inputType: inputType
         })
       })
 
@@ -381,92 +386,181 @@ export function AICampaignGeneratorModal({
 
   const renderIdeaStep = () => (
     <div className="space-y-4">
-      <div className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="campaign-idea" className="text-sm font-medium">Describe Your Campaign Idea</Label>
-          <Textarea
-            id="campaign-idea"
-            value={campaignIdea}
-            onChange={(e) => setCampaignIdea(e.target.value)}
-            placeholder="Example: Marathon training calculator based on fitness level and goals..."
-            className="min-h-[80px] resize-none"
-            rows={4}
-          />
-          <p className="text-xs text-muted-foreground">
-            Be specific about what you want to create.
-          </p>
-        </div>
-
-        {/* Example suggestions - clickable cards */}
-        <div className="space-y-2">
-          <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-            <Sparkles className="h-3 w-3" />
-            Quick examples:
-          </h4>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setCampaignIdea("Marathon training calculator that asks about current fitness level, running experience, target race date, and weekly availability, then provides a personalized training plan with weekly mileage, workout schedule, and nutrition tips")}
-              className="text-left p-2 rounded-md border border-border hover:border-orange-400 hover:bg-orange-50 transition-colors group"
-            >
-              <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 flex-shrink-0" />
-                <div>
-                  <div className="font-medium text-xs text-foreground group-hover:text-orange-600">Fitness</div>
-                  <div className="text-xs text-muted-foreground">Marathon training calculator</div>
-                </div>
-              </div>
-            </button>
-            
-            <button
-              type="button"
-              onClick={() => setCampaignIdea("ROI calculator for marketing campaigns that asks about monthly budget, business type, and target ROI, then provides projected returns, budget allocation recommendations, and actionable next steps")}
-              className="text-left p-2 rounded-md border border-border hover:border-orange-400 hover:bg-orange-50 transition-colors group"
-            >
-              <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 flex-shrink-0" />
-                <div>
-                  <div className="font-medium text-xs text-foreground group-hover:text-orange-600">Business</div>
-                  <div className="text-xs text-muted-foreground">ROI calculator</div>
-                </div>
-              </div>
-            </button>
-            
-            <button
-              type="button"
-              onClick={() => setCampaignIdea("Career path quiz that asks about work style preferences, risk tolerance, and career goals, then provides personality analysis, recommended career matches, and personal development plan")}
-              className="text-left p-2 rounded-md border border-border hover:border-orange-400 hover:bg-orange-50 transition-colors group"
-            >
-              <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 flex-shrink-0" />
-                <div>
-                  <div className="font-medium text-xs text-foreground group-hover:text-orange-600">Personal</div>
-                  <div className="text-xs text-muted-foreground">Career path quiz</div>
-                </div>
-              </div>
-            </button>
-            
-            <button
-              type="button"
-              onClick={() => setCampaignIdea("Nutrition plan generator that asks about dietary preferences, health goals, activity level, and food restrictions, then provides personalized meal plans, shopping lists, and nutrition guidance")}
-              className="text-left p-2 rounded-md border border-border hover:border-orange-400 hover:bg-orange-50 transition-colors group"
-            >
-              <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 flex-shrink-0" />
-                <div>
-                  <div className="font-medium text-xs text-foreground group-hover:text-orange-600">Health</div>
-                  <div className="text-xs text-muted-foreground">Nutrition plan generator</div>
-                </div>
-              </div>
-            </button>
+      <Tabs value={inputType} onValueChange={(value: string) => setInputType(value as 'idea' | 'business')} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="idea">Campaign Idea</TabsTrigger>
+          <TabsTrigger value="business">Business Description</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="idea" className="space-y-4 mt-4">
+          <div className="space-y-2">
+            <Label htmlFor="campaign-idea" className="text-sm font-medium">Describe Your Campaign Idea</Label>
+            <Textarea
+              id="campaign-idea"
+              value={campaignIdea}
+              onChange={(e) => setCampaignIdea(e.target.value)}
+              placeholder="Example: Marathon training calculator that asks about fitness level and goals..."
+              className="min-h-[80px] resize-none"
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground">
+              Be specific about what you want to create.
+            </p>
           </div>
-        </div>
-      </div>
+
+          {/* Example campaign ideas */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <Sparkles className="h-3 w-3" />
+              Campaign examples:
+            </h4>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setCampaignIdea("Marathon training calculator that asks about current fitness level, running experience, target race date, and weekly availability, then provides a personalized training plan with weekly mileage, workout schedule, and nutrition tips")}
+                className="text-left p-2 rounded-md border border-border hover:border-orange-400 hover:bg-orange-50 transition-colors group"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 flex-shrink-0" />
+                  <div>
+                    <div className="font-medium text-xs text-foreground group-hover:text-orange-600">Fitness Calculator</div>
+                    <div className="text-xs text-muted-foreground">Training plans</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setCampaignIdea("ROI calculator for marketing campaigns that asks about monthly budget, business type, and target ROI, then provides projected returns, budget allocation recommendations, and actionable next steps")}
+                className="text-left p-2 rounded-md border border-border hover:border-orange-400 hover:bg-orange-50 transition-colors group"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 flex-shrink-0" />
+                  <div>
+                    <div className="font-medium text-xs text-foreground group-hover:text-orange-600">ROI Calculator</div>
+                    <div className="text-xs text-muted-foreground">Marketing returns</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setCampaignIdea("Career path quiz that asks about work style preferences, risk tolerance, and career goals, then provides personality analysis, recommended career matches, and personal development plan")}
+                className="text-left p-2 rounded-md border border-border hover:border-orange-400 hover:bg-orange-50 transition-colors group"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 flex-shrink-0" />
+                  <div>
+                    <div className="font-medium text-xs text-foreground group-hover:text-orange-600">Career Quiz</div>
+                    <div className="text-xs text-muted-foreground">Path recommendations</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setCampaignIdea("Nutrition plan generator that asks about dietary preferences, health goals, activity level, and food restrictions, then provides personalized meal plans, shopping lists, and nutrition guidance")}
+                className="text-left p-2 rounded-md border border-border hover:border-orange-400 hover:bg-orange-50 transition-colors group"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 flex-shrink-0" />
+                  <div>
+                    <div className="font-medium text-xs text-foreground group-hover:text-orange-600">Nutrition Planner</div>
+                    <div className="text-xs text-muted-foreground">Meal recommendations</div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="business" className="space-y-4 mt-4">
+          <div className="space-y-2">
+            <Label htmlFor="business-description" className="text-sm font-medium">Describe Your Business</Label>
+            <Textarea
+              id="business-description"
+              value={businessDescription}
+              onChange={(e) => setBusinessDescription(e.target.value)}
+              placeholder="Example: I run a digital marketing agency that helps small businesses grow their online presence through SEO, social media, and paid advertising..."
+              className="min-h-[80px] resize-none"
+              rows={4}
+            />
+            <p className="text-xs text-muted-foreground">
+              Tell us about your business and AI will suggest suitable campaign types.
+            </p>
+          </div>
+
+          {/* Example business descriptions */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+              <Sparkles className="h-3 w-3" />
+              Business examples:
+            </h4>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setBusinessDescription("I run a digital marketing agency that helps small businesses grow their online presence through SEO, social media, and paid advertising campaigns")}
+                className="text-left p-2 rounded-md border border-border hover:border-blue-400 hover:bg-blue-50 transition-colors group"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                  <div>
+                    <div className="font-medium text-xs text-foreground group-hover:text-blue-600">Marketing Agency</div>
+                    <div className="text-xs text-muted-foreground">SEO & advertising</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setBusinessDescription("I'm a certified personal trainer who offers online fitness coaching, nutrition planning, and workout programs for busy professionals")}
+                className="text-left p-2 rounded-md border border-border hover:border-blue-400 hover:bg-blue-50 transition-colors group"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                  <div>
+                    <div className="font-medium text-xs text-foreground group-hover:text-blue-600">Fitness Coach</div>
+                    <div className="text-xs text-muted-foreground">Online training</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setBusinessDescription("I'm a financial advisor who provides investment planning, retirement strategies, and wealth management services for individuals and families")}
+                className="text-left p-2 rounded-md border border-border hover:border-blue-400 hover:bg-blue-50 transition-colors group"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                  <div>
+                    <div className="font-medium text-xs text-foreground group-hover:text-blue-600">Financial Advisor</div>
+                    <div className="text-xs text-muted-foreground">Investment planning</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setBusinessDescription("I own a local restaurant that specializes in farm-to-table cuisine and offers catering services for events and corporate functions")}
+                className="text-left p-2 rounded-md border border-border hover:border-blue-400 hover:bg-blue-50 transition-colors group"
+              >
+                <div className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0" />
+                  <div>
+                    <div className="font-medium text-xs text-foreground group-hover:text-blue-600">Restaurant Owner</div>
+                    <div className="text-xs text-muted-foreground">Farm-to-table dining</div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <div className="flex justify-center pt-2">
         <Button
           onClick={handleGetSuggestions}
-          disabled={!campaignIdea.trim() || isLoading}
+          disabled={!(inputType === 'idea' ? campaignIdea.trim() : businessDescription.trim()) || isLoading}
           className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-2 shadow-md hover:shadow-lg transition-all duration-200"
         >
           {isLoading ? (
@@ -575,7 +669,7 @@ export function AICampaignGeneratorModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto [transform-origin:center_center]">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Brain className="h-5 w-5 text-orange-600" />
