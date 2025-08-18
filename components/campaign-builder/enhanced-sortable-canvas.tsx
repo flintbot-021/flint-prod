@@ -124,39 +124,36 @@ export function EnhancedSortableCanvas({
     >
       {isEmpty ? (
         /* Empty State - Only Optional Sections */
-        <div className="text-center p-8 w-full max-w-4xl mx-auto">
-          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">
+        <div className="text-center p-6 w-full max-w-4xl mx-auto">
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">
             Your canvas is empty
           </h2>
-          <p className="text-gray-600 dark:text-gray-800 mb-6">
-            Generate with AI or add sections manually to get started.
-          </p>
 
           {/* AI Generator Card */}
           {onAIGeneratorClick && (
-            <div className="mb-8">
+            <div className="mb-6">
               <div
-                className="relative border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer group p-6 border-orange-200 hover:border-orange-300 bg-orange-50 hover:bg-orange-100"
+                className="relative border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer group p-4 border-orange-200 hover:border-orange-300 bg-orange-50 hover:bg-orange-100"
                 onClick={onAIGeneratorClick}
               >
                 <div className="absolute text-white text-xs px-2 py-1 rounded-full font-medium bg-orange-500 -top-2 -right-2 z-10">
                   AI Powered
                 </div>
                 <div className="text-center">
-                  <div className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 transition-colors bg-white shadow-sm group-hover:shadow-md">
-                    <Brain className="h-6 w-6 text-orange-500" />
+                  <div className="mx-auto w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-colors bg-white shadow-sm group-hover:shadow-md">
+                    <Brain className="h-5 w-5 text-orange-500" />
                   </div>
                   
-                  <h3 className="font-semibold mb-2 text-lg text-orange-700">
+                  <h3 className="font-medium mb-1 text-sm text-orange-700">
                     Generate Campaign with AI
                   </h3>
                   
-                  <p className="text-sm mb-4 opacity-90 text-orange-700">
+                  <p className="text-xs mb-3 opacity-90 text-orange-700">
                     Describe your idea and let AI create the complete campaign structure
                   </p>
 
-                  <div className="inline-flex items-center space-x-2 text-sm font-medium transition-colors text-orange-600 hover:text-orange-700">
-                    <Sparkles className="h-4 w-4" />
+                  <div className="inline-flex items-center space-x-1 text-xs font-medium transition-colors text-orange-600 hover:text-orange-700">
+                    <Sparkles className="h-3 w-3" />
                     <span>Generate with AI</span>
                   </div>
                 </div>
@@ -205,9 +202,7 @@ export function EnhancedSortableCanvas({
             </div>
           )}
             
-          <div className="text-center text-gray-500 dark:text-gray-400">
-            Drag and drop sections from the menu on the left.
-          </div>
+
         </div>
       ) : (
         /* Sections Display with Sortable Context */
