@@ -247,25 +247,25 @@ export function AICampaignGeneratorModal({
   // =============================================================================
 
   const renderInputCard = (input: SuggestedInput) => (
-    <Card key={input.id} className="p-4">
-      <div className="flex items-start justify-between mb-3">
+    <Card key={input.id} className="p-3">
+      <div className="flex items-start justify-between mb-2">
         <div className="flex items-center space-x-2">
-          <Badge variant="outline" className="text-xs">
+          <Badge variant="outline" className="text-xs px-1.5 py-0.5">
             {input.type.replace('_', ' ').replace('question', '')}
           </Badge>
-          <span className="text-xs text-gray-500">@{input.variableName}</span>
+          <span className="text-xs text-muted-foreground">@{input.variableName}</span>
         </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => removeInput(input.id)}
-          className="h-6 w-6 p-0 text-gray-400 hover:text-red-600"
+          className="h-5 w-5 p-0 text-muted-foreground hover:text-red-600"
         >
-          <X className="h-4 w-4" />
+          <X className="h-3 w-3" />
         </Button>
       </div>
       
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-xs">Headline</Label>
@@ -334,20 +334,20 @@ export function AICampaignGeneratorModal({
   )
 
   const renderOutputCard = (output: SuggestedOutput) => (
-    <Card key={output.id} className="p-4">
-      <div className="flex items-start justify-between mb-3">
-        <span className="text-xs text-gray-500">@{output.variableName}</span>
+    <Card key={output.id} className="p-3">
+      <div className="flex items-start justify-between mb-2">
+        <span className="text-xs text-muted-foreground">@{output.variableName}</span>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => removeOutput(output.id)}
-          className="h-6 w-6 p-0 text-gray-400 hover:text-red-600"
+          className="h-5 w-5 p-0 text-muted-foreground hover:text-red-600"
         >
-          <X className="h-4 w-4" />
+          <X className="h-3 w-3" />
         </Button>
       </div>
       
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-xs">Output Name</Label>
@@ -583,68 +583,64 @@ export function AICampaignGeneratorModal({
     if (!suggestions) return null
 
     return (
-      <div className="space-y-6">
-        <div className="text-center space-y-2">
-          <h3 className="text-lg font-semibold text-foreground">
-            Review & Edit Suggestions
-          </h3>
-          <p className="text-muted-foreground">
-            AI has suggested questions and outputs. You can edit, add, or remove items before creating your campaign.
-          </p>
-        </div>
-
-        {/* Suggested Inputs */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="font-medium text-foreground">Suggested Questions ({suggestions.inputs.length})</h4>
-            <Button variant="outline" size="sm" onClick={addInput}>
-              <Plus className="h-4 w-4 mr-1" />
-              Add Question
-            </Button>
-          </div>
+      <div className="space-y-4">
+        <Tabs defaultValue="questions" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="questions">Questions ({suggestions.inputs.length})</TabsTrigger>
+            <TabsTrigger value="outputs">Outputs ({suggestions.outputs.length})</TabsTrigger>
+          </TabsList>
           
-          <div className="space-y-3 max-h-60 overflow-y-auto">
-            {suggestions.inputs.map(renderInputCard)}
-          </div>
-        </div>
-
-        {/* Suggested Outputs */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="font-medium text-foreground">Suggested Outputs ({suggestions.outputs.length})</h4>
-            <Button variant="outline" size="sm" onClick={addOutput}>
-              <Plus className="h-4 w-4 mr-1" />
-              Add Output
-            </Button>
-          </div>
+          <TabsContent value="questions" className="space-y-4 mt-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium text-foreground">Suggested Questions</h4>
+              <Button variant="outline" size="sm" onClick={addInput}>
+                <Plus className="h-3 w-3 mr-1" />
+                Add
+              </Button>
+            </div>
           
-          <div className="space-y-3 max-h-40 overflow-y-auto">
-            {suggestions.outputs.map(renderOutputCard)}
-          </div>
-        </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {suggestions.inputs.map(renderInputCard)}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="outputs" className="space-y-4 mt-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium text-foreground">Suggested Outputs</h4>
+              <Button variant="outline" size="sm" onClick={addOutput}>
+                <Plus className="h-3 w-3 mr-1" />
+                Add
+              </Button>
+            </div>
+            
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {suggestions.outputs.map(renderOutputCard)}
+            </div>
 
-        {/* AI Prompt Preview */}
-        <div>
-          <h4 className="font-medium text-foreground mb-2">AI Logic Prompt</h4>
-          <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground max-h-32 overflow-y-auto border">
-            {suggestions.aiPrompt}
-          </div>
-        </div>
+            {/* AI Prompt Preview - moved to outputs tab */}
+            <div className="pt-2 border-t">
+              <h5 className="text-xs font-medium text-muted-foreground mb-2">AI Logic Prompt</h5>
+              <div className="bg-muted/50 rounded-md p-2 text-xs text-muted-foreground max-h-20 overflow-y-auto border">
+                {suggestions.aiPrompt}
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
 
-        <div className="flex items-center justify-between pt-4 border-t">
-          <Button variant="outline" onClick={() => setStep('idea')}>
-            Back to Edit Idea
+        <div className="flex items-center justify-between pt-2">
+          <Button variant="outline" size="sm" onClick={() => setStep('idea')}>
+            Back
           </Button>
 
           <Button
             onClick={handleGenerate}
             disabled={isGenerating || suggestions.inputs.length === 0 || suggestions.outputs.length === 0}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white px-6 py-2 shadow-md hover:shadow-lg transition-all duration-200"
           >
             {isGenerating ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Creating Campaign...
+                Creating...
               </>
             ) : generationComplete ? (
               <>
@@ -653,7 +649,7 @@ export function AICampaignGeneratorModal({
               </>
             ) : (
               <>
-                <ArrowRight className="h-4 w-4 mr-2" />
+                <CheckCircle className="h-4 w-4 mr-2" />
                 Create Campaign
               </>
             )}
