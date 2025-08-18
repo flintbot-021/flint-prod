@@ -38,6 +38,7 @@ import { isQuestionSection, titleToVariableName, updateAILogicVariableReferences
 import { updateAITestResultVariableName, updateAITestResultVariableNames } from '@/lib/utils/ai-test-storage'
 import { createVariableName } from '@/lib/utils/variable-extractor'
 import { OnboardingCarousel } from '@/components/campaign-builder/OnboardingCarousel';
+import { AICampaignGeneratorModal } from '@/components/campaign-builder/ai-campaign-generator-modal';
 
 // Helper functions to convert between database and UI types
 const mapCampaignBuilderTypeToDatabase = (builderType: string): string => {
@@ -145,6 +146,7 @@ export default function ToolBuilderPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showPublishModal, setShowPublishModal] = useState(false)
+  const [showAIGeneratorModal, setShowAIGeneratorModal] = useState(false)
   const [activeDragItem, setActiveDragItem] = useState<CampaignSection | null>(null)
   const [isAutoReordering, setIsAutoReordering] = useState(false) // Track automatic reordering
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -1176,162 +1178,64 @@ export default function ToolBuilderPage() {
     }
   }
 
-  // Helper to create template sections
-  const handleCreateTemplate = async () => {
+  // Helper to handle AI campaign generation
+  const handleAIGeneration = async (suggestions: any) => {
     if (!campaign) return;
+    
     setIsSaving(true);
     try {
-      // Update campaign name
-      await handleCampaignNameChange('Which Holiday Should You Take Next?');
-
-      // 1. Text Question
-      const textType = getSectionTypeById('question-text');
-      await createSection({
-        campaign_id: campaign.id,
-        type: 'text_question',
-        title: 'day_off',
-        description: null,
-        order_index: 1,
-        configuration: {
-          ...textType?.defaultSettings,
-          headline: 'What’s your favourite way to spend a day off?',
-        } as any,
-        required: true,
+      const response = await fetch('/api/ai-campaign-generator', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          suggestions,
+          campaignId: campaign.id
+        })
       });
 
-      // 2. Multiple Choice
-      const mcType = getSectionTypeById('question-multiple-choice');
-      await createSection({
-        campaign_id: campaign.id,
-        type: 'multiple_choice',
-        title: 'holiday_vibe',
-        description: null,
-        order_index: 2,
-        configuration: {
-          ...mcType?.defaultSettings,
-          headline: 'On holiday, you mostly:',
-          allow_multiple: false,
-          display_type: 'radio',
-          options: [
-            { id: 'option-1', text: 'Chill out', order: 1 },
-            { id: 'option-2', text: 'Pack in activities', order: 2 },
-            { id: 'option-3', text: 'Mix it up', order: 3 },
-          ],
-        } as any,
-        required: true,
-      });
+      if (!response.ok) {
+        throw new Error('Failed to generate campaign');
+      }
 
-      // 3. Slider
-      const sliderType = getSectionTypeById('question-slider');
-      await createSection({
-        campaign_id: campaign.id,
-        type: 'slider',
-        title: 'adventurous_level',
-        description: null,
-        order_index: 3,
-        configuration: {
-          ...sliderType?.defaultSettings,
-          headline: 'How adventurous are you?',
-          subheading: '1 = Homebody, 10 = Daredevil',
-          minValue: 1,
-          maxValue: 10,
-          default_value: 5,
-          step: 1,
-          labels: { min: '1', max: '10' },
-        } as any,
-        required: true,
-      });
-
-      // 4. Logic: to generate output (NEW FLOW: Process answers first!)
-      const logicType = getSectionTypeById('logic-ai');
-      await createSection({
-        campaign_id: campaign.id,
-        type: 'logic',
-        title: 'AI Logic',
-        description: null,
-        order_index: 4,
-        configuration: {
-          ...logicType?.defaultSettings,
-          title: 'Generate Holiday Suggestion',
-          variable_access: ['day_off', 'holiday_vibe', 'adventurous_level'],
-          prompt_template: 'A user whose ideal day off is @day_off, with a holiday vibe of "@holiday_vibe" and an adventurous level of @adventurous_level out of 10, is looking for a holiday suggestion. Please provide a suitable city, an activity in that city, and a brief explanation.',
-          outputVariables: [
-            { id: '1', name: 'city', description: 'A city that is suitable' },
-            { id: '2', name: 'activity', description: 'An activity in that city that suits them' },
-            { id: '3', name: 'explanation', description: 'Why this city is suitable for them - 2 paragraphs' },
-          ],
-          ai_provider: 'openai',
-          model: 'gpt-4',
-        } as any,
-        required: true,
-      });
-
-      // 5. Capture: to unlock results (NEW FLOW: Ask for email after showing results!)
-      const captureType = getSectionTypeById('capture-details');
-      await createSection({
-        campaign_id: campaign.id,
-        type: 'capture',
-        title: 'capture',
-        description: null,
-        order_index: 5,
-        configuration: {
-          ...captureType?.defaultSettings,
-          enabledFields: {
-            name: true,
-            email: true,
-            phone: false,
-          },
-          requiredFields: {
-            name: true,
-            email: true,
-            phone: false
-          },
-          submitButtonText: 'Unlock My Results'
-        } as any,
-        required: true,
-      });
-
-      // 6. Output: Final unlocked results (NEW FLOW: Results shown after email capture!)
-      const outputType = getSectionTypeById('output-results');
-      await createSection({
-        campaign_id: campaign.id,
-        type: 'output',
-        title: 'Output',
-        description: null,
-        order_index: 6,
-        configuration: {
-          ...outputType?.defaultSettings,
-          title: 'Hey @name',
-          subtitle: 'We can see you enjoying @activity in @city.',
-          content: '@explanation',
-          showButton: true,
-          buttonText: 'Ready, explore holidays now',
-          buttonType: 'link',
-          buttonUrl: 'https://www.thomascook.com/',
-        } as any,
-        required: true,
-      });
-
-
-      // Reload sections from DB
-      await loadCampaign();
-      setShowOnboarding(false);
+      const result = await response.json();
+      
+      if (result.success) {
+        toast({
+          title: "Campaign Generated!",
+          description: `Successfully created ${result.sectionsCount} sections with AI.`,
+        });
+        
+        // Refresh sections by reloading the page data
+        window.location.reload();
+        
+        // Track the event
+        if (posthog) {
+          posthog.capture('ai_campaign_generated', {
+            campaign_id: campaign.id,
+            campaign_name: campaign.name,
+            sections_count: result.sectionsCount,
+            inputs_count: suggestions.inputs?.length || 0,
+            outputs_count: suggestions.outputs?.length || 0
+          });
+        }
+      } else {
+        throw new Error(result.error || 'Generation failed');
+      }
+    } catch (error) {
+      console.error('AI Generation Error:', error);
       toast({
-        title: 'Holiday template added!',
-        description: 'A holiday recommendation template has been added to your campaign.',
-        duration: 4000,
-      });
-    } catch (err) {
-      setError('Failed to create template sections.');
-      toast({
-        title: 'Error',
-        description: 'Failed to create template sections.',
-        variant: 'destructive',
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : "Failed to generate campaign with AI.",
+        variant: "destructive",
       });
     } finally {
       setIsSaving(false);
     }
   };
+
+
 
   // Show UI immediately if we have a user, even if still loading
   const showUI = user || !loading
@@ -1424,7 +1328,7 @@ export default function ToolBuilderPage() {
         <OnboardingCarousel
           isOpen={showOnboarding}
           onClose={() => setShowOnboarding(false)}
-          onTemplateClick={handleCreateTemplate}
+
         />
       )}
       <CaptureProvider campaignId={campaign.id}>
@@ -1518,7 +1422,8 @@ export default function ToolBuilderPage() {
                           onSectionConfigure={handleSectionConfigure}
                           onSectionTypeChange={handleSectionTypeChange}
                           onSectionAdd={handleSectionAdd}
-                          onTemplateClick={handleCreateTemplate}
+
+                          onAIGeneratorClick={() => setShowAIGeneratorModal(true)}
                           selectedSectionId={selectedSectionId}
                           onSectionSelect={setSelectedSectionId}
                           className="min-h-[500px]"
@@ -1557,6 +1462,15 @@ export default function ToolBuilderPage() {
                 mandatoryValidationErrors={mandatoryValidation.missing}
               />
             )}
+
+            {/* AI Campaign Generator Modal */}
+            <AICampaignGeneratorModal
+              isOpen={showAIGeneratorModal}
+              onClose={() => setShowAIGeneratorModal(false)}
+              onGenerate={handleAIGeneration}
+              campaignId={campaign?.id}
+              campaignName={campaign?.name}
+            />
           </div>
         </DndContext>
       </CaptureProvider>

@@ -347,7 +347,7 @@ export function AILogicSection({
     try {
       // Get existing outputs that have both name and description filled (to use as examples)
       const existingValidOutputs = (settings.outputVariables || []).filter(v => 
-        v.name.trim() && v.description.trim()
+        v.name && v.name.trim() && v.description && v.description.trim()
       )
 
 
@@ -457,10 +457,14 @@ export function AILogicSection({
 
   const step3Complete = useMemo(() => {
     // Filter out outputs where both name and description are empty (treat as non-existent)
-    const validOutputVariables = localOutputVariables.filter(v => v.name.trim() || v.description.trim())
+    const validOutputVariables = localOutputVariables.filter(v => 
+      (v.name && v.name.trim()) || (v.description && v.description.trim())
+    )
     // Must have at least one valid output, and all valid outputs must be complete
     return validOutputVariables.length > 0 && 
-           validOutputVariables.every(v => v.name.trim() !== '' && v.description.trim() !== '')
+           validOutputVariables.every(v => 
+             v.name && v.name.trim() !== '' && v.description && v.description.trim() !== ''
+           )
   }, [localOutputVariables])
 
   const addOutputVariable = useCallback(() => {
@@ -490,12 +494,12 @@ export function AILogicSection({
     if (!variable) return errors
     
     // Only validate description if name has content (user has committed to this output)
-    if (field === 'description' && variable.name.trim() && !value.trim()) {
+    if (field === 'description' && variable.name && variable.name.trim() && !value.trim()) {
       errors.description = 'Description is required'
     }
     
     // Only validate name if description has content (user started working on it)
-    if (field === 'name' && variable.description.trim() && !value.trim()) {
+    if (field === 'name' && variable.description && variable.description.trim() && !value.trim()) {
       errors.name = 'Name is required'
     }
     
@@ -513,7 +517,7 @@ export function AILogicSection({
     }))
     
     // When name is filled and user focuses away, also mark description as needing validation
-    if (field === 'name' && variable.name.trim() && !variable.description.trim()) {
+    if (field === 'name' && variable.name && variable.name.trim() && variable.description && !variable.description.trim()) {
       setTouchedOutputs(prev => ({
         ...prev,
         [id]: { ...prev[id], name: true, description: true }
@@ -521,7 +525,7 @@ export function AILogicSection({
     }
     
     // When description is filled and user focuses away, also mark name as needing validation  
-    if (field === 'description' && variable.description.trim() && !variable.name.trim()) {
+    if (field === 'description' && variable.description && variable.description.trim() && variable.name && !variable.name.trim()) {
       setTouchedOutputs(prev => ({
         ...prev,
         [id]: { ...prev[id], name: true, description: true }
@@ -643,7 +647,9 @@ export function AILogicSection({
       }
       
       // Filter out empty outputs (where both name and description are empty)
-      const validOutputVariables = localOutputVariables.filter(v => v.name.trim() || v.description.trim())
+      const validOutputVariables = localOutputVariables.filter(v => 
+        (v.name && v.name.trim()) || (v.description && v.description.trim())
+      )
       
       if (validOutputVariables.length === 0) {
         setTestResult('Please define at least one output variable in Step 3 before testing.')

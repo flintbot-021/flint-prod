@@ -19,7 +19,7 @@ const OPTIONAL_SECTIONS = {
     name: 'Intro Section',
     description: 'Eye-catching header with background image',
     icon: Star,
-    color: 'orange'
+    color: 'purple'
   },
   'text-question': {
     id: 'question-text',
@@ -85,6 +85,14 @@ export function OptionalSectionPlaceholder({
       text: 'text-blue-700',
       button: 'text-blue-600 hover:text-blue-700',
       badge: 'bg-blue-500'
+    },
+    purple: {
+      border: 'border-purple-200 hover:border-purple-300',
+      bg: 'bg-purple-50 hover:bg-purple-100',
+      icon: 'text-purple-500',
+      text: 'text-purple-700',
+      button: 'text-purple-600 hover:text-purple-700',
+      badge: 'bg-purple-500'
     }
   }
 
@@ -168,82 +176,4 @@ export function OptionalSectionPlaceholder({
   )
 } 
 
-interface TemplatePlaceholderProps {
-  onClick: () => void
-  className?: string
-  campaignId?: string
-  campaignName?: string
-}
-
-export function TemplatePlaceholder({ 
-  onClick, 
-  className,
-  campaignId,
-  campaignName 
-}: TemplatePlaceholderProps) {
-  const Icon = Star
-  const posthog = usePostHog()
-
-  const handleClick = () => {
-    // Track PostHog event for template start
-    if (posthog) {
-      posthog.capture('start_with_template', {
-        campaign_id: campaignId,
-        campaign_name: campaignName,
-        interaction_type: 'empty_state_click',
-        placement: 'canvas_empty_state'
-      })
-    }
-    
-    onClick()
-  }
-
-  const colorClasses = {
-    purple: {
-      border: 'border-purple-200 hover:border-purple-300',
-      bg: 'bg-purple-50 hover:bg-purple-100',
-      icon: 'text-purple-500',
-      text: 'text-purple-700',
-      button: 'text-purple-600 hover:text-purple-700'
-    }
-  }
-
-  const colors = colorClasses.purple
-
-  return (
-    <div
-      className={cn(
-        'relative border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer group p-4',
-        colors.border,
-        colors.bg,
-        className
-      )}
-      onClick={handleClick}
-    >
-      <div className="absolute text-white text-xs px-2 py-1 rounded-full font-medium bg-purple-500 -top-2 -right-2 z-10">
-        Quick Start
-      </div>
-      <div className="text-center">
-        <div className="mx-auto w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-colors bg-white shadow-sm group-hover:shadow-md">
-          <Icon className={cn('h-5 w-5', colors.icon)} />
-        </div>
-        
-        <h3 className={cn('font-medium mb-1 text-sm', colors.text)}>
-          Start with Template
-        </h3>
-        
-        <p className={cn('text-xs mb-3 opacity-90', colors.text)}>
-          Use a pre-built holiday finder template
-        </p>
-        <div className={cn(
-          'inline-flex items-center space-x-1 text-xs font-medium transition-colors',
-          colors.button
-        )}>
-          <Plus className="h-3 w-3" />
-          <span>Use Template</span>
-        </div>
-      </div>
-      <div className="absolute inset-0 bg-white/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
-    </div>
-  )
-} 
+ 

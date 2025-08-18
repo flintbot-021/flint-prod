@@ -6,9 +6,11 @@ import { CampaignSection, SectionType } from '@/lib/types/campaign-builder'
 import { Campaign } from '@/lib/types/database'
 import { SectionBlock } from './section-block'
 import { MandatorySectionPlaceholder } from './mandatory-section-placeholder'
-import { OptionalSectionPlaceholder, TemplatePlaceholder } from './optional-section-placeholder'
+import { OptionalSectionPlaceholder } from './optional-section-placeholder'
+
 import { cn } from '@/lib/utils'
-import { Plus, Layout } from 'lucide-react'
+import { Plus, Layout, Brain, Sparkles } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import React from 'react'
 
 interface SectionPersistence {
@@ -27,7 +29,7 @@ interface EnhancedSortableCanvasProps {
   onSectionConfigure: (sectionId: string) => void
   onSectionTypeChange: (sectionId: string, newType: string) => void
   onSectionAdd: (sectionType: SectionType, insertIndex?: number) => void
-  onTemplateClick?: () => void
+  onAIGeneratorClick?: () => void
   selectedSectionId: string | null
   onSectionSelect?: (sectionId: string) => void
   className?: string
@@ -47,7 +49,7 @@ export function EnhancedSortableCanvas({
   onSectionConfigure,
   onSectionTypeChange,
   onSectionAdd,
-  onTemplateClick,
+  onAIGeneratorClick,
   selectedSectionId,
   onSectionSelect,
   className,
@@ -127,21 +129,65 @@ export function EnhancedSortableCanvas({
             Your canvas is empty
           </h2>
           <p className="text-gray-600 dark:text-gray-800 mb-6">
-            Add a section to get started or use a template.
+            Generate with AI or add sections manually to get started.
           </p>
 
-          {/* Optional Section Cards */}
+          {/* AI Generator Card */}
+          {onAIGeneratorClick && (
+            <div className="mb-8">
+              <div
+                className="relative border-2 border-dashed rounded-lg transition-all duration-200 cursor-pointer group p-6 border-orange-200 hover:border-orange-300 bg-orange-50 hover:bg-orange-100"
+                onClick={onAIGeneratorClick}
+              >
+                <div className="absolute text-white text-xs px-2 py-1 rounded-full font-medium bg-orange-500 -top-2 -right-2 z-10">
+                  AI Powered
+                </div>
+                <div className="text-center">
+                  <div className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 transition-colors bg-white shadow-sm group-hover:shadow-md">
+                    <Brain className="h-6 w-6 text-orange-500" />
+                  </div>
+                  
+                  <h3 className="font-semibold mb-2 text-lg text-orange-700">
+                    Generate Campaign with AI
+                  </h3>
+                  
+                  <p className="text-sm mb-4 opacity-90 text-orange-700">
+                    Describe your idea and let AI create the complete campaign structure
+                  </p>
+
+                  <div className="inline-flex items-center space-x-2 text-sm font-medium transition-colors text-orange-600 hover:text-orange-700">
+                    <Sparkles className="h-4 w-4" />
+                    <span>Generate with AI</span>
+                  </div>
+                </div>
+                <div className="absolute inset-0 bg-white/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
+              </div>
+            </div>
+          )}
+
+          {/* AI Generator and Optional Section Cards */}
           {!isOver && (
             <div className="w-full mb-6">
-              {onTemplateClick && (
-                <div className="mb-4">
-                  <TemplatePlaceholder 
-                    onClick={onTemplateClick} 
-                    campaignId={campaignId}
-                    campaignName={displayCampaignName}
-                  />
+
+              
+              {/* Debug: Show if AI Generator prop is missing */}
+              {!onAIGeneratorClick && (
+                <div className="mb-6">
+                  <div className="text-center p-4 border-2 border-dashed border-red-300 rounded-lg bg-red-50">
+                    <p className="text-sm text-red-600 mb-2">⚠️ AI Generator not available</p>
+                    <p className="text-xs text-red-500">onAIGeneratorClick prop is missing</p>
+                  </div>
                 </div>
               )}
+              
+              {/* Show divider for manual options */}
+              <div className="flex items-center my-6">
+                <div className="flex-1 border-t border-gray-200"></div>
+                <div className="px-4 text-sm text-gray-500">or start manually</div>
+                <div className="flex-1 border-t border-gray-200"></div>
+              </div>
+              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <OptionalSectionPlaceholder
                   type="hero"
