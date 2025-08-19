@@ -97,7 +97,7 @@ export function PrivacyNoticeModal({
                 Flint (trading name of Dyvr Limited) hosts and operates this tool as a data processor. Flint's AI 
                 partners process your inputs to turn your answers into useful results.{' '}
                 <a 
-                  href="https://www.useflint.app/privacy" 
+                  href="https://launch.useflint.app/privacy-cookie-policy" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="text-blue-600 hover:text-blue-800 underline"

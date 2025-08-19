@@ -133,9 +133,8 @@ export function CaptureSection({
   // Initialize form data with existing responses if available
   const existingData = userInputs?.[section.id] || {}
   
-  // Default marketing consent to true if any contact fields are enabled and not previously set
-  const defaultMarketingConsent = (settings.enabledFields?.name || settings.enabledFields?.email || settings.enabledFields?.phone) && 
-    existingData.marketingConsent === undefined ? true : (existingData.marketingConsent || false)
+  // Default marketing consent to false - users must explicitly opt in
+  const defaultMarketingConsent = existingData.marketingConsent === undefined ? false : (existingData.marketingConsent || false)
   
   const [formData, setFormData] = useState<{
     name?: string
