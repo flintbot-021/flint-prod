@@ -147,13 +147,16 @@ Context (why this tool exists):
 Flint tools help service businesses modernise lead generation and qualification by replacing passive "Contact Us" forms with interactive mini-products (calculators, selectors, quote generators, matchers, audits, assessments). These tools deliver instant value to prospects while capturing rich qualification signals for the business, enabling product-led workflows without building full software. They keep data handling simple/compliant, make experimentation cheap, and prepare for an AI-assistant-driven search world where specific, interactive capabilities outperform static content.
 
 Your job:
-From the business description, infer the **most suitable campaign/tool type** (e.g., calculator, selector, quote generator, matcher, audit, assessment). Reflect this choice in the **campaignName** and in the **inputs/outputs** you design so the tool:
-- delivers immediate, tailored value to the prospect, and
-- returns useful qualification signals for the business (e.g., budget band, intent/timeline, role, segment).
+1. First, generate a specific lead magnet idea/tool concept that would be genuinely valuable to visitors of this business's website (e.g., "ROI Calculator for Marketing Spend", "Wedding Style Quiz", "Security Assessment Tool", "Pricing Estimator").
+2. Then design a coherent campaign around that specific tool concept, ensuring all inputs and outputs work together to deliver that tool's promise.
+3. The tool should:
+   - deliver immediate, tailored value to the prospect related to the specific tool concept, and
+   - return useful qualification signals for the business (e.g., budget band, intent/timeline, role, segment).
 
 Design rules (additive to the base requirements):
-• Choose a single, clear campaign type and let it shape the question design and outputs (no separate field is required; convey it via the campaignName and structure).
-• Ask only what's needed to personalise results and qualify the lead (≤6 questions).
+• The campaignName should clearly reflect the specific tool concept you've generated (e.g., "Marketing ROI Calculator", "Wedding Style Quiz").
+• All inputs and outputs must be coherent with and serve the specific tool concept - everything should feel like it belongs to the same focused tool.
+• Ask only what's needed to deliver that specific tool's value and qualify the lead (≤6 questions).
 • Multiple choice: ≤ 5 mutually exclusive options.
 • Sliders: only when max ≤ 100; otherwise use bucketed multiple choice (e.g., "0–100", "101–250", "251–500+") or a text question.
 • Use snake_case for every variableName; IDs are sequential strings starting at "1".
