@@ -58,19 +58,48 @@ async function callOpenAIForSuggestions(idea: string, inputType: 'idea' | 'busin
   }
 
   const baseRequirements = `
-1. Create a compelling campaign name (2-6 words, engaging and descriptive)
-2. Create 3-6 input questions that would be needed to provide personalized results
-3. For each input, determine the best question type:
-   - "text_question" for open-ended text responses
-   - "multiple_choice" for selecting from predefined options
-   - "slider" for rating/numeric values with min/max ranges
-   - "date_time_question" for dates or times
-   - "upload_question" for file uploads
+1. Create a compelling campaign name (2–6 words, engaging and descriptive; Title Case; no emojis). It should make sense on a public website and be legible to AI assistants.
 
-4. Create 2-4 output variables that the AI would generate based on the inputs
-5. Generate a contextual AI prompt that processes the inputs (following the pattern: "You are an expert [role]. The user was asked '[question]' and they [responded with/selected/rated] @variable_name...")
+2. Create 3–6 input questions required to produce personalised results **and** capture useful qualification data for the business (e.g., budget band, timeframe, role/title, use case). Each input must include:
+   - "id": sequential string starting at "1"
+   - "type": one of
+       • "text_question"      (open-ended response)
+       • "multiple_choice"    (single-select from predefined options; max 5)
+       • "slider"             (rating/numeric with min/max/step; only when maxValue ≤ 100)
+       • "date_time_question" (date, time, or datetime as plain text instruction)
+       • "upload_question"    (file upload)
+   - "variableName": snake_case, descriptive, unique
+   - "headline": clear question text
+   - "subheading": concise clarifier (may be empty)
+   - "placeholder": only for text questions (else empty)
+   - "options": only for multiple_choice; provide 2–5 mutually exclusive options (cap at 5)
+   - "minValue", "maxValue", "step": only for sliders (ensure maxValue ≤ 100)
+   - "minLabel", "maxLabel": human-friendly anchors for sliders (e.g., "Basic" ↔ "Premium")
+   - "required": true unless the question is explicitly optional
 
-Return JSON in this exact format:
+   Guidance:
+   - If a numeric range might exceed 100, use bucketed multiple_choice ranges (e.g., "0–100", "101–250", "251–500+") or switch to a text_question.
+   - Phrase questions to minimise ambiguity and cognitive load.
+   - Avoid collecting sensitive/PII unless essential; mark optional where appropriate.
+
+3. Create 2–4 output variables that the AI will generate from the inputs. Outputs should:
+   - Deliver immediate value to the user (e.g., a recommendation, plan, estimate, or curated selection).
+   - Include at least one business-oriented insight when relevant (e.g., a "segment_tag" or "priority_score") to support qualification.
+   For each output include:
+   - "id": sequential string starting at "1"
+   - "variableName": snake_case (e.g., "recommended_combo")
+   - "name": short display label (e.g., "Recommended Flower Combo")
+   - "description": what the output should contain, constraints/length, data source limits, and any explicit conditions.
+     • You may reference inputs with @variableName here to instruct conditional behaviour.
+     • If an output must extract an exact value (e.g., a URL), say "Return the exact URL ... no extra text".
+
+4. Generate a contextual AI prompt that processes the inputs using this pattern:
+   - "You are an expert [role]. The user was asked '[question1]' and they [responded with/selected/rated] @variable1[ /max if slider]. The user was asked '[question2]' and they [responded/selected/rated] @variable2 …"
+   - Choose [role] to match the campaign domain (e.g., "wedding florist", "customer experience analyst").
+   - Use only @variableName (snake_case) to refer to user answers.
+   - Keep it concise, precise, and grounded in the available inputs/knowledge. Do not reference unavailable data.
+
+5. Return JSON in this exact format:
 {
   "campaignName": "Compelling Campaign Name",
   "inputs": [
@@ -81,7 +110,7 @@ Return JSON in this exact format:
       "headline": "Question headline",
       "subheading": "Optional clarifying text",
       "placeholder": "For text questions only",
-      "options": ["For multiple choice only"],
+      "options": ["For multiple choice only (2–5 items, max 5)"],
       "minValue": 0,
       "maxValue": 10,
       "step": 1,
@@ -95,23 +124,68 @@ Return JSON in this exact format:
       "id": "1",
       "variableName": "snake_case_name",
       "name": "Display Name",
-      "description": "What this output represents"
+      "description": "What this output represents + constraints/conditions. You may reference @input_variables here."
     }
   ],
   "aiPrompt": "You are an expert [role]. The user was asked '[question1]' and they responded with @variable1. The user was asked '[question2]' and they selected @variable2 from the available options."
 }
 
-Make the campaign name catchy and professional. Make the questions relevant and specific to the campaign idea. Ensure variable names are descriptive and use snake_case.`
+6. Additional constraints:
+   - Multiple choice options: ≤ 5.
+   - Sliders: only when maxValue ≤ 100; otherwise use bucketed multiple_choice or a text_question.
+   - Use en-GB spelling; keep language clear, practical.
+   - Do not include CTA labels or capture-field states. Do not fabricate privacy links.
+   - Do not use @variables in questions or subheadings; only in aiPrompt and (optionally) output descriptions.
+   - Prefer inputs/outputs that shorten time-to-value for the user and increase qualification clarity for the business.`
 
   const prompt = inputType === 'business' 
-    ? `You are an expert campaign designer. A user has described their business: "${idea}"
+    ? `You are an expert campaign designer for interactive, self-serve tools.
 
-Based on this business description, suggest a suitable campaign type and generate appropriate input questions, output results, and a compelling campaign name that would help this business engage their audience and generate leads.
+A user has described their business: "${idea}"
+
+Context (why this tool exists):
+Flint tools help service businesses modernise lead generation and qualification by replacing passive "Contact Us" forms with interactive mini-products (calculators, selectors, quote generators, matchers, audits, assessments). These tools deliver instant value to prospects while capturing rich qualification signals for the business, enabling product-led workflows without building full software. They keep data handling simple/compliant, make experimentation cheap, and prepare for an AI-assistant-driven search world where specific, interactive capabilities outperform static content.
+
+Your job:
+From the business description, infer the **most suitable campaign/tool type** (e.g., calculator, selector, quote generator, matcher, audit, assessment). Reflect this choice in the **campaignName** and in the **inputs/outputs** you design so the tool:
+- delivers immediate, tailored value to the prospect, and
+- returns useful qualification signals for the business (e.g., budget band, intent/timeline, role, segment).
+
+Design rules (additive to the base requirements):
+• Choose a single, clear campaign type and let it shape the question design and outputs (no separate field is required; convey it via the campaignName and structure).
+• Ask only what's needed to personalise results and qualify the lead (≤6 questions).
+• Multiple choice: ≤ 5 mutually exclusive options.
+• Sliders: only when max ≤ 100; otherwise use bucketed multiple choice (e.g., "0–100", "101–250", "251–500+") or a text question.
+• Use snake_case for every variableName; IDs are sequential strings starting at "1".
+• If any outputs are conditional, express the condition explicitly in the output description (e.g., "If @budget ≤ 5000 … else …").
+• Do not use @variables in question or subheading text; only in aiPrompt and, if helpful, output descriptions.
+• Do not include CTA labels or capture-field states, and do not fabricate privacy links.
+• Avoid collecting sensitive/PII unless essential; mark optional if included.
+• Keep language en-GB, clear, practical.
+• No emojis in titles or labels.
 
 REQUIREMENTS:${baseRequirements}`
-    : `You are an expert campaign designer. A user wants to create: "${idea}"
+    : `You are an expert campaign designer for interactive tools. A user wants to create: "${idea}"
 
-Based on this campaign idea, generate appropriate input questions, output results, and a compelling campaign name.
+Context (why this tool exists):
+Flint tools help service businesses modernise lead generation and qualification by replacing passive "Contact Us" forms with interactive, self-serve mini-products (calculators, selectors, quote generators, matchers). These tools reduce time-to-value for prospects (instant, tailored results) while collecting rich qualification signals for the business. They enable product-led workflows without building full software, keep data handling simple/compliant, make experimentation cheap, and prepare for an AI-assistant-driven search world where specific interactive capabilities beat static content.
+
+Your job: return a clean JSON campaign spec that can be used to build the tool end-to-end. Use plain English (en-GB), concise copy, and sensible defaults if details are missing.
+
+Design rules:
+• Campaign name: short, clear, professional (no emojis).
+• Inputs (3–6): ask only what's needed to personalise results AND produce useful qualification signals (e.g., intent, budget/tier, timeframe, role). Keep questions unambiguous.
+• Types: choose the best type for each input (see base requirements).
+• Multiple choice: ≤ 5 mutually exclusive options; avoid overlap.
+• Sliders: only when max ≤ 100; otherwise use bucketed multiple choice (e.g., "0–100", "101–250", "251–500+") or text.
+• Sliders must include minValue, maxValue, step, minLabel, maxLabel.
+• Use snake_case for every variableName; make them unique and descriptive.
+• IDs are sequential strings starting at "1" in both inputs and outputs.
+• Outputs (2–4): must deliver immediate user value (clear, actionable results) AND, where relevant, a business-useful signal (e.g., segment/tag/priority). If any output is conditional, spell out the condition explicitly in the description (e.g., "If @budget ≤ 5000 then … else …").
+• Only use @variable references in the aiPrompt and (optionally) in output descriptions to guide AI behaviour. Do not use @variables in questions or subheadings.
+• Do not include CTA labels or capture-form field states. Do not invent privacy links.
+• Respect data minimisation: avoid sensitive/PII unless essential—and mark it optional if included.
+• Keep tone "clear, practical".
 
 REQUIREMENTS:${baseRequirements}`
 
