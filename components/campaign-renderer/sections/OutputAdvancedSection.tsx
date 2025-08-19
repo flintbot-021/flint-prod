@@ -50,7 +50,7 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
   }, [sections, userInputs, campaign?.id])
 
   const rows = (config as any)?.rows || []
-  const pageSettings = (config as any)?.settings || {}
+  const pageSettings = (config as any)?.pageSettings || {}
   const interpolator = useMemo(() => new VariableInterpolator(), [])
 
   const renderItem = (item: any) => {
