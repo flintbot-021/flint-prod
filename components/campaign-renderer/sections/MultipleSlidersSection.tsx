@@ -167,7 +167,7 @@ export function MultipleSlidersSection({
   return (
     <div 
       className={cn(
-        'min-h-screen flex flex-col',
+        'min-h-[calc(100vh-4rem)] flex flex-col',
         getMobileClasses('', deviceInfo?.type)
       )}
       style={{ backgroundColor: theme.backgroundColor }}

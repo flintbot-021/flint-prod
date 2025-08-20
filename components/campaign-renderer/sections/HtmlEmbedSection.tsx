@@ -119,8 +119,8 @@ export function HtmlEmbedSection({
         className="w-full"
         dangerouslySetInnerHTML={{ __html: processedHtml }}
         style={{
-          // Ensure full viewport usage
-          minHeight: '100vh',
+          // Ensure full viewport usage minus header height
+          minHeight: 'calc(100vh - 4rem)',
           width: '100%'
         }}
       />
