@@ -117,11 +117,11 @@ export function TextQuestionSection({
     <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl mx-auto space-y-8">
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-6">
             <h1 
               className={cn(
-                "font-bold",
-                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
+                "font-black tracking-tight leading-tight",
+                deviceInfo?.type === 'mobile' ? "text-4xl" : "text-5xl lg:text-6xl"
               )}
               style={primaryTextStyle}
             >
@@ -132,7 +132,8 @@ export function TextQuestionSection({
             {subheading && (
               <p 
                 className={cn(
-                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                  "font-medium leading-relaxed max-w-2xl mx-auto",
+                  deviceInfo?.type === 'mobile' ? "text-lg" : "text-xl lg:text-2xl"
                 )}
                 style={mutedTextStyle}
               >
@@ -141,48 +142,62 @@ export function TextQuestionSection({
             )}
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-6">
             {fieldLabel && (
-              <label className="block text-sm font-medium" style={primaryTextStyle}>
+              <label className="block text-base font-semibold" style={primaryTextStyle}>
                 {fieldLabel}
               </label>
             )}
+            <div className="relative">
               <textarea
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyPress={handleKeyPress}
+                value={inputValue}
+                onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
                 placeholder={placeholder}
                 rows={6}
-              maxLength={maxLength}
+                maxLength={maxLength}
                 className={cn(
-                "w-full p-4 border rounded-lg resize-none",
-                "focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                "transition-all duration-200",
-                error 
-                  ? "border-red-500 focus:ring-red-500" 
-                  : "border-gray-300",
-                getMobileClasses("text-base", deviceInfo?.type)
+                  "w-full p-6 rounded-2xl resize-none backdrop-blur-md border-0",
+                  "focus:ring-2 focus:ring-opacity-50 focus:outline-none",
+                  "transition-all duration-300 ease-out",
+                  "shadow-lg hover:shadow-xl",
+                  "placeholder:text-opacity-60",
+                  error 
+                    ? "ring-2 ring-red-500 ring-opacity-50" 
+                    : "hover:shadow-2xl focus:shadow-2xl",
+                  getMobileClasses("text-lg", deviceInfo?.type)
                 )}
                 style={{
-                  backgroundColor: `#ffffff33`, // 20% opacity of white
-                  color: theme.textColor
+                  backgroundColor: `rgba(255, 255, 255, 0.15)`,
+                  backdropFilter: 'blur(20px)',
+                  border: `1px solid rgba(255, 255, 255, 0.2)`,
+                  color: theme.textColor,
+                  boxShadow: error 
+                    ? '0 8px 32px rgba(239, 68, 68, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)' 
+                    : '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
                 }}
               />
+            </div>
 
             {/* Character Counter */}
-            <div className="flex justify-between items-center text-sm">
+            <div className="flex justify-between items-center">
               <div>
                 {error && (
-                  <span className="text-red-600">{error}</span>
+                  <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-red-500/10 backdrop-blur-sm border border-red-500/20">
+                    <span className="text-red-600 font-medium text-sm">{error}</span>
+                  </div>
                 )}
               </div>
-              <span className={cn(
-                "text-muted-foreground",
-                inputValue.length > maxLength * 0.9 && "text-amber-600",
-                inputValue.length >= maxLength && "text-red-600"
-              )}>
-                {inputValue.length}/{maxLength}
-              </span>
+              <div className="px-3 py-1 rounded-full backdrop-blur-sm border border-white/10" 
+                   style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)' }}>
+                <span className={cn(
+                  "text-sm font-medium",
+                  inputValue.length > maxLength * 0.9 && "text-amber-500",
+                  inputValue.length >= maxLength && "text-red-500"
+                )} style={inputValue.length > maxLength * 0.9 ? undefined : mutedTextStyle}>
+                  {inputValue.length}/{maxLength}
+                </span>
+              </div>
           </div>
 
 

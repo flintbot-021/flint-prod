@@ -75,10 +75,10 @@ export function SliderSection({
     <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl mx-auto space-y-8">
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-6">
             <h1 className={cn(
-              "font-bold",
-              deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
+              "font-black tracking-tight leading-tight",
+              deviceInfo?.type === 'mobile' ? "text-4xl" : "text-5xl lg:text-6xl"
             )} style={primaryTextStyle}>
               {question}
               {isRequired && <span className="text-red-500 ml-1">*</span>}
@@ -86,7 +86,8 @@ export function SliderSection({
             
             {subheading && (
               <p className={cn(
-                deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                "font-medium leading-relaxed max-w-2xl mx-auto",
+                deviceInfo?.type === 'mobile' ? "text-lg" : "text-xl lg:text-2xl"
               )} style={mutedTextStyle}>
                 {subheading}
               </p>
@@ -97,10 +98,12 @@ export function SliderSection({
             {/* Current Value Display */}
             <div className="text-center">
               <div 
-                className="inline-flex items-center justify-center w-16 h-16 rounded-full text-2xl font-bold"
+                className="inline-flex items-center justify-center w-20 h-20 rounded-2xl text-3xl font-black backdrop-blur-md border shadow-2xl transition-all duration-300 hover:scale-105"
                 style={{
                   backgroundColor: theme.buttonColor,
-                  color: theme.buttonTextColor
+                  color: theme.buttonTextColor,
+                  border: `2px solid rgba(255, 255, 255, 0.2)`,
+                  boxShadow: `0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)`
                 }}
               >
                 {sliderValue}
@@ -108,8 +111,13 @@ export function SliderSection({
             </div>
             
             {/* Slider Container */}
-            <div className="space-y-4">
-              <div className="relative">
+            <div className="space-y-6">
+              <div className="relative p-6 rounded-2xl backdrop-blur-md border shadow-lg" 
+                   style={{
+                     backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                     border: '1px solid rgba(255, 255, 255, 0.15)',
+                     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                   }}>
               <>
                 <style dangerouslySetInnerHTML={{
                   __html: `
@@ -162,17 +170,28 @@ export function SliderSection({
 
               </div>
 
-              {/* Labels */}
-              <div className="flex justify-between items-center text-sm" style={mutedTextStyle}>
-                <span>{minLabel}</span>
-                <span>{maxLabel}</span>
+                {/* Labels */}
+                <div className="flex justify-between items-center mt-4">
+                  <span className="text-sm font-medium px-3 py-1 rounded-full backdrop-blur-sm border border-white/10" 
+                        style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)', ...mutedTextStyle }}>
+                    {minLabel}
+                  </span>
+                  <span className="text-sm font-medium px-3 py-1 rounded-full backdrop-blur-sm border border-white/10" 
+                        style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)', ...mutedTextStyle }}>
+                    {maxLabel}
+                  </span>
+                </div>
               </div>
-            </div>
 
             {/* Additional context */}
-            <div className="text-center text-sm" style={mutedTextStyle}>
-              Move the slider to select your rating from {minValue} to {maxValue}
-          </div>
+            <div className="text-center">
+              <div className="inline-block px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10" 
+                   style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
+                <span className="text-sm font-medium" style={mutedTextStyle}>
+                  Move the slider to select your rating from {minValue} to {maxValue}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
