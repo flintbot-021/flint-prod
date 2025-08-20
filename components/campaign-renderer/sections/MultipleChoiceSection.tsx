@@ -73,15 +73,28 @@ export function MultipleChoiceSection({
   // Generate validation text for bottom bar
   const validationText = isRequired && !selectedValue ? 'Please select an option to continue' : undefined
 
+  // Helper function to convert hex color to rgba with opacity
+  const hexToRgba = (hex: string, opacity: number) => {
+    // Remove # if present
+    const cleanHex = hex.replace('#', '')
+    
+    // Parse hex to RGB
+    const r = parseInt(cleanHex.substring(0, 2), 16)
+    const g = parseInt(cleanHex.substring(2, 4), 16)
+    const b = parseInt(cleanHex.substring(4, 6), 16)
+    
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`
+  }
+
   return (
     <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl mx-auto space-y-8">
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-6">
             <h1 
               className={cn(
-                "font-bold",
-                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
+                "font-black tracking-tight leading-tight",
+                deviceInfo?.type === 'mobile' ? "text-4xl" : "text-5xl lg:text-6xl"
               )}
               style={primaryTextStyle}
             >
@@ -92,7 +105,8 @@ export function MultipleChoiceSection({
             {helpText && (
               <p 
                 className={cn(
-                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                  "font-medium leading-relaxed max-w-2xl mx-auto",
+                  deviceInfo?.type === 'mobile' ? "text-lg" : "text-xl lg:text-2xl"
                 )}
                 style={mutedTextStyle}
               >
@@ -101,7 +115,7 @@ export function MultipleChoiceSection({
             )}
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {choices.map((choice: any, idx: number) => {
               const choiceValue = typeof choice === 'string' ? choice : choice.value || choice.text
               const choiceLabel = typeof choice === 'string' ? choice : choice.label || choice.text || choice.value
@@ -112,33 +126,50 @@ export function MultipleChoiceSection({
                   key={idx}
                   onClick={() => handleChoiceSelect(choiceValue)}
                   className={cn(
-                    "w-full p-4 rounded-lg border text-left transition-all duration-200",
-                    "flex items-center space-x-3 hover:shadow-md",
-                    !isSelected && "hover:bg-muted/50",
+                    "w-full p-6 rounded-2xl text-left transition-all duration-300 ease-out",
+                    "flex items-center space-x-4 backdrop-blur-md border",
+                    "hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]",
+                    "group relative overflow-hidden",
                     getMobileClasses("", deviceInfo?.type)
                   )}
                   style={{
                     ...(isSelected ? {
-                      borderColor: theme.buttonColor, // primary button at 100%
-                      backgroundColor: `#ffffff33`, // 20% opacity white
-                      boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+                      backgroundColor: hexToRgba(theme.buttonColor, 0.2),
+                      border: `2px solid ${theme.buttonColor}`,
+                      boxShadow: `0 12px 40px ${hexToRgba(theme.buttonColor, 0.25)}, inset 0 1px 0 rgba(255, 255, 255, 0.2)`
                     } : {
-                      borderColor: `${theme.buttonColor}1A`, // primary button at 10% opacity
-                      backgroundColor: `#ffffff33`, // 20% opacity white
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
                     })
                   }}
                 >
-                  <div className="flex-shrink-0">
-                  {isSelected ? (
-                      <CheckCircle2 className="h-5 w-5" style={{ color: theme.buttonColor }} />
-                  ) : (
-                      <Circle className="h-5 w-5" style={{ color: `${theme.buttonColor}1A` }} />
-                  )}
+                  <div className="flex-shrink-0 relative">
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300",
+                      isSelected 
+                        ? "shadow-lg" 
+                        : "group-hover:scale-110"
+                    )}
+                    style={{
+                      backgroundColor: isSelected 
+                        ? theme.buttonColor 
+                        : 'rgba(255, 255, 255, 0.1)',
+                      border: isSelected 
+                        ? `2px solid rgba(255, 255, 255, 0.3)` 
+                        : `1px solid rgba(255, 255, 255, 0.2)`
+                    }}>
+                      {isSelected ? (
+                        <CheckCircle2 className="h-5 w-5" style={{ color: theme.buttonTextColor }} />
+                      ) : (
+                        <Circle className="h-4 w-4 opacity-60" style={{ color: theme.textColor }} />
+                      )}
+                    </div>
                   </div>
                   <span 
                     className={cn(
-                      "text-left",
-                      isSelected && "font-medium"
+                      "text-left flex-1 transition-all duration-300",
+                      isSelected ? "font-semibold text-lg" : "font-medium text-base group-hover:font-semibold"
                     )}
                     style={{ color: theme.textColor }}
                   >
@@ -156,7 +187,7 @@ export function MultipleChoiceSection({
       {/* Compliance Notice */}
       {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
-      {/* Shared Navigation Bar */}
+      {/* Shared Navigation Bar - Rendered via Portal */}
       <SectionNavigationBar
         onPrevious={onPrevious}
         icon={<CheckCircle2 className="h-5 w-5 text-primary" />}

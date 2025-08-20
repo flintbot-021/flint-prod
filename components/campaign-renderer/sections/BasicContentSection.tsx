@@ -81,27 +81,27 @@ export function BasicContentSection({
       style={{ backgroundColor: theme.backgroundColor }}
     >
       {/* Main Content Area */}
-      <div className="flex-1 py-16 px-6">
-        <div className="max-w-4xl mx-auto space-y-12">
+      <div className="flex-1 py-20 px-6">
+        <div className="max-w-5xl mx-auto space-y-16">
           {/* Top Image (if provided) */}
           {settings.image_url && (
             <div className="w-full">
               <img 
                 src={settings.image_url}
                 alt={settings.headline || 'Section image'}
-                className="w-full h-64 md:h-80 object-cover rounded-lg"
+                className="w-full h-64 md:h-80 object-cover rounded-2xl shadow-2xl"
               />
             </div>
           )}
 
           {/* Content Stack: Title -> Subtitle -> Content */}
-          <div className={cn('space-y-6', getAlignmentClass(settings.alignment))}>
+          <div className={cn('space-y-8', getAlignmentClass(settings.alignment))}>
             {/* Headline */}
             {settings.headline && (
             <h1 
               className={cn(
-                "font-bold",
-                deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
+                "font-black tracking-tight leading-tight",
+                deviceInfo?.type === 'mobile' ? "text-4xl md:text-5xl" : "text-5xl md:text-6xl lg:text-7xl"
               )}
               style={primaryTextStyle}
             >
@@ -113,7 +113,8 @@ export function BasicContentSection({
             {settings.subheading && (
               <p 
                 className={cn(
-                  deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
+                  "font-medium leading-relaxed",
+                  deviceInfo?.type === 'mobile' ? "text-xl md:text-2xl" : "text-2xl md:text-3xl lg:text-4xl"
                 )}
                 style={mutedTextStyle}
               >
@@ -125,8 +126,8 @@ export function BasicContentSection({
             {settings.content && (
               <div 
                 className={cn(
-                  "leading-relaxed whitespace-pre-wrap",
-                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                  "leading-relaxed whitespace-pre-wrap font-medium",
+                  deviceInfo?.type === 'mobile' ? "text-lg" : "text-xl md:text-2xl"
                 )}
                 style={mutedTextStyle}
               >

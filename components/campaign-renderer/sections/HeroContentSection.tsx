@@ -108,10 +108,10 @@ export function HeroContentSection({
       )}>
         {settings.title && (
           <h1 className={cn(
-            "font-bold text-white leading-tight",
+            "font-black text-white leading-tight tracking-tight",
             deviceInfo?.type === 'mobile' 
-              ? "text-2xl" 
-              : "text-5xl md:text-6xl lg:text-7xl"
+              ? "text-4xl" 
+              : "text-6xl md:text-7xl lg:text-8xl"
           )}>
             {settings.title}
           </h1>
@@ -119,10 +119,10 @@ export function HeroContentSection({
         
         {settings.subtitle && (
           <p className={cn(
-            "text-white/90 mx-auto leading-relaxed",
+            "text-white/90 mx-auto leading-relaxed font-medium",
             deviceInfo?.type === 'mobile' 
-              ? "text-base max-w-sm px-1" 
-              : "text-xl md:text-2xl max-w-3xl"
+              ? "text-lg max-w-sm px-1" 
+              : "text-2xl md:text-3xl max-w-4xl"
           )}>
             {settings.subtitle}
           </p>
@@ -130,17 +130,22 @@ export function HeroContentSection({
 
         {settings.showButton && (
           <div className={cn(
-            deviceInfo?.type === 'mobile' ? "pt-3" : "pt-4"
+            deviceInfo?.type === 'mobile' ? "pt-6" : "pt-8"
           )}>
             <button
               onClick={handleContinue}
               className={cn(
-                'font-semibold rounded-md transition-colors',
+                'font-bold rounded-2xl backdrop-blur-md border transition-all duration-300 ease-out',
+                'hover:shadow-2xl hover:scale-105 active:scale-95 shadow-xl',
                 deviceInfo?.type === 'mobile' 
-                  ? "text-sm px-5 py-2.5 mx-4" 
-                  : "text-lg px-8 py-4"
+                  ? "text-base px-6 py-3 mx-4" 
+                  : "text-xl px-10 py-5"
               )}
-              style={primaryButtonStyle}
+              style={{
+                ...primaryButtonStyle,
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                boxShadow: '0 16px 48px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.3)'
+              }}
             >
               {settings.buttonText}
             </button>

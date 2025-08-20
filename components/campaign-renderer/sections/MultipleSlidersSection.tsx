@@ -179,12 +179,12 @@ export function MultipleSlidersSection({
         <div className="w-full max-w-2xl space-y-8">
           
           {/* Section Header */}
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-6">
             {headline && (
               <h1 
                 className={cn(
-                  'font-bold leading-tight',
-                  deviceInfo?.type === 'mobile' ? 'text-2xl' : 'text-4xl'
+                  'font-black tracking-tight leading-tight',
+                  deviceInfo?.type === 'mobile' ? 'text-4xl' : 'text-5xl lg:text-6xl'
                 )}
                 style={primaryTextStyle}
               >
@@ -195,7 +195,8 @@ export function MultipleSlidersSection({
             {subheading && (
               <p 
                 className={cn(
-                  deviceInfo?.type === 'mobile' ? 'text-base' : 'text-xl'
+                  'font-medium leading-relaxed max-w-2xl mx-auto',
+                  deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl lg:text-2xl'
                 )}
                 style={mutedTextStyle}
               >
@@ -222,71 +223,86 @@ export function MultipleSlidersSection({
               return (
                 <div key={slider.id} className="space-y-4">
                   
-                  {/* Clickable Slider Label */}
+                  {/* Unified Slider Container */}
                   <div 
                     className={cn(
-                      'cursor-pointer select-none relative',
-                      'flex items-center justify-between',
-                      'p-3 rounded-lg transition-colors duration-200',
-                      'hover:bg-gray-50',
-                      hasError && 'ring-1 ring-red-500/50 bg-red-900/10'
+                      'rounded-2xl backdrop-blur-md border transition-all duration-300',
+                      'hover:shadow-xl hover:scale-[1.02]',
+                      hasError && 'ring-2 ring-red-500/50'
                     )}
-                    onClick={() => toggleSliderExpansion(slider.id)}
+                    style={{
+                      backgroundColor: hasError 
+                        ? 'rgba(239, 68, 68, 0.1)' 
+                        : 'rgba(255, 255, 255, 0.08)',
+                      border: hasError 
+                        ? '1px solid rgba(239, 68, 68, 0.3)' 
+                        : '1px solid rgba(255, 255, 255, 0.15)',
+                      boxShadow: hasError 
+                        ? '0 8px 32px rgba(239, 68, 68, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)' 
+                        : '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                    }}
                   >
-                    <div className="flex items-center space-x-3">
-                      {/* Expansion Icon */}
-                      {isExpanded ? (
-                        <ChevronDown className="w-5 h-5 text-gray-400 transition-transform duration-200" />
-                      ) : (
-                        <ChevronRight className="w-5 h-5 text-gray-400 transition-transform duration-200" />
+                    {/* Clickable Header */}
+                    <div 
+                      className="cursor-pointer select-none relative flex items-center justify-between p-4"
+                      onClick={() => toggleSliderExpansion(slider.id)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        {/* Expansion Icon */}
+                        {isExpanded ? (
+                          <ChevronDown className="w-5 h-5 text-gray-400 transition-transform duration-200" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5 text-gray-400 transition-transform duration-200" />
+                        )}
+                        
+                        {/* Label */}
+                        <h3 
+                          className={cn(
+                            'font-medium',
+                            deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl'
+                          )}
+                          style={primaryTextStyle}
+                        >
+                          {slider.label}
+                          {slider.required && <span className="text-red-400 ml-1">*</span>}
+                        </h3>
+                      </div>
+                      
+                      {/* Current Value Display - Enhanced Circle in Top Right */}
+                      {slider.showValue && (
+                        <div className="absolute top-3 right-3">
+                          <div 
+                            className="inline-flex items-center justify-center w-10 h-10 rounded-2xl text-sm font-black backdrop-blur-md border shadow-xl transition-all duration-300 hover:scale-110"
+                            style={{ 
+                              backgroundColor: theme.buttonColor,
+                              color: theme.buttonTextColor,
+                              border: `2px solid rgba(255, 255, 255, 0.2)`,
+                              boxShadow: `0 8px 24px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)`
+                            }}
+                          >
+                            {currentValue}
+                          </div>
+                        </div>
                       )}
                       
-                      {/* Label */}
-                      <h3 
-                        className={cn(
-                          'font-medium',
-                          deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl'
-                        )}
-                        style={primaryTextStyle}
-                      >
-                        {slider.label}
-                        {slider.required && <span className="text-red-400 ml-1">*</span>}
-                      </h3>
-                    </div>
-                    
-                    {/* Current Value Display - Small Circle in Top Right */}
-                    {slider.showValue && (
-                      <div className="absolute top-2 right-2">
-                        <div 
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shadow-md"
-                          style={{ 
-                            backgroundColor: theme.buttonColor,
-                            color: theme.buttonTextColor
-                          }}
-                        >
-                          {currentValue}
+                      {/* Error Display */}
+                      {hasError && (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-red-400 text-sm">
+                            Required
+                          </span>
                         </div>
-                      </div>
-                    )}
-                    
-                    {/* Error Display */}
-                    {hasError && (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-red-400 text-sm">
-                          Required
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
 
-                  {/* Collapsible Slider Interface */}
-                  <div className={cn(
-                    'overflow-hidden transition-all duration-300 ease-in-out',
-                    isExpanded 
-                      ? 'max-h-[300px] opacity-100' 
-                      : 'max-h-0 opacity-0'
-                  )}>
-                    <div className="space-y-4 px-3 pb-2">
+                    {/* Collapsible Slider Interface */}
+                    <div className={cn(
+                      'overflow-hidden transition-all duration-300 ease-in-out',
+                      isExpanded 
+                        ? 'max-h-[300px] opacity-100' 
+                        : 'max-h-0 opacity-0'
+                    )}>
+                      <div className="space-y-4 px-6 pb-6 pt-2">
                       
                       {/* Slider */}
                       <div className="relative px-2">
@@ -340,19 +356,42 @@ export function MultipleSlidersSection({
                       </div>
                       
                       {/* Labels below slider */}
-                      <div className="flex justify-between items-center text-sm" style={mutedTextStyle}>
-                        <span>{slider.minLabel}</span>
-                        <span>{slider.maxLabel}</span>
+                      <div className="flex justify-between items-center">
+                        <span 
+                          className="px-3 py-1 rounded-full backdrop-blur-sm border text-sm font-medium"
+                          style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            ...mutedTextStyle
+                          }}
+                        >
+                          {slider.minLabel}
+                        </span>
+                        <span 
+                          className="px-3 py-1 rounded-full backdrop-blur-sm border text-sm font-medium"
+                          style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            ...mutedTextStyle
+                          }}
+                        >
+                          {slider.maxLabel}
+                        </span>
                       </div>
                       
                       {/* Error Message */}
                       {hasError && (
                         <div className="text-center">
-                          <span className="text-red-400 text-sm">
+                          <div className="inline-flex items-center px-3 py-2 rounded-lg backdrop-blur-sm border text-sm font-medium text-red-400"
+                               style={{
+                                 backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                 border: '1px solid rgba(239, 68, 68, 0.3)'
+                               }}>
                             {errors[slider.id]}
-                          </span>
+                          </div>
                         </div>
                       )}
+                      </div>
                     </div>
                   </div>
                   

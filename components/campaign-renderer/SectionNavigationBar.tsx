@@ -1,6 +1,7 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronLeft, ArrowLeft, ArrowRight, Loader2, CheckCircle, WifiOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getMobileClasses, getCampaignButtonStyles, getCampaignTheme } from './utils'
@@ -109,12 +110,23 @@ export function SectionNavigationBar({
   variant = 'simple',
   campaign
 }: SectionNavigationBarProps) {
+  const [mounted, setMounted] = useState(false)
   const isFull = variant === 'full'
   const actions = actionButtons || (actionButton ? [actionButton] : [])
   const theme = getCampaignTheme(campaign)
   
-  return (
-    <div className={cn("fixed bottom-0 left-0 right-0 bg-background/20 backdrop-blur-md border-t border-border/20 shadow-2xl", className)}>
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+  
+  const navigationContent = (
+    <div 
+      className={cn("fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t shadow-2xl z-50", className)}
+      style={{
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+      }}>
       <div className="max-w-4xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Left: Previous Button */}
@@ -287,12 +299,21 @@ export function SectionNavigationBar({
                     onClick={action.onClick}
                     disabled={action.disabled}
                     className={cn(
-                      "px-6 py-2 rounded-lg font-medium transition-all duration-200",
-                      "flex items-center space-x-2 shadow-md hover:shadow-lg",
+                      "px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-out",
+                      "flex items-center space-x-2 backdrop-blur-md border",
+                      "hover:shadow-xl hover:scale-105 active:scale-95",
                       action.disabled && "cursor-not-allowed opacity-50",
                       getMobileClasses("", deviceInfo?.type)
                     )}
-                    style={action.disabled ? { backgroundColor: '#e5e7eb', color: '#6b7280' } : buttonStyles}
+                    style={action.disabled ? { 
+                      backgroundColor: 'rgba(229, 231, 235, 0.5)', 
+                      color: '#6b7280',
+                      border: '1px solid rgba(255, 255, 255, 0.1)'
+                    } : {
+                      ...buttonStyles,
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                    }}
                   >
                     {action.icon && action.icon}
                     <span>{action.label}</span>
@@ -307,4 +328,11 @@ export function SectionNavigationBar({
       </div>
     </div>
   )
+  
+  // Only render on client side and use portal to render at document body level
+  if (!mounted || typeof window === 'undefined') {
+    return null
+  }
+  
+  return createPortal(navigationContent, document.body)
 } 
