@@ -73,6 +73,19 @@ export function MultipleChoiceSection({
   // Generate validation text for bottom bar
   const validationText = isRequired && !selectedValue ? 'Please select an option to continue' : undefined
 
+  // Helper function to convert hex color to rgba with opacity
+  const hexToRgba = (hex: string, opacity: number) => {
+    // Remove # if present
+    const cleanHex = hex.replace('#', '')
+    
+    // Parse hex to RGB
+    const r = parseInt(cleanHex.substring(0, 2), 16)
+    const g = parseInt(cleanHex.substring(2, 4), 16)
+    const b = parseInt(cleanHex.substring(4, 6), 16)
+    
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`
+  }
+
   return (
     <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
       <div className="flex-1 flex items-center justify-center px-6 py-12">
@@ -120,7 +133,7 @@ export function MultipleChoiceSection({
                   style={{
                     ...(isSelected ? {
                       borderColor: theme.buttonColor, // primary button at 100%
-                      backgroundColor: `#ffffff33`, // 20% opacity white
+                      backgroundColor: hexToRgba(theme.buttonColor, 0.2), // 20% opacity of button color
                       boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
                     } : {
                       borderColor: `${theme.buttonColor}1A`, // primary button at 10% opacity
