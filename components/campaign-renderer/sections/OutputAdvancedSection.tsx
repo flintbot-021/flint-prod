@@ -57,24 +57,24 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
     switch (item.type) {
       case 'headline':
         return (
-          <h1 className={cn('font-bold', deviceInfo?.type === 'mobile' ? 'text-3xl' : 'text-4xl')}>
+          <h1 className={cn('font-black tracking-tight leading-tight', deviceInfo?.type === 'mobile' ? 'text-4xl' : 'text-5xl lg:text-6xl')} style={{ color: campaignTheme.textColor }}>
             {interpolator.interpolate(item.content || '', { variables: variableMap, availableVariables: [] }).content}
           </h1>
         )
       case 'subheading':
         return (
-          <div className={cn('text-muted-foreground', deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl')}>
+          <div className={cn('font-medium leading-relaxed', deviceInfo?.type === 'mobile' ? 'text-xl' : 'text-2xl lg:text-3xl')} style={{ color: campaignTheme.mutedTextColor }}>
             {interpolator.interpolate(item.content || '', { variables: variableMap, availableVariables: [] }).content}
           </div>
         )
       case 'paragraph':
         return (
-          <div className={cn('leading-relaxed', deviceInfo?.type === 'mobile' ? 'text-base' : 'text-lg')}>
+          <div className={cn('leading-relaxed font-medium', deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl')} style={{ color: campaignTheme.textColor }}>
             {interpolator.interpolate(item.content || '', { variables: variableMap, availableVariables: [] }).content}
           </div>
         )
       case 'divider':
-        return <hr className="border-input" />
+        return <hr className="border-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent backdrop-blur-sm" />
       case 'button':
         const buttonHref = interpolator.interpolate((item as any).href || '#', { variables: variableMap, availableVariables: [] }).content
         const buttonText = interpolator.interpolate(item.content || 'Button', { variables: variableMap, availableVariables: [] }).content
@@ -84,9 +84,12 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
           <div className="flex justify-center">
             <a 
               href={buttonHref}
-              className="inline-flex items-center justify-center px-6 py-3 rounded-lg text-white font-medium text-center transition-colors"
+              className="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-center backdrop-blur-md border transition-all duration-300 ease-out hover:shadow-xl hover:scale-105 active:scale-95 shadow-2xl"
               style={{
-                backgroundColor: buttonColor
+                backgroundColor: buttonColor,
+                color: campaignTheme.buttonTextColor,
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = buttonHoverColor

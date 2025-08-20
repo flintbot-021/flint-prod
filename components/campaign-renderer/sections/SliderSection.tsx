@@ -183,15 +183,7 @@ export function SliderSection({
                 </div>
               </div>
 
-            {/* Additional context */}
-            <div className="text-center">
-              <div className="inline-block px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10" 
-                   style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
-                <span className="text-sm font-medium" style={mutedTextStyle}>
-                  Move the slider to select your rating from {minValue} to {maxValue}
-                </span>
-              </div>
-            </div>
+
           </div>
         </div>
       </div>

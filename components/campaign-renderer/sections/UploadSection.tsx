@@ -316,11 +316,11 @@ export function UploadSection({
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           {/* Header */}
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-6">
             <h1 
               className={cn(
-                "font-bold",
-                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl lg:text-4xl"
+                "font-black tracking-tight leading-tight",
+                deviceInfo?.type === 'mobile' ? "text-4xl" : "text-5xl lg:text-6xl"
               )}
               style={primaryTextStyle}
             >
@@ -331,8 +331,8 @@ export function UploadSection({
             {subheading && (
               <p 
                 className={cn(
-                  "max-w-lg mx-auto",
-                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                  "font-medium leading-relaxed max-w-2xl mx-auto",
+                  deviceInfo?.type === 'mobile' ? "text-lg" : "text-xl lg:text-2xl"
                 )}
                 style={mutedTextStyle}
               >
@@ -342,14 +342,30 @@ export function UploadSection({
           </div>
 
           {/* Upload Card */}
-          <Card className={`mt-4 p-4 rounded-lg border-2 border-dashed transition-colors ${
-            isDragging
-              ? "border-blue-400 bg-blue-50"
+          <div className={cn(
+            "p-8 rounded-2xl backdrop-blur-md border-2 border-dashed transition-all duration-300 ease-out",
+            "hover:shadow-xl hover:scale-[1.02]",
+            isDragging && "scale-[1.02] shadow-2xl",
+            uploadStatus === 'success' && "border-opacity-50"
+          )}
+          style={{
+            backgroundColor: isDragging 
+              ? 'rgba(59, 130, 246, 0.1)' 
               : uploadStatus === 'success'
-              ? "border-green-300 bg-green-50/30"
-              : "border-gray-300 hover:border-gray-400"
-          }`}>
-            <CardContent className="p-8">
+              ? `${theme.buttonColor}20`
+              : 'rgba(255, 255, 255, 0.08)',
+            borderColor: isDragging 
+              ? 'rgba(59, 130, 246, 0.5)' 
+              : uploadStatus === 'success'
+              ? `${theme.buttonColor}80`
+              : 'rgba(255, 255, 255, 0.2)',
+            boxShadow: isDragging 
+              ? '0 12px 40px rgba(59, 130, 246, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)' 
+              : uploadStatus === 'success'
+              ? `0 12px 40px ${theme.buttonColor}25, inset 0 1px 0 rgba(255, 255, 255, 0.2)`
+              : '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+          }}>
+            <div>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -363,8 +379,8 @@ export function UploadSection({
                 /* Success State - Clean and Simple */
                 <div className="text-center space-y-4">
                   <div className="flex items-center justify-center space-x-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <p className="text-sm font-medium text-green-700">
+                    <CheckCircle className="h-5 w-5" style={{ color: theme.buttonColor }} />
+                    <p className="text-sm font-medium" style={{ color: theme.buttonColor }}>
                       {totalFiles} file{totalFiles !== 1 ? 's' : ''} uploaded successfully
                     </p>
                   </div>
@@ -472,13 +488,13 @@ export function UploadSection({
                   {/* Upload Text - Simplified */}
                   <div className="space-y-2">
                     <p 
-                      className={cn(
-                        "text-base font-medium transition-colors",
-                        isDragging 
-                          ? "text-primary"
-                          : uploadStatus !== 'uploading' && "text-foreground"
-                      )}
-                      style={uploadStatus === 'uploading' ? { color: theme.buttonColor } : undefined}
+                      className="text-base font-medium transition-colors"
+                      style={uploadStatus === 'uploading' 
+                        ? { color: theme.buttonColor } 
+                        : isDragging 
+                        ? { color: theme.buttonColor }
+                        : primaryTextStyle
+                      }
                     >
                       {uploadStatus === 'uploading' 
                         ? "Uploading files..."
@@ -488,7 +504,7 @@ export function UploadSection({
                       }
                     </p>
                     
-                    <p className="text-sm text-muted-foreground">or</p>
+                    <p className="text-sm" style={mutedTextStyle}>or</p>
                     
                     <Button 
                       variant="outline" 
@@ -513,19 +529,22 @@ export function UploadSection({
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Error Message */}
           {errorMessage && (
-            <Card className="border-destructive bg-destructive/5">
-              <CardContent className="p-4">
-                <div className="flex items-center space-x-2">
-                  <AlertCircle className="h-4 w-4 text-destructive" />
-                  <p className="text-sm text-destructive">{errorMessage}</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="p-4 rounded-2xl backdrop-blur-md border" 
+                 style={{
+                   backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                   borderColor: 'rgba(239, 68, 68, 0.3)',
+                   boxShadow: '0 8px 32px rgba(239, 68, 68, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                 }}>
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="h-4 w-4 text-red-500" />
+                <p className="text-sm text-red-600 font-medium">{errorMessage}</p>
+              </div>
+            </div>
           )}
         </div>
       </div>

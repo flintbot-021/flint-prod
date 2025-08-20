@@ -470,66 +470,93 @@ function LogicSectionComponent({
           <div className="text-center space-y-6">
             {error ? (
               <>
-                <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-                  <AlertCircle className="h-8 w-8 text-red-600" />
+                <div 
+                  className="w-24 h-24 mx-auto rounded-3xl backdrop-blur-md border flex items-center justify-center shadow-2xl"
+                  style={{ 
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    boxShadow: '0 12px 40px rgba(239, 68, 68, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                  }}
+                >
+                  <AlertCircle className="h-10 w-10 text-red-500" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <h1 
                     className={cn(
-                      "font-bold",
-                      deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
+                      "font-black tracking-tight leading-tight",
+                      deviceInfo?.type === 'mobile' ? "text-3xl" : "text-4xl lg:text-5xl"
                     )}
                     style={primaryTextStyle}
                   >
                     Analysis Error
                   </h1>
-                  <p className="text-sm text-red-600">{error}</p>
-                  <p className="text-xs" style={mutedTextStyle}>Continuing to next section...</p>
+                  <div className="inline-block px-4 py-2 rounded-xl backdrop-blur-sm border border-red-500/20" 
+                       style={{ backgroundColor: 'rgba(239, 68, 68, 0.05)' }}>
+                    <p className="text-base font-medium text-red-600">{error}</p>
+                  </div>
+                  <p className="text-sm font-medium" style={mutedTextStyle}>Continuing to next section...</p>
                 </div>
               </>
             ) : isProcessing ? (
               <>
                 <div 
-                  className="w-16 h-16 mx-auto rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: `${theme.buttonColor}20` }}
+                  className="w-24 h-24 mx-auto rounded-3xl backdrop-blur-md border flex items-center justify-center shadow-2xl"
+                  style={{ 
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                  }}
                 >
                   <div className="relative">
-                    <Loader2 className="h-8 w-8 animate-spin" style={{ color: theme.buttonColor }} />
-                    <Zap className="h-4 w-4 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" style={{ color: theme.buttonColor }} />
+                    <Loader2 className="h-10 w-10 animate-spin" style={{ color: theme.buttonColor }} />
+                    <Zap className="h-5 w-5 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" style={{ color: theme.buttonColor }} />
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <h1 
                     className={cn(
-                      "font-bold",
-                      deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
+                      "font-black tracking-tight leading-tight",
+                      deviceInfo?.type === 'mobile' ? "text-3xl" : "text-4xl lg:text-5xl"
                     )}
                     style={primaryTextStyle}
                   >
                     Analyzing Your Responses
                   </h1>
-                  <p className="text-sm" style={mutedTextStyle}>{cyclingMessage}</p>
+                  <div className="inline-block px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10" 
+                       style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}>
+                    <p className="text-base font-medium" style={mutedTextStyle}>{cyclingMessage}</p>
+                  </div>
                   {description && (
-                    <p className="text-xs mt-4" style={mutedTextStyle}>{description}</p>
+                    <p className="text-sm mt-4 font-medium" style={mutedTextStyle}>{description}</p>
                   )}
                 </div>
               </>
             ) : (
               <>
-                <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
-                  <Zap className="h-8 w-8 text-green-600" />
+                <div 
+                  className="w-24 h-24 mx-auto rounded-3xl backdrop-blur-md border flex items-center justify-center shadow-2xl"
+                  style={{ 
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    boxShadow: '0 12px 40px rgba(34, 197, 94, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                  }}
+                >
+                  <Zap className="h-10 w-10 text-green-500" />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <h1 
                     className={cn(
-                      "font-bold",
-                      deviceInfo?.type === 'mobile' ? "text-xl" : "text-2xl"
+                      "font-black tracking-tight leading-tight",
+                      deviceInfo?.type === 'mobile' ? "text-3xl" : "text-4xl lg:text-5xl"
                     )}
                     style={primaryTextStyle}
                   >
                     Analysis Complete
                   </h1>
-                  <p className="text-sm" style={mutedTextStyle}>Your personalized results are ready!</p>
+                  <div className="inline-block px-4 py-2 rounded-xl backdrop-blur-sm border border-green-500/20" 
+                       style={{ backgroundColor: 'rgba(34, 197, 94, 0.05)' }}>
+                    <p className="text-base font-medium text-green-600">Your personalized results are ready!</p>
+                  </div>
                 </div>
               </>
             )}

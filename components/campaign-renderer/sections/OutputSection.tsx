@@ -234,13 +234,13 @@ export function OutputSection({
           )}
 
           {/* Text Content with Variable Interpolation */}
-          <div className={cn('space-y-6', getAlignmentClass(settings.textAlignment))}>
-            <div className="space-y-4">
+          <div className={cn('space-y-8', getAlignmentClass(settings.textAlignment))}>
+            <div className="space-y-6">
               {settings.title && (
                 <h1 
                   className={cn(
-                    "font-bold",
-                    deviceInfo?.type === 'mobile' ? "text-3xl md:text-4xl" : "text-4xl md:text-5xl"
+                    "font-black tracking-tight leading-tight",
+                    deviceInfo?.type === 'mobile' ? "text-4xl md:text-5xl" : "text-5xl md:text-6xl lg:text-7xl"
                   )}
                   style={primaryTextStyle}
                   dangerouslySetInnerHTML={{ 
@@ -252,9 +252,9 @@ export function OutputSection({
               {settings.subtitle && (
                 <div 
                   className={cn(
-                    "max-w-3xl",
+                    "max-w-4xl font-medium leading-relaxed",
                     settings.textAlignment === 'center' ? "mx-auto" : "",
-                    deviceInfo?.type === 'mobile' ? "text-lg md:text-xl" : "text-xl md:text-2xl"
+                    deviceInfo?.type === 'mobile' ? "text-xl md:text-2xl" : "text-2xl md:text-3xl"
                   )}
                   style={mutedTextStyle}
                   dangerouslySetInnerHTML={{ 
@@ -267,10 +267,11 @@ export function OutputSection({
             {settings.content && (
               <div 
                 className={cn(
-                  "text-foreground max-w-4xl leading-relaxed",
+                  "max-w-4xl leading-relaxed font-medium",
                   settings.textAlignment === 'center' ? "mx-auto" : "",
-                  deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                  deviceInfo?.type === 'mobile' ? "text-lg" : "text-xl"
                 )}
+                style={mutedTextStyle}
                 dangerouslySetInnerHTML={{ 
                   __html: simpleVariableReplace(settings.content, variableMap).replace(/\n/g, '<br>') 
                 }}
@@ -283,18 +284,22 @@ export function OutputSection({
                 <button
                   onClick={handleActionButtonClick}
                   className={cn(
-                    "px-8 py-4 rounded-lg font-medium transition-all duration-200",
-                    "flex items-center space-x-2 shadow-lg hover:shadow-xl",
-                    "text-lg",
-                    getMobileClasses("min-h-[48px]", deviceInfo?.type),
+                    "px-8 py-4 rounded-2xl font-semibold backdrop-blur-md border transition-all duration-300 ease-out",
+                    "flex items-center space-x-3 hover:shadow-xl hover:scale-105 active:scale-95",
+                    "text-lg shadow-2xl",
+                    getMobileClasses("min-h-[56px]", deviceInfo?.type),
                     settings.textAlignment === 'center' ? "mx-auto" : ""
                   )}
-                  style={primaryButtonStyle}
+                  style={{
+                    ...primaryButtonStyle,
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                  }}
                 >
                   {settings.buttonType === 'link' ? (
-                    <ExternalLink className="h-5 w-5" />
+                    <ExternalLink className="h-6 w-6" />
                   ) : (
-                    <Download className="h-5 w-5" />
+                    <Download className="h-6 w-6" />
                   )}
                   <span>{settings.buttonText}</span>
                 </button>
@@ -305,13 +310,18 @@ export function OutputSection({
       </div>
 
       {/* Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/20 backdrop-blur-md border-t border-border/20 shadow-2xl p-4">
+      <div className="fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t shadow-2xl z-50 p-4"
+           style={{
+             backgroundColor: 'rgba(255, 255, 255, 0.1)',
+             borderColor: 'rgba(255, 255, 255, 0.2)',
+             boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+           }}>
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           {/* Previous Button */}
           <button
             onClick={handlePreviousSkipLogic}
             className={cn(
-              "flex items-center px-4 py-2 hover:opacity-80 transition-opacity",
+              "flex items-center px-4 py-2 hover:opacity-80 transition-all duration-300",
               getMobileClasses("min-h-[44px]", deviceInfo?.type)
             )}
             style={{ color: theme.textColor }}
@@ -327,11 +337,15 @@ export function OutputSection({
               onClick={handleShare}
               disabled={isSharing}
               className={cn(
-                "px-4 py-2 rounded-lg font-medium transition-all duration-200",
-                "flex items-center space-x-2",
-                getMobileClasses("min-h-[44px]", deviceInfo?.type)
+                "px-6 py-3 rounded-xl font-semibold backdrop-blur-md border transition-all duration-300 ease-out",
+                "flex items-center space-x-2 hover:shadow-xl hover:scale-105 active:scale-95",
+                getMobileClasses("min-h-[48px]", deviceInfo?.type)
               )}
-              style={secondaryButtonStyle}
+              style={{
+                ...secondaryButtonStyle,
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+              }}
             >
               <Share2 className="h-4 w-4" />
               <span className="hidden sm:inline">Share</span>
@@ -341,11 +355,15 @@ export function OutputSection({
             <button
               onClick={handleTryAgain}
               className={cn(
-                "px-4 py-2 rounded-lg font-medium transition-all duration-200",
-                "flex items-center space-x-2 shadow-lg hover:shadow-xl",
-                getMobileClasses("min-h-[44px]", deviceInfo?.type)
+                "px-6 py-3 rounded-xl font-semibold backdrop-blur-md border transition-all duration-300 ease-out",
+                "flex items-center space-x-2 hover:shadow-xl hover:scale-105 active:scale-95",
+                getMobileClasses("min-h-[48px]", deviceInfo?.type)
               )}
-              style={primaryButtonStyle}
+              style={{
+                ...primaryButtonStyle,
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+              }}
             >
               <RotateCcw className="h-4 w-4" />
               <span>Try Again</span>

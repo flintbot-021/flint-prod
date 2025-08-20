@@ -280,11 +280,11 @@ export function CaptureSection({
       <div className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           {/* Header */}
-          <div className="text-center space-y-4">
+          <div className="text-center space-y-6">
             <h1 
               className={cn(
-                "font-bold",
-                deviceInfo?.type === 'mobile' ? "text-2xl" : "text-3xl"
+                "font-black tracking-tight leading-tight",
+                deviceInfo?.type === 'mobile' ? "text-4xl" : "text-5xl lg:text-6xl"
               )}
               style={primaryTextStyle}
             >
@@ -293,7 +293,8 @@ export function CaptureSection({
             
             <p 
               className={cn(
-                deviceInfo?.type === 'mobile' ? "text-base" : "text-lg"
+                "font-medium leading-relaxed max-w-2xl mx-auto",
+                deviceInfo?.type === 'mobile' ? "text-lg" : "text-xl lg:text-2xl"
               )}
               style={mutedTextStyle}
             >
@@ -302,33 +303,46 @@ export function CaptureSection({
           </div>
           
           {/* Form */}
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* Name Field */}
             {settings.enabledFields?.name && (
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium" style={primaryTextStyle}>
+              <div className="space-y-4">
+                <Label htmlFor="name" className="text-base font-semibold" style={primaryTextStyle}>
                   {settings.fieldLabels?.name}
                   {settings.requiredFields?.name && <span className="text-destructive ml-1">*</span>}
                 </Label>
-                <Input
-                  id="name"
-                  type="text"
-                  value={formData.name || ''}
-                  onChange={(e) => handleFieldChange('name', e.target.value)}
-                  placeholder={settings.fieldPlaceholders?.name}
-                  className={cn(
-                    "h-12 text-base border-input",
-                    errors.name && "border-destructive focus-visible:ring-destructive"
-                  )}
-                  style={{
-                    backgroundColor: `#ffffff33`, // 20% opacity of white
-                    color: theme.textColor
-                  }}
-                />
+                <div className="relative">
+                  <Input
+                    id="name"
+                    type="text"
+                    value={formData.name || ''}
+                    onChange={(e) => handleFieldChange('name', e.target.value)}
+                    placeholder={settings.fieldPlaceholders?.name}
+                    className={cn(
+                      "h-14 text-lg backdrop-blur-md border-0 rounded-2xl transition-all duration-300 ease-out",
+                      "focus:ring-2 focus:ring-opacity-50 focus:outline-none shadow-lg hover:shadow-xl",
+                      "placeholder:text-opacity-60",
+                      errors.name 
+                        ? "ring-2 ring-red-500 ring-opacity-50" 
+                        : "hover:shadow-2xl focus:shadow-2xl"
+                    )}
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                      backdropFilter: 'blur(20px)',
+                      border: `1px solid rgba(255, 255, 255, 0.2)`,
+                      color: theme.textColor,
+                      boxShadow: errors.name 
+                        ? '0 8px 32px rgba(239, 68, 68, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)' 
+                        : '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                    }}
+                  />
+                </div>
                 {errors.name && (
-                  <div className="flex items-center space-x-1 text-destructive text-sm">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>{errors.name}</span>
+                  <div className="flex items-center justify-center">
+                    <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-red-500/10 backdrop-blur-sm border border-red-500/20">
+                      <AlertCircle className="h-4 w-4 text-red-500" />
+                      <span className="text-red-600 font-medium text-sm">{errors.name}</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -336,30 +350,43 @@ export function CaptureSection({
 
             {/* Email Field */}
             {settings.enabledFields?.email && (
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium" style={primaryTextStyle}>
+              <div className="space-y-4">
+                <Label htmlFor="email" className="text-base font-semibold" style={primaryTextStyle}>
                   {settings.fieldLabels?.email}
                   {settings.requiredFields?.email && <span className="text-destructive ml-1">*</span>}
                 </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email || ''}
-                  onChange={(e) => handleFieldChange('email', e.target.value)}
-                  placeholder={settings.fieldPlaceholders?.email}
-                  className={cn(
-                    "h-12 text-base border-input",
-                    errors.email && "border-destructive focus-visible:ring-destructive"
-                  )}
-                  style={{
-                    backgroundColor: `#ffffff33`, // 20% opacity of white
-                    color: theme.textColor
-                  }}
-                />
+                <div className="relative">
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email || ''}
+                    onChange={(e) => handleFieldChange('email', e.target.value)}
+                    placeholder={settings.fieldPlaceholders?.email}
+                    className={cn(
+                      "h-14 text-lg backdrop-blur-md border-0 rounded-2xl transition-all duration-300 ease-out",
+                      "focus:ring-2 focus:ring-opacity-50 focus:outline-none shadow-lg hover:shadow-xl",
+                      "placeholder:text-opacity-60",
+                      errors.email 
+                        ? "ring-2 ring-red-500 ring-opacity-50" 
+                        : "hover:shadow-2xl focus:shadow-2xl"
+                    )}
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                      backdropFilter: 'blur(20px)',
+                      border: `1px solid rgba(255, 255, 255, 0.2)`,
+                      color: theme.textColor,
+                      boxShadow: errors.email 
+                        ? '0 8px 32px rgba(239, 68, 68, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)' 
+                        : '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                    }}
+                  />
+                </div>
                 {errors.email && (
-                  <div className="flex items-center space-x-1 text-destructive text-sm">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>{errors.email}</span>
+                  <div className="flex items-center justify-center">
+                    <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-red-500/10 backdrop-blur-sm border border-red-500/20">
+                      <AlertCircle className="h-4 w-4 text-red-500" />
+                      <span className="text-red-600 font-medium text-sm">{errors.email}</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -367,30 +394,43 @@ export function CaptureSection({
 
             {/* Phone Field */}
             {settings.enabledFields?.phone && (
-              <div className="space-y-2">
-                <Label htmlFor="phone" className="text-sm font-medium text-foreground">
+              <div className="space-y-4">
+                <Label htmlFor="phone" className="text-base font-semibold" style={primaryTextStyle}>
                   {settings.fieldLabels?.phone}
                   {settings.requiredFields?.phone && <span className="text-destructive ml-1">*</span>}
                 </Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone || ''}
-                  onChange={(e) => handleFieldChange('phone', e.target.value)}
-                  placeholder={settings.fieldPlaceholders?.phone}
-                  className={cn(
-                    "h-12 text-base border-input",
-                    errors.phone && "border-destructive focus-visible:ring-destructive"
-                  )}
-                  style={{
-                    backgroundColor: `#ffffff33`, // 20% opacity of white
-                    color: theme.textColor
-                  }}
-                />
+                <div className="relative">
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={formData.phone || ''}
+                    onChange={(e) => handleFieldChange('phone', e.target.value)}
+                    placeholder={settings.fieldPlaceholders?.phone}
+                    className={cn(
+                      "h-14 text-lg backdrop-blur-md border-0 rounded-2xl transition-all duration-300 ease-out",
+                      "focus:ring-2 focus:ring-opacity-50 focus:outline-none shadow-lg hover:shadow-xl",
+                      "placeholder:text-opacity-60",
+                      errors.phone 
+                        ? "ring-2 ring-red-500 ring-opacity-50" 
+                        : "hover:shadow-2xl focus:shadow-2xl"
+                    )}
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                      backdropFilter: 'blur(20px)',
+                      border: `1px solid rgba(255, 255, 255, 0.2)`,
+                      color: theme.textColor,
+                      boxShadow: errors.phone 
+                        ? '0 8px 32px rgba(239, 68, 68, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)' 
+                        : '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                    }}
+                  />
+                </div>
                 {errors.phone && (
-                  <div className="flex items-center space-x-1 text-destructive text-sm">
-                    <AlertCircle className="h-4 w-4" />
-                    <span>{errors.phone}</span>
+                  <div className="flex items-center justify-center">
+                    <div className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-red-500/10 backdrop-blur-sm border border-red-500/20">
+                      <AlertCircle className="h-4 w-4 text-red-500" />
+                      <span className="text-red-600 font-medium text-sm">{errors.phone}</span>
+                    </div>
                   </div>
                 )}
               </div>
