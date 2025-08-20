@@ -187,7 +187,7 @@ export function MultipleChoiceSection({
       {/* Compliance Notice */}
       {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
 
-      {/* Shared Navigation Bar */}
+      {/* Shared Navigation Bar - Rendered via Portal */}
       <SectionNavigationBar
         onPrevious={onPrevious}
         icon={<CheckCircle2 className="h-5 w-5 text-primary" />}

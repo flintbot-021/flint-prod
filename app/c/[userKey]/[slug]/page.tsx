@@ -1385,14 +1385,41 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // =============================================================================
 
   return (
-    <div className="h-screen bg-muted flex flex-col">
-      {/* Campaign Header with Logo */}
-      {campaign && <CampaignHeader campaign={campaign} />}
+    <div className="h-screen bg-muted flex flex-col relative">
+      {/* Powered by Flint - Top Right Pill */}
+      {campaign && campaign.settings?.branding?.show_powered_by !== false && (
+        <div className="absolute top-4 right-4 z-40">
+          <a 
+            href="https://launch.useflint.co/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center space-x-2 px-3 py-2 rounded-full backdrop-blur-md border transition-all duration-300 hover:scale-105 hover:shadow-lg"
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <span 
+              className="text-xs font-medium"
+              style={{ color: getCampaignTheme(campaign).textColor, opacity: 0.8 }}
+            >
+              Powered by
+            </span>
+            <span 
+              className="text-xs font-bold"
+              style={{ color: getCampaignTheme(campaign).textColor }}
+            >
+              Flint
+            </span>
+          </a>
+        </div>
+      )}
       
       {/* Section Content */}
       {campaignRenderer.currentSection < sections.length && (
         <div key={campaignRenderer.currentSection} className={cn(
-          "flex-1 transition-all duration-300 ease-in-out",
+          "h-full transition-all duration-300 ease-in-out",
           isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0"
         )}>
           {/* Use SharedSectionRenderer for consistent experience */}
