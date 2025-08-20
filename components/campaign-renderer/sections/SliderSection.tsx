@@ -100,7 +100,7 @@ export function SliderSection({
                 className="inline-flex items-center justify-center w-16 h-16 rounded-full text-2xl font-bold"
                 style={{
                   backgroundColor: theme.buttonColor,
-                  color: theme.backgroundColor
+                  color: theme.buttonTextColor
                 }}
               >
                 {sliderValue}
@@ -110,19 +110,44 @@ export function SliderSection({
             {/* Slider Container */}
             <div className="space-y-4">
               <div className="relative">
-              <input
-                type="range"
-                min={minValue}
-                max={maxValue}
-                step={step}
+              <>
+                <style dangerouslySetInnerHTML={{
+                  __html: `
+                    .themed-slider-${section.id}::-webkit-slider-thumb {
+                      appearance: none;
+                      width: 24px;
+                      height: 24px;
+                      border-radius: 50%;
+                      background: ${theme.backgroundColor};
+                      border: 2px solid ${theme.buttonColor};
+                      cursor: pointer;
+                      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    }
+                    .themed-slider-${section.id}::-moz-range-thumb {
+                      width: 24px;
+                      height: 24px;
+                      border-radius: 50%;
+                      background: ${theme.backgroundColor};
+                      border: 2px solid ${theme.buttonColor};
+                      cursor: pointer;
+                      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    }
+                    .themed-slider-${section.id}:focus::-webkit-slider-thumb {
+                      box-shadow: 0 0 0 3px ${theme.buttonColor}40;
+                    }
+                  `
+                }} />
+                <input
+                  type="range"
+                  min={minValue}
+                  max={maxValue}
+                  step={step}
                   value={sliderValue}
                   onChange={handleSliderChange}
                   className={cn(
                     "w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer",
-                    "slider-thumb:appearance-none slider-thumb:w-6 slider-thumb:h-6",
-                    "slider-thumb:rounded-full",
-                    "slider-thumb:cursor-pointer slider-thumb:shadow-lg",
-                    "focus:outline-none focus:ring-2 focus:ring-opacity-50"
+                    "focus:outline-none focus:ring-2 focus:ring-opacity-50",
+                    `themed-slider-${section.id}`
                   )}
                   style={{
                     background: `linear-gradient(to right, ${theme.buttonColor} 0%, ${theme.buttonColor} ${
@@ -130,17 +155,9 @@ export function SliderSection({
                     }%, #e5e7eb ${
                       ((sliderValue - minValue) / (maxValue - minValue)) * 100
                     }%, #e5e7eb 100%)`,
-                    // Apply theme colors to webkit slider components
-                    ['--slider-thumb-color' as any]: theme.buttonColor,
-                    ['--slider-focus-color' as any]: theme.buttonColor,
                   }}
-                  // Additional inline styles for cross-browser slider theming
-                  onLoad={(e) => {
-                    const target = e.target as HTMLInputElement;
-                    const style = target.style;
-                    style.setProperty('--webkit-slider-thumb-background-color', theme.buttonColor);
-                  }}
-              />
+                />
+              </>
               
 
               </div>

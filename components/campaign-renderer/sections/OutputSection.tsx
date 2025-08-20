@@ -305,15 +305,16 @@ export function OutputSection({
       </div>
 
       {/* Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border p-4">
+      <div className="fixed bottom-0 left-0 right-0 bg-background/20 backdrop-blur-md border-t border-border/20 shadow-2xl p-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           {/* Previous Button */}
           <button
             onClick={handlePreviousSkipLogic}
             className={cn(
-              "flex items-center px-4 py-2 text-muted-foreground hover:text-foreground transition-colors",
+              "flex items-center px-4 py-2 hover:opacity-80 transition-opacity",
               getMobileClasses("min-h-[44px]", deviceInfo?.type)
             )}
+            style={{ color: theme.textColor }}
           >
             <ChevronLeft className="h-5 w-5 mr-1" />
             <span className="hidden sm:inline">Previous</span>

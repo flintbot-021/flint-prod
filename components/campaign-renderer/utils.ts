@@ -55,9 +55,10 @@ export function interpolateTextSimple(
  * Default theme colors used when campaign doesn't specify custom colors
  */
 export const DEFAULT_THEME = {
-  background_color: '#FFFFFF',
-  button_color: '#3B82F6',
-  text_color: '#1F2937'
+  background_color: '#F2F2F2', // RGB(242, 242, 242)
+  button_color: '#079767',     // RGB(7, 151, 103)
+  text_color: '#1F3724',      // RGB(31, 55, 36)
+  button_text_color: '#FFFFFF' // RGB(255, 255, 255) - White text on buttons
 }
 
 /**
@@ -70,6 +71,7 @@ export function getCampaignTheme(campaign?: Campaign) {
     backgroundColor: themeSettings?.background_color || DEFAULT_THEME.background_color,
     buttonColor: themeSettings?.button_color || DEFAULT_THEME.button_color,
     textColor: themeSettings?.text_color || DEFAULT_THEME.text_color,
+    buttonTextColor: themeSettings?.button_text_color || DEFAULT_THEME.button_text_color,
     // Keep legacy colors for backward compatibility
     primaryColor: themeSettings?.primary_color || themeSettings?.button_color || DEFAULT_THEME.button_color,
     secondaryColor: themeSettings?.secondary_color || themeSettings?.text_color || DEFAULT_THEME.text_color
@@ -86,6 +88,7 @@ export function getCampaignThemeStyles(campaign?: Campaign) {
     backgroundColor: theme.backgroundColor,
     color: theme.textColor,
     '--button-color': theme.buttonColor,
+    '--button-text-color': theme.buttonTextColor,
     '--text-color': theme.textColor,
     '--background-color': theme.backgroundColor
   } as React.CSSProperties
@@ -100,7 +103,7 @@ export function getCampaignButtonStyles(campaign?: Campaign, variant: 'primary' 
   if (variant === 'primary') {
     return {
       backgroundColor: theme.buttonColor,
-      color: getContrastColor(theme.buttonColor),
+      color: theme.buttonTextColor,
       border: `1px solid ${theme.buttonColor}`
     } as React.CSSProperties
   } else {

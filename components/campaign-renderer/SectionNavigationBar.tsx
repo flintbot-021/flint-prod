@@ -3,7 +3,7 @@
 import React from 'react'
 import { ChevronLeft, ArrowLeft, ArrowRight, Loader2, CheckCircle, WifiOff } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getMobileClasses, getCampaignButtonStyles } from './utils'
+import { getMobileClasses, getCampaignButtonStyles, getCampaignTheme } from './utils'
 import { Campaign } from '@/lib/types/database'
 
 interface SectionNavigationBarProps {
@@ -111,9 +111,10 @@ export function SectionNavigationBar({
 }: SectionNavigationBarProps) {
   const isFull = variant === 'full'
   const actions = actionButtons || (actionButton ? [actionButton] : [])
+  const theme = getCampaignTheme(campaign)
   
   return (
-    <div className={cn("fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-lg", className)}>
+    <div className={cn("fixed bottom-0 left-0 right-0 bg-background/20 backdrop-blur-md border-t border-border/20 shadow-2xl", className)}>
       <div className="max-w-4xl mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           {/* Left: Previous Button */}
@@ -121,10 +122,11 @@ export function SectionNavigationBar({
             onClick={onPrevious}
             disabled={!canGoPrevious}
             className={cn(
-              "flex items-center text-muted-foreground hover:text-foreground transition-colors",
+              "flex items-center hover:opacity-80 transition-opacity",
               !canGoPrevious && "opacity-50 cursor-not-allowed",
               isFull && deviceInfo?.type === 'mobile' && "px-6 py-3"
             )}
+            style={{ color: theme.textColor }}
           >
             {isFull ? (
               <ArrowLeft className={cn(
@@ -230,17 +232,8 @@ export function SectionNavigationBar({
                   </div>
                 )}
                 
-                {/* Simple icon + label for basic variant */}
-                {!isFull && (icon || label || validationText) && (
-                  <div className="flex items-center">
-                    {icon && <div className="mr-2">{icon}</div>}
-                    <span className="text-sm text-muted-foreground">
-                      {label}
-                      {label && validationText && ' | '}
-                      {validationText}
-                    </span>
-                  </div>
-                )}
+                {/* Simple icon + label for basic variant - REMOVED per user request */}
+                {/* Section description removed from center of bottom bar */}
               </>
             )}
             
@@ -266,10 +259,11 @@ export function SectionNavigationBar({
               onClick={onNext}
               disabled={!canGoNext}
               className={cn(
-                "flex items-center text-muted-foreground hover:text-foreground transition-colors",
+                "flex items-center hover:opacity-80 transition-opacity",
                 !canGoNext && "opacity-50 cursor-not-allowed",
                 isFull && deviceInfo?.type === 'mobile' && "px-6 py-3"
               )}
+              style={{ color: theme.textColor }}
             >
               <span className={cn(
                 "hidden sm:inline",

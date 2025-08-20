@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation'
 import { Campaign, Section, SectionWithOptions } from '@/lib/types/database'
 import { getPublishedCampaignWithSectionsByUserKey } from '@/lib/data-access/public-campaigns'
 import { cn, applySectionOrdering } from '@/lib/utils'
+import { getCampaignTheme } from '@/components/campaign-renderer/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -132,6 +133,9 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const networkState = useNetworkState()
   const errorHandler = useErrorHandler()
   const variableEngine = useVariableEngine()
+  
+  // Get campaign theme colors
+  const theme = getCampaignTheme(campaign || undefined)
   
   // Restore missing state variables
   const [runtimeEngine, setRuntimeEngine] = useState<CachedRuntimeExecutionEngine | null>(null)
@@ -1415,15 +1419,19 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
       {/* Mobile Footer - Powered by Flint (only visible on mobile) */}
       {campaign && campaign.settings?.branding?.show_powered_by !== false && (
-        <div className="sm:hidden border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="sm:hidden border-t border-border/20 bg-background/20 backdrop-blur-md shadow-2xl">
           <div className="max-w-7xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-center text-xs text-muted-foreground">
+            <div 
+              className="flex items-center justify-center text-xs"
+              style={{ color: theme.textColor }}
+            >
               <span>Powered by</span>
               <a 
                 href="https://launch.useflint.co/" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="ml-1 font-semibold text-primary hover:text-primary/80 transition-colors"
+                className="ml-1 font-semibold hover:opacity-80 transition-opacity"
+                style={{ color: theme.textColor }}
               >
                 Flint
               </a>

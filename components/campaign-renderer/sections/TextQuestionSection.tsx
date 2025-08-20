@@ -163,6 +163,10 @@ export function TextQuestionSection({
                   : "border-gray-300",
                 getMobileClasses("text-base", deviceInfo?.type)
                 )}
+                style={{
+                  backgroundColor: `#ffffff33`, // 20% opacity of white
+                  color: theme.textColor
+                }}
               />
 
             {/* Character Counter */}

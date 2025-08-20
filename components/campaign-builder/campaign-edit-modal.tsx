@@ -68,6 +68,9 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave, mode = 'e
         primary_color: '#3B82F6',
         secondary_color: '#10B981',
         background_color: '#FFFFFF',
+        button_color: '#3B82F6',
+        text_color: '#1F2937',
+        button_text_color: '#FFFFFF',
         font_family: 'Inter, sans-serif'
       },
       branding: {
@@ -389,6 +392,7 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave, mode = 'e
       const currentBackground = formData.settings.theme?.background_color || '#FFFFFF'
       const currentButton = formData.settings.theme?.button_color || '#3B82F6'
       const currentText = formData.settings.theme?.text_color || '#1F2937'
+      const currentButtonText = formData.settings.theme?.button_text_color || '#FFFFFF'
       return (
         <>
           <div className="flex flex-col sm:flex-row h-full min-h-[400px]">
@@ -460,6 +464,26 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave, mode = 'e
                     style={{ background: currentText, padding: 0, width: 32, height: 32 }}
                   />
                 </div>
+                {/* Button Text */}
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <div className="font-medium text-base">Button Text</div>
+                    <div className="text-xs text-muted-foreground">Text on buttons</div>
+                  </div>
+                  <input
+                    type="color"
+                    id="button-text-color"
+                    value={currentButtonText}
+                    onChange={(e) => updateSettings({
+                      theme: {
+                        ...formData.settings.theme,
+                        button_text_color: e.target.value
+                      }
+                    })}
+                    className="w-8 h-8 rounded border border-input shadow-sm cursor-pointer"
+                    style={{ background: currentButtonText, padding: 0, width: 32, height: 32 }}
+                  />
+                </div>
               </div>
               <hr className="my-4" />
               {/* Logo Section */}
@@ -526,8 +550,11 @@ export function CampaignEditModal({ campaign, isOpen, onClose, onSave, mode = 'e
                 </p>
                 <button
                   type="button"
-                  style={{ backgroundColor: currentButton }}
-                  className="px-5 py-2 text-white text-base font-medium rounded-lg hover:opacity-90 transition-opacity"
+                  style={{ 
+                    backgroundColor: currentButton,
+                    color: currentButtonText
+                  }}
+                  className="px-5 py-2 text-base font-medium rounded-lg hover:opacity-90 transition-opacity"
                 >
                   Sample Button
                 </button>
