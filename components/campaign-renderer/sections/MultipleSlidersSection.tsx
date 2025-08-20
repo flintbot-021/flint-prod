@@ -41,7 +41,8 @@ export function MultipleSlidersSection({
   onResponseUpdate,
   userInputs,
   campaign,
-  sections
+  sections,
+  isPreview
 }: SectionRendererProps) {
   const [values, setValues] = useState<Record<string, number>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -167,7 +168,8 @@ export function MultipleSlidersSection({
   return (
     <div 
       className={cn(
-        'min-h-[calc(100vh-4rem)] flex flex-col',
+        // Use full height for public mode, header-adjusted height for preview mode
+        isPreview ? 'min-h-[calc(100vh-4rem)] flex flex-col' : 'min-h-screen flex flex-col',
         getMobileClasses('', deviceInfo?.type)
       )}
       style={{ backgroundColor: theme.backgroundColor }}
@@ -256,8 +258,11 @@ export function MultipleSlidersSection({
                     {slider.showValue && (
                       <div className="absolute top-2 right-2">
                         <div 
-                          className="inline-flex items-center justify-center w-8 h-8 rounded-full text-white text-sm font-bold shadow-md"
-                          style={{ backgroundColor: theme.buttonColor }}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shadow-md"
+                          style={{ 
+                            backgroundColor: theme.buttonColor,
+                            color: theme.buttonTextColor
+                          }}
                         >
                           {currentValue}
                         </div>
@@ -285,6 +290,32 @@ export function MultipleSlidersSection({
                       
                       {/* Slider */}
                       <div className="relative px-2">
+                        <style dangerouslySetInnerHTML={{
+                          __html: `
+                            .themed-multi-slider-${slider.id}::-webkit-slider-thumb {
+                              appearance: none;
+                              width: 24px;
+                              height: 24px;
+                              border-radius: 50%;
+                              background: ${theme.backgroundColor};
+                              border: 2px solid ${theme.buttonColor};
+                              cursor: pointer;
+                              box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                            }
+                            .themed-multi-slider-${slider.id}::-moz-range-thumb {
+                              width: 24px;
+                              height: 24px;
+                              border-radius: 50%;
+                              background: ${theme.backgroundColor};
+                              border: 2px solid ${theme.buttonColor};
+                              cursor: pointer;
+                              box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                            }
+                            .themed-multi-slider-${slider.id}:focus::-webkit-slider-thumb {
+                              box-shadow: 0 0 0 3px ${theme.buttonColor}40;
+                            }
+                          `
+                        }} />
                         <input
                           type="range"
                           min={slider.minValue}
@@ -294,11 +325,9 @@ export function MultipleSlidersSection({
                           onChange={(e) => handleSliderChange(slider.id, parseInt(e.target.value))}
                           className={cn(
                             'w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer',
-                            'slider-thumb:appearance-none slider-thumb:w-6 slider-thumb:h-6',
-                            'slider-thumb:rounded-full',
-                            'slider-thumb:cursor-pointer slider-thumb:shadow-lg',
                             'focus:outline-none focus:ring-2 focus:ring-opacity-50',
-                            hasError && 'ring-2 ring-red-500'
+                            hasError && 'ring-2 ring-red-500',
+                            `themed-multi-slider-${slider.id}`
                           )}
                           style={{
                             background: `linear-gradient(to right, ${theme.buttonColor} 0%, ${theme.buttonColor} ${
@@ -306,9 +335,6 @@ export function MultipleSlidersSection({
                             }%, #e5e7eb ${
                               ((currentValue - slider.minValue) / (slider.maxValue - slider.minValue)) * 100
                             }%, #e5e7eb 100%)`,
-                            // Apply theme colors to webkit slider components
-                            ['--slider-thumb-color' as any]: theme.buttonColor,
-                            ['--slider-focus-color' as any]: theme.buttonColor,
                           }}
                         />
                       </div>

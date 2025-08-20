@@ -119,11 +119,12 @@ export function MultipleChoiceSection({
                   )}
                   style={{
                     ...(isSelected ? {
-                      borderColor: theme.buttonColor,
-                      backgroundColor: `${theme.buttonColor}15`,
+                      borderColor: theme.buttonColor, // primary button at 100%
+                      backgroundColor: `#ffffff33`, // 20% opacity white
                       boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
                     } : {
-                      borderColor: '#e5e7eb', // border-border equivalent
+                      borderColor: `${theme.buttonColor}1A`, // primary button at 10% opacity
+                      backgroundColor: `#ffffff33`, // 20% opacity white
                     })
                   }}
                 >
@@ -131,7 +132,7 @@ export function MultipleChoiceSection({
                   {isSelected ? (
                       <CheckCircle2 className="h-5 w-5" style={{ color: theme.buttonColor }} />
                   ) : (
-                      <Circle className="h-5 w-5 text-muted-foreground" />
+                      <Circle className="h-5 w-5" style={{ color: `${theme.buttonColor}1A` }} />
                   )}
                   </div>
                   <span 
@@ -139,7 +140,7 @@ export function MultipleChoiceSection({
                       "text-left",
                       isSelected && "font-medium"
                     )}
-                    style={primaryTextStyle}
+                    style={{ color: theme.textColor }}
                   >
                     {choiceLabel}
                   </span>

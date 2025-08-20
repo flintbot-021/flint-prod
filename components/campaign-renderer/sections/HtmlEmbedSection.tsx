@@ -23,7 +23,8 @@ export function HtmlEmbedSection({
   onSectionComplete,
   userInputs = {},
   sections = [],
-  campaign
+  campaign,
+  isPreview
 }: SectionRendererProps) {
   const embedConfig = config as HtmlEmbedConfig
   
@@ -119,8 +120,8 @@ export function HtmlEmbedSection({
         className="w-full"
         dangerouslySetInnerHTML={{ __html: processedHtml }}
         style={{
-          // Ensure full viewport usage minus header height
-          minHeight: 'calc(100vh - 4rem)',
+          // Use full height for public mode, header-adjusted height for preview mode
+          minHeight: isPreview ? 'calc(100vh - 4rem)' : '100vh',
           width: '100%'
         }}
       />

@@ -317,9 +317,13 @@ export function CaptureSection({
                   onChange={(e) => handleFieldChange('name', e.target.value)}
                   placeholder={settings.fieldPlaceholders?.name}
                   className={cn(
-                    "h-12 text-base bg-background border-input",
+                    "h-12 text-base border-input",
                     errors.name && "border-destructive focus-visible:ring-destructive"
                   )}
+                  style={{
+                    backgroundColor: `#ffffff33`, // 20% opacity of white
+                    color: theme.textColor
+                  }}
                 />
                 {errors.name && (
                   <div className="flex items-center space-x-1 text-destructive text-sm">
@@ -344,9 +348,13 @@ export function CaptureSection({
                   onChange={(e) => handleFieldChange('email', e.target.value)}
                   placeholder={settings.fieldPlaceholders?.email}
                   className={cn(
-                    "h-12 text-base bg-background border-input",
+                    "h-12 text-base border-input",
                     errors.email && "border-destructive focus-visible:ring-destructive"
                   )}
+                  style={{
+                    backgroundColor: `#ffffff33`, // 20% opacity of white
+                    color: theme.textColor
+                  }}
                 />
                 {errors.email && (
                   <div className="flex items-center space-x-1 text-destructive text-sm">
@@ -371,9 +379,13 @@ export function CaptureSection({
                   onChange={(e) => handleFieldChange('phone', e.target.value)}
                   placeholder={settings.fieldPlaceholders?.phone}
                   className={cn(
-                    "h-12 text-base bg-background border-input",
+                    "h-12 text-base border-input",
                     errors.phone && "border-destructive focus-visible:ring-destructive"
                   )}
+                  style={{
+                    backgroundColor: `#ffffff33`, // 20% opacity of white
+                    color: theme.textColor
+                  }}
                 />
                 {errors.phone && (
                   <div className="flex items-center space-x-1 text-destructive text-sm">

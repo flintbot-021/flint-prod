@@ -16,7 +16,8 @@ export function HeroContentSection({
   onPrevious,
   onSectionComplete,
   campaign,
-  sections
+  sections,
+  isPreview
 }: SectionRendererProps) {
   // Get hero configuration from section configuration
   const heroConfig = section.configuration as HeroContentConfiguration
@@ -77,7 +78,10 @@ export function HeroContentSection({
   return (
     <div className={cn(
       "relative w-full overflow-hidden flex items-center justify-center",
-      deviceInfo?.type === 'mobile' ? "min-h-[calc(100vh-4rem)]" : "min-h-[calc(100vh-4rem)]"
+      // Use full height for public mode, header-adjusted height for preview mode
+      isPreview 
+        ? "min-h-[calc(100vh-4rem)]"
+        : deviceInfo?.type === 'mobile' ? "min-h-screen" : "min-h-screen"
     )}>
       {/* Background Image */}
       {settings.backgroundImage ? (
