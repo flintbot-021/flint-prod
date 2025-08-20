@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 
 // Import NEW shared components
-import { SectionRenderer as SharedSectionRenderer, CampaignHeader } from '@/components/campaign-renderer'
+import { SectionRenderer as SharedSectionRenderer, CampaignHeader, PreviewDevice } from '@/components/campaign-renderer'
 import { useCampaignRenderer } from '@/hooks'
 
 // =============================================================================
@@ -29,8 +29,6 @@ import { useCampaignRenderer } from '@/hooks'
 // =============================================================================
 
 interface PreviewPageProps {}
-
-export type PreviewDevice = 'desktop' | 'tablet' | 'mobile'
 
 interface DeviceConfig {
   name: string
@@ -282,90 +280,27 @@ export default function CampaignPreviewPage({}: PreviewPageProps) {
 
   return (
     <div className="h-screen bg-background overflow-hidden">
-      {/* Consolidated Header */}
-      <div className="bg-card border-b border-border sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Left: Campaign Info */}
-            <div className="flex items-center space-x-4">
-  
-              
-              <div className="flex items-center">
-                <Eye className="h-5 w-5 text-primary mr-3" />
-                <div>
-                  <h1 className="text-lg font-semibold">
-                    Preview: {campaign.name}
-                  </h1>
-                </div>
-              </div>
-            </div>
-            
-            {/* Right: Navigation Controls & Device Selector */}
-            <div className="flex items-center space-x-4">
-              {/* Navigation Controls */}
-              <div className="flex items-center space-x-1 bg-muted rounded-lg p-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handlePrevious}
-                  disabled={!canGoPrevious}
-                  className="h-8 w-8 p-0"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                <Badge variant="secondary" className="px-3 py-1 text-sm font-medium">
-                  {currentSectionIndex + 1} / {sectionsData.length}
-                </Badge>
-                
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleNext}
-                  disabled={!canGoNext}
-                  className="h-8 w-8 p-0"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              
-              {/* Device Selector */}
-              <div className="flex items-center space-x-1 bg-muted rounded-lg p-1">
-                {Object.entries(DEVICE_CONFIGS).map(([key, config]) => {
-                  const IconComponent = config.icon
-                  const isActive = currentDevice === key
-                  
-                  return (
-                    <Button
-                      key={key}
-                      variant={isActive ? "default" : "ghost"}
-                      size="sm"
-                      onClick={() => handleDeviceChange(key as PreviewDevice)}
-                      className={cn(
-                        "h-8 w-8 p-0",
-                        isActive 
-                          ? "bg-background text-foreground shadow-sm" 
-                          : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                      )}
-                      title={config.description}
-                    >
-                      <IconComponent className="h-4 w-4" />
-                    </Button>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Combined Header with Preview Controls */}
+      <CampaignHeader 
+        campaign={campaign}
+        showPoweredBy={false}
+        isPreview={true}
+        previewControls={{
+          currentSection: currentSectionIndex,
+          totalSections: sectionsData.length,
+          canGoPrevious,
+          canGoNext,
+          onPrevious: handlePrevious,
+          onNext: handleNext,
+          currentDevice,
+          onDeviceChange: handleDeviceChange
+        }}
+      />
 
       {/* Preview Content */}
       <div className="h-[calc(100vh-4rem)] overflow-hidden">
         {renderDeviceFrame(
           <div className="h-full bg-background flex flex-col">
-            {/* Campaign Header with Logo for Preview */}
-            <CampaignHeader campaign={campaign} showPoweredBy={false} />
-            
             {/* Show current section using shared renderer */}
             {sectionsData.length > 0 && currentSectionIndex < sectionsData.length && (
               <div className="flex-1">

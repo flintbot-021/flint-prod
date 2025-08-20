@@ -77,7 +77,7 @@ export function HeroContentSection({
   return (
     <div className={cn(
       "relative w-full overflow-hidden flex items-center justify-center",
-      deviceInfo?.type === 'mobile' ? "min-h-full" : "min-h-screen"
+      deviceInfo?.type === 'mobile' ? "min-h-[calc(100vh-4rem)]" : "min-h-[calc(100vh-4rem)]"
     )}>
       {/* Background Image */}
       {settings.backgroundImage ? (
