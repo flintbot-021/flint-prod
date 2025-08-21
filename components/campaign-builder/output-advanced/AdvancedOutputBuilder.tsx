@@ -1635,7 +1635,10 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                       className="w-full"
                                       inputClassName={cn('!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none',
                                         block.textAlignment === 'left' ? 'text-left' : block.textAlignment === 'right' ? 'text-right' : 'text-center',
-                                        item.type==='headline'?'!text-3xl !font-bold':'', item.type==='subheading'?'!text-xl !font-medium':'', item.type==='h3'?'!text-lg !font-semibold':'')}
+                                        item.type==='headline'?'!text-4xl md:!text-5xl lg:!text-6xl !font-black !tracking-tight !leading-tight':'', 
+                                        item.type==='subheading'?'!text-xl md:!text-2xl lg:!text-3xl !font-medium !leading-relaxed':'', 
+                                        item.type==='h3'?'!text-lg md:!text-xl lg:!text-2xl !font-semibold !leading-relaxed':'',
+                                        item.type==='paragraph'?'!text-lg md:!text-xl !font-medium !leading-relaxed':'')}
                               variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                                       multiline={true}
                                       campaignId={campaignId}
