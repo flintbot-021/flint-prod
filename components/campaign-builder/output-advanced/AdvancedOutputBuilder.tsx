@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
   import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
   import { Slider } from '@/components/ui/slider'
   import { Switch } from '@/components/ui/switch'
-  import { Plus, Trash2, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical, Heading1, Heading2, Text as TextIcon, MousePointerClick, Image as ImageIcon, ListOrdered, List, Minus, ChevronUp, ChevronDown } from 'lucide-react'
+  import { Plus, Trash2, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical, Heading1, Heading2, Heading3, Text as TextIcon, MousePointerClick, Image as ImageIcon, ListOrdered, List, Minus, ChevronUp, ChevronDown, Settings } from 'lucide-react'
 import { ContentToolbar } from './ContentToolbar'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem as UICommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
 import { VariableSuggestionDropdown } from '@/components/ui/variable-suggestion-dropdown'
@@ -24,7 +24,7 @@ import { uploadFiles } from '@/lib/supabase/storage'
 import { getCampaignTheme } from '@/components/campaign-renderer/utils'
 
 type ContentItem =
-  | { id: string; type: 'headline' | 'subheading' | 'paragraph'; content: string }
+  | { id: string; type: 'headline' | 'subheading' | 'h3' | 'paragraph'; content: string }
   | { id: string; type: 'button'; content: string; href?: string; color?: string }
   | { id: string; type: 'image'; src?: string; alt?: string; maxHeight?: number }
   | { id: string; type: 'numbered-list' | 'bullet-list'; items: string[] }
@@ -46,7 +46,20 @@ type Block = {
   content: ContentItem[]
 }
 
-type Row = { id: string; blocks: Block[] }
+type Row = { 
+  id: string; 
+  blocks: Block[];
+  backgroundColor?: string;
+  backgroundImage?: string;
+  overlayColor?: string;
+  overlayOpacity?: number;
+  topLineColor?: string;
+  bottomLineColor?: string;
+  topLineWidth?: number;
+  bottomLineWidth?: number;
+  paddingTop?: number;
+  paddingBottom?: number;
+}
 
 type PageSettings = {
   backgroundColor?: string
@@ -117,6 +130,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const [activeCardRect, setActiveCardRect] = useState<{ left: number; top: number; width: number } | null>(null)
   const [propsOpenFor, setPropsOpenFor] = useState<string | null>(null)
   const [pagePropsOpen, setPagePropsOpen] = useState(false)
+  const [rowPropsOpenFor, setRowPropsOpenFor] = useState<string | null>(null)
   const [draftPageSettings, setDraftPageSettings] = useState<PageSettings>(pageSettings)
   const [draftRows, setDraftRows] = useState<Row[]>(rows)
   const [activeRowId, setActiveRowId] = useState<string | null>(null)
@@ -349,14 +363,19 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     const interpolator = new VariableInterpolator()
     const variables: Record<string, any> = previewVariables
 
-    const renderItem = (item: ContentItem) => {
+    const renderItem = (item: ContentItem, blockTextColor?: string) => {
+      // Use block text color if available, otherwise fall back to campaign theme
+      const textColor = blockTextColor || campaignTheme.textColor
+      
       switch (item.type) {
         case 'headline':
-          return `<h1 class="font-black tracking-tight leading-tight text-4xl md:text-5xl lg:text-6xl" style="color:${campaignTheme.textColor}">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</h1>`
+          return `<h1 class="font-black tracking-tight leading-tight text-4xl md:text-5xl lg:text-6xl" style="color:${textColor}">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</h1>`
         case 'subheading':
-          return `<div class="font-medium leading-relaxed text-xl md:text-2xl lg:text-3xl" style="color:${campaignTheme.textColor}CC">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</div>`
+          return `<div class="font-medium leading-relaxed text-xl md:text-2xl lg:text-3xl" style="color:${textColor}CC">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</div>`
+        case 'h3':
+          return `<h3 class="font-semibold leading-relaxed text-lg md:text-xl lg:text-2xl" style="color:${textColor}DD">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</h3>`
         case 'paragraph':
-          return `<div class="leading-relaxed font-medium text-lg md:text-xl" style="color:${campaignTheme.textColor}">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</div>`
+          return `<div class="leading-relaxed font-medium text-lg md:text-xl" style="color:${textColor}">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</div>`
         case 'divider':
           return `<hr class="border-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent backdrop-blur-sm"/>`
         case 'button':
@@ -424,7 +443,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         : 'rounded-lg transition-all duration-300 ease-out'
       
       const innerStyle = `display:grid;row-gap:${b.spacing ?? 12}px;text-align:${align}`
-      return `<div class="${classNames}" style="${styles.join(';')}"><div style="${innerStyle}">${b.content.map(renderItem).join('')}</div></div>`
+      return `<div class="${classNames}" style="${styles.join(';')}"><div style="${innerStyle}">${b.content.map(item => renderItem(item, b.textColor)).join('')}</div></div>`
     }
 
     const containerStyle = [
@@ -437,15 +456,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     
     const innerContainerStyle = [
       'flex:1',
-      'padding:24px 24px',
-      'display:flex',
-      'justify-content:center'
-    ].join(';')
-    
-    const contentStyle = [
-      'width:100%',
-      'max-width:1024px',
-      'margin:0 auto',
+      'padding:48px 0',
       'display:flex',
       'flex-direction:column',
       'gap:32px'
@@ -457,7 +468,45 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       `gap:${pageSettings.gridGap ?? 16}px`
     ].join(';')
     
-    const html = `<div style="${containerStyle}"><div style="${innerContainerStyle}"><div style="${contentStyle}">${rows.map((r, idx) => `<div style="${gridStyle}${idx === rows.length - 1 ? '' : `;margin-bottom:${pageSettings.rowSpacing ?? 24}px`}">${r.blocks.map(renderBlock).join('')}</div>`).join('')}</div></div></div>`
+    const renderRowHtml = (r: Row, idx: number) => {
+      const rowStyles: string[] = [
+        'width:100vw',
+        'position:relative',
+        'margin-left:calc(-50vw + 50%)',
+        'margin-right:calc(-50vw + 50%)',
+        'transition:all 0.2s'
+      ]
+      if (r.backgroundColor) rowStyles.push(`background-color:${r.backgroundColor}`)
+      if (r.backgroundImage) {
+        rowStyles.push(`background-image:url(${r.backgroundImage})`)
+        rowStyles.push('background-size:cover')
+        rowStyles.push('background-position:center')
+        rowStyles.push('background-repeat:no-repeat')
+      }
+      
+      const overlay = (r.backgroundImage && r.overlayColor) 
+        ? `<div style="position:absolute;inset:0;background-color:${r.overlayColor};opacity:${(r.overlayOpacity || 50) / 100};"></div>`
+        : ''
+      
+      const topLine = r.topLineColor ? `<div style="width:100%;height:${r.topLineWidth || 1}px;background-color:${r.topLineColor};position:relative;z-index:20;"></div>` : ''
+      const bottomLine = r.bottomLineColor ? `<div style="width:100%;height:${r.bottomLineWidth || 1}px;background-color:${r.bottomLineColor};position:relative;z-index:20;"></div>` : ''
+      
+      const contentStyle = [
+        'width:100%',
+        'max-width:1024px',
+        'margin:0 auto',
+        'position:relative',
+        'z-index:10',
+        'padding-left:24px',
+        'padding-right:24px',
+        `padding-top:${r.paddingTop || 16}px`,
+        `padding-bottom:${r.paddingBottom || 16}px`
+      ].join(';')
+      
+      return `<div style="${rowStyles.join(';')}">${overlay}${topLine}<div style="${contentStyle}"><div style="${gridStyle}">${r.blocks.map(renderBlock).join('')}</div></div>${bottomLine}</div>`
+    }
+    
+    const html = `<div style="${containerStyle}"><div style="${innerContainerStyle}">${rows.map((r, idx) => `<div style="${idx === rows.length - 1 ? '' : `margin-bottom:${pageSettings.rowSpacing ?? 24}px`}">${renderRowHtml(r, idx)}</div>`).join('')}</div></div>`
     return html
   }, [isPreview, rows, previewVariables, pageSettings.backgroundColor, pageSettings.gridGap, pageSettings.maxColumns, pageSettings.rowSpacing])
 
@@ -604,6 +653,14 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     await saveRows(next)
   }
 
+  const updateRow = async (rowId: string, updates: Partial<Row>) => {
+    const next = draftRows.map(r => 
+      r.id === rowId ? { ...r, ...updates } : r
+    )
+    setDraftRows(next)
+    await saveRows(next)
+  }
+
   // Debounced version for real-time controls like sliders
   const updateBlockDebounced = useCallback((rowId: string, blockId: string, updates: Partial<Block>) => {
     // Immediately update local state for instant visual feedback
@@ -660,7 +717,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     const block = row.blocks.find(b => b.id === blockId)!
     const id = uid('item')
     const newItem: any = { id, type }
-    if (type === 'headline' || type === 'subheading' || type === 'paragraph') newItem.content = ''
+    if (type === 'headline' || type === 'subheading' || type === 'h3' || type === 'paragraph') newItem.content = ''
     if (type === 'button') { newItem.content = 'Button'; newItem.href = '' }
     if (type === 'numbered-list' || type === 'bullet-list') newItem.items = ['']
     block.content = [...(block.content || []), newItem]
@@ -1181,17 +1238,44 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
               </div>
             )}
             
-            <div
-            className={cn('space-y-3 relative')}
-          >
-            {/* Dynamic grid for cards */}
-            <div
-              className="grid"
-              style={{
-                gridTemplateColumns: `repeat(${draftPageSettings.maxColumns ?? 3}, 1fr)`,
-                gap: `${draftPageSettings.gridGap ?? 16}px`
-              }}
-            >
+            {/* Row Container with Settings */}
+            <div className={cn('space-y-3 relative group')}>
+              {/* Row Settings Icon */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="absolute -right-2 -top-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 p-0"
+                onClick={() => setRowPropsOpenFor(rowPropsOpenFor === row.id ? null : row.id)}
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+              
+              {/* Top Line */}
+              {row.topLineColor && (
+                <div 
+                  className="w-full"
+                  style={{
+                    height: `${row.topLineWidth || 1}px`,
+                    backgroundColor: row.topLineColor
+                  }}
+                />
+              )}
+              
+              {/* Row Background Container */}
+              <div
+                className="p-4 rounded-lg transition-all duration-200"
+                style={{
+                  backgroundColor: row.backgroundColor || 'transparent'
+                }}
+              >
+                {/* Dynamic grid for cards */}
+                <div
+                  className="grid"
+                  style={{
+                    gridTemplateColumns: `repeat(${draftPageSettings.maxColumns ?? 3}, 1fr)`,
+                    gap: `${draftPageSettings.gridGap ?? 16}px`
+                  }}
+                >
                   {/* Render existing blocks */}
                   {row.blocks.map(block => (
                     
@@ -1534,7 +1618,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                       <Trash2 className="h-3 w-3"/>
                                     </Button>
                                   </div>
-                              {item.type === 'headline' || item.type === 'subheading' || item.type === 'paragraph' ? (
+                              {item.type === 'headline' || item.type === 'subheading' || item.type === 'h3' || item.type === 'paragraph' ? (
                             <VariableSuggestionDropdown
                                       value={(item as any).content || ''}
                                       onChange={(v)=>{
@@ -1547,11 +1631,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                         await saveRows(next)
                                       }}
                                       autoSave={true}
-                                      placeholder={item.type === 'headline' ? 'Your headline' : item.type === 'subheading' ? 'Your subheading' : 'Write your paragraph...'}
+                                      placeholder={item.type === 'headline' ? 'Your headline' : item.type === 'subheading' ? 'Your subheading' : item.type === 'h3' ? 'Your label' : 'Write your paragraph...'}
                                       className="w-full"
                                       inputClassName={cn('!border-0 !outline-none !ring-0 !shadow-none !bg-transparent !p-0 !m-0 focus:!border-0 focus:!outline-none focus:!ring-0 focus:!shadow-none',
                                         block.textAlignment === 'left' ? 'text-left' : block.textAlignment === 'right' ? 'text-right' : 'text-center',
-                                        item.type==='headline'?'!text-3xl !font-bold':'', item.type==='subheading'?'!text-xl !font-medium':'')}
+                                        item.type==='headline'?'!text-3xl !font-bold':'', item.type==='subheading'?'!text-xl !font-medium':'', item.type==='h3'?'!text-lg !font-semibold':'')}
                               variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                                       multiline={true}
                                       campaignId={campaignId}
@@ -1718,9 +1802,20 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                       </div>
                     )
                   })()}
+                </div>
+                
+                {/* Bottom Line */}
+                {row.bottomLineColor && (
+                  <div 
+                    className="w-full mt-4"
+                    style={{
+                      height: `${row.bottomLineWidth || 1}px`,
+                      backgroundColor: row.bottomLineColor
+                    }}
+                  />
+                )}
+              </div>
             </div>
-            {/* Row drag handle removed */}
-          </div>
           </React.Fragment>
         )
       })}
@@ -1749,6 +1844,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
             <CommandGroup heading="Basic blocks">
               <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'headline'); recalcActiveCardRect(menuOpenFor) }}><Heading1 /><span>Headline</span></UICommandItem>
               <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'subheading'); recalcActiveCardRect(menuOpenFor) }}><Heading2 /><span>Subheading</span></UICommandItem>
+              <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'h3'); recalcActiveCardRect(menuOpenFor) }}><Heading3 /><span>Label</span></UICommandItem>
               <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'paragraph'); recalcActiveCardRect(menuOpenFor) }}><TextIcon /><span>Paragraph</span></UICommandItem>
               <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'button'); recalcActiveCardRect(menuOpenFor) }}><MousePointerClick /><span>Button</span></UICommandItem>
               <UICommandItem onSelect={async ()=>{ const row = draftRows.find(r=> r.blocks.some(b=> b.id===menuOpenFor)); if (!row || !menuOpenFor) return; await addContentItem(row.id, menuOpenFor, 'image'); recalcActiveCardRect(menuOpenFor) }}><ImageIcon /><span>Image</span></UICommandItem>
@@ -2170,6 +2266,226 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
             )
           })()}
         </div>
+      </SheetContent>
+    </Sheet>
+
+    {/* Row Properties Sheet */}
+    <Sheet open={!!rowPropsOpenFor} onOpenChange={(open) => !open && setRowPropsOpenFor(null)}>
+      <SheetContent side="right" className="w-96 overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Row Properties</SheetTitle>
+          <SheetDescription>
+            Customize the appearance and styling of this row
+          </SheetDescription>
+        </SheetHeader>
+        
+        {rowPropsOpenFor && (() => {
+          const row = draftRows.find(r => r.id === rowPropsOpenFor)
+          if (!row) return null
+          
+          return (
+            <div className="space-y-6 pt-6">
+              {/* Background */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Background</CardTitle>
+                  <CardDescription>Set the row background color and image</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="row-background-color">Background Color</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="row-background-color"
+                        type="color"
+                        value={row.backgroundColor || '#ffffff'}
+                        onChange={(e) => updateRow(row.id, { backgroundColor: e.target.value })}
+                        className="w-12 h-9 p-1 border rounded"
+                      />
+                      <Input
+                        value={row.backgroundColor || ''}
+                        onChange={(e) => updateRow(row.id, { backgroundColor: e.target.value || undefined })}
+                        placeholder="#ffffff"
+                        className="flex-1 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="row-background-image">Background Image URL</Label>
+                    <Input
+                      id="row-background-image"
+                      value={row.backgroundImage || ''}
+                      onChange={(e) => updateRow(row.id, { backgroundImage: e.target.value || undefined })}
+                      placeholder="https://example.com/image.jpg"
+                      className="text-sm"
+                    />
+                  </div>
+                  {row.backgroundImage && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="overlay-color">Overlay Color</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="overlay-color"
+                            type="color"
+                            value={row.overlayColor || '#000000'}
+                            onChange={(e) => updateRow(row.id, { overlayColor: e.target.value })}
+                            className="w-12 h-9 p-1 border rounded"
+                          />
+                          <Input
+                            value={row.overlayColor || ''}
+                            onChange={(e) => updateRow(row.id, { overlayColor: e.target.value || undefined })}
+                            placeholder="#000000"
+                            className="flex-1 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="overlay-opacity">Overlay Opacity</Label>
+                        <div className="flex items-center space-x-3">
+                          <Slider
+                            id="overlay-opacity"
+                            min={0}
+                            max={100}
+                            step={5}
+                            value={[row.overlayOpacity || 50]}
+                            onValueChange={([value]) => updateRow(row.id, { overlayOpacity: value })}
+                            className="flex-1"
+                          />
+                          <span className="text-sm font-medium w-12 text-center">
+                            {row.overlayOpacity || 50}%
+                          </span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Padding */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Internal Padding</CardTitle>
+                  <CardDescription>Control the vertical spacing inside the row</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="row-padding">Vertical Padding</Label>
+                    <div className="flex items-center space-x-3">
+                      <Slider
+                        id="row-padding"
+                        min={0}
+                        max={128}
+                        step={8}
+                        value={[row.paddingTop || 16]}
+                        onValueChange={([value]) => updateRow(row.id, { 
+                          paddingTop: value, 
+                          paddingBottom: value
+                        })}
+                        className="flex-1"
+                      />
+                      <span className="text-sm font-medium w-12 text-center">
+                        {row.paddingTop || 16}px
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Top Line */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Top Line</CardTitle>
+                  <CardDescription>Add a line above the row content</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="top-line-color">Line Color</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="top-line-color"
+                        type="color"
+                        value={row.topLineColor || '#e5e7eb'}
+                        onChange={(e) => updateRow(row.id, { topLineColor: e.target.value })}
+                        className="w-12 h-9 p-1 border rounded"
+                      />
+                      <Input
+                        value={row.topLineColor || ''}
+                        onChange={(e) => updateRow(row.id, { topLineColor: e.target.value || undefined })}
+                        placeholder="#e5e7eb"
+                        className="flex-1 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="top-line-width">Line Width</Label>
+                    <Select
+                      value={String(row.topLineWidth || 1)}
+                      onValueChange={(value) => updateRow(row.id, { topLineWidth: Number(value) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1px</SelectItem>
+                        <SelectItem value="2">2px</SelectItem>
+                        <SelectItem value="3">3px</SelectItem>
+                        <SelectItem value="4">4px</SelectItem>
+                        <SelectItem value="5">5px</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Bottom Line */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Bottom Line</CardTitle>
+                  <CardDescription>Add a line below the row content</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="bottom-line-color">Line Color</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="bottom-line-color"
+                        type="color"
+                        value={row.bottomLineColor || '#e5e7eb'}
+                        onChange={(e) => updateRow(row.id, { bottomLineColor: e.target.value })}
+                        className="w-12 h-9 p-1 border rounded"
+                      />
+                      <Input
+                        value={row.bottomLineColor || ''}
+                        onChange={(e) => updateRow(row.id, { bottomLineColor: e.target.value || undefined })}
+                        placeholder="#e5e7eb"
+                        className="flex-1 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bottom-line-width">Line Width</Label>
+                    <Select
+                      value={String(row.bottomLineWidth || 1)}
+                      onValueChange={(value) => updateRow(row.id, { bottomLineWidth: Number(value) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1px</SelectItem>
+                        <SelectItem value="2">2px</SelectItem>
+                        <SelectItem value="3">3px</SelectItem>
+                        <SelectItem value="4">4px</SelectItem>
+                        <SelectItem value="5">5px</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )
+        })()}
       </SheetContent>
     </Sheet>
     </>

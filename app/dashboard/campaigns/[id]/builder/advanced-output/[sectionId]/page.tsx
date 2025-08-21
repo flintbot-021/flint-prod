@@ -154,7 +154,7 @@ export default function AdvancedOutputEditorPage() {
     return (
       <div className="min-h-screen">
         {/* Header */}
-        <div className="sticky top-0 z-10 border-b bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+        <div className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
           <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Button variant="ghost" onClick={goBack}><ChevronLeft className="h-4 w-4 mr-1"/>Back</Button>
@@ -206,7 +206,7 @@ export default function AdvancedOutputEditorPage() {
       style={{ backgroundColor: pageBackgroundColor || undefined }}
     >
       {/* Header */}
-      <div className="sticky top-0 z-10 border-b bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+      <div className="sticky top-0 z-50 border-b bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={goBack}><ChevronLeft className="h-4 w-4 mr-1"/>Back</Button>

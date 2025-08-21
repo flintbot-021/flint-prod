@@ -53,23 +53,32 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
   const pageSettings = (config as any)?.pageSettings || {}
   const interpolator = useMemo(() => new VariableInterpolator(), [])
 
-  const renderItem = (item: any) => {
+  const renderItem = (item: any, blockTextColor?: string) => {
+    // Use block text color if available, otherwise fall back to campaign theme
+    const textColor = blockTextColor || campaignTheme.textColor
+    
     switch (item.type) {
       case 'headline':
         return (
-          <h1 className={cn('font-black tracking-tight leading-tight', deviceInfo?.type === 'mobile' ? 'text-4xl' : 'text-5xl lg:text-6xl')} style={{ color: campaignTheme.textColor }}>
+          <h1 className={cn('font-black tracking-tight leading-tight', deviceInfo?.type === 'mobile' ? 'text-4xl' : 'text-5xl lg:text-6xl')} style={{ color: textColor }}>
             {interpolator.interpolate(item.content || '', { variables: variableMap, availableVariables: [] }).content}
           </h1>
         )
       case 'subheading':
         return (
-          <div className={cn('font-medium leading-relaxed', deviceInfo?.type === 'mobile' ? 'text-xl' : 'text-2xl lg:text-3xl')} style={{ color: `${campaignTheme.textColor}CC` }}>
+          <div className={cn('font-medium leading-relaxed', deviceInfo?.type === 'mobile' ? 'text-xl' : 'text-2xl lg:text-3xl')} style={{ color: `${textColor}CC` }}>
             {interpolator.interpolate(item.content || '', { variables: variableMap, availableVariables: [] }).content}
           </div>
         )
+      case 'h3':
+        return (
+          <h3 className={cn('font-semibold leading-relaxed', deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl lg:text-2xl')} style={{ color: `${textColor}DD` }}>
+            {interpolator.interpolate(item.content || '', { variables: variableMap, availableVariables: [] }).content}
+          </h3>
+        )
       case 'paragraph':
         return (
-          <div className={cn('leading-relaxed font-medium whitespace-pre-wrap', deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl')} style={{ color: campaignTheme.textColor }}>
+          <div className={cn('leading-relaxed font-medium whitespace-pre-wrap', deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl')} style={{ color: textColor }}>
             {interpolator.interpolate(item.content || '', { variables: variableMap, availableVariables: [] }).content}
           </div>
         )
@@ -178,7 +187,7 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
           align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center'
         )} style={{ rowGap: (block.spacing ?? 12), display: 'grid' }}>
           {(block.content || []).map((item: any) => (
-            <div key={item.id}>{renderItem(item)}</div>
+            <div key={item.id}>{renderItem(item, block.textColor)}</div>
           ))}
         </div>
       </div>
@@ -204,22 +213,77 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
       className="h-full flex flex-col pb-20"
       style={{ backgroundColor: backgroundColor || undefined }}
     >
-      <div className="flex-1 px-6 py-12">
-        <div className="w-full max-w-4xl mx-auto space-y-8">
-          {rows.map((row: any, idx: number) => (
+      <div className="flex-1 py-12 space-y-8">
+        {rows.map((row: any, idx: number) => (
+          <div key={row.id}>
+            {/* Full-width row background that breaks out of container */}
             <div 
-              key={row.id} 
-              className="grid" 
-              style={{ 
-                gridTemplateColumns: `repeat(${maxColumns}, 1fr)`,
-                gap: `${gridGap}px`,
+              className="w-screen relative transition-all duration-200"
+              style={{
+                backgroundColor: row.backgroundColor || 'transparent',
+                backgroundImage: row.backgroundImage ? `url(${row.backgroundImage})` : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                marginLeft: 'calc(-50vw + 50%)',
+                marginRight: 'calc(-50vw + 50%)',
                 marginBottom: idx === rows.length - 1 ? 0 : `${rowSpacing}px`
               }}
             >
-              {(row.blocks || []).map(renderBlock)}
+              {/* Overlay */}
+              {row.backgroundImage && row.overlayColor && (
+                <div 
+                  className="absolute inset-0"
+                  style={{
+                    backgroundColor: row.overlayColor,
+                    opacity: (row.overlayOpacity || 50) / 100
+                  }}
+                />
+              )}
+              
+              {/* Top Line - Full Width */}
+              {row.topLineColor && (
+                <div 
+                  className="w-full relative z-20"
+                  style={{
+                    height: `${row.topLineWidth || 1}px`,
+                    backgroundColor: row.topLineColor
+                  }}
+                />
+              )}
+              
+              {/* Grid Content - Constrained Width */}
+              <div 
+                className="w-full max-w-4xl mx-auto relative z-10 px-6"
+                style={{
+                  paddingTop: `${row.paddingTop || 16}px`,
+                  paddingBottom: `${row.paddingBottom || 16}px`
+                }}
+              >
+                <div 
+                  className="grid" 
+                  style={{ 
+                    gridTemplateColumns: `repeat(${maxColumns}, 1fr)`,
+                    gap: `${gridGap}px`
+                  }}
+                >
+                  {(row.blocks || []).map(renderBlock)}
+                </div>
+              </div>
+              
+              {/* Bottom Line - Full Width */}
+              {row.bottomLineColor && (
+                <div 
+                  className="w-full relative z-20"
+                  style={{
+                    height: `${row.bottomLineWidth || 1}px`,
+                    backgroundColor: row.bottomLineColor
+                  }}
+                />
+              )}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   )
