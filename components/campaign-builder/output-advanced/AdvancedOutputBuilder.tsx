@@ -9,9 +9,10 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Slider } from '@/components/ui/slider'
-import { Plus, Trash2, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical, Heading1, Heading2, Text as TextIcon, MousePointerClick, Image as ImageIcon, ListOrdered, List, Minus, ChevronUp, ChevronDown } from 'lucide-react'
+  import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+  import { Slider } from '@/components/ui/slider'
+  import { Switch } from '@/components/ui/switch'
+  import { Plus, Trash2, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical, Heading1, Heading2, Text as TextIcon, MousePointerClick, Image as ImageIcon, ListOrdered, List, Minus, ChevronUp, ChevronDown } from 'lucide-react'
 import { ContentToolbar } from './ContentToolbar'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem as UICommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
 import { VariableSuggestionDropdown } from '@/components/ui/variable-suggestion-dropdown'
@@ -35,10 +36,11 @@ type Block = {
   startPosition: number
   backgroundColor?: string
   textColor?: string
-  borderColor?: string
-  outlineColor?: string
-  textAlignment?: 'left' | 'center' | 'right'
-  padding?: number
+      borderColor?: string
+    borderWidth?: number
+    glassEffect?: boolean
+    textAlignment?: 'left' | 'center' | 'right'
+    padding?: number
   spacing?: number
   borderRadius?: number
   content: ContentItem[]
@@ -108,7 +110,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     return baseColor
   }
   const sanitizedDefaultBlock = useMemo(() => {
-    const { backgroundColor, borderColor, outlineColor, ...rest } = defaultBlock || {}
+    const { backgroundColor, borderColor, borderWidth, ...rest } = defaultBlock || {}
     return rest
   }, [defaultBlock])
   const [toolbarOpenFor, setToolbarOpenFor] = useState<string | null>(null)
@@ -350,27 +352,27 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     const renderItem = (item: ContentItem) => {
       switch (item.type) {
         case 'headline':
-          return `<h1 class="text-3xl font-bold">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</h1>`
+          return `<h1 class="font-black tracking-tight leading-tight text-4xl md:text-5xl lg:text-6xl" style="color:${campaignTheme.textColor}">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</h1>`
         case 'subheading':
-          return `<h2 class="text-xl text-muted-foreground">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</h2>`
+          return `<div class="font-medium leading-relaxed text-xl md:text-2xl lg:text-3xl" style="color:${campaignTheme.textColor}CC">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</div>`
         case 'paragraph':
-          return `<p class="leading-relaxed">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</p>`
+          return `<div class="leading-relaxed font-medium text-lg md:text-xl" style="color:${campaignTheme.textColor}">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</div>`
         case 'divider':
-          return `<hr class="border-input my-4"/>`
+          return `<hr class="border-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent backdrop-blur-sm"/>`
         case 'button':
           const buttonHref = interpolator.interpolate((item as any).href || '#', { variables, availableVariables: [] }).content
           const buttonText = interpolator.interpolate(item.content || 'Button', { variables, availableVariables: [] }).content
           const buttonColor = getButtonColor(item)
           const buttonHoverColor = getButtonHoverColor(buttonColor)
-          return `<div class="flex justify-center"><a href="${buttonHref}" class="inline-flex items-center justify-center px-6 py-3 rounded-lg text-white font-medium text-center transition-colors" style="background-color:${buttonColor}" onmouseover="this.style.backgroundColor='${buttonHoverColor}'" onmouseout="this.style.backgroundColor='${buttonColor}'">${buttonText}</a></div>`
+          return `<div class="flex justify-center"><a href="${buttonHref}" class="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-center backdrop-blur-md border transition-all duration-300 ease-out hover:shadow-xl hover:scale-105 active:scale-95 shadow-2xl" style="background-color:${buttonColor};color:${campaignTheme.buttonTextColor};border:1px solid rgba(255, 255, 255, 0.2);box-shadow:0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)" onmouseover="this.style.backgroundColor='${buttonHoverColor}'" onmouseout="this.style.backgroundColor='${buttonColor}'">${buttonText}</a></div>`
         case 'image':
-          const maxHeightStyle = (item as any).maxHeight ? `max-height:${(item as any).maxHeight}px;height:${(item as any).maxHeight}px;` : 'height:192px;max-height:192px;'
+          const maxHeightStyle = (item as any).maxHeight ? `max-height:${(item as any).maxHeight}px;height:auto;` : ''
           const imageSrc = interpolator.interpolate(item.src || '', { variables, availableVariables: [] }).content
           return imageSrc ? `<img class="rounded-lg w-full object-cover" style="${maxHeightStyle}" src="${imageSrc}" alt="${item.alt || ''}"/>` : ''
         case 'numbered-list':
-          return `<ol class="list-decimal pl-5">${(item.items||[]).map(li=>`<li>${interpolator.interpolate(li, { variables, availableVariables: [] }).content}</li>`).join('')}</ol>`
+          return `<ol class="list-decimal pl-5 space-y-1">${(item.items||[]).map(li=>`<li>${interpolator.interpolate(li, { variables, availableVariables: [] }).content}</li>`).join('')}</ol>`
         case 'bullet-list':
-          return `<ul class="list-disc pl-5">${(item.items||[]).map(li=>`<li>${interpolator.interpolate(li, { variables, availableVariables: [] }).content}</li>`).join('')}</ul>`
+          return `<ul class="list-disc pl-5 space-y-1">${(item.items||[]).map(li=>`<li>${interpolator.interpolate(li, { variables, availableVariables: [] }).content}</li>`).join('')}</ul>`
         default:
           return ''
       }
@@ -378,32 +380,84 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
 
     const renderBlock = (b: Block) => {
       const align = b.textAlignment || 'center'
+      const hasCustomBackground = b.backgroundColor && b.backgroundColor !== 'transparent'
+      const hasCustomBorder = b.borderColor
+      const hasGlassEffect = b.glassEffect && (hasCustomBackground || hasCustomBorder)
+      
       const styles: string[] = [
         `padding:${b.padding ?? 24}px`,
         `grid-column-start:${b.startPosition}`,
         `grid-column-end:span ${b.width}`
       ]
-      if (b.backgroundColor) styles.push(`background:${b.backgroundColor}`)
+      
+      if (hasCustomBackground) {
+        styles.push(`background:${b.backgroundColor}`)
+      } else {
+        styles.push(`background:transparent`)
+      }
+      
       if (b.textColor) styles.push(`color:${b.textColor}`)
-      if (b.borderColor) styles.push(`border:1px solid ${b.borderColor}`)
-      if (b.borderRadius) styles.push(`border-radius:${b.borderRadius}px`)
+      
+      if (hasCustomBorder) {
+        const borderWidth = b.borderWidth || 1
+        styles.push(`border:${borderWidth}px solid ${b.borderColor}`)
+      } else if (hasGlassEffect && hasCustomBackground) {
+        styles.push(`border:1px solid rgba(255, 255, 255, 0.2)`)
+      }
+      
+      if (b.borderRadius) {
+        styles.push(`border-radius:${b.borderRadius}px`)
+      }
+      
+      if (hasGlassEffect) {
+        styles.push(`backdrop-filter:blur(12px)`)
+        if (hasCustomBorder && b.borderColor) {
+          // Add glow effect with border color
+          styles.push(`box-shadow:0 0 20px ${b.borderColor}80, 0 0 40px ${b.borderColor}40, 0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)`)
+        } else {
+          styles.push(`box-shadow:0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)`)
+        }
+      }
+      
+      const classNames = hasGlassEffect 
+        ? 'rounded-2xl transition-all duration-300 ease-out hover:shadow-xl hover:scale-[1.02] shadow-2xl'
+        : 'rounded-lg transition-all duration-300 ease-out'
+      
       const innerStyle = `display:grid;row-gap:${b.spacing ?? 12}px;text-align:${align}`
-      return `<div class=\"rounded-lg\" style=\"${styles.join(';')}\"><div style=\"${innerStyle}\">${b.content.map(renderItem).join('')}</div></div>`
+      return `<div class="${classNames}" style="${styles.join(';')}"><div style="${innerStyle}">${b.content.map(renderItem).join('')}</div></div>`
     }
 
     const containerStyle = [
       pageSettings.backgroundColor ? `background-color:${pageSettings.backgroundColor}` : '',
-      'padding:16px'
+      'min-height:100vh',
+      'display:flex',
+      'flex-direction:column',
+      'padding-bottom:80px'
     ].filter(Boolean).join(';')
+    
+    const innerContainerStyle = [
+      'flex:1',
+      'padding:24px 24px',
+      'display:flex',
+      'justify-content:center'
+    ].join(';')
+    
+    const contentStyle = [
+      'width:100%',
+      'max-width:1024px',
+      'margin:0 auto',
+      'display:flex',
+      'flex-direction:column',
+      'gap:32px'
+    ].join(';')
     
     const gridStyle = [
       `display:grid`,
       `grid-template-columns:repeat(${pageSettings.maxColumns ?? 3}, 1fr)`,
-      `gap:${pageSettings.gridGap ?? 16}px`,
-      `margin-bottom:${pageSettings.rowSpacing ?? 24}px`
+      `gap:${pageSettings.gridGap ?? 16}px`
     ].join(';')
     
-    const html = `<div style="${containerStyle}">${rows.map(r => `<div style="${gridStyle}">${r.blocks.map(renderBlock).join('')}</div>`).join('')}</div>`
+    const html = `<div style="${containerStyle}"><div style="${innerContainerStyle}"><div style="${contentStyle}">${rows.map((r, idx) => `<div style="${gridStyle}${idx === rows.length - 1 ? '' : `;margin-bottom:${pageSettings.rowSpacing ?? 24}px`}">${r.blocks.map(renderBlock).join('')}</div>`).join('')}</div></div></div>`
     return html
   }, [isPreview, rows, previewVariables, pageSettings.backgroundColor, pageSettings.gridGap, pageSettings.maxColumns, pageSettings.rowSpacing])
 
@@ -1156,8 +1210,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                             style={{
                               backgroundColor: block.backgroundColor || undefined,
                               color: block.textColor || undefined,
-                              border: block.borderColor ? `1px solid ${block.borderColor}` : undefined,
-                              outline: block.outlineColor ? `2px solid ${block.outlineColor}` : undefined,
+                              border: block.borderColor ? `${block.borderWidth || 1}px solid ${block.borderColor}` : undefined,
                               borderRadius: block.borderRadius ? `${block.borderRadius}px` : undefined,
                               gridColumnStart: String(block.startPosition),
                               gridColumnEnd: `span ${block.width}`,
@@ -1283,6 +1336,37 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                                 className="flex-1 text-sm"
                                               />
                                             </div>
+                                          </div>
+                                          <div className="space-y-2">
+                                            <Label htmlFor="border-width">Border Width</Label>
+                                            <Select
+                                              value={String(block.borderWidth || 1)}
+                                              onValueChange={(value) => updateBlock(row.id, block.id, { borderWidth: Number(value) })}
+                                            >
+                                              <SelectTrigger>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="1">1px</SelectItem>
+                                                <SelectItem value="2">2px</SelectItem>
+                                                <SelectItem value="3">3px</SelectItem>
+                                                <SelectItem value="4">4px</SelectItem>
+                                                <SelectItem value="5">5px</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                          </div>
+                                          <div className="flex items-center justify-between">
+                                            <div className="space-y-1">
+                                              <Label htmlFor="glass-effect-toggle">Glass Effect</Label>
+                                              <p className="text-xs text-muted-foreground">Add glassmorphism styling with shadows and glow</p>
+                                            </div>
+                                            <Switch
+                                              id="glass-effect-toggle"
+                                              checked={block.glassEffect || false}
+                                              onCheckedChange={(checked) => {
+                                                updateBlock(row.id, block.id, { glassEffect: checked })
+                                              }}
+                                            />
                                           </div>
                                         </CardContent>
                                       </Card>

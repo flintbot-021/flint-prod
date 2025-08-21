@@ -63,13 +63,13 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
         )
       case 'subheading':
         return (
-          <div className={cn('font-medium leading-relaxed', deviceInfo?.type === 'mobile' ? 'text-xl' : 'text-2xl lg:text-3xl')} style={{ color: campaignTheme.mutedTextColor }}>
+          <div className={cn('font-medium leading-relaxed', deviceInfo?.type === 'mobile' ? 'text-xl' : 'text-2xl lg:text-3xl')} style={{ color: `${campaignTheme.textColor}CC` }}>
             {interpolator.interpolate(item.content || '', { variables: variableMap, availableVariables: [] }).content}
           </div>
         )
       case 'paragraph':
         return (
-          <div className={cn('leading-relaxed font-medium', deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl')} style={{ color: campaignTheme.textColor }}>
+          <div className={cn('leading-relaxed font-medium whitespace-pre-wrap', deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl')} style={{ color: campaignTheme.textColor }}>
             {interpolator.interpolate(item.content || '', { variables: variableMap, availableVariables: [] }).content}
           </div>
         )
@@ -84,7 +84,11 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
           <div className="flex justify-center">
             <a 
               href={buttonHref}
-              className="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-center backdrop-blur-md border transition-all duration-300 ease-out hover:shadow-xl hover:scale-105 active:scale-95 shadow-2xl"
+              className={cn(
+                "inline-flex items-center justify-center font-semibold text-center backdrop-blur-md border transition-all duration-300 ease-out",
+                "hover:shadow-xl hover:scale-105 active:scale-95 shadow-2xl",
+                deviceInfo?.type === 'mobile' ? 'px-6 py-3 rounded-xl text-base' : 'px-8 py-4 rounded-2xl text-lg'
+              )}
               style={{
                 backgroundColor: buttonColor,
                 color: campaignTheme.buttonTextColor,
@@ -111,7 +115,7 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
           <img 
             src={imageSrc} 
             alt={item.alt || ''} 
-            className="rounded-lg w-full object-cover" 
+            className="rounded-2xl w-full object-cover shadow-2xl" 
             style={maxHeightStyle}
           />
         ) : null
@@ -138,18 +142,36 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
 
   const renderBlock = (block: any) => {
     const align = block.textAlignment || 'center'
+    const hasCustomBackground = block.backgroundColor && block.backgroundColor !== 'transparent'
+    const hasCustomBorder = block.borderColor
+    const hasGlassEffect = block.glassEffect && (hasCustomBackground || hasCustomBorder)
+    
     return (
       <div
         key={block.id}
-        className={cn('rounded-lg')}
+        className={cn(
+          'transition-all duration-300 ease-out',
+          hasGlassEffect ? 'rounded-2xl backdrop-blur-md border hover:shadow-xl hover:scale-[1.02] shadow-2xl' : 'rounded-lg'
+        )}
         style={{
-          background: block.backgroundColor || 'transparent',
+          background: hasCustomBackground 
+            ? block.backgroundColor 
+            : 'transparent',
           color: block.textColor || undefined,
-          border: block.borderColor ? `1px solid ${block.borderColor}` : undefined,
+          border: hasCustomBorder 
+            ? `${block.borderWidth || 1}px solid ${block.borderColor}` 
+            : hasGlassEffect && hasCustomBackground 
+            ? '1px solid rgba(255, 255, 255, 0.2)' 
+            : undefined,
           borderRadius: block.borderRadius ? `${block.borderRadius}px` : undefined,
           padding: block.padding ?? 24,
           gridColumnStart: String(block.startPosition),
           gridColumnEnd: `span ${block.width}`,
+          boxShadow: hasGlassEffect 
+            ? hasCustomBorder && block.borderColor
+              ? `0 0 20px ${block.borderColor}80, 0 0 40px ${block.borderColor}40, 0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)`
+              : '0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+            : undefined
         }}
       >
         <div className={cn(
@@ -187,7 +209,7 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
           {rows.map((row: any, idx: number) => (
             <div 
               key={row.id} 
-              className="grid gap-4" 
+              className="grid" 
               style={{ 
                 gridTemplateColumns: `repeat(${maxColumns}, 1fr)`,
                 gap: `${gridGap}px`,
