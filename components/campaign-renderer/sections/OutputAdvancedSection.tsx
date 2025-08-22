@@ -68,25 +68,37 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
     switch (item.type) {
       case 'headline':
         return (
-          <h1 className={cn('font-black tracking-tight leading-tight', deviceInfo?.type === 'mobile' ? 'text-4xl' : 'text-5xl lg:text-6xl')} style={{ color: textColor }}>
+          <h1 className={cn(
+            'font-black tracking-tight leading-tight',
+            deviceInfo?.type === 'mobile' ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl lg:text-6xl'
+          )} style={{ color: textColor }}>
             {interpolator.interpolate(item.content || '', { variables: variableMap, availableVariables: [] }).content}
           </h1>
         )
       case 'subheading':
         return (
-          <div className={cn('font-medium leading-relaxed', deviceInfo?.type === 'mobile' ? 'text-xl' : 'text-2xl lg:text-3xl')} style={{ color: `${textColor}CC` }}>
+          <div className={cn(
+            'font-medium leading-relaxed',
+            deviceInfo?.type === 'mobile' ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl lg:text-3xl'
+          )} style={{ color: `${textColor}CC` }}>
             {interpolator.interpolate(item.content || '', { variables: variableMap, availableVariables: [] }).content}
           </div>
         )
       case 'h3':
         return (
-          <h3 className={cn('font-semibold leading-relaxed', deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl lg:text-2xl')} style={{ color: `${textColor}DD` }}>
+          <h3 className={cn(
+            'font-semibold leading-relaxed',
+            deviceInfo?.type === 'mobile' ? 'text-base sm:text-lg' : 'text-lg sm:text-xl lg:text-2xl'
+          )} style={{ color: `${textColor}DD` }}>
             {interpolator.interpolate(item.content || '', { variables: variableMap, availableVariables: [] }).content}
           </h3>
         )
       case 'paragraph':
         return (
-          <div className={cn('leading-relaxed font-medium whitespace-pre-wrap', deviceInfo?.type === 'mobile' ? 'text-lg' : 'text-xl')} style={{ color: textColor }}>
+          <div className={cn(
+            'leading-relaxed font-medium whitespace-pre-wrap',
+            deviceInfo?.type === 'mobile' ? 'text-base sm:text-lg' : 'text-lg sm:text-xl'
+          )} style={{ color: textColor }}>
             {interpolator.interpolate(item.content || '', { variables: variableMap, availableVariables: [] }).content}
           </div>
         )
@@ -106,7 +118,9 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
               className={cn(
                 "inline-flex items-center justify-center font-semibold text-center backdrop-blur-md border transition-all duration-300 ease-out",
                 "hover:shadow-xl hover:scale-105 active:scale-95 shadow-2xl",
-                deviceInfo?.type === 'mobile' ? 'px-6 py-3 rounded-xl text-base' : 'px-8 py-4 rounded-2xl text-lg'
+                deviceInfo?.type === 'mobile' 
+                  ? 'px-5 py-3 rounded-xl text-sm sm:text-base' 
+                  : 'px-6 py-3 sm:px-8 sm:py-4 rounded-xl sm:rounded-2xl text-base sm:text-lg'
               )}
               style={{
                 backgroundColor: buttonColor,
@@ -159,7 +173,7 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
     }
   }
 
-  const renderBlock = (block: any) => {
+  const renderBlock = (block: any, isMobile: boolean = false) => {
     const align = block.textAlignment || 'center'
     const hasCustomBackground = block.backgroundColor && block.backgroundColor !== 'transparent'
     const hasCustomBorder = block.borderColor
@@ -183,9 +197,12 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
             ? '1px solid rgba(255, 255, 255, 0.2)' 
             : undefined,
           borderRadius: block.borderRadius ? `${block.borderRadius}px` : undefined,
-          padding: block.padding ?? 24,
-          gridColumnStart: String(block.startPosition),
-          gridColumnEnd: `span ${block.width}`,
+          padding: isMobile ? Math.max(16, (block.padding ?? 24) * 0.75) : (block.padding ?? 24),
+          // Remove grid positioning for mobile stacking
+          ...(isMobile ? {} : {
+            gridColumnStart: String(block.startPosition),
+            gridColumnEnd: `span ${block.width}`
+          }),
           boxShadow: hasGlassEffect 
             ? hasCustomBorder && block.borderColor
               ? `0 0 20px ${block.borderColor}80, 0 0 40px ${block.borderColor}40, 0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)`
@@ -218,12 +235,43 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
   const rowSpacing = pageSettings.rowSpacing || 24
   const backgroundColor = pageSettings.backgroundColor
 
+  // Determine if we're on mobile - use multiple detection methods
+  const isMobile = useMemo(() => {
+    // First check deviceInfo if provided
+    if (deviceInfo?.type === 'mobile') {
+      return true
+    }
+    
+    // Check deviceInfo screenSize
+    if (deviceInfo?.screenSize?.width && deviceInfo.screenSize.width < 768) {
+      return true
+    }
+    
+    // Fallback to window width detection
+    if (typeof window !== 'undefined') {
+      const width = window.innerWidth
+      if (width < 768) {
+        return true
+      }
+    }
+    
+    return false
+  }, [deviceInfo])
+  
+  // Debug logging (removed for production)
+  
+  // Mobile-responsive grid gap
+  const responsiveGridGap = isMobile ? Math.max(12, gridGap * 0.75) : gridGap
+  
+  // Mobile-responsive row spacing
+  const responsiveRowSpacing = isMobile ? Math.max(16, rowSpacing * 0.75) : rowSpacing
+
   return (
     <div 
       className="h-full flex flex-col pb-20"
       style={{ backgroundColor: backgroundColor || undefined }}
     >
-      <div className="flex-1 py-12 space-y-8">
+      <div className={cn("flex-1 space-y-8", isMobile ? "py-8" : "py-12")}>
         {rows.map((row: any, idx: number) => (
           <div key={row.id}>
             {/* Full-width row background that breaks out of container */}
@@ -237,7 +285,7 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
                 backgroundRepeat: 'no-repeat',
                 marginLeft: 'calc(-50vw + 50%)',
                 marginRight: 'calc(-50vw + 50%)',
-                marginBottom: idx === rows.length - 1 ? 0 : `${rowSpacing}px`
+                marginBottom: idx === rows.length - 1 ? 0 : `${responsiveRowSpacing}px`
               }}
             >
               {/* Overlay */}
@@ -262,22 +310,51 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
                 />
               )}
               
-              {/* Grid Content - Constrained Width */}
+              {/* Content - Responsive Layout */}
               <div 
-                className="w-full max-w-4xl mx-auto relative z-10 px-6"
+                className={cn(
+                  "w-full mx-auto relative z-10",
+                  isMobile ? "px-4 max-w-full" : "px-6 max-w-4xl"
+                )}
                 style={{
-                  paddingTop: `${row.paddingTop || 16}px`,
-                  paddingBottom: `${row.paddingBottom || 16}px`
+                  paddingTop: `${isMobile ? Math.max(12, (row.paddingTop || 16) * 0.75) : (row.paddingTop || 16)}px`,
+                  paddingBottom: `${isMobile ? Math.max(12, (row.paddingBottom || 16) * 0.75) : (row.paddingBottom || 16)}px`
                 }}
               >
                 <div 
-                  className="grid" 
+                  className={cn(
+                    // CSS-based responsive layout as fallback
+                    "flex flex-col space-y-4 md:grid md:space-y-0",
+                    // JavaScript-based override
+                    isMobile ? "!flex !flex-col !space-y-4" : "!grid !space-y-0"
+                  )}
                   style={{ 
-                    gridTemplateColumns: `repeat(${maxColumns}, 1fr)`,
-                    gap: `${gridGap}px`
+                    // Grid properties for desktop
+                    ...(!isMobile && {
+                      gridTemplateColumns: `repeat(${maxColumns}, 1fr)`,
+                      gap: `${responsiveGridGap}px`
+                    }),
+                    position: 'relative'
                   }}
                 >
-                  {(row.blocks || []).map(renderBlock)}
+
+                  
+                  {/* Render blocks with appropriate sorting for mobile */}
+                  {isMobile ? (
+                    // Mobile: Sort blocks for logical reading order
+                    (row.blocks || [])
+                      .sort((a: any, b: any) => {
+                        // Sort by row position first, then by start position
+                        const aRow = Math.floor((a.startPosition - 1) / maxColumns)
+                        const bRow = Math.floor((b.startPosition - 1) / maxColumns)
+                        if (aRow !== bRow) return aRow - bRow
+                        return a.startPosition - b.startPosition
+                      })
+                      .map((block: any) => renderBlock(block, true))
+                  ) : (
+                    // Desktop: Render blocks in original order for grid positioning
+                    (row.blocks || []).map((block: any) => renderBlock(block, false))
+                  )}
                 </div>
               </div>
               

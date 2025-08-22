@@ -530,7 +530,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       return `<div style="${rowStyles.join(';')}">${overlay}${topLine}<div style="${contentStyle}"><div style="${gridStyle}">${r.blocks.map(renderBlock).join('')}</div></div>${bottomLine}</div>`
     }
     
-    const html = `<div style="${containerStyle}"><div style="${innerContainerStyle}">${rows.map((r, idx) => `<div style="${idx === rows.length - 1 ? '' : `margin-bottom:${draftPageSettings.rowSpacing ?? 24}px`}">${renderRowHtml(r, idx)}</div>`).join('')}</div></div>`
+    // Mobile-responsive HTML generation
+    const isMobilePreview = false // Preview is always desktop for now
+    const responsiveRowSpacing = draftPageSettings.rowSpacing ?? 24
+    
+    const html = `<div style="${containerStyle}"><div style="${innerContainerStyle}">${rows.map((r, idx) => `<div style="${idx === rows.length - 1 ? '' : `margin-bottom:${responsiveRowSpacing}px`}">${renderRowHtml(r, idx)}</div>`).join('')}</div></div>`
     return html
   }, [isPreview, rows, previewVariables, draftPageSettings.backgroundColor, draftPageSettings.gridGap, draftPageSettings.maxColumns, draftPageSettings.rowSpacing])
 
