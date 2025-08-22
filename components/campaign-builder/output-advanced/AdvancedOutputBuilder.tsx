@@ -25,7 +25,7 @@ import { getCampaignTheme } from '@/components/campaign-renderer/utils'
 
 type ContentItem =
   | { id: string; type: 'headline' | 'subheading' | 'h3' | 'paragraph'; content: string }
-  | { id: string; type: 'button'; content: string; href?: string; color?: string }
+  | { id: string; type: 'button'; content: string; href?: string; color?: string; textColor?: string }
   | { id: string; type: 'image'; src?: string; alt?: string; maxHeight?: number }
   | { id: string; type: 'numbered-list' | 'bullet-list'; items: string[] }
   | { id: string; type: 'divider' }
@@ -104,6 +104,14 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     return campaignTheme.buttonColor
   }
 
+  // Helper function to get button text color (item text color override or campaign theme default)
+  const getButtonTextColor = (buttonItem: ContentItem) => {
+    if (buttonItem.type === 'button' && buttonItem.textColor) {
+      return buttonItem.textColor
+    }
+    return campaignTheme.buttonTextColor
+  }
+
   // Helper function to generate button hover color (slightly darker)
   const getButtonHoverColor = (baseColor: string) => {
     // Simple color darkening - convert hex to RGB, darken by 20%, convert back
@@ -127,7 +135,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     return rest
   }, [defaultBlock])
   const [toolbarOpenFor, setToolbarOpenFor] = useState<string | null>(null)
-  const [activeCardRect, setActiveCardRect] = useState<{ left: number; top: number; width: number } | null>(null)
+  const [activeCardRect, setActiveCardRect] = useState<{ left: number; top: number; width: number; positionAbove?: boolean } | null>(null)
   const [propsOpenFor, setPropsOpenFor] = useState<string | null>(null)
   const [pagePropsOpen, setPagePropsOpen] = useState(false)
   const [rowPropsOpenFor, setRowPropsOpenFor] = useState<string | null>(null)
@@ -155,7 +163,19 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     const el = document.querySelector(`[data-card-id="${blockId}"]`) as HTMLDivElement | null
     if (!el) return
     const rect = el.getBoundingClientRect()
-    setActiveCardRect({ left: rect.left + rect.width/2, top: rect.bottom, width: rect.width })
+    
+    // Check if there's enough space below for the command palette
+    // Use a more conservative estimate based on the actual command palette content
+    const spaceBelow = window.innerHeight - rect.bottom - 16 // 16px for some padding
+    const estimatedPaletteHeight = 280 // More realistic height: input + ~8 items
+    const shouldPositionAbove = spaceBelow < estimatedPaletteHeight
+    
+    setActiveCardRect({ 
+      left: rect.left + rect.width/2, 
+      top: shouldPositionAbove ? rect.top : rect.bottom, 
+      width: rect.width,
+      positionAbove: shouldPositionAbove
+    })
   }, [])
   // Drag-and-drop disabled
 
@@ -163,13 +183,15 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   useEffect(() => {
     // Don't update draftRows if we're currently saving to prevent overriding local changes
     if (!isSavingRef.current) {
-    setDraftRows(rows)
+      setDraftRows(rows)
     }
     
     if (!activeRowId && rows.length) {
       setActiveRowId(rows[0].id)
     }
   }, [rows, activeRowId])
+
+
 
   // Sync draftPageSettings with pageSettings prop
   useEffect(() => {
@@ -240,7 +262,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       // Use a small delay to ensure the save operation is complete before allowing updates
       setTimeout(() => {
         isSavingRef.current = false
-      }, 100)
+      }, 50) // Reduced delay for faster responsiveness
     }
   }
 
@@ -363,7 +385,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     const interpolator = new VariableInterpolator()
     const variables: Record<string, any> = previewVariables
 
-    const renderItem = (item: ContentItem, blockTextColor?: string) => {
+    const renderItem = (item: ContentItem, blockTextColor?: string, align: 'left' | 'center' | 'right' = 'center') => {
       // Use block text color if available, otherwise fall back to campaign theme
       const textColor = blockTextColor || campaignTheme.textColor
       
@@ -382,8 +404,10 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
           const buttonHref = interpolator.interpolate((item as any).href || '#', { variables, availableVariables: [] }).content
           const buttonText = interpolator.interpolate(item.content || 'Button', { variables, availableVariables: [] }).content
           const buttonColor = getButtonColor(item)
+          const buttonTextColor = getButtonTextColor(item)
           const buttonHoverColor = getButtonHoverColor(buttonColor)
-          return `<div class="flex justify-center"><a href="${buttonHref}" class="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-center backdrop-blur-md border transition-all duration-300 ease-out hover:shadow-xl hover:scale-105 active:scale-95 shadow-2xl" style="background-color:${buttonColor};color:${campaignTheme.buttonTextColor};border:1px solid rgba(255, 255, 255, 0.2);box-shadow:0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)" onmouseover="this.style.backgroundColor='${buttonHoverColor}'" onmouseout="this.style.backgroundColor='${buttonColor}'">${buttonText}</a></div>`
+          const buttonAlignment = align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center'
+          return `<div class="flex ${buttonAlignment}"><a href="${buttonHref}" class="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-center backdrop-blur-md border transition-all duration-300 ease-out hover:shadow-xl hover:scale-105 active:scale-95 shadow-2xl" style="background-color:${buttonColor};color:${buttonTextColor};border:1px solid rgba(255, 255, 255, 0.2);box-shadow:0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)" onmouseover="this.style.backgroundColor='${buttonHoverColor}'" onmouseout="this.style.backgroundColor='${buttonColor}'">${buttonText}</a></div>`
         case 'image':
           const maxHeightStyle = (item as any).maxHeight ? `max-height:${(item as any).maxHeight}px;height:auto;` : ''
           const imageSrc = interpolator.interpolate(item.src || '', { variables, availableVariables: [] }).content
@@ -443,11 +467,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         : 'rounded-lg transition-all duration-300 ease-out'
       
       const innerStyle = `display:grid;row-gap:${b.spacing ?? 12}px;text-align:${align}`
-      return `<div class="${classNames}" style="${styles.join(';')}"><div style="${innerStyle}">${b.content.map(item => renderItem(item, b.textColor)).join('')}</div></div>`
+      return `<div class="${classNames}" style="${styles.join(';')}"><div style="${innerStyle}">${b.content.map(item => renderItem(item, b.textColor, align)).join('')}</div></div>`
     }
 
     const containerStyle = [
-      pageSettings.backgroundColor ? `background-color:${pageSettings.backgroundColor}` : '',
+      draftPageSettings.backgroundColor ? `background-color:${draftPageSettings.backgroundColor}` : '',
       'min-height:100vh',
       'display:flex',
       'flex-direction:column',
@@ -464,8 +488,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     
     const gridStyle = [
       `display:grid`,
-      `grid-template-columns:repeat(${pageSettings.maxColumns ?? 3}, 1fr)`,
-      `gap:${pageSettings.gridGap ?? 16}px`
+      `grid-template-columns:repeat(${draftPageSettings.maxColumns ?? 3}, 1fr)`,
+      `gap:${draftPageSettings.gridGap ?? 16}px`
     ].join(';')
     
     const renderRowHtml = (r: Row, idx: number) => {
@@ -506,9 +530,9 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       return `<div style="${rowStyles.join(';')}">${overlay}${topLine}<div style="${contentStyle}"><div style="${gridStyle}">${r.blocks.map(renderBlock).join('')}</div></div>${bottomLine}</div>`
     }
     
-    const html = `<div style="${containerStyle}"><div style="${innerContainerStyle}">${rows.map((r, idx) => `<div style="${idx === rows.length - 1 ? '' : `margin-bottom:${pageSettings.rowSpacing ?? 24}px`}">${renderRowHtml(r, idx)}</div>`).join('')}</div></div>`
+    const html = `<div style="${containerStyle}"><div style="${innerContainerStyle}">${rows.map((r, idx) => `<div style="${idx === rows.length - 1 ? '' : `margin-bottom:${draftPageSettings.rowSpacing ?? 24}px`}">${renderRowHtml(r, idx)}</div>`).join('')}</div></div>`
     return html
-  }, [isPreview, rows, previewVariables, pageSettings.backgroundColor, pageSettings.gridGap, pageSettings.maxColumns, pageSettings.rowSpacing])
+  }, [isPreview, rows, previewVariables, draftPageSettings.backgroundColor, draftPageSettings.gridGap, draftPageSettings.maxColumns, draftPageSettings.rowSpacing])
 
   // Build available variables like output-section.tsx
   function getSimpleVariablesForBuilder(sections: CampaignSection[], currentOrder: number, campaignId?: string) {
@@ -653,13 +677,25 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     await saveRows(next)
   }
 
-  const updateRow = async (rowId: string, updates: Partial<Row>) => {
+  const updateRow = useCallback((rowId: string, updates: any) => {
+    // Immediately update local state for instant visual feedback
     const next = draftRows.map(r => 
-      r.id === rowId ? { ...r, ...updates } : r
+      r.id === rowId 
+        ? { ...r, ...updates }
+        : r
     )
     setDraftRows(next)
-    await saveRows(next)
-  }
+
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+
+    // Debounce the save operation
+    saveTimeoutRef.current = setTimeout(() => {
+      saveRows(next)
+    }, 150) // 150ms delay for faster updates
+  }, [draftRows])
 
   // Debounced version for real-time controls like sliders
   const updateBlockDebounced = useCallback((rowId: string, blockId: string, updates: Partial<Block>) => {
@@ -681,8 +717,37 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     // Debounce the save operation
     saveTimeoutRef.current = setTimeout(() => {
       saveRows(next)
-    }, 300) // 300ms delay
+    }, 150) // 150ms delay for faster color updates
   }, [draftRows])
+
+  // Debounced content item update function
+  const updateContentItemDebounced = useCallback((itemId: string, updates: any) => {
+    // Immediately update local state for instant visual feedback
+    const next = draftRows.map(r => ({ 
+      ...r, 
+      blocks: r.blocks.map(b => ({ 
+        ...b, 
+        content: b.content.map(ci => 
+          ci.id === itemId 
+            ? { ...ci, ...updates } as ContentItem
+            : ci
+        ) 
+      })) 
+    }))
+    setDraftRows(next)
+
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+    }
+
+    // Debounce the save operation
+    saveTimeoutRef.current = setTimeout(() => {
+      saveRows(next)
+    }, 150) // 150ms delay for faster updates
+  }, [draftRows])
+
+
 
   const moveBlock = async (rowId: string, blockId: string, delta: number) => {
     const row = draftRows.find(r => r.id === rowId)
@@ -1024,7 +1089,6 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     <div 
       className={cn('p-4', className)}
       style={{
-        gap: `${draftPageSettings.rowSpacing ?? 24}px`,
         display: 'flex',
         flexDirection: 'column'
       }}
@@ -1239,7 +1303,12 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
             )}
             
             {/* Row Container with Settings */}
-            <div className={cn('space-y-3 relative group')}>
+            <div 
+              className={cn('relative group')}
+              style={{
+                marginBottom: rowIndex < draftRows.length - 1 ? `${draftPageSettings.rowSpacing ?? 24}px` : '0'
+              }}
+            >
               {/* Row Settings Icon */}
               <Button
                 size="sm"
@@ -1263,9 +1332,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
               
               {/* Row Background Container */}
               <div
-                className="p-4 rounded-lg transition-all duration-200"
+                className="px-4 rounded-lg transition-all duration-200"
                 style={{
-                  backgroundColor: row.backgroundColor || 'transparent'
+                  backgroundColor: row.backgroundColor || 'transparent',
+                  paddingTop: `${row.paddingTop || 16}px`,
+                  paddingBottom: `${row.paddingBottom || 16}px`
                 }}
               >
                 {/* Dynamic grid for cards */}
@@ -1312,15 +1383,13 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                             onDragLeave={handleDragLeave}
                             onDrop={(e) => handleDrop(e, row.id, block.startPosition)}
                             onMouseEnter={(e)=>{
-                              const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-                              setActiveCardRect({ left: rect.left + rect.width/2, top: rect.bottom, width: rect.width })
+                              recalcActiveCardRect(block.id)
                             }}
                             onMouseLeave={()=>{
                               // don't clear here to allow toolbar to remain while interacting
                             }}
                             onClick={(e)=>{
-                              const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-                              setActiveCardRect({ left: rect.left + rect.width/2, top: rect.bottom, width: rect.width })
+                              recalcActiveCardRect(block.id)
                               setToolbarOpenFor(block.id)
                               setMenuOpenFor(block.id)
                               setActiveCardSpan(block.width)
@@ -1368,20 +1437,30 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                           <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
                                               <Label htmlFor="background-color">Background</Label>
-                                              <div className="flex gap-2">
-                                                <Input
-                                                  id="background-color"
-                                                  type="color"
-                                                  value={block.backgroundColor || '#ffffff'}
-                                                  onChange={(e) => updateBlock(row.id, block.id, { backgroundColor: e.target.value })}
-                                                  className="w-12 h-9 p-1 border rounded"
-                                                />
-                                                <Input
-                                                  value={block.backgroundColor || ''}
-                                                  onChange={(e) => updateBlock(row.id, block.id, { backgroundColor: e.target.value || undefined })}
-                                                  placeholder="#ffffff"
-                                                  className="flex-1 text-sm"
-                                                />
+                                              <div className="space-y-2">
+                                                <div className="flex gap-2">
+                                                  <Input
+                                                    id="background-color"
+                                                    type="color"
+                                                    value={block.backgroundColor || '#ffffff'}
+                                                    onChange={(e) => updateBlockDebounced(row.id, block.id, { backgroundColor: e.target.value })}
+                                                    className="w-12 h-9 p-1 border rounded"
+                                                  />
+                                                  <Input
+                                                    value={block.backgroundColor || ''}
+                                                    onChange={(e) => updateBlockDebounced(row.id, block.id, { backgroundColor: e.target.value || undefined })}
+                                                    placeholder="#ffffff"
+                                                    className="flex-1 text-sm"
+                                                  />
+                                                </div>
+                                                <Button
+                                                  size="sm"
+                                                  variant={!block.backgroundColor || block.backgroundColor === 'transparent' ? "default" : "outline"}
+                                                  onClick={() => updateBlockDebounced(row.id, block.id, { backgroundColor: 'transparent' })}
+                                                  className="w-full text-xs"
+                                                >
+                                                  {!block.backgroundColor || block.backgroundColor === 'transparent' ? "Transparent (Active)" : "Make Transparent"}
+                                                </Button>
                                               </div>
                                             </div>
                                             <div className="space-y-2">
@@ -1391,12 +1470,12 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                                   id="text-color"
                                                   type="color"
                                                   value={block.textColor || '#0f172a'}
-                                                  onChange={(e) => updateBlock(row.id, block.id, { textColor: e.target.value })}
+                                                  onChange={(e) => updateBlockDebounced(row.id, block.id, { textColor: e.target.value })}
                                                   className="w-12 h-9 p-1 border rounded"
                                                 />
                                                 <Input
                                                   value={block.textColor || ''}
-                                                  onChange={(e) => updateBlock(row.id, block.id, { textColor: e.target.value || undefined })}
+                                                  onChange={(e) => updateBlockDebounced(row.id, block.id, { textColor: e.target.value || undefined })}
                                                   placeholder="#0f172a"
                                                   className="flex-1 text-sm"
                                                 />
@@ -1410,12 +1489,12 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                                 id="border-color"
                                                 type="color"
                                                 value={block.borderColor || '#e5e7eb'}
-                                                onChange={(e) => updateBlock(row.id, block.id, { borderColor: e.target.value })}
+                                                onChange={(e) => updateBlockDebounced(row.id, block.id, { borderColor: e.target.value })}
                                                 className="w-12 h-9 p-1 border rounded"
                                               />
                                               <Input
                                                 value={block.borderColor || ''}
-                                                onChange={(e) => updateBlock(row.id, block.id, { borderColor: e.target.value || undefined })}
+                                                onChange={(e) => updateBlockDebounced(row.id, block.id, { borderColor: e.target.value || undefined })}
                                                 placeholder="#e5e7eb"
                                                 className="flex-1 text-sm"
                                               />
@@ -1425,7 +1504,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                             <Label htmlFor="border-width">Border Width</Label>
                                             <Select
                                               value={String(block.borderWidth || 1)}
-                                              onValueChange={(value) => updateBlock(row.id, block.id, { borderWidth: Number(value) })}
+                                              onValueChange={(value) => updateBlockDebounced(row.id, block.id, { borderWidth: Number(value) })}
                                             >
                                               <SelectTrigger>
                                                 <SelectValue />
@@ -1448,7 +1527,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                               id="glass-effect-toggle"
                                               checked={block.glassEffect || false}
                                               onCheckedChange={(checked) => {
-                                                updateBlock(row.id, block.id, { glassEffect: checked })
+                                                updateBlockDebounced(row.id, block.id, { glassEffect: checked })
                                               }}
                                             />
                                           </div>
@@ -1486,7 +1565,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                               <Button
                                                 size="sm"
                                                 variant={block.textAlignment === 'left' ? 'default' : 'outline'}
-                                                onClick={() => updateBlock(row.id, block.id, { textAlignment: 'left' })}
+                                                onClick={() => updateBlockDebounced(row.id, block.id, { textAlignment: 'left' })}
                                                 className="flex-1"
                                               >
                                                 <AlignLeft className="h-4 w-4" />
@@ -1494,7 +1573,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                               <Button
                                                 size="sm"
                                                 variant={block.textAlignment === 'center' ? 'default' : 'outline'}
-                                                onClick={() => updateBlock(row.id, block.id, { textAlignment: 'center' })}
+                                                onClick={() => updateBlockDebounced(row.id, block.id, { textAlignment: 'center' })}
                                                 className="flex-1"
                                               >
                                                 <AlignCenter className="h-4 w-4" />
@@ -1502,7 +1581,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                               <Button
                                                 size="sm"
                                                 variant={block.textAlignment === 'right' ? 'default' : 'outline'}
-                                                onClick={() => updateBlock(row.id, block.id, { textAlignment: 'right' })}
+                                                onClick={() => updateBlockDebounced(row.id, block.id, { textAlignment: 'right' })}
                                                 className="flex-1"
                                               >
                                                 <AlignRight className="h-4 w-4" />
@@ -1645,17 +1724,22 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                     />
                                   ) : item.type === 'button' ? (
                                     <div 
-                                      className="flex justify-center cursor-pointer group relative"
+                                      className={cn(
+                                        "flex cursor-pointer group relative",
+                                        block.textAlignment === 'left' ? 'justify-start' : 
+                                        block.textAlignment === 'right' ? 'justify-end' : 'justify-center'
+                                      )}
                                       onClick={() => {
                                         setActiveButtonId(item.id)
                                         setButtonSheetOpen(true)
                                       }}
                                     >
                                       <button 
-                                        className="inline-flex items-center justify-center px-6 py-3 text-white rounded-lg transition-colors font-medium text-center group-hover:ring-2 group-hover:ring-primary group-hover:ring-offset-2"
+                                        className="inline-flex items-center justify-center px-6 py-3 rounded-lg transition-colors font-medium text-center group-hover:ring-2 group-hover:ring-primary group-hover:ring-offset-2"
                                         type="button"
                                         style={{
                                           backgroundColor: getButtonColor(item),
+                                          color: getButtonTextColor(item),
                                           '--hover-color': getButtonHoverColor(getButtonColor(item))
                                         } as React.CSSProperties & { '--hover-color': string }}
                                         onMouseEnter={(e) => {
@@ -1839,7 +1923,15 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     </div>
     {/* Floating Notion-style command palette */}
     {menuOpenFor && activeCardRect && propsOpenFor !== menuOpenFor && (
-      <div ref={menuRef} className="fixed z-50" style={{ left: activeCardRect.left, top: activeCardRect.top + 8, transform: 'translateX(-50%)' }}>
+      <div 
+        ref={menuRef} 
+        className="fixed z-50" 
+        style={{ 
+          left: activeCardRect.left, 
+          top: activeCardRect.positionAbove ? activeCardRect.top - 8 : activeCardRect.top + 8, 
+          transform: activeCardRect.positionAbove ? 'translateX(-50%) translateY(-100%)' : 'translateX(-50%)'
+        }}
+      >
         <Command className="rounded-lg border bg-popover shadow-md w-[520px]" style={{ maxWidth: activeCardSpan ? Math.max(240, Math.floor(activeCardRect.width / activeCardSpan)) : undefined }}>
           <CommandInput placeholder="Type a command or search..." />
           <CommandList>
@@ -1930,24 +2022,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                       <Label htmlFor={`image-url-${activeImageId}`}>Image URL</Label>
                                             <VariableSuggestionDropdown
                         value={(activeImageItem as any).src || ''}
-                        onChange={(v) => {
-                          const next = draftRows.map(r => ({ 
-                            ...r, 
-                            blocks: r.blocks.map(b => ({ 
-                              ...b, 
-                              content: b.content.map(ci => 
-                                ci.id === activeImageId 
-                                  ? { ...ci, src: v } 
-                                  : ci
-                              ) 
-                            })) 
-                          }))
-                          setDraftRows(next)
-                        }}
-                        onBlur={async () => { await saveRows(draftRows) }}
+                        onChange={(v) => updateContentItemDebounced(activeImageId, { src: v })}
+                        onBlur={() => {}} // No need for onBlur save with debounced updates
                         placeholder="https://example.com/image.jpg or @variableName"
                         className="text-sm border border-input rounded-md [&>input]:!px-3 [&>input]:!py-1 focus-within:!ring-[0.25px] focus-within:!ring-black focus-within:!border-black focus-within:!rounded-md"
-                        inputClassName="text-sm !px-3 !py-1 flex items-center h-8 !box-border focus:!ring-[0.25px] focus:!ring-black focus:!border-black focus-visible:!ring-[0.25px] focus-visible:!ring-black focus-visible:!border-black !outline-none !rounded-md"
+                        inputClassName="text-sm !px-3 !py-1 flex items-center h-8 !box-border focus:!ring-[0.25px] focus:!ring-black focus:!border-black focus-visible:!ring-[0.25px] focus-visible:!ring-black focus-visible:!border-black !outline-none !rounded-md !overflow-hidden !text-ellipsis !whitespace-nowrap"
                         variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                         multiline={false}
                         campaignId={campaignId}
@@ -1971,21 +2050,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                       <Input
                         id={`alt-text-${activeImageId}`}
                         value={(activeImageItem as any).alt || ''}
-                        onChange={(e) => {
-                          const next = draftRows.map(r => ({ 
-                            ...r, 
-                            blocks: r.blocks.map(b => ({ 
-                              ...b, 
-                              content: b.content.map(ci => 
-                                ci.id === activeImageId 
-                                  ? { ...ci, alt: e.target.value } 
-                                  : ci
-                              ) 
-                            })) 
-                          }))
-                          setDraftRows(next)
-                        }}
-                        onBlur={async () => { await saveRows(draftRows) }}
+                        onChange={(e) => updateContentItemDebounced(activeImageId, { alt: e.target.value })}
+                        onBlur={() => {}} // No need for onBlur save with debounced updates
                         placeholder="Describe the image for accessibility"
                         className="text-sm"
                       />
@@ -2005,21 +2071,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                         max={800}
                                         step={10}
                                         value={[(activeImageItem as any).maxHeight ?? 192]}
-                                        onValueChange={(value) => {
-                                          const next = draftRows.map(r => ({ 
-                                            ...r, 
-                                            blocks: r.blocks.map(b => ({ 
-                                              ...b, 
-                                              content: b.content.map(ci => 
-                                                ci.id === activeImageId 
-                                                  ? { ...ci, maxHeight: value[0] } 
-                                                  : ci
-                                              ) 
-                                            })) 
-                                          }))
-                                          setDraftRows(next)
-                                        }}
-                                        onValueCommit={async () => { await saveRows(draftRows) }}
+                                        onValueChange={(value) => updateContentItemDebounced(activeImageId, { maxHeight: value[0] })}
+                                        onValueCommit={() => {}} // No need for onValueCommit save with debounced updates
                                         className="w-full"
                                       />
                                       <p className="text-xs text-muted-foreground">
@@ -2072,24 +2125,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                       <Label htmlFor={`button-text-${activeButtonId}`}>Button Text</Label>
                       <VariableSuggestionDropdown
                         value={(activeButtonItem as any).content || ''}
-                        onChange={(v) => {
-                          const next = draftRows.map(r => ({ 
-                            ...r, 
-                            blocks: r.blocks.map(b => ({ 
-                              ...b, 
-                              content: b.content.map(ci => 
-                                ci.id === activeButtonId 
-                                  ? { ...ci, content: v } 
-                                  : ci
-                              ) 
-                            })) 
-                          }))
-                          setDraftRows(next)
-                        }}
-                        onBlur={async () => { await saveRows(draftRows) }}
+                        onChange={(v) => updateContentItemDebounced(activeButtonId, { content: v })}
+                        onBlur={() => {}} // No need for onBlur save with debounced updates
                         placeholder="Button text or @variableName"
                         className="text-sm border border-input rounded-md [&>input]:!px-3 [&>input]:!py-1 focus-within:!ring-[0.25px] focus-within:!ring-black focus-within:!border-black focus-within:!rounded-md"
-                        inputClassName="text-sm !px-3 !py-1 flex items-center h-8 !box-border focus:!ring-[0.25px] focus:!ring-black focus:!border-black focus-visible:!ring-[0.25px] focus-visible:!ring-black focus-visible:!border-black !outline-none !rounded-md"
+                        inputClassName="text-sm !px-3 !py-1 flex items-center h-8 !box-border focus:!ring-[0.25px] focus:!ring-black focus:!border-black focus-visible:!ring-[0.25px] focus-visible:!ring-black focus-visible:!border-black !outline-none !rounded-md !overflow-hidden !text-ellipsis !whitespace-nowrap"
                         variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                         multiline={false}
                         campaignId={campaignId}
@@ -2111,24 +2151,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                       <Label htmlFor={`button-url-${activeButtonId}`}>Button URL</Label>
                       <VariableSuggestionDropdown
                         value={(activeButtonItem as any).href || ''}
-                        onChange={(v) => {
-                          const next = draftRows.map(r => ({ 
-                            ...r, 
-                            blocks: r.blocks.map(b => ({ 
-                              ...b, 
-                              content: b.content.map(ci => 
-                                ci.id === activeButtonId 
-                                  ? { ...ci, href: v } 
-                                  : ci
-                              ) 
-                            })) 
-                          }))
-                          setDraftRows(next)
-                        }}
-                        onBlur={async () => { await saveRows(draftRows) }}
+                        onChange={(v) => updateContentItemDebounced(activeButtonId, { href: v })}
+                        onBlur={() => {}} // No need for onBlur save with debounced updates
                         placeholder="https://example.com or @variableName"
                         className="text-sm border border-input rounded-md [&>input]:!px-3 [&>input]:!py-1 focus-within:!ring-[0.25px] focus-within:!ring-black focus-within:!border-black focus-within:!rounded-md"
-                        inputClassName="text-sm !px-3 !py-1 flex items-center h-8 !box-border focus:!ring-[0.25px] focus:!ring-black focus:!border-black focus-visible:!ring-[0.25px] focus-visible:!ring-black focus-visible:!border-black !outline-none !rounded-md"
+                        inputClassName="text-sm !px-3 !py-1 flex items-center h-8 !box-border focus:!ring-[0.25px] focus:!ring-black focus:!border-black focus-visible:!ring-[0.25px] focus-visible:!ring-black focus-visible:!border-black !outline-none !rounded-md !overflow-hidden !text-ellipsis !whitespace-nowrap"
                         variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                         multiline={false}
                         campaignId={campaignId}
@@ -2142,89 +2169,70 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
 
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Button Color</CardTitle>
+                    <CardTitle className="text-base">Button Colors</CardTitle>
                     <CardDescription>Customize the button appearance</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       <div className="flex items-center justify-between">
                         <div>
                           <Label className="text-sm font-medium">Use Campaign Theme</Label>
-                          <p className="text-xs text-muted-foreground">Use the default button color from campaign settings</p>
+                          <p className="text-xs text-muted-foreground">Use the default button colors from campaign settings</p>
                         </div>
                         <Button
                           size="sm"
-                          variant={!(activeButtonItem as any).color ? "default" : "outline"}
-                          onClick={() => {
-                            const next = draftRows.map(r => ({ 
-                              ...r, 
-                              blocks: r.blocks.map(b => ({ 
-                                ...b, 
-                                content: b.content.map(ci => 
-                                  ci.id === activeButtonId 
-                                    ? { ...ci, color: undefined } 
-                                    : ci
-                                ) 
-                              })) 
-                            }))
-                            setDraftRows(next)
-                            saveRows(next)
-                          }}
+                          variant={!(activeButtonItem as any).color && !(activeButtonItem as any).textColor ? "default" : "outline"}
+                          onClick={() => updateContentItemDebounced(activeButtonId, { color: undefined, textColor: undefined })}
                         >
-                          {!(activeButtonItem as any).color ? "Active" : "Use Theme"}
+                          {!(activeButtonItem as any).color && !(activeButtonItem as any).textColor ? "Active" : "Use Theme"}
                         </Button>
                       </div>
                       
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Custom Color</Label>
-                        <div className="flex items-center space-x-3">
-                          <input
-                            type="color"
-                            value={(activeButtonItem as any).color || campaignTheme.buttonColor}
-                            onChange={(e) => {
-                              const next = draftRows.map(r => ({ 
-                                ...r, 
-                                blocks: r.blocks.map(b => ({ 
-                                  ...b, 
-                                  content: b.content.map(ci => 
-                                    ci.id === activeButtonId 
-                                      ? { ...ci, color: e.target.value } 
-                                      : ci
-                                  ) 
-                                })) 
-                              }))
-                              setDraftRows(next)
-                              saveRows(next)
-                            }}
-                            className="w-12 h-12 rounded border border-input cursor-pointer"
-                          />
-                          <div className="flex-1">
-                            <Input
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Background Color</Label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="color"
                               value={(activeButtonItem as any).color || campaignTheme.buttonColor}
-                              onChange={(e) => {
-                                const next = draftRows.map(r => ({ 
-                                  ...r, 
-                                  blocks: r.blocks.map(b => ({ 
-                                    ...b, 
-                                    content: b.content.map(ci => 
-                                      ci.id === activeButtonId 
-                                        ? { ...ci, color: e.target.value } 
-                                        : ci
-                                    ) 
-                                  })) 
-                                }))
-                                setDraftRows(next)
-                                saveRows(next)
-                              }}
-                              placeholder="#3B82F6"
-                              className="text-sm"
+                              onChange={(e) => updateContentItemDebounced(activeButtonId, { color: e.target.value })}
+                              className="w-10 h-10 rounded border border-input cursor-pointer"
                             />
+                            <div className="flex-1">
+                              <Input
+                                value={(activeButtonItem as any).color || ''}
+                                onChange={(e) => updateContentItemDebounced(activeButtonId, { color: e.target.value || undefined })}
+                                placeholder="#3B82F6"
+                                className="text-sm"
+                              />
+                            </div>
                           </div>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Override the campaign theme with a custom button color
-                        </p>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Text Color</Label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="color"
+                              value={(activeButtonItem as any).textColor || campaignTheme.buttonTextColor}
+                              onChange={(e) => updateContentItemDebounced(activeButtonId, { textColor: e.target.value })}
+                              className="w-10 h-10 rounded border border-input cursor-pointer"
+                            />
+                            <div className="flex-1">
+                              <Input
+                                value={(activeButtonItem as any).textColor || ''}
+                                onChange={(e) => updateContentItemDebounced(activeButtonId, { textColor: e.target.value || undefined })}
+                                placeholder="#FFFFFF"
+                                className="text-sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
+                      
+                      <p className="text-xs text-muted-foreground">
+                        Override the campaign theme with custom button colors
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -2238,11 +2246,12 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                     <div className="p-4 bg-muted/20 rounded-lg">
                       <div className="flex justify-center">
                         <button 
-                          className="inline-flex items-center justify-center px-6 py-3 text-white rounded-lg transition-colors font-medium text-center"
+                          className="inline-flex items-center justify-center px-6 py-3 rounded-lg transition-colors font-medium text-center"
                           type="button"
                           disabled
                           style={{
-                            backgroundColor: getButtonColor(activeButtonItem)
+                            backgroundColor: getButtonColor(activeButtonItem),
+                            color: getButtonTextColor(activeButtonItem)
                           }}
                         >
                           {(() => {
@@ -2297,20 +2306,30 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="row-background-color">Background Color</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="row-background-color"
-                        type="color"
-                        value={row.backgroundColor || '#ffffff'}
-                        onChange={(e) => updateRow(row.id, { backgroundColor: e.target.value })}
-                        className="w-12 h-9 p-1 border rounded"
-                      />
-                      <Input
-                        value={row.backgroundColor || ''}
-                        onChange={(e) => updateRow(row.id, { backgroundColor: e.target.value || undefined })}
-                        placeholder="#ffffff"
-                        className="flex-1 text-sm"
-                      />
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          id="row-background-color"
+                          type="color"
+                          value={row.backgroundColor || '#ffffff'}
+                          onChange={(e) => updateRow(row.id, { backgroundColor: e.target.value })}
+                          className="w-12 h-9 p-1 border rounded"
+                        />
+                        <Input
+                          value={row.backgroundColor || ''}
+                          onChange={(e) => updateRow(row.id, { backgroundColor: e.target.value || undefined })}
+                          placeholder="#ffffff"
+                          className="flex-1 text-sm"
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        variant={!row.backgroundColor || row.backgroundColor === 'transparent' ? "default" : "outline"}
+                        onClick={() => updateRow(row.id, { backgroundColor: 'transparent' })}
+                        className="w-full text-xs"
+                      >
+                        {!row.backgroundColor || row.backgroundColor === 'transparent' ? "Transparent (Active)" : "Make Transparent"}
+                      </Button>
                     </div>
                   </div>
                   <div className="space-y-2">

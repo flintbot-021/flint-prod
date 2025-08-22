@@ -20,6 +20,14 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
     return campaignTheme.buttonColor
   }
 
+  // Helper function to get button text color (item text color override or campaign theme default)
+  const getButtonTextColor = (buttonItem: any) => {
+    if (buttonItem?.textColor) {
+      return buttonItem.textColor
+    }
+    return campaignTheme.buttonTextColor
+  }
+
   // Helper function to generate button hover color (slightly darker)
   const getButtonHoverColor = (baseColor: string) => {
     // Simple color darkening - convert hex to RGB, darken by 20%, convert back
@@ -53,7 +61,7 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
   const pageSettings = (config as any)?.pageSettings || {}
   const interpolator = useMemo(() => new VariableInterpolator(), [])
 
-  const renderItem = (item: any, blockTextColor?: string) => {
+  const renderItem = (item: any, blockTextColor?: string, align: 'left' | 'center' | 'right' = 'center') => {
     // Use block text color if available, otherwise fall back to campaign theme
     const textColor = blockTextColor || campaignTheme.textColor
     
@@ -88,9 +96,11 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
         const buttonHref = interpolator.interpolate((item as any).href || '#', { variables: variableMap, availableVariables: [] }).content
         const buttonText = interpolator.interpolate(item.content || 'Button', { variables: variableMap, availableVariables: [] }).content
         const buttonColor = getButtonColor(item)
+        const buttonTextColor = getButtonTextColor(item)
         const buttonHoverColor = getButtonHoverColor(buttonColor)
+        const buttonAlignment = align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center'
         return (
-          <div className="flex justify-center">
+          <div className={`flex ${buttonAlignment}`}>
             <a 
               href={buttonHref}
               className={cn(
@@ -100,7 +110,7 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
               )}
               style={{
                 backgroundColor: buttonColor,
-                color: campaignTheme.buttonTextColor,
+                color: buttonTextColor,
                 border: '1px solid rgba(255, 255, 255, 0.2)',
                 boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
               }}
@@ -187,7 +197,7 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
           align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center'
         )} style={{ rowGap: (block.spacing ?? 12), display: 'grid' }}>
           {(block.content || []).map((item: any) => (
-            <div key={item.id}>{renderItem(item, block.textColor)}</div>
+            <div key={item.id}>{renderItem(item, block.textColor, align)}</div>
           ))}
         </div>
       </div>
