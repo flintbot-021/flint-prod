@@ -135,7 +135,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     return rest
   }, [defaultBlock])
   const [toolbarOpenFor, setToolbarOpenFor] = useState<string | null>(null)
-  const [activeCardRect, setActiveCardRect] = useState<{ left: number; top: number; width: number } | null>(null)
+  const [activeCardRect, setActiveCardRect] = useState<{ left: number; top: number; width: number; positionAbove?: boolean } | null>(null)
   const [propsOpenFor, setPropsOpenFor] = useState<string | null>(null)
   const [pagePropsOpen, setPagePropsOpen] = useState(false)
   const [rowPropsOpenFor, setRowPropsOpenFor] = useState<string | null>(null)
@@ -163,7 +163,19 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     const el = document.querySelector(`[data-card-id="${blockId}"]`) as HTMLDivElement | null
     if (!el) return
     const rect = el.getBoundingClientRect()
-    setActiveCardRect({ left: rect.left + rect.width/2, top: rect.bottom, width: rect.width })
+    
+    // Check if there's enough space below for the command palette
+    // Use a more conservative estimate based on the actual command palette content
+    const spaceBelow = window.innerHeight - rect.bottom - 16 // 16px for some padding
+    const estimatedPaletteHeight = 280 // More realistic height: input + ~8 items
+    const shouldPositionAbove = spaceBelow < estimatedPaletteHeight
+    
+    setActiveCardRect({ 
+      left: rect.left + rect.width/2, 
+      top: shouldPositionAbove ? rect.top : rect.bottom, 
+      width: rect.width,
+      positionAbove: shouldPositionAbove
+    })
   }, [])
   // Drag-and-drop disabled
 
@@ -1322,15 +1334,13 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                             onDragLeave={handleDragLeave}
                             onDrop={(e) => handleDrop(e, row.id, block.startPosition)}
                             onMouseEnter={(e)=>{
-                              const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-                              setActiveCardRect({ left: rect.left + rect.width/2, top: rect.bottom, width: rect.width })
+                              recalcActiveCardRect(block.id)
                             }}
                             onMouseLeave={()=>{
                               // don't clear here to allow toolbar to remain while interacting
                             }}
                             onClick={(e)=>{
-                              const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect()
-                              setActiveCardRect({ left: rect.left + rect.width/2, top: rect.bottom, width: rect.width })
+                              recalcActiveCardRect(block.id)
                               setToolbarOpenFor(block.id)
                               setMenuOpenFor(block.id)
                               setActiveCardSpan(block.width)
@@ -1854,7 +1864,15 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     </div>
     {/* Floating Notion-style command palette */}
     {menuOpenFor && activeCardRect && propsOpenFor !== menuOpenFor && (
-      <div ref={menuRef} className="fixed z-50" style={{ left: activeCardRect.left, top: activeCardRect.top + 8, transform: 'translateX(-50%)' }}>
+      <div 
+        ref={menuRef} 
+        className="fixed z-50" 
+        style={{ 
+          left: activeCardRect.left, 
+          top: activeCardRect.positionAbove ? activeCardRect.top - 8 : activeCardRect.top + 8, 
+          transform: activeCardRect.positionAbove ? 'translateX(-50%) translateY(-100%)' : 'translateX(-50%)'
+        }}
+      >
         <Command className="rounded-lg border bg-popover shadow-md w-[520px]" style={{ maxWidth: activeCardSpan ? Math.max(240, Math.floor(activeCardRect.width / activeCardSpan)) : undefined }}>
           <CommandInput placeholder="Type a command or search..." />
           <CommandList>
