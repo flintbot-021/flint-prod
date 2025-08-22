@@ -25,7 +25,7 @@ import { getCampaignTheme } from '@/components/campaign-renderer/utils'
 
 type ContentItem =
   | { id: string; type: 'headline' | 'subheading' | 'h3' | 'paragraph'; content: string }
-  | { id: string; type: 'button'; content: string; href?: string; color?: string }
+  | { id: string; type: 'button'; content: string; href?: string; color?: string; textColor?: string }
   | { id: string; type: 'image'; src?: string; alt?: string; maxHeight?: number }
   | { id: string; type: 'numbered-list' | 'bullet-list'; items: string[] }
   | { id: string; type: 'divider' }
@@ -102,6 +102,14 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       return buttonItem.color
     }
     return campaignTheme.buttonColor
+  }
+
+  // Helper function to get button text color (item text color override or campaign theme default)
+  const getButtonTextColor = (buttonItem: ContentItem) => {
+    if (buttonItem.type === 'button' && buttonItem.textColor) {
+      return buttonItem.textColor
+    }
+    return campaignTheme.buttonTextColor
   }
 
   // Helper function to generate button hover color (slightly darker)
@@ -382,9 +390,10 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
           const buttonHref = interpolator.interpolate((item as any).href || '#', { variables, availableVariables: [] }).content
           const buttonText = interpolator.interpolate(item.content || 'Button', { variables, availableVariables: [] }).content
           const buttonColor = getButtonColor(item)
+          const buttonTextColor = getButtonTextColor(item)
           const buttonHoverColor = getButtonHoverColor(buttonColor)
           const buttonAlignment = align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center'
-          return `<div class="flex ${buttonAlignment}"><a href="${buttonHref}" class="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-center backdrop-blur-md border transition-all duration-300 ease-out hover:shadow-xl hover:scale-105 active:scale-95 shadow-2xl" style="background-color:${buttonColor};color:${campaignTheme.buttonTextColor};border:1px solid rgba(255, 255, 255, 0.2);box-shadow:0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)" onmouseover="this.style.backgroundColor='${buttonHoverColor}'" onmouseout="this.style.backgroundColor='${buttonColor}'">${buttonText}</a></div>`
+          return `<div class="flex ${buttonAlignment}"><a href="${buttonHref}" class="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-center backdrop-blur-md border transition-all duration-300 ease-out hover:shadow-xl hover:scale-105 active:scale-95 shadow-2xl" style="background-color:${buttonColor};color:${buttonTextColor};border:1px solid rgba(255, 255, 255, 0.2);box-shadow:0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)" onmouseover="this.style.backgroundColor='${buttonHoverColor}'" onmouseout="this.style.backgroundColor='${buttonColor}'">${buttonText}</a></div>`
         case 'image':
           const maxHeightStyle = (item as any).maxHeight ? `max-height:${(item as any).maxHeight}px;height:auto;` : ''
           const imageSrc = interpolator.interpolate(item.src || '', { variables, availableVariables: [] }).content
@@ -1657,10 +1666,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                       }}
                                     >
                                       <button 
-                                        className="inline-flex items-center justify-center px-6 py-3 text-white rounded-lg transition-colors font-medium text-center group-hover:ring-2 group-hover:ring-primary group-hover:ring-offset-2"
+                                        className="inline-flex items-center justify-center px-6 py-3 rounded-lg transition-colors font-medium text-center group-hover:ring-2 group-hover:ring-primary group-hover:ring-offset-2"
                                         type="button"
                                         style={{
                                           backgroundColor: getButtonColor(item),
+                                          color: getButtonTextColor(item),
                                           '--hover-color': getButtonHoverColor(getButtonColor(item))
                                         } as React.CSSProperties & { '--hover-color': string }}
                                         onMouseEnter={(e) => {
@@ -2147,19 +2157,19 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
 
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Button Color</CardTitle>
+                    <CardTitle className="text-base">Button Colors</CardTitle>
                     <CardDescription>Customize the button appearance</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       <div className="flex items-center justify-between">
                         <div>
                           <Label className="text-sm font-medium">Use Campaign Theme</Label>
-                          <p className="text-xs text-muted-foreground">Use the default button color from campaign settings</p>
+                          <p className="text-xs text-muted-foreground">Use the default button colors from campaign settings</p>
                         </div>
                         <Button
                           size="sm"
-                          variant={!(activeButtonItem as any).color ? "default" : "outline"}
+                          variant={!(activeButtonItem as any).color && !(activeButtonItem as any).textColor ? "default" : "outline"}
                           onClick={() => {
                             const next = draftRows.map(r => ({ 
                               ...r, 
@@ -2167,7 +2177,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                 ...b, 
                                 content: b.content.map(ci => 
                                   ci.id === activeButtonId 
-                                    ? { ...ci, color: undefined } 
+                                    ? { ...ci, color: undefined, textColor: undefined } 
                                     : ci
                                 ) 
                               })) 
@@ -2176,35 +2186,16 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                             saveRows(next)
                           }}
                         >
-                          {!(activeButtonItem as any).color ? "Active" : "Use Theme"}
+                          {!(activeButtonItem as any).color && !(activeButtonItem as any).textColor ? "Active" : "Use Theme"}
                         </Button>
                       </div>
                       
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium">Custom Color</Label>
-                        <div className="flex items-center space-x-3">
-                          <input
-                            type="color"
-                            value={(activeButtonItem as any).color || campaignTheme.buttonColor}
-                            onChange={(e) => {
-                              const next = draftRows.map(r => ({ 
-                                ...r, 
-                                blocks: r.blocks.map(b => ({ 
-                                  ...b, 
-                                  content: b.content.map(ci => 
-                                    ci.id === activeButtonId 
-                                      ? { ...ci, color: e.target.value } 
-                                      : ci
-                                  ) 
-                                })) 
-                              }))
-                              setDraftRows(next)
-                              saveRows(next)
-                            }}
-                            className="w-12 h-12 rounded border border-input cursor-pointer"
-                          />
-                          <div className="flex-1">
-                            <Input
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Background Color</Label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="color"
                               value={(activeButtonItem as any).color || campaignTheme.buttonColor}
                               onChange={(e) => {
                                 const next = draftRows.map(r => ({ 
@@ -2221,15 +2212,85 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                 setDraftRows(next)
                                 saveRows(next)
                               }}
-                              placeholder="#3B82F6"
-                              className="text-sm"
+                              className="w-10 h-10 rounded border border-input cursor-pointer"
                             />
+                            <div className="flex-1">
+                              <Input
+                                value={(activeButtonItem as any).color || ''}
+                                onChange={(e) => {
+                                  const next = draftRows.map(r => ({ 
+                                    ...r, 
+                                    blocks: r.blocks.map(b => ({ 
+                                      ...b, 
+                                      content: b.content.map(ci => 
+                                        ci.id === activeButtonId 
+                                          ? { ...ci, color: e.target.value || undefined } 
+                                          : ci
+                                      ) 
+                                    })) 
+                                  }))
+                                  setDraftRows(next)
+                                  saveRows(next)
+                                }}
+                                placeholder="#3B82F6"
+                                className="text-sm"
+                              />
+                            </div>
                           </div>
                         </div>
-                        <p className="text-xs text-muted-foreground">
-                          Override the campaign theme with a custom button color
-                        </p>
+                        
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Text Color</Label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="color"
+                              value={(activeButtonItem as any).textColor || campaignTheme.buttonTextColor}
+                              onChange={(e) => {
+                                const next = draftRows.map(r => ({ 
+                                  ...r, 
+                                  blocks: r.blocks.map(b => ({ 
+                                    ...b, 
+                                    content: b.content.map(ci => 
+                                      ci.id === activeButtonId 
+                                        ? { ...ci, textColor: e.target.value } 
+                                        : ci
+                                    ) 
+                                  })) 
+                                }))
+                                setDraftRows(next)
+                                saveRows(next)
+                              }}
+                              className="w-10 h-10 rounded border border-input cursor-pointer"
+                            />
+                            <div className="flex-1">
+                              <Input
+                                value={(activeButtonItem as any).textColor || ''}
+                                onChange={(e) => {
+                                  const next = draftRows.map(r => ({ 
+                                    ...r, 
+                                    blocks: r.blocks.map(b => ({ 
+                                      ...b, 
+                                      content: b.content.map(ci => 
+                                        ci.id === activeButtonId 
+                                          ? { ...ci, textColor: e.target.value || undefined } 
+                                          : ci
+                                      ) 
+                                    })) 
+                                  }))
+                                  setDraftRows(next)
+                                  saveRows(next)
+                                }}
+                                placeholder="#FFFFFF"
+                                className="text-sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
+                      
+                      <p className="text-xs text-muted-foreground">
+                        Override the campaign theme with custom button colors
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -2243,11 +2304,12 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                     <div className="p-4 bg-muted/20 rounded-lg">
                       <div className="flex justify-center">
                         <button 
-                          className="inline-flex items-center justify-center px-6 py-3 text-white rounded-lg transition-colors font-medium text-center"
+                          className="inline-flex items-center justify-center px-6 py-3 rounded-lg transition-colors font-medium text-center"
                           type="button"
                           disabled
                           style={{
-                            backgroundColor: getButtonColor(activeButtonItem)
+                            backgroundColor: getButtonColor(activeButtonItem),
+                            color: getButtonTextColor(activeButtonItem)
                           }}
                         >
                           {(() => {
