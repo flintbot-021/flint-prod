@@ -1962,7 +1962,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         onBlur={async () => { await saveRows(draftRows) }}
                         placeholder="https://example.com/image.jpg or @variableName"
                         className="text-sm border border-input rounded-md [&>input]:!px-3 [&>input]:!py-1 focus-within:!ring-[0.25px] focus-within:!ring-black focus-within:!border-black focus-within:!rounded-md"
-                        inputClassName="text-sm !px-3 !py-1 flex items-center h-8 !box-border focus:!ring-[0.25px] focus:!ring-black focus:!border-black focus-visible:!ring-[0.25px] focus-visible:!ring-black focus-visible:!border-black !outline-none !rounded-md"
+                        inputClassName="text-sm !px-3 !py-1 flex items-center h-8 !box-border focus:!ring-[0.25px] focus:!ring-black focus:!border-black focus-visible:!ring-[0.25px] focus-visible:!ring-black focus-visible:!border-black !outline-none !rounded-md !overflow-hidden !text-ellipsis !whitespace-nowrap"
                         variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                         multiline={false}
                         campaignId={campaignId}
@@ -2104,7 +2104,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         onBlur={async () => { await saveRows(draftRows) }}
                         placeholder="Button text or @variableName"
                         className="text-sm border border-input rounded-md [&>input]:!px-3 [&>input]:!py-1 focus-within:!ring-[0.25px] focus-within:!ring-black focus-within:!border-black focus-within:!rounded-md"
-                        inputClassName="text-sm !px-3 !py-1 flex items-center h-8 !box-border focus:!ring-[0.25px] focus:!ring-black focus:!border-black focus-visible:!ring-[0.25px] focus-visible:!ring-black focus-visible:!border-black !outline-none !rounded-md"
+                        inputClassName="text-sm !px-3 !py-1 flex items-center h-8 !box-border focus:!ring-[0.25px] focus:!ring-black focus:!border-black focus-visible:!ring-[0.25px] focus-visible:!ring-black focus-visible:!border-black !outline-none !rounded-md !overflow-hidden !text-ellipsis !whitespace-nowrap"
                         variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                         multiline={false}
                         campaignId={campaignId}
@@ -2143,7 +2143,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         onBlur={async () => { await saveRows(draftRows) }}
                         placeholder="https://example.com or @variableName"
                         className="text-sm border border-input rounded-md [&>input]:!px-3 [&>input]:!py-1 focus-within:!ring-[0.25px] focus-within:!ring-black focus-within:!border-black focus-within:!rounded-md"
-                        inputClassName="text-sm !px-3 !py-1 flex items-center h-8 !box-border focus:!ring-[0.25px] focus:!ring-black focus:!border-black focus-visible:!ring-[0.25px] focus-visible:!ring-black focus-visible:!border-black !outline-none !rounded-md"
+                        inputClassName="text-sm !px-3 !py-1 flex items-center h-8 !box-border focus:!ring-[0.25px] focus:!ring-black focus:!border-black focus-visible:!ring-[0.25px] focus-visible:!ring-black focus-visible:!border-black !outline-none !rounded-md !overflow-hidden !text-ellipsis !whitespace-nowrap"
                         variables={(allSections || []).length ? getSimpleVariablesForBuilder(allSections!, section.order || 0, campaignId) : []}
                         multiline={false}
                         campaignId={campaignId}
