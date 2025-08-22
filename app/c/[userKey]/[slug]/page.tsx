@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { notFound } from 'next/navigation'
 import { Campaign, Section, SectionWithOptions } from '@/lib/types/database'
@@ -281,6 +281,31 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       }
     }
   })
+
+  // Helper function to detect if current section is a hero section
+  const isCurrentSectionHero = useMemo(() => {
+    if (!sections.length || campaignRenderer.currentSection >= sections.length) return false
+    
+    const currentSection = sections[campaignRenderer.currentSection]
+    const config = currentSection.configuration as any || {}
+    
+    // Check for direct hero section type
+    if (currentSection.type === 'content-hero') return true
+    
+    // Check for legacy info sections that are actually hero sections
+    if (currentSection.type === 'info') {
+      return !!(
+        config.overlayColor || 
+        config.overlayOpacity !== undefined || 
+        config.showButton !== undefined || 
+        config.buttonText ||
+        // Only consider image as hero indicator if it has overlay properties
+        (config.image && (config.overlayColor || config.overlayOpacity !== undefined))
+      )
+    }
+    
+    return false
+  }, [sections, campaignRenderer.currentSection])
 
   // =============================================================================
   // EFFECTS
@@ -1385,7 +1410,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // =============================================================================
 
   return (
-    <div className="h-screen bg-muted flex flex-col relative">
+    <div className="h-screen bg-muted flex flex-col relative overflow-hidden">
       {/* Powered by Flint - Top Right Pill */}
       {campaign && campaign.settings?.branding?.show_powered_by !== false && (
         <div className="absolute top-4 right-4 z-40">
@@ -1394,7 +1419,13 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
             target="_blank" 
             rel="noopener noreferrer"
             className="flex items-center space-x-2 px-3 py-2 rounded-full backdrop-blur-md border transition-all duration-300 hover:scale-105 hover:shadow-lg"
-            style={{
+            style={isCurrentSectionHero ? {
+              // Hero section: white background with black text
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+            } : {
+              // Other sections: use theme colors
               backgroundColor: 'rgba(255, 255, 255, 0.1)',
               border: '1px solid rgba(255, 255, 255, 0.2)',
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
@@ -1402,13 +1433,27 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
           >
             <span 
               className="text-xs font-medium"
-              style={{ color: getCampaignTheme(campaign).textColor, opacity: 0.8 }}
+              style={isCurrentSectionHero ? {
+                // Hero section: black text
+                color: '#000000',
+                opacity: 0.8
+              } : {
+                // Other sections: use theme color
+                color: getCampaignTheme(campaign).textColor,
+                opacity: 0.8
+              }}
             >
               Powered by
             </span>
             <span 
               className="text-xs font-bold"
-              style={{ color: getCampaignTheme(campaign).textColor }}
+              style={isCurrentSectionHero ? {
+                // Hero section: black text
+                color: '#000000'
+              } : {
+                // Other sections: use theme color
+                color: getCampaignTheme(campaign).textColor
+              }}
             >
               Flint
             </span>
@@ -1419,28 +1464,35 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       {/* Section Content */}
       {campaignRenderer.currentSection < sections.length && (
         <div key={campaignRenderer.currentSection} className={cn(
-          "h-full transition-all duration-300 ease-in-out",
+          "flex-1 overflow-hidden transition-all duration-300 ease-in-out",
           isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0"
         )}>
-          {/* Use SharedSectionRenderer for consistent experience */}
-          <SharedSectionRenderer
-            section={sections[campaignRenderer.currentSection]}
-            index={campaignRenderer.currentSection}
-            isActive={true}
-            isPreview={false}
-            campaignId={campaign?.id}
-            campaign={campaign}
-            userInputs={campaignRenderer.userInputs}
-            sections={sections}
-            onNext={handleNext}
-            onPrevious={handlePrevious}
-            onNavigateToSection={handleNavigateToSection}
-            onSectionComplete={handleSectionComplete}
-            onResponseUpdate={(sectionId: string, fieldId: string, value: any, metadata?: any) => {
-              // Use clean campaignRenderer approach like preview page
-              campaignRenderer.handleResponseUpdate(sectionId, fieldId, value, metadata)
-            }}
-          />
+          {/* Scrollable content container - matches preview page structure */}
+          <div className="w-full h-full overflow-auto">
+            <div className="h-full bg-background flex flex-col">
+              <div className="flex-1">
+                {/* Use SharedSectionRenderer for consistent experience */}
+                <SharedSectionRenderer
+                  section={sections[campaignRenderer.currentSection]}
+                  index={campaignRenderer.currentSection}
+                  isActive={true}
+                  isPreview={false}
+                  campaignId={campaign?.id}
+                  campaign={campaign}
+                  userInputs={campaignRenderer.userInputs}
+                  sections={sections}
+                  onNext={handleNext}
+                  onPrevious={handlePrevious}
+                  onNavigateToSection={handleNavigateToSection}
+                  onSectionComplete={handleSectionComplete}
+                  onResponseUpdate={(sectionId: string, fieldId: string, value: any, metadata?: any) => {
+                    // Use clean campaignRenderer approach like preview page
+                    campaignRenderer.handleResponseUpdate(sectionId, fieldId, value, metadata)
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

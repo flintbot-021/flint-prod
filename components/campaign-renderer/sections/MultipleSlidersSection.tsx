@@ -170,12 +170,13 @@ export function MultipleSlidersSection({
       className={cn(
         // Use full height for public mode, header-adjusted height for preview mode
         isPreview ? 'min-h-[calc(100vh-4rem)] flex flex-col' : 'min-h-screen flex flex-col',
+        deviceInfo?.type === 'mobile' ? 'pb-40' : 'pb-32',
         getMobileClasses('', deviceInfo?.type)
       )}
       style={{ backgroundColor: theme.backgroundColor }}
     >
       {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center px-4 py-8">
+      <div className="flex-1 flex items-center justify-center px-4 py-8 pt-20">
         <div className="w-full max-w-2xl space-y-8">
           
           {/* Section Header */}
@@ -407,7 +408,7 @@ export function MultipleSlidersSection({
       </div>
 
       {/* Compliance Notice */}
-      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} deviceInfo={deviceInfo} />}
 
       {/* Navigation */}
       <SectionNavigationBar

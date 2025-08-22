@@ -72,8 +72,11 @@ export function SliderSection({
 
 
   return (
-    <div className="h-full flex flex-col pb-20" style={{ backgroundColor: theme.backgroundColor }}>
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
+    <div className={cn(
+      "h-full flex flex-col",
+      deviceInfo?.type === 'mobile' ? "pb-40" : "pb-32"
+    )} style={{ backgroundColor: theme.backgroundColor }}>
+      <div className="flex-1 flex items-center justify-center px-6 py-12 pt-20">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           <div className="text-center space-y-6">
             <h1 className={cn(
@@ -189,7 +192,7 @@ export function SliderSection({
       </div>
 
       {/* Compliance Notice */}
-      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} deviceInfo={deviceInfo} />}
 
       {/* Shared Navigation Bar */}
       <SectionNavigationBar
