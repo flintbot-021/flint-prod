@@ -81,7 +81,7 @@ export function BasicContentSection({
       style={{ backgroundColor: theme.backgroundColor }}
     >
       {/* Main Content Area */}
-      <div className="flex-1 py-20 px-6">
+      <div className="flex-1 pt-20 pb-20 px-6">
         <div className="max-w-5xl mx-auto space-y-16">
           {/* Top Image (if provided) */}
           {settings.image_url && (

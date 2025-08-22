@@ -312,8 +312,11 @@ export function UploadSection({
   const validationText = isRequired && totalFiles === 0 ? 'Please upload at least one file to continue' : undefined
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: theme.backgroundColor }}>
-      <div className="flex-1 flex items-center justify-center p-6">
+    <div className={cn(
+      "h-full flex flex-col",
+      deviceInfo?.type === 'mobile' ? "pb-40" : "pb-32"
+    )} style={{ backgroundColor: theme.backgroundColor }}>
+      <div className="flex-1 flex items-center justify-center p-6 pt-20">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           {/* Header */}
           <div className="text-center space-y-6">
