@@ -363,7 +363,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     const interpolator = new VariableInterpolator()
     const variables: Record<string, any> = previewVariables
 
-    const renderItem = (item: ContentItem, blockTextColor?: string) => {
+    const renderItem = (item: ContentItem, blockTextColor?: string, align: 'left' | 'center' | 'right' = 'center') => {
       // Use block text color if available, otherwise fall back to campaign theme
       const textColor = blockTextColor || campaignTheme.textColor
       
@@ -383,7 +383,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
           const buttonText = interpolator.interpolate(item.content || 'Button', { variables, availableVariables: [] }).content
           const buttonColor = getButtonColor(item)
           const buttonHoverColor = getButtonHoverColor(buttonColor)
-          return `<div class="flex justify-center"><a href="${buttonHref}" class="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-center backdrop-blur-md border transition-all duration-300 ease-out hover:shadow-xl hover:scale-105 active:scale-95 shadow-2xl" style="background-color:${buttonColor};color:${campaignTheme.buttonTextColor};border:1px solid rgba(255, 255, 255, 0.2);box-shadow:0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)" onmouseover="this.style.backgroundColor='${buttonHoverColor}'" onmouseout="this.style.backgroundColor='${buttonColor}'">${buttonText}</a></div>`
+          const buttonAlignment = align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center'
+          return `<div class="flex ${buttonAlignment}"><a href="${buttonHref}" class="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-center backdrop-blur-md border transition-all duration-300 ease-out hover:shadow-xl hover:scale-105 active:scale-95 shadow-2xl" style="background-color:${buttonColor};color:${campaignTheme.buttonTextColor};border:1px solid rgba(255, 255, 255, 0.2);box-shadow:0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)" onmouseover="this.style.backgroundColor='${buttonHoverColor}'" onmouseout="this.style.backgroundColor='${buttonColor}'">${buttonText}</a></div>`
         case 'image':
           const maxHeightStyle = (item as any).maxHeight ? `max-height:${(item as any).maxHeight}px;height:auto;` : ''
           const imageSrc = interpolator.interpolate(item.src || '', { variables, availableVariables: [] }).content
@@ -443,7 +444,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         : 'rounded-lg transition-all duration-300 ease-out'
       
       const innerStyle = `display:grid;row-gap:${b.spacing ?? 12}px;text-align:${align}`
-      return `<div class="${classNames}" style="${styles.join(';')}"><div style="${innerStyle}">${b.content.map(item => renderItem(item, b.textColor)).join('')}</div></div>`
+      return `<div class="${classNames}" style="${styles.join(';')}"><div style="${innerStyle}">${b.content.map(item => renderItem(item, b.textColor, align)).join('')}</div></div>`
     }
 
     const containerStyle = [
@@ -1645,7 +1646,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                     />
                                   ) : item.type === 'button' ? (
                                     <div 
-                                      className="flex justify-center cursor-pointer group relative"
+                                      className={cn(
+                                        "flex cursor-pointer group relative",
+                                        block.textAlignment === 'left' ? 'justify-start' : 
+                                        block.textAlignment === 'right' ? 'justify-end' : 'justify-center'
+                                      )}
                                       onClick={() => {
                                         setActiveButtonId(item.id)
                                         setButtonSheetOpen(true)
