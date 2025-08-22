@@ -1410,7 +1410,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // =============================================================================
 
   return (
-    <div className="h-screen bg-muted flex flex-col relative">
+    <div className="h-screen bg-muted flex flex-col relative overflow-hidden">
       {/* Powered by Flint - Top Right Pill */}
       {campaign && campaign.settings?.branding?.show_powered_by !== false && (
         <div className="absolute top-4 right-4 z-40">
@@ -1464,28 +1464,35 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       {/* Section Content */}
       {campaignRenderer.currentSection < sections.length && (
         <div key={campaignRenderer.currentSection} className={cn(
-          "h-full transition-all duration-300 ease-in-out",
+          "flex-1 overflow-hidden transition-all duration-300 ease-in-out",
           isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0"
         )}>
-          {/* Use SharedSectionRenderer for consistent experience */}
-          <SharedSectionRenderer
-            section={sections[campaignRenderer.currentSection]}
-            index={campaignRenderer.currentSection}
-            isActive={true}
-            isPreview={false}
-            campaignId={campaign?.id}
-            campaign={campaign}
-            userInputs={campaignRenderer.userInputs}
-            sections={sections}
-            onNext={handleNext}
-            onPrevious={handlePrevious}
-            onNavigateToSection={handleNavigateToSection}
-            onSectionComplete={handleSectionComplete}
-            onResponseUpdate={(sectionId: string, fieldId: string, value: any, metadata?: any) => {
-              // Use clean campaignRenderer approach like preview page
-              campaignRenderer.handleResponseUpdate(sectionId, fieldId, value, metadata)
-            }}
-          />
+          {/* Scrollable content container - matches preview page structure */}
+          <div className="w-full h-full overflow-auto">
+            <div className="h-full bg-background flex flex-col">
+              <div className="flex-1">
+                {/* Use SharedSectionRenderer for consistent experience */}
+                <SharedSectionRenderer
+                  section={sections[campaignRenderer.currentSection]}
+                  index={campaignRenderer.currentSection}
+                  isActive={true}
+                  isPreview={false}
+                  campaignId={campaign?.id}
+                  campaign={campaign}
+                  userInputs={campaignRenderer.userInputs}
+                  sections={sections}
+                  onNext={handleNext}
+                  onPrevious={handlePrevious}
+                  onNavigateToSection={handleNavigateToSection}
+                  onSectionComplete={handleSectionComplete}
+                  onResponseUpdate={(sectionId: string, fieldId: string, value: any, metadata?: any) => {
+                    // Use clean campaignRenderer approach like preview page
+                    campaignRenderer.handleResponseUpdate(sectionId, fieldId, value, metadata)
+                  }}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
