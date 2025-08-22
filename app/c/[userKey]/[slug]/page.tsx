@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { notFound } from 'next/navigation'
 import { Campaign, Section, SectionWithOptions } from '@/lib/types/database'
@@ -281,6 +281,31 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       }
     }
   })
+
+  // Helper function to detect if current section is a hero section
+  const isCurrentSectionHero = useMemo(() => {
+    if (!sections.length || campaignRenderer.currentSection >= sections.length) return false
+    
+    const currentSection = sections[campaignRenderer.currentSection]
+    const config = currentSection.configuration as any || {}
+    
+    // Check for direct hero section type
+    if (currentSection.type === 'content-hero') return true
+    
+    // Check for legacy info sections that are actually hero sections
+    if (currentSection.type === 'info') {
+      return !!(
+        config.overlayColor || 
+        config.overlayOpacity !== undefined || 
+        config.showButton !== undefined || 
+        config.buttonText ||
+        // Only consider image as hero indicator if it has overlay properties
+        (config.image && (config.overlayColor || config.overlayOpacity !== undefined))
+      )
+    }
+    
+    return false
+  }, [sections, campaignRenderer.currentSection])
 
   // =============================================================================
   // EFFECTS
@@ -1394,7 +1419,13 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
             target="_blank" 
             rel="noopener noreferrer"
             className="flex items-center space-x-2 px-3 py-2 rounded-full backdrop-blur-md border transition-all duration-300 hover:scale-105 hover:shadow-lg"
-            style={{
+            style={isCurrentSectionHero ? {
+              // Hero section: white background with black text
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+            } : {
+              // Other sections: use theme colors
               backgroundColor: 'rgba(255, 255, 255, 0.1)',
               border: '1px solid rgba(255, 255, 255, 0.2)',
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
@@ -1402,13 +1433,27 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
           >
             <span 
               className="text-xs font-medium"
-              style={{ color: getCampaignTheme(campaign).textColor, opacity: 0.8 }}
+              style={isCurrentSectionHero ? {
+                // Hero section: black text
+                color: '#000000',
+                opacity: 0.8
+              } : {
+                // Other sections: use theme color
+                color: getCampaignTheme(campaign).textColor,
+                opacity: 0.8
+              }}
             >
               Powered by
             </span>
             <span 
               className="text-xs font-bold"
-              style={{ color: getCampaignTheme(campaign).textColor }}
+              style={isCurrentSectionHero ? {
+                // Hero section: black text
+                color: '#000000'
+              } : {
+                // Other sections: use theme color
+                color: getCampaignTheme(campaign).textColor
+              }}
             >
               Flint
             </span>
