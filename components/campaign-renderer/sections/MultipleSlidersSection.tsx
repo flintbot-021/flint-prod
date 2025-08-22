@@ -408,7 +408,7 @@ export function MultipleSlidersSection({
       </div>
 
       {/* Compliance Notice */}
-      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} deviceInfo={deviceInfo} />}
 
       {/* Navigation */}
       <SectionNavigationBar

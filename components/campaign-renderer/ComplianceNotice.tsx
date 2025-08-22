@@ -5,15 +5,17 @@ import { Button } from '@/components/ui/button'
 import { PrivacyNoticeModal } from '@/components/ui/privacy-notice-modal'
 import { getCampaignTextColor, getCampaignTheme, isFirstQuestionScreen } from './utils'
 import type { Campaign } from '@/lib/types/database'
+import { cn } from '@/lib/utils'
 
 interface ComplianceNoticeProps {
   campaign: Campaign
   isFirstQuestion?: boolean
   currentIndex?: number
   sections?: any[]
+  deviceInfo?: { type: 'mobile' | 'tablet' | 'desktop' }
 }
 
-export function ComplianceNotice({ campaign, isFirstQuestion = false, currentIndex, sections }: ComplianceNoticeProps) {
+export function ComplianceNotice({ campaign, isFirstQuestion = false, currentIndex, sections, deviceInfo }: ComplianceNoticeProps) {
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false)
 
   // Determine if this is the first question screen
@@ -35,7 +37,10 @@ export function ComplianceNotice({ campaign, isFirstQuestion = false, currentInd
 
   return (
     <>
-      <div className="fixed bottom-24 left-0 right-0 z-50 px-6 flex justify-center">
+      <div className={cn(
+        "fixed left-0 right-0 z-50 px-6 flex justify-center",
+        deviceInfo?.type === 'mobile' ? "bottom-16" : "bottom-24"
+      )}>
         <div 
           className="px-4 py-3 rounded-2xl backdrop-blur-md border shadow-lg"
           style={{

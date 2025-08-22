@@ -192,7 +192,7 @@ export function SliderSection({
       </div>
 
       {/* Compliance Notice */}
-      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} deviceInfo={deviceInfo} />}
 
       {/* Shared Navigation Bar */}
       <SectionNavigationBar

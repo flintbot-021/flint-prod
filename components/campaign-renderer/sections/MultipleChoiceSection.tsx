@@ -188,7 +188,7 @@ export function MultipleChoiceSection({
       </div>
 
       {/* Compliance Notice */}
-      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} />}
+      {campaign && <ComplianceNotice campaign={campaign} currentIndex={index} sections={sections} deviceInfo={deviceInfo} />}
 
       {/* Shared Navigation Bar - Rendered via Portal */}
       <SectionNavigationBar
