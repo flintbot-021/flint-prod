@@ -84,6 +84,7 @@ interface AILogicSectionProps {
     testInputs?: Record<string, any>
     testFiles?: Record<string, File>
     knowledgeBase?: KnowledgeBaseSettings
+    browseUrls?: { enabled: boolean }
   }
   isPreview?: boolean
   isEditing?: boolean
@@ -107,13 +108,13 @@ function extractInputVariables(sections: CampaignSection[], currentOrder: number
 function extractInputVariablesWithTypesFromBuilder(sections: CampaignSection[], currentOrder: number): Array<{
   name: string
   title: string
-  type: 'text' | 'file'
+  type: 'text' | 'file' | 'url'
   section: CampaignSection
 }> {
   const variables: Array<{
     name: string
     title: string
-    type: 'text' | 'file'
+    type: 'text' | 'file' | 'url'
     section: CampaignSection
   }> = []
   
@@ -138,16 +139,32 @@ function extractInputVariablesWithTypesFromBuilder(sections: CampaignSection[], 
         }
       } else if (section.title) {
         // Handle single-input sections (existing logic)
+        let variableType: 'text' | 'file' | 'url' = 'text'
+        if (isFileVariableFromBuilder(section)) {
+          variableType = 'file'
+        } else if (isUrlVariableFromBuilder(section)) {
+          variableType = 'url'
+        }
+        
         variables.push({
-      name: titleToVariableName(section.title),
-      title: section.title,
-      type: isFileVariableFromBuilder(section) ? 'file' : 'text',
-      section
+          name: titleToVariableName(section.title),
+          title: section.title,
+          type: variableType,
+          section
         })
       }
     })
     
   return variables
+}
+
+// Check if a campaign builder section is a URL variable
+function isUrlVariableFromBuilder(section: CampaignSection): boolean {
+  if (section.type === 'question-text') {
+    const settings = section.settings as any
+    return settings?.isUrlInput === true
+  }
+  return false
 }
 
 // Check if a campaign builder section is a file variable
@@ -203,6 +220,9 @@ export function AILogicSection({
   const [knowledgeBaseEnabled, setKnowledgeBaseEnabled] = useState(settings.knowledgeBase?.enabled || false)
   const [showKnowledgeBaseModal, setShowKnowledgeBaseModal] = useState(false)
   
+  // Browse URLs state
+  const [browseUrlsEnabled, setBrowseUrlsEnabled] = useState(settings.browseUrls?.enabled || false)
+  
   // Update local state when settings change externally
   useEffect(() => {
     setPromptValue(settings.prompt || '')
@@ -232,20 +252,29 @@ export function AILogicSection({
     return extractedVariables.length > 0 ? extractedVariables : availableVariables
   }, [extractedVariables, availableVariables])
   
-  // Separate text and file variables
+  // Separate text, URL, and file variables
   const textVariables = useMemo(() => {
     return extractedVariablesWithTypes.filter(v => v.type === 'text')
+  }, [extractedVariablesWithTypes])
+  
+  const urlVariables = useMemo(() => {
+    return extractedVariablesWithTypes.filter(v => v.type === 'url')
   }, [extractedVariablesWithTypes])
   
   const fileVariables = useMemo(() => {
     return extractedVariablesWithTypes.filter(v => v.type === 'file')
   }, [extractedVariablesWithTypes])
 
+  // Combine text and URL variables for display (they're both text-based)
+  const textAndUrlVariables = useMemo(() => {
+    return [...textVariables, ...urlVariables]
+  }, [textVariables, urlVariables])
+
   // Compute the longest variable name for label alignment
   const maxLabelLength = useMemo(() => {
-    if (textVariables.length === 0) return 0;
-    return Math.max(...textVariables.map(v => v.name.length));
-  }, [textVariables]);
+    if (textAndUrlVariables.length === 0) return 0;
+    return Math.max(...textAndUrlVariables.map(v => v.name.length));
+  }, [textAndUrlVariables]);
   // Use ch units for monospace alignment, add 2ch for the @ and colon
   const labelWidthCh = maxLabelLength + 2;
 
@@ -420,8 +449,8 @@ export function AILogicSection({
     // Check if we have variables and all required inputs are provided
     if (extractedVariablesWithTypes.length === 0) return false
     
-    // For text variables, require test inputs (check both saved and local values)
-    const missingTextInputs = textVariables.filter(variable => {
+    // For text and URL variables, require test inputs (check both saved and local values)
+    const missingTextInputs = textAndUrlVariables.filter(variable => {
       const savedValue = (settings.testInputs || {})[variable.name]
       const localValue = localTestInputs[variable.name]
       
@@ -447,7 +476,7 @@ export function AILogicSection({
     )
     
     return missingTextInputs.length === 0 && missingTestFiles.length === 0
-  }, [extractedVariablesWithTypes, textVariables, fileVariables, settings.testInputs, settings.testFiles, localTestInputs])
+  }, [extractedVariablesWithTypes, textAndUrlVariables, fileVariables, settings.testInputs, settings.testFiles, localTestInputs])
 
   const step2Complete = useMemo(() => {
     return settings.prompt && settings.prompt.trim() !== ''
@@ -568,6 +597,12 @@ export function AILogicSection({
     handleSettingChange('knowledgeBase', knowledgeBaseSettings)
   }, [handleSettingChange])
 
+  // Handle browse URLs toggle
+  const handleBrowseUrlsToggle = useCallback((enabled: boolean) => {
+    setBrowseUrlsEnabled(enabled)
+    handleSettingChange('browseUrls', { enabled })
+  }, [handleSettingChange])
+
   // Fetch knowledge base context and files for AI processing
   const fetchKnowledgeBaseForAI = useCallback(async (): Promise<{
     textContent: string
@@ -656,8 +691,8 @@ export function AILogicSection({
         return
       }
 
-      // Check if all text inputs are provided (check both saved and local values)
-      const missingTextInputs = textVariables.filter(variable => {
+      // Check if all text and URL inputs are provided (check both saved and local values)
+      const missingTextInputs = textAndUrlVariables.filter(variable => {
         const savedValue = (settings.testInputs || {})[variable.name]
         const localValue = localTestInputs[variable.name]
         const hasValue = (savedValue && savedValue.trim()) || (localValue && localValue.trim())
@@ -713,6 +748,23 @@ export function AILogicSection({
           formData.append('knowledgeBaseFiles', JSON.stringify(knowledgeBaseData.files))
         }
         
+        // Add URL browsing data if enabled
+        const urlBrowsingData = browseUrlsEnabled && urlVariables.length > 0 ? {
+          enabled: true,
+          urlVariables: urlVariables.map(variable => {
+            let url = testVariables[variable.name] || ''
+            // Add https:// if no protocol is specified
+            if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+              url = `https://${url}`
+            }
+            return {
+              name: variable.name,
+              url: url
+            }
+          }).filter(uv => uv.url.trim() !== '') // Only include URLs that have values
+        } : { enabled: false }
+        formData.append('browseUrls', JSON.stringify(urlBrowsingData))
+        
         // Add the actual uploaded files
         fileVariables.forEach(variable => {
           const file = (settings.testFiles || {})[variable.name]
@@ -764,6 +816,31 @@ export function AILogicSection({
         testVariables[variable.name] = `[EXAMPLE FILE CONTENT for ${variable.title}]\n\nThis is placeholder content that represents what would be extracted from an uploaded file. In the actual campaign, the real file content will be analyzed by the AI.`
       })
       
+      // Prepare URL browsing data if enabled
+      console.log('🔍 Browse URLs Debug:', {
+        browseUrlsEnabled,
+        urlVariablesLength: urlVariables.length,
+        urlVariables: urlVariables.map(v => ({ name: v.name, type: v.type })),
+        testVariables: Object.keys(testVariables)
+      })
+      
+      const urlBrowsingData = browseUrlsEnabled && urlVariables.length > 0 ? {
+        enabled: true,
+        urlVariables: urlVariables.map(variable => {
+          let url = testVariables[variable.name] || ''
+          // Add https:// if no protocol is specified
+          if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+            url = `https://${url}`
+          }
+          return {
+            name: variable.name,
+            url: url
+          }
+        }).filter(uv => uv.url.trim() !== '') // Only include URLs that have values
+      } : { enabled: false }
+      
+      console.log('🔍 Final URL browsing data:', urlBrowsingData)
+
       const testRequest = {
         prompt: settings.prompt,
         variables: testVariables,
@@ -775,7 +852,8 @@ export function AILogicSection({
         hasFileVariables: fileVariables.length > 0,
         fileVariableNames: fileVariables.map(v => v.name),
         knowledgeBaseContext,
-        knowledgeBaseFiles: knowledgeBaseData.files
+        knowledgeBaseFiles: knowledgeBaseData.files,
+        browseUrls: urlBrowsingData
       }
       
       console.log('🧪 Test: Full request being sent:', testRequest)
@@ -880,11 +958,11 @@ export function AILogicSection({
                       Enter example answers for each question. You will use these sample answers to test your AI prompt to ensure it's working like you expect.
                     </p>
                     
-                    {/* Text Variables */}
-                    {textVariables.length > 0 && (
+                    {/* Text and URL Variables */}
+                    {textAndUrlVariables.length > 0 && (
                       <div className="space-y-4">
-                        <h4 className="text-sm font-medium text-gray-700">Text Inputs</h4>
-                        {textVariables.map((variable) => {
+                        <h4 className="text-sm font-medium text-gray-700">Text & URL Inputs</h4>
+                        {textAndUrlVariables.map((variable) => {
                           // Check variable type to render appropriate input
                           const isSliderVariable = variable.section.type === 'question-slider' || 
                                                   variable.section.type === 'question-slider-multiple' ||
@@ -1170,24 +1248,38 @@ export function AILogicSection({
                               </div>
                             )
                           }
-                          // For regular text variables, show text input
+                          // For regular text and URL variables, show appropriate input
+                          const isUrlVariable = variable.type === 'url'
                           return (
                             <div key={variable.name} className="flex items-center space-x-4">
                               <Label
-                                className="text-sm font-medium text-gray-700 flex-shrink-0"
+                                className="text-sm font-medium text-gray-700 flex-shrink-0 flex items-center"
                                 style={{ width: `${labelWidthCh}ch`, minWidth: `${labelWidthCh}ch`, maxWidth: `${labelWidthCh}ch` }}
                               >
                                 @{variable.name}:
                               </Label>
-                              <Input
-                                value={localTestInputs[variable.name] !== undefined
-                                  ? localTestInputs[variable.name]
-                                  : (settings.testInputs || {})[variable.name] || ''}
-                                onChange={(e) => updateTestInput(variable.name, e.target.value)}
-                                onBlur={(e) => saveTestInput(variable.name, e.target.value)}
-                                placeholder={`Example answer for ${variable.title}`}
-                                className="flex-1 bg-white border-gray-300 text-gray-900 placeholder-gray-500 max-w-[200px]"
-                              />
+                              <div className="flex-1 relative max-w-[200px]">
+                                <Input
+                                  type={isUrlVariable ? "url" : "text"}
+                                  value={localTestInputs[variable.name] !== undefined
+                                    ? localTestInputs[variable.name]
+                                    : (settings.testInputs || {})[variable.name] || ''}
+                                  onChange={(e) => updateTestInput(variable.name, e.target.value)}
+                                  onBlur={(e) => saveTestInput(variable.name, e.target.value)}
+                                  placeholder={isUrlVariable ? "https://example.com" : `Example answer for ${variable.title}`}
+                                  className={cn(
+                                    "bg-white border-gray-300 text-gray-900 placeholder-gray-500 w-full",
+                                    isUrlVariable && "font-mono text-sm pr-8"
+                                  )}
+                                />
+                                {isUrlVariable && (
+                                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2 text-blue-600">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                    </svg>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )
                         })}
@@ -1363,6 +1455,34 @@ export function AILogicSection({
                         )}
                       </div>
                     </div>
+
+                    {/* Browse URLs Toggle - Only show if there are URL variables */}
+                    {urlVariables.length > 0 && (
+                      <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <Switch
+                              checked={browseUrlsEnabled}
+                              onCheckedChange={handleBrowseUrlsToggle}
+                              className="data-[state=checked]:bg-amber-600"
+                            />
+                            <div>
+                              <Label className="text-sm font-medium text-gray-900">
+                                Browse URLs
+                              </Label>
+                              <p className="text-xs text-gray-600">
+                                AI will browse and analyze content from URL inputs: {urlVariables.map(v => `@${v.name}`).join(', ')}
+                              </p>
+                            </div>
+                          </div>
+                          {browseUrlsEnabled && (
+                            <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800">
+                              enabled
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Right: Live Preview */}

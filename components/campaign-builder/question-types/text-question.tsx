@@ -19,6 +19,7 @@ interface TextQuestionSettings {
   placeholder?: string
   required?: boolean
   buttonLabel?: string
+  isUrlInput?: boolean
 }
 
 export function TextQuestion({ 
@@ -37,8 +38,14 @@ export function TextQuestion({
     label = '',
     placeholder = 'Answer will go here',
     required = false,
-    buttonLabel = 'Next'
+    buttonLabel = 'Next',
+    isUrlInput = false
   } = settings
+
+  // Dynamic placeholder based on URL mode
+  const dynamicPlaceholder = isUrlInput 
+    ? (placeholder || 'https://example.com')
+    : (placeholder || 'Type your answer here...')
 
   // Handle settings updates
   const updateSettings = async (newSettings: Partial<TextQuestionSettings>) => {
@@ -112,9 +119,12 @@ export function TextQuestion({
         {/* Input Field - Always show with placeholder */}
         <div className="pt-4">
           <input
-            type="text"
-            placeholder={hasContent(placeholder) ? placeholder : 'Type your answer here...'}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            type={isUrlInput ? "url" : "text"}
+            placeholder={hasContent(placeholder) ? placeholder : dynamicPlaceholder}
+            className={cn(
+              "w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+              isUrlInput && "font-mono text-base" // Monospace font for URLs
+            )}
             disabled={false}
           />
         </div>
@@ -163,9 +173,12 @@ export function TextQuestion({
         <InlineEditableText
           value={placeholder}
           onSave={handlePlaceholderChange}
-          placeholder="Answer will go here"
+          placeholder={isUrlInput ? "https://example.com" : "Answer will go here"}
           variant="paragraph"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white"
+          className={cn(
+            "w-full px-4 py-3 border border-gray-300 rounded-lg bg-white",
+            isUrlInput && "font-mono text-sm" // Monospace font for URLs in edit mode
+          )}
         />
       </div>
 

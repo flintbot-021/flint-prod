@@ -37,7 +37,8 @@ export function TextQuestionSection({
   const question = title || 'Please enter your response'
   const subheading = description || ''
   const fieldLabel = configData.label || configData.fieldLabel || ''
-  const placeholder = configData.placeholder || 'Type your answer here...'
+  const isUrlInput = configData.isUrlInput || false
+  const placeholder = configData.placeholder || (isUrlInput ? 'https://example.com' : 'Type your answer here...')
   const isRequired = configData.required ?? false
   const minLength = configData.minLength || 1
   const maxLength = configData.maxLength || 500
@@ -53,13 +54,30 @@ export function TextQuestionSection({
   const primaryTextStyle = getCampaignTextColor(campaign, 'primary')
   const mutedTextStyle = getCampaignTextColor(campaign, 'muted')
   
+  // URL validation helper
+  const isValidUrl = (url: string): boolean => {
+    try {
+      new URL(url)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   const validateInput = (value: string): string | null => {
     if (isRequired && value.trim().length === 0) {
       return 'This field is required'
     }
     
+    // URL-specific validation
+    if (isUrlInput && value.trim().length > 0) {
+      if (!isValidUrl(value.trim())) {
+        return 'Please enter a valid URL (e.g., https://example.com)'
+      }
+    }
+    
     // Only enforce minLength if the field is required OR if the user has entered some text
-    if (value.length > 0 && value.length < minLength) {
+    if (!isUrlInput && value.length > 0 && value.length < minLength) {
       return `Please enter at least ${minLength} character${minLength !== 1 ? 's' : ''}`
     }
     
@@ -70,7 +88,7 @@ export function TextQuestionSection({
     return null
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     const value = e.target.value
     setInputValue(value)
     setError(null)
@@ -81,10 +99,11 @@ export function TextQuestionSection({
       setError(validationError)
     }
     
-    onResponseUpdate(section.id, 'text_response', value, {
-      inputType: 'text',
+    onResponseUpdate(section.id, isUrlInput ? 'url_response' : 'text_response', value, {
+      inputType: isUrlInput ? 'url' : 'text',
       isValid: !validationError,
-      isRequired: isRequired
+      isRequired: isRequired,
+      isUrlInput: isUrlInput
     })
   }
 
@@ -152,34 +171,66 @@ export function TextQuestionSection({
               </label>
             )}
             <div className="relative">
-              <textarea
-                value={inputValue}
-                onChange={handleInputChange}
-                onKeyPress={handleKeyPress}
-                placeholder={placeholder}
-                rows={6}
-                maxLength={maxLength}
-                className={cn(
-                  "w-full p-6 rounded-2xl resize-none backdrop-blur-md border-0",
-                  "focus:ring-2 focus:ring-opacity-50 focus:outline-none",
-                  "transition-all duration-300 ease-out",
-                  "shadow-lg hover:shadow-xl",
-                  "placeholder:text-opacity-60",
-                  error 
-                    ? "ring-2 ring-red-500 ring-opacity-50" 
-                    : "hover:shadow-2xl focus:shadow-2xl",
-                  getMobileClasses("text-lg", deviceInfo?.type)
-                )}
-                style={{
-                  backgroundColor: `rgba(255, 255, 255, 0.15)`,
-                  backdropFilter: 'blur(20px)',
-                  border: `1px solid rgba(255, 255, 255, 0.2)`,
-                  color: theme.textColor,
-                  boxShadow: error 
-                    ? '0 8px 32px rgba(239, 68, 68, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)' 
-                    : '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-                }}
-              />
+              {isUrlInput ? (
+                <input
+                  type="url"
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                  placeholder={placeholder}
+                  maxLength={maxLength}
+                  className={cn(
+                    "w-full p-6 rounded-2xl backdrop-blur-md border-0",
+                    "focus:ring-2 focus:ring-opacity-50 focus:outline-none",
+                    "transition-all duration-300 ease-out",
+                    "shadow-lg hover:shadow-xl",
+                    "placeholder:text-opacity-60",
+                    "font-mono text-base", // Monospace font for URLs
+                    error 
+                      ? "ring-2 ring-red-500 ring-opacity-50" 
+                      : "hover:shadow-2xl focus:shadow-2xl",
+                    getMobileClasses("text-lg", deviceInfo?.type)
+                  )}
+                  style={{
+                    backgroundColor: `rgba(255, 255, 255, 0.15)`,
+                    backdropFilter: 'blur(20px)',
+                    border: `1px solid rgba(255, 255, 255, 0.2)`,
+                    color: theme.textColor,
+                    boxShadow: error 
+                      ? '0 8px 32px rgba(239, 68, 68, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)' 
+                      : '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                  }}
+                />
+              ) : (
+                <textarea
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                  placeholder={placeholder}
+                  rows={6}
+                  maxLength={maxLength}
+                  className={cn(
+                    "w-full p-6 rounded-2xl resize-none backdrop-blur-md border-0",
+                    "focus:ring-2 focus:ring-opacity-50 focus:outline-none",
+                    "transition-all duration-300 ease-out",
+                    "shadow-lg hover:shadow-xl",
+                    "placeholder:text-opacity-60",
+                    error 
+                      ? "ring-2 ring-red-500 ring-opacity-50" 
+                      : "hover:shadow-2xl focus:shadow-2xl",
+                    getMobileClasses("text-lg", deviceInfo?.type)
+                  )}
+                  style={{
+                    backgroundColor: `rgba(255, 255, 255, 0.15)`,
+                    backdropFilter: 'blur(20px)',
+                    border: `1px solid rgba(255, 255, 255, 0.2)`,
+                    color: theme.textColor,
+                    boxShadow: error 
+                      ? '0 8px 32px rgba(239, 68, 68, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)' 
+                      : '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                  }}
+                />
+              )}
             </div>
 
             {/* Character Counter */}

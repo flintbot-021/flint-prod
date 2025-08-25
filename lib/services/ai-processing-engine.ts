@@ -24,6 +24,10 @@ export interface AITestRequest {
   fileObjects?: Record<string, { file: File; variableName: string }>
   knowledgeBaseContext?: string
   knowledgeBaseFiles?: Array<{ url: string; type: string; name: string }>
+  browseUrls?: {
+    enabled: boolean
+    urlVariables?: Array<{ name: string; url: string }>
+  }
 }
 
 export interface AITestResponse {
@@ -71,8 +75,9 @@ export class AIProcessingEngine {
       // Handle direct file uploads to OpenAI (either user files or knowledge base files)
       const hasUserFiles = request.fileObjects && Object.keys(request.fileObjects).length > 0
       const hasKnowledgeBaseFiles = request.knowledgeBaseFiles && request.knowledgeBaseFiles.length > 0
+      const hasUrlBrowsing = request.browseUrls?.enabled && request.browseUrls?.urlVariables && request.browseUrls.urlVariables.length > 0
       
-      if (hasUserFiles || hasKnowledgeBaseFiles) {
+      if (hasUserFiles || hasKnowledgeBaseFiles || hasUrlBrowsing) {
         return await this.processPromptWithDirectFileUpload(request, startTime)
       }
 
@@ -240,10 +245,26 @@ export class AIProcessingEngine {
 
       const finalPrompt = this.replaceVariables(request.prompt, textVariables)
 
-      // Add the text prompt
+      // Build URL browsing instructions if enabled
+      let urlBrowsingInstructions = ''
+      console.log('🔍 URL Browsing Debug:', {
+        enabled: request.browseUrls?.enabled,
+        urlVariables: request.browseUrls?.urlVariables,
+        urlVariablesLength: request.browseUrls?.urlVariables?.length
+      })
+      
+      if (request.browseUrls?.enabled && request.browseUrls?.urlVariables && request.browseUrls.urlVariables.length > 0) {
+        const urlList = request.browseUrls.urlVariables.map(uv => `@${uv.name}: ${uv.url}`).join('\n')
+        urlBrowsingInstructions = `\n\nIMPORTANT: You have access to web search capabilities. Please browse and analyze the content from these URLs:\n${urlList}\n\nUse the web search tool to gather current information from these URLs and incorporate the findings into your response.`
+        console.log('🌐 URL browsing instructions added:', urlBrowsingInstructions)
+      } else {
+        console.log('❌ URL browsing not enabled or no URL variables found')
+      }
+
+      // Add the text prompt with URL browsing instructions
       content.push({
         type: 'text',
-        text: this.buildCombinedPrompt(finalPrompt, request.outputVariables, request.knowledgeBaseContext)
+        text: this.buildCombinedPrompt(finalPrompt, request.outputVariables, request.knowledgeBaseContext) + urlBrowsingInstructions
       })
 
       // Make the API call with files
