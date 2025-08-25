@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     const fileVariableNamesStr = formData.get('fileVariableNames') as string
     const knowledgeBaseContext = formData.get('knowledgeBaseContext') as string | null
     const knowledgeBaseFilesStr = formData.get('knowledgeBaseFiles') as string | null
+    const browseUrlsStr = formData.get('browseUrls') as string | null
     
     // Validate request
     if (!prompt || typeof prompt !== 'string') {
@@ -42,11 +43,13 @@ export async function POST(request: NextRequest) {
     let outputVariables: any[] = []
     let fileVariableNames: string[] = []
     let knowledgeBaseFiles: Array<{ url: string; type: string; name: string }> = []
+    let browseUrls: { enabled: boolean; urlVariables?: Array<{ name: string; url: string }> } = { enabled: false }
     
     try {
       variables = variablesStr ? JSON.parse(variablesStr) : {}
       outputVariables = outputVariablesStr ? JSON.parse(outputVariablesStr) : []
       fileVariableNames = fileVariableNamesStr ? JSON.parse(fileVariableNamesStr) : []
+      browseUrls = browseUrlsStr ? JSON.parse(browseUrlsStr) : { enabled: false }
       knowledgeBaseFiles = knowledgeBaseFilesStr ? JSON.parse(knowledgeBaseFilesStr) : []
     } catch (parseError) {
       return NextResponse.json(
@@ -131,7 +134,8 @@ export async function POST(request: NextRequest) {
       fileVariableNames,
       fileObjects: Object.keys(fileObjects).length > 0 ? fileObjects : undefined,
       knowledgeBaseContext: knowledgeBaseContext || undefined,
-      knowledgeBaseFiles: knowledgeBaseFiles.length > 0 ? knowledgeBaseFiles : undefined
+      knowledgeBaseFiles: knowledgeBaseFiles.length > 0 ? knowledgeBaseFiles : undefined,
+      browseUrls: browseUrls.enabled ? browseUrls : undefined
     })
 
     console.log(`✅ [API-${requestId}] AI processing completed successfully`)

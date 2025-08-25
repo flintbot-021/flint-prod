@@ -39,6 +39,9 @@ export function SectionBottomBar({
   const isQuestionType = sectionType?.category === 'input' || 
     ['multiple-choice', 'text-input', 'rating-scale', 'email-capture', 'contact-form'].includes(section.type)
   
+  // Check if this is a text question (for URL toggle)
+  const isTextQuestion = section.type === 'question-text'
+  
   // Check if this is a capture section
   const isCaptureSection = section.type === 'capture-details'
   
@@ -75,6 +78,10 @@ export function SectionBottomBar({
   const captureSettings = isCaptureSection ? section.settings as any : null
   const captureButtonText = captureSettings?.submitButtonText || 'Get my results'
   
+  // Get Text Question URL settings
+  const textQuestionSettings = isTextQuestion ? section.settings as any : null
+  const isUrlInput = textQuestionSettings?.isUrlInput || false
+  
   // Local state for optimistic button text updates
   const [localCaptureButtonText, setLocalCaptureButtonText] = useState(captureButtonText)
   
@@ -110,6 +117,18 @@ export function SectionBottomBar({
 
   // Handle Capture section settings updates
   const updateCaptureSettings = async (newSettings: Record<string, unknown>) => {
+    if (onSectionUpdate) {
+      await onSectionUpdate({
+        settings: {
+          ...section.settings,
+          ...newSettings
+        }
+      })
+    }
+  }
+
+  // Handle Text Question settings updates
+  const updateTextQuestionSettings = async (newSettings: Record<string, unknown>) => {
     if (onSectionUpdate) {
       await onSectionUpdate({
         settings: {
@@ -198,6 +217,24 @@ export function SectionBottomBar({
               className="text-sm font-medium cursor-pointer text-gray-700"
             >
               Required
+            </Label>
+          </div>
+        )}
+
+        {/* URL Toggle for Text Questions */}
+        {isTextQuestion && (
+          <div className="flex items-center space-x-2">
+            <Switch
+              id={`url-input-${section.id}`}
+              checked={isUrlInput}
+              onCheckedChange={(checked) => updateTextQuestionSettings({ isUrlInput: checked })}
+              className="data-[state=checked]:bg-blue-500"
+            />
+            <Label 
+              htmlFor={`url-input-${section.id}`}
+              className="text-sm font-medium cursor-pointer text-gray-700"
+            >
+              This is a URL
             </Label>
           </div>
         )}
