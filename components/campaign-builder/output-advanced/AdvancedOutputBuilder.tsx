@@ -79,8 +79,49 @@ interface AdvancedOutputBuilderProps {
   campaign?: Campaign
 }
 
-// Lightweight ID helper
+  // Lightweight ID helper
 const uid = (p = 'id') => `${p}_${Math.random().toString(36).slice(2, 9)}`
+
+// Helper function to extract RGB values from any color format
+const extractRGBFromColor = (color: string): { r: number; g: number; b: number } => {
+  if (!color || color === 'transparent') {
+    return { r: 255, g: 255, b: 255 } // Default to white
+  }
+  
+  if (color.startsWith('rgba(')) {
+    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/)
+    if (match) {
+      return {
+        r: parseInt(match[1]),
+        g: parseInt(match[2]),
+        b: parseInt(match[3])
+      }
+    }
+  } else if (color.startsWith('rgb(')) {
+    const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/)
+    if (match) {
+      return {
+        r: parseInt(match[1]),
+        g: parseInt(match[2]),
+        b: parseInt(match[3])
+      }
+    }
+  } else if (color.startsWith('#')) {
+    // Hex color
+    const hex = color.length === 4 
+      ? color.slice(1).split('').map(c => c + c).join('') // Convert #RGB to #RRGGBB
+      : color.slice(1)
+    
+    return {
+      r: parseInt(hex.slice(0, 2), 16),
+      g: parseInt(hex.slice(2, 4), 16),
+      b: parseInt(hex.slice(4, 6), 16)
+    }
+  }
+  
+  // Fallback to white
+  return { r: 255, g: 255, b: 255 }
+}
 
 export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, className, allSections, onPageSettingsChange, campaignId, campaign }: AdvancedOutputBuilderProps) {
   const settings: any = section.settings || {}
@@ -154,6 +195,17 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const [activeButtonId, setActiveButtonId] = useState<string | null>(null)
   const [draggedBlock, setDraggedBlock] = useState<{rowId: string, blockId: string, block: Block} | null>(null)
   const [dragOverPosition, setDragOverPosition] = useState<{rowId: string, position: number} | null>(null)
+  
+  // Store base colors for opacity calculations
+  const [baseColors, setBaseColors] = useState<{
+    pageBackground?: string
+    blockBackgrounds?: Record<string, string>
+    rowBackgrounds?: Record<string, string>
+    blockBorders?: Record<string, string>
+    rowTopLines?: Record<string, string>
+    rowBottomLines?: Record<string, string>
+    rowOverlays?: Record<string, string>
+  }>({})
   const isSavingRef = useRef(false)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const pageSettingsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -251,6 +303,72 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   useEffect(() => {
     onPageSettingsChange?.(pageSettings)
   }, [pageSettings.backgroundColor, pageSettings.gridGap, pageSettings.maxColumns, pageSettings.rowSpacing, onPageSettingsChange])
+
+  // Initialize base colors from existing data
+  useEffect(() => {
+    const newBaseColors: typeof baseColors = {}
+    
+    // Initialize page background base color
+    if (pageSettings.backgroundColor && !pageSettings.backgroundColor.includes('rgba')) {
+      newBaseColors.pageBackground = pageSettings.backgroundColor
+    }
+    
+    // Initialize block background base colors
+    const blockBackgrounds: Record<string, string> = {}
+    const blockBorders: Record<string, string> = {}
+    rows.forEach(row => {
+      row.blocks.forEach(block => {
+        if (block.backgroundColor && !block.backgroundColor.includes('rgba')) {
+          blockBackgrounds[block.id] = block.backgroundColor
+        }
+        if (block.borderColor && !block.borderColor.includes('rgba')) {
+          blockBorders[block.id] = block.borderColor
+        }
+      })
+    })
+    if (Object.keys(blockBackgrounds).length > 0) {
+      newBaseColors.blockBackgrounds = blockBackgrounds
+    }
+    if (Object.keys(blockBorders).length > 0) {
+      newBaseColors.blockBorders = blockBorders
+    }
+    
+    // Initialize row background base colors
+    const rowBackgrounds: Record<string, string> = {}
+    const rowTopLines: Record<string, string> = {}
+    const rowBottomLines: Record<string, string> = {}
+    const rowOverlays: Record<string, string> = {}
+    
+    rows.forEach(row => {
+      if (row.backgroundColor && !row.backgroundColor.includes('rgba')) {
+        rowBackgrounds[row.id] = row.backgroundColor
+      }
+      if (row.topLineColor && !row.topLineColor.includes('rgba')) {
+        rowTopLines[row.id] = row.topLineColor
+      }
+      if (row.bottomLineColor && !row.bottomLineColor.includes('rgba')) {
+        rowBottomLines[row.id] = row.bottomLineColor
+      }
+      if (row.overlayColor && !row.overlayColor.includes('rgba')) {
+        rowOverlays[row.id] = row.overlayColor
+      }
+    })
+    
+    if (Object.keys(rowBackgrounds).length > 0) {
+      newBaseColors.rowBackgrounds = rowBackgrounds
+    }
+    if (Object.keys(rowTopLines).length > 0) {
+      newBaseColors.rowTopLines = rowTopLines
+    }
+    if (Object.keys(rowBottomLines).length > 0) {
+      newBaseColors.rowBottomLines = rowBottomLines
+    }
+    if (Object.keys(rowOverlays).length > 0) {
+      newBaseColors.rowOverlays = rowOverlays
+    }
+    
+    setBaseColors(newBaseColors)
+  }, []) // Only run once on mount
 
 
     const saveRows = async (nextRows: Row[], newPageSettings?: PageSettings) => {
@@ -430,7 +548,12 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       const styles: string[] = [
         `padding:${b.padding ?? 24}px`,
         `grid-column-start:${b.startPosition}`,
-        `grid-column-end:span ${b.width}`
+        `grid-column-end:span ${b.width}`,
+        'min-width:0', // Allow flex items to shrink below their content size
+        'overflow:hidden', // Prevent content from overflowing
+        'word-wrap:break-word', // Break long words
+        'overflow-wrap:break-word', // Modern alternative to word-wrap
+        'hyphens:auto' // Add hyphens for better text breaking
       ]
       
       if (hasCustomBackground) {
@@ -483,7 +606,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       'padding:48px 0',
       'display:flex',
       'flex-direction:column',
-      'gap:32px'
+      `gap:${draftPageSettings.rowSpacing ?? 24}px`
     ].join(';')
     
     const gridStyle = [
@@ -523,8 +646,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         'z-index:10',
         'padding-left:24px',
         'padding-right:24px',
-        `padding-top:${r.paddingTop || 16}px`,
-        `padding-bottom:${r.paddingBottom || 16}px`
+        `padding-top:${r.paddingTop ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)}px`,
+        `padding-bottom:${r.paddingBottom ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)}px`
       ].join(';')
       
       return `<div style="${rowStyles.join(';')}">${overlay}${topLine}<div style="${contentStyle}"><div style="${gridStyle}">${r.blocks.map(renderBlock).join('')}</div></div>${bottomLine}</div>`
@@ -534,7 +657,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     const isMobilePreview = false // Preview is always desktop for now
     const responsiveRowSpacing = draftPageSettings.rowSpacing ?? 24
     
-    const html = `<div style="${containerStyle}"><div style="${innerContainerStyle}">${rows.map((r, idx) => `<div style="${idx === rows.length - 1 ? '' : `margin-bottom:${responsiveRowSpacing}px`}">${renderRowHtml(r, idx)}</div>`).join('')}</div></div>`
+    const html = `<div style="${containerStyle}"><div style="${innerContainerStyle}">${rows.map((r, idx) => renderRowHtml(r, idx)).join('')}</div></div>`
     return html
   }, [isPreview, rows, previewVariables, draftPageSettings.backgroundColor, draftPageSettings.gridGap, draftPageSettings.maxColumns, draftPageSettings.rowSpacing])
 
@@ -1130,7 +1253,12 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                           id="page-background-color"
                           type="color"
                           value={draftPageSettings.backgroundColor || '#ffffff'}
-                          onChange={(e) => updatePageSettingsDebounced({ backgroundColor: e.target.value })}
+                          onChange={(e) => {
+                            const newColor = e.target.value
+                            // Store the base color for opacity calculations
+                            setBaseColors(prev => ({ ...prev, pageBackground: newColor }))
+                            updatePageSettingsDebounced({ backgroundColor: newColor })
+                          }}
                           onBlur={async () => {
                             if (pageSettingsTimeoutRef.current) {
                               clearTimeout(pageSettingsTimeoutRef.current)
@@ -1152,6 +1280,54 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                           className="flex-1 text-sm"
                         />
                       </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="page-background-opacity-slider">Background Opacity</Label>
+                        <span className="text-sm text-muted-foreground">
+                          {(() => {
+                            if (!draftPageSettings.backgroundColor) return '0%'
+                            const match = draftPageSettings.backgroundColor.match(/rgba?\([^)]+,\s*([^)]+)\)/)
+                            if (match) return `${Math.round(parseFloat(match[1]) * 100)}%`
+                            return '100%'
+                          })()}
+                        </span>
+                      </div>
+                      <Slider
+                        id="page-background-opacity-slider"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={[(() => {
+                          if (!draftPageSettings.backgroundColor) return 0
+                          const match = draftPageSettings.backgroundColor.match(/rgba?\([^)]+,\s*([^)]+)\)/)
+                          if (match) return Math.round(parseFloat(match[1]) * 100)
+                          return 100
+                        })()]}
+                        onValueChange={(value) => {
+                          const opacity = value[0] / 100
+                          if (opacity === 0) {
+                            updatePageSettingsDebounced({ backgroundColor: undefined })
+                          } else {
+                            // Use stored base color or extract from current backgroundColor
+                            const baseColor = baseColors.pageBackground || 
+                              (draftPageSettings.backgroundColor && !draftPageSettings.backgroundColor.includes('rgba') 
+                                ? draftPageSettings.backgroundColor 
+                                : '#ffffff')
+                            
+                            const { r, g, b } = extractRGBFromColor(baseColor)
+                            updatePageSettingsDebounced({ backgroundColor: `rgba(${r}, ${g}, ${b}, ${opacity})` })
+                          }
+                        }}
+                        onValueCommit={async () => {
+                          // Save immediately when user stops dragging
+                          if (pageSettingsTimeoutRef.current) {
+                            clearTimeout(pageSettingsTimeoutRef.current)
+                          }
+                          await updatePageSettings({ backgroundColor: draftPageSettings.backgroundColor })
+                        }}
+                        className="w-full"
+                      />
                     </div>
                   </CardContent>
                 </Card>
@@ -1242,7 +1418,15 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         </div>
       </div>
 
-      {draftRows.map((row, rowIndex) => {
+      {/* Rows Container */}
+      <div 
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: `${draftPageSettings.rowSpacing ?? 24}px`
+        }}
+      >
+        {draftRows.map((row, rowIndex) => {
         // Remaining capacity calc
         const remaining = 3 - row.blocks.reduce((s,b)=> s + b.width, 0)
         return (
@@ -1310,7 +1494,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
             <div 
               className={cn('relative group')}
               style={{
-                marginBottom: rowIndex < draftRows.length - 1 ? `${draftPageSettings.rowSpacing ?? 24}px` : '0'
+                marginBottom: '0'
               }}
             >
               {/* Row Settings Icon */}
@@ -1339,8 +1523,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                 className="px-4 rounded-lg transition-all duration-200"
                 style={{
                   backgroundColor: row.backgroundColor || 'transparent',
-                  paddingTop: `${row.paddingTop || 16}px`,
-                  paddingBottom: `${row.paddingBottom || 16}px`
+                  paddingTop: `${row.paddingTop ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)}px`,
+                  paddingBottom: `${row.paddingBottom ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)}px`
                 }}
               >
                 {/* Dynamic grid for cards */}
@@ -1373,6 +1557,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                               borderRadius: block.borderRadius ? `${block.borderRadius}px` : undefined,
                               gridColumnStart: String(block.startPosition),
                               gridColumnEnd: `span ${block.width}`,
+                              minWidth: 0, // Allow flex items to shrink below their content size
+                              overflow: 'hidden', // Prevent content from overflowing
+                              wordWrap: 'break-word', // Break long words
+                              overflowWrap: 'break-word', // Modern alternative to word-wrap
+                              hyphens: 'auto' // Add hyphens for better text breaking
                             }}
                              data-card-id={block.id}
                             draggable={true}
@@ -1447,7 +1636,18 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                                     id="background-color"
                                                     type="color"
                                                     value={block.backgroundColor || '#ffffff'}
-                                                    onChange={(e) => updateBlockDebounced(row.id, block.id, { backgroundColor: e.target.value })}
+                                                    onChange={(e) => {
+                                                      const newColor = e.target.value
+                                                      // Store the base color for opacity calculations
+                                                      setBaseColors(prev => ({ 
+                                                        ...prev, 
+                                                        blockBackgrounds: { 
+                                                          ...prev.blockBackgrounds, 
+                                                          [block.id]: newColor 
+                                                        } 
+                                                      }))
+                                                      updateBlockDebounced(row.id, block.id, { backgroundColor: newColor })
+                                                    }}
                                                     className="w-12 h-9 p-1 border rounded"
                                                   />
                                                   <Input
@@ -1457,14 +1657,47 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                                     className="flex-1 text-sm"
                                                   />
                                                 </div>
-                                                <Button
-                                                  size="sm"
-                                                  variant={!block.backgroundColor || block.backgroundColor === 'transparent' ? "default" : "outline"}
-                                                  onClick={() => updateBlockDebounced(row.id, block.id, { backgroundColor: 'transparent' })}
-                                                  className="w-full text-xs"
-                                                >
-                                                  {!block.backgroundColor || block.backgroundColor === 'transparent' ? "Transparent (Active)" : "Make Transparent"}
-                                                </Button>
+                                                <div className="space-y-3">
+                                                  <div className="flex items-center justify-between">
+                                                    <Label htmlFor="background-opacity-slider">Background Opacity</Label>
+                                                    <span className="text-sm text-muted-foreground">
+                                                      {(() => {
+                                                        if (!block.backgroundColor || block.backgroundColor === 'transparent') return '0%'
+                                                        const match = block.backgroundColor.match(/rgba?\([^)]+,\s*([^)]+)\)/)
+                                                        if (match) return `${Math.round(parseFloat(match[1]) * 100)}%`
+                                                        return '100%'
+                                                      })()}
+                                                    </span>
+                                                  </div>
+                                                  <Slider
+                                                    id="background-opacity-slider"
+                                                    min={0}
+                                                    max={100}
+                                                    step={5}
+                                                    value={[(() => {
+                                                      if (!block.backgroundColor || block.backgroundColor === 'transparent') return 0
+                                                      const match = block.backgroundColor.match(/rgba?\([^)]+,\s*([^)]+)\)/)
+                                                      if (match) return Math.round(parseFloat(match[1]) * 100)
+                                                      return 100
+                                                    })()]}
+                                                    onValueChange={(value) => {
+                                                      const opacity = value[0] / 100
+                                                      if (opacity === 0) {
+                                                        updateBlockDebounced(row.id, block.id, { backgroundColor: 'transparent' })
+                                                      } else {
+                                                        // Use stored base color or extract from current backgroundColor
+                                                        const baseColor = baseColors.blockBackgrounds?.[block.id] || 
+                                                          (block.backgroundColor && !block.backgroundColor.includes('rgba') 
+                                                            ? block.backgroundColor 
+                                                            : '#ffffff')
+                                                        
+                                                        const { r, g, b } = extractRGBFromColor(baseColor)
+                                                        updateBlockDebounced(row.id, block.id, { backgroundColor: `rgba(${r}, ${g}, ${b}, ${opacity})` })
+                                                      }
+                                                    }}
+                                                    className="w-full"
+                                                  />
+                                                </div>
                                               </div>
                                             </div>
                                             <div className="space-y-2">
@@ -1493,7 +1726,18 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                                 id="border-color"
                                                 type="color"
                                                 value={block.borderColor || '#e5e7eb'}
-                                                onChange={(e) => updateBlockDebounced(row.id, block.id, { borderColor: e.target.value })}
+                                                onChange={(e) => {
+                                                  const newColor = e.target.value
+                                                  // Store the base color for opacity calculations
+                                                  setBaseColors(prev => ({ 
+                                                    ...prev, 
+                                                    blockBorders: { 
+                                                      ...prev.blockBorders, 
+                                                      [block.id]: newColor 
+                                                    } 
+                                                  }))
+                                                  updateBlockDebounced(row.id, block.id, { borderColor: newColor })
+                                                }}
                                                 className="w-12 h-9 p-1 border rounded"
                                               />
                                               <Input
@@ -1501,6 +1745,47 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                                 onChange={(e) => updateBlockDebounced(row.id, block.id, { borderColor: e.target.value || undefined })}
                                                 placeholder="#e5e7eb"
                                                 className="flex-1 text-sm"
+                                              />
+                                            </div>
+                                            <div className="space-y-3">
+                                              <div className="flex items-center justify-between">
+                                                <Label htmlFor="border-opacity-slider">Border Opacity</Label>
+                                                <span className="text-sm text-muted-foreground">
+                                                  {(() => {
+                                                    if (!block.borderColor) return '0%'
+                                                    const match = block.borderColor.match(/rgba?\([^)]+,\s*([^)]+)\)/)
+                                                    if (match) return `${Math.round(parseFloat(match[1]) * 100)}%`
+                                                    return '100%'
+                                                  })()}
+                                                </span>
+                                              </div>
+                                              <Slider
+                                                id="border-opacity-slider"
+                                                min={0}
+                                                max={100}
+                                                step={5}
+                                                value={[(() => {
+                                                  if (!block.borderColor) return 0
+                                                  const match = block.borderColor.match(/rgba?\([^)]+,\s*([^)]+)\)/)
+                                                  if (match) return Math.round(parseFloat(match[1]) * 100)
+                                                  return 100
+                                                })()]}
+                                                onValueChange={(value) => {
+                                                  const opacity = value[0] / 100
+                                                  if (opacity === 0) {
+                                                    updateBlockDebounced(row.id, block.id, { borderColor: undefined })
+                                                  } else {
+                                                    // Use stored base color or extract from current borderColor
+                                                    const baseColor = baseColors.blockBorders?.[block.id] || 
+                                                      (block.borderColor && !block.borderColor.includes('rgba') 
+                                                        ? block.borderColor 
+                                                        : '#e5e7eb')
+                                                    
+                                                    const { r, g, b } = extractRGBFromColor(baseColor)
+                                                    updateBlockDebounced(row.id, block.id, { borderColor: `rgba(${r}, ${g}, ${b}, ${opacity})` })
+                                                  }
+                                                }}
+                                                className="w-full"
                                               />
                                             </div>
                                           </div>
@@ -1910,6 +2195,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
           </React.Fragment>
         )
       })}
+      </div>
 
       {/* Global empty-state chooser for additional rows: show only when there are no rows */}
       {draftRows.length === 0 && (
@@ -2316,7 +2602,18 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                           id="row-background-color"
                           type="color"
                           value={row.backgroundColor || '#ffffff'}
-                          onChange={(e) => updateRow(row.id, { backgroundColor: e.target.value })}
+                          onChange={(e) => {
+                            const newColor = e.target.value
+                            // Store the base color for opacity calculations
+                            setBaseColors(prev => ({ 
+                              ...prev, 
+                              rowBackgrounds: { 
+                                ...prev.rowBackgrounds, 
+                                [row.id]: newColor 
+                              } 
+                            }))
+                            updateRow(row.id, { backgroundColor: newColor })
+                          }}
                           className="w-12 h-9 p-1 border rounded"
                         />
                         <Input
@@ -2326,14 +2623,47 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                           className="flex-1 text-sm"
                         />
                       </div>
-                      <Button
-                        size="sm"
-                        variant={!row.backgroundColor || row.backgroundColor === 'transparent' ? "default" : "outline"}
-                        onClick={() => updateRow(row.id, { backgroundColor: 'transparent' })}
-                        className="w-full text-xs"
-                      >
-                        {!row.backgroundColor || row.backgroundColor === 'transparent' ? "Transparent (Active)" : "Make Transparent"}
-                      </Button>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="row-background-opacity-slider">Background Opacity</Label>
+                          <span className="text-sm text-muted-foreground">
+                            {(() => {
+                              if (!row.backgroundColor || row.backgroundColor === 'transparent') return '0%'
+                              const match = row.backgroundColor.match(/rgba?\([^)]+,\s*([^)]+)\)/)
+                              if (match) return `${Math.round(parseFloat(match[1]) * 100)}%`
+                              return '100%'
+                            })()}
+                          </span>
+                        </div>
+                        <Slider
+                          id="row-background-opacity-slider"
+                          min={0}
+                          max={100}
+                          step={5}
+                          value={[(() => {
+                            if (!row.backgroundColor || row.backgroundColor === 'transparent') return 0
+                            const match = row.backgroundColor.match(/rgba?\([^)]+,\s*([^)]+)\)/)
+                            if (match) return Math.round(parseFloat(match[1]) * 100)
+                            return 100
+                          })()]}
+                          onValueChange={(value) => {
+                            const opacity = value[0] / 100
+                            if (opacity === 0) {
+                              updateRow(row.id, { backgroundColor: 'transparent' })
+                            } else {
+                              // Use stored base color or extract from current backgroundColor
+                              const baseColor = baseColors.rowBackgrounds?.[row.id] || 
+                                (row.backgroundColor && !row.backgroundColor.includes('rgba') 
+                                  ? row.backgroundColor 
+                                  : '#ffffff')
+                              
+                              const { r, g, b } = extractRGBFromColor(baseColor)
+                              updateRow(row.id, { backgroundColor: `rgba(${r}, ${g}, ${b}, ${opacity})` })
+                            }
+                          }}
+                          className="w-full"
+                        />
+                      </div>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -2355,7 +2685,18 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                             id="overlay-color"
                             type="color"
                             value={row.overlayColor || '#000000'}
-                            onChange={(e) => updateRow(row.id, { overlayColor: e.target.value })}
+                            onChange={(e) => {
+                              const newColor = e.target.value
+                              // Store the base color for opacity calculations
+                              setBaseColors(prev => ({ 
+                                ...prev, 
+                                rowOverlays: { 
+                                  ...prev.rowOverlays, 
+                                  [row.id]: newColor 
+                                } 
+                              }))
+                              updateRow(row.id, { overlayColor: newColor })
+                            }}
                             className="w-12 h-9 p-1 border rounded"
                           />
                           <Input
@@ -2403,7 +2744,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         min={0}
                         max={128}
                         step={8}
-                        value={[row.paddingTop || 16]}
+                        value={[row.paddingTop ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)]}
                         onValueChange={([value]) => updateRow(row.id, { 
                           paddingTop: value, 
                           paddingBottom: value
@@ -2411,7 +2752,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         className="flex-1"
                       />
                       <span className="text-sm font-medium w-12 text-center">
-                        {row.paddingTop || 16}px
+                        {row.paddingTop ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)}px
                       </span>
                     </div>
                   </div>
@@ -2432,7 +2773,18 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         id="top-line-color"
                         type="color"
                         value={row.topLineColor || '#e5e7eb'}
-                        onChange={(e) => updateRow(row.id, { topLineColor: e.target.value })}
+                        onChange={(e) => {
+                          const newColor = e.target.value
+                          // Store the base color for opacity calculations
+                          setBaseColors(prev => ({ 
+                            ...prev, 
+                            rowTopLines: { 
+                              ...prev.rowTopLines, 
+                              [row.id]: newColor 
+                            } 
+                          }))
+                          updateRow(row.id, { topLineColor: newColor })
+                        }}
                         className="w-12 h-9 p-1 border rounded"
                       />
                       <Input
@@ -2440,6 +2792,47 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         onChange={(e) => updateRow(row.id, { topLineColor: e.target.value || undefined })}
                         placeholder="#e5e7eb"
                         className="flex-1 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="top-line-opacity-slider">Line Opacity</Label>
+                        <span className="text-sm text-muted-foreground">
+                          {(() => {
+                            if (!row.topLineColor) return '0%'
+                            const match = row.topLineColor.match(/rgba?\([^)]+,\s*([^)]+)\)/)
+                            if (match) return `${Math.round(parseFloat(match[1]) * 100)}%`
+                            return '100%'
+                          })()}
+                        </span>
+                      </div>
+                      <Slider
+                        id="top-line-opacity-slider"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={[(() => {
+                          if (!row.topLineColor) return 0
+                          const match = row.topLineColor.match(/rgba?\([^)]+,\s*([^)]+)\)/)
+                          if (match) return Math.round(parseFloat(match[1]) * 100)
+                          return 100
+                        })()]}
+                        onValueChange={(value) => {
+                          const opacity = value[0] / 100
+                          if (opacity === 0) {
+                            updateRow(row.id, { topLineColor: undefined })
+                          } else {
+                            // Use stored base color or extract from current topLineColor
+                            const baseColor = baseColors.rowTopLines?.[row.id] || 
+                              (row.topLineColor && !row.topLineColor.includes('rgba') 
+                                ? row.topLineColor 
+                                : '#e5e7eb')
+                            
+                            const { r, g, b } = extractRGBFromColor(baseColor)
+                            updateRow(row.id, { topLineColor: `rgba(${r}, ${g}, ${b}, ${opacity})` })
+                          }
+                        }}
+                        className="w-full"
                       />
                     </div>
                   </div>
@@ -2478,7 +2871,18 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         id="bottom-line-color"
                         type="color"
                         value={row.bottomLineColor || '#e5e7eb'}
-                        onChange={(e) => updateRow(row.id, { bottomLineColor: e.target.value })}
+                        onChange={(e) => {
+                          const newColor = e.target.value
+                          // Store the base color for opacity calculations
+                          setBaseColors(prev => ({ 
+                            ...prev, 
+                            rowBottomLines: { 
+                              ...prev.rowBottomLines, 
+                              [row.id]: newColor 
+                            } 
+                          }))
+                          updateRow(row.id, { bottomLineColor: newColor })
+                        }}
                         className="w-12 h-9 p-1 border rounded"
                       />
                       <Input
@@ -2486,6 +2890,47 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                         onChange={(e) => updateRow(row.id, { bottomLineColor: e.target.value || undefined })}
                         placeholder="#e5e7eb"
                         className="flex-1 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="bottom-line-opacity-slider">Line Opacity</Label>
+                        <span className="text-sm text-muted-foreground">
+                          {(() => {
+                            if (!row.bottomLineColor) return '0%'
+                            const match = row.bottomLineColor.match(/rgba?\([^)]+,\s*([^)]+)\)/)
+                            if (match) return `${Math.round(parseFloat(match[1]) * 100)}%`
+                            return '100%'
+                          })()}
+                        </span>
+                      </div>
+                      <Slider
+                        id="bottom-line-opacity-slider"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={[(() => {
+                          if (!row.bottomLineColor) return 0
+                          const match = row.bottomLineColor.match(/rgba?\([^)]+,\s*([^)]+)\)/)
+                          if (match) return Math.round(parseFloat(match[1]) * 100)
+                          return 100
+                        })()]}
+                        onValueChange={(value) => {
+                          const opacity = value[0] / 100
+                          if (opacity === 0) {
+                            updateRow(row.id, { bottomLineColor: undefined })
+                          } else {
+                            // Use stored base color or extract from current bottomLineColor
+                            const baseColor = baseColors.rowBottomLines?.[row.id] || 
+                              (row.bottomLineColor && !row.bottomLineColor.includes('rgba') 
+                                ? row.bottomLineColor 
+                                : '#e5e7eb')
+                            
+                            const { r, g, b } = extractRGBFromColor(baseColor)
+                            updateRow(row.id, { bottomLineColor: `rgba(${r}, ${g}, ${b}, ${opacity})` })
+                          }
+                        }}
+                        className="w-full"
                       />
                     </div>
                   </div>

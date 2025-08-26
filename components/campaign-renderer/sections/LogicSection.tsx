@@ -166,6 +166,17 @@ function LogicSectionComponent({
       // Check if we have file variables that need special processing
       const variablesWithTypes = extractInputVariablesWithTypes(sections, index)
       const fileVariables = variablesWithTypes.filter(v => v.type === 'file')
+      
+      // Detect URL variables manually since extractInputVariablesWithTypes doesn't support URL type
+      const urlVariables = variablesWithTypes
+        .filter(v => v.type === 'text') // URL variables are detected as text variables
+        .filter(v => {
+          // Check if this is a URL input based on section configuration
+          const config = v.section.configuration as any
+          return config?.isUrlInput === true
+        })
+        .map(v => ({ ...v, type: 'url' as const })) // Convert type to 'url'
+      
       const hasFileVariables = fileVariables.length > 0
       
       console.log('📁 File variables detected:', fileVariables.map(v => ({ 
@@ -174,6 +185,13 @@ function LogicSectionComponent({
         sectionId: v.section.id,
         sectionType: v.section.type,
         isFileVariable: v.type === 'file'
+      })))
+      console.log('🔗 URL variables detected:', urlVariables.map(v => ({ 
+        name: v.name, 
+        title: v.title,
+        sectionId: v.section.id,
+        sectionType: v.section.type,
+        isUrlVariable: v.type === 'url'
       })))
       console.log('📁 Total sections before logic:', sections.length)
       console.log('📁 All sections details:', sections.map(s => ({ 
@@ -204,6 +222,31 @@ function LogicSectionComponent({
         }
       }
 
+      // Prepare URL browsing data if enabled
+      console.log('🔍 Browse URLs Debug:', {
+        browseUrlsEnabled: aiConfig.browseUrls?.enabled,
+        urlVariablesLength: urlVariables.length,
+        urlVariables: urlVariables.map(v => ({ name: v.name, type: v.type })),
+        variables: Object.keys(variables)
+      })
+      
+      const urlBrowsingData = aiConfig.browseUrls?.enabled && urlVariables.length > 0 ? {
+        enabled: true,
+        urlVariables: urlVariables.map(variable => {
+          let url = variables[variable.name] || ''
+          // Add https:// if no protocol is specified
+          if (url && !url.startsWith('http://') && !url.startsWith('https://')) {
+            url = `https://${url}`
+          }
+          return {
+            name: variable.name,
+            url: url
+          }
+        }).filter(uv => uv.url.trim() !== '') // Only include URLs that have values
+      } : { enabled: false }
+      
+      console.log('🔍 Final URL browsing data:', urlBrowsingData)
+
       // Prepare the AI request using the predefined configuration
       const aiRequest = {
         prompt: aiConfig.prompt,
@@ -217,6 +260,7 @@ function LogicSectionComponent({
         fileVariableNames: fileVariables.map(v => v.name),
         knowledgeBaseContext,
         knowledgeBaseFiles,
+        browseUrls: urlBrowsingData,
         // Add lead/campaign info for file processing
         leadId: userInputs.leadId || 'preview-lead',
         campaignId: userInputs.campaignId || 'preview-campaign'
@@ -249,6 +293,9 @@ function LogicSectionComponent({
         if (knowledgeBaseFiles && knowledgeBaseFiles.length > 0) {
           formData.append('knowledgeBaseFiles', JSON.stringify(knowledgeBaseFiles))
         }
+        
+        // Add URL browsing data if enabled
+        formData.append('browseUrls', JSON.stringify(urlBrowsingData))
         
         // Fetch actual files from storage and append them for direct OpenAI processing
         console.log('📁 Fetching files from storage for direct OpenAI processing...')
