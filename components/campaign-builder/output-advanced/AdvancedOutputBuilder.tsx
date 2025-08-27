@@ -1196,7 +1196,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   // Build Mode (scaffold): show simple dotted chooser when empty
   if (rows.length === 0 || rows.every(r => r.blocks.length === 0)) {
     return (
-      <div className={cn('p-4', className)}>
+      <div className={cn(className)} style={{ padding: '16px' }}>
         <div className="rounded-lg border-2 border-dashed border-input/60 bg-muted/10 flex items-center justify-center min-h-[120px]">
           <div className="text-center space-y-2">
             <div className="text-xs text-muted-foreground">Empty layout</div>
@@ -1214,10 +1214,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   return (
     <>
     <div 
-      className={cn('p-4', className)}
+      className={cn(className)}
       style={{
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        padding: '16px'
       }}
     >
       {/* Header row controls */}
@@ -1431,14 +1432,16 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         const remaining = 3 - row.blocks.reduce((s,b)=> s + b.width, 0)
         return (
           <React.Fragment key={row.id}>
-            {/* Inter-row drop zone */}
-            {rowIndex > 0 && (
+            {/* Inter-row drop zone - only show when row spacing > 0 or when dragging */}
+            {rowIndex > 0 && ((draftPageSettings.rowSpacing ?? 24) > 0 || draggedBlock) && (
               <div 
                 className={cn(
-                  "h-4 mx-4 rounded border-2 border-dashed transition-colors",
+                  "mx-4 rounded border-2 border-dashed transition-colors",
                   draggedBlock && dragOverPosition?.rowId === `inter-${rowIndex}` 
-                    ? "border-primary bg-primary/10" 
-                    : "border-transparent hover:border-input/40"
+                    ? "border-primary bg-primary/10 h-4" 
+                    : "border-transparent hover:border-input/40",
+                  // Only show height when there's actual spacing or when dragging
+                  (draftPageSettings.rowSpacing ?? 24) > 0 || draggedBlock ? "h-4" : "h-0"
                 )}
                 onDragOver={(e) => {
                   e.preventDefault()
@@ -1520,9 +1523,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
               
               {/* Row Background Container */}
               <div
-                className="px-4 rounded-lg transition-all duration-200"
+                className="rounded-lg transition-all duration-200"
                 style={{
                   backgroundColor: row.backgroundColor || 'transparent',
+                  paddingLeft: '16px',
+                  paddingRight: '16px',
                   paddingTop: `${row.paddingTop ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)}px`,
                   paddingBottom: `${row.paddingBottom ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)}px`
                 }}
