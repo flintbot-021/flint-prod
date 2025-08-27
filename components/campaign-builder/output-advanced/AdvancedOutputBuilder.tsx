@@ -28,7 +28,7 @@ type ContentItem =
   | { id: string; type: 'button'; content: string; href?: string; color?: string; textColor?: string }
   | { id: string; type: 'image'; src?: string; alt?: string; maxHeight?: number }
   | { id: string; type: 'numbered-list' | 'bullet-list'; items: string[] }
-  | { id: string; type: 'divider' }
+  | { id: string; type: 'divider'; color?: string; opacity?: number; thickness?: number; style?: 'solid' | 'dotted' | 'dashed'; paddingTop?: number; paddingBottom?: number }
 
 type Block = {
   id: string
@@ -40,7 +40,11 @@ type Block = {
     borderWidth?: number
     glassEffect?: boolean
     textAlignment?: 'left' | 'center' | 'right'
-    padding?: number
+    padding?: number // Legacy: uniform padding
+    paddingTop?: number
+    paddingBottom?: number
+    paddingLeft?: number
+    paddingRight?: number
   spacing?: number
   borderRadius?: number
   content: ContentItem[]
@@ -59,6 +63,8 @@ type Row = {
   bottomLineWidth?: number;
   paddingTop?: number;
   paddingBottom?: number;
+  paddingLeft?: number;
+  paddingRight?: number;
 }
 
 type PageSettings = {
@@ -193,8 +199,33 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   const [activeImageId, setActiveImageId] = useState<string | null>(null)
   const [buttonSheetOpen, setButtonSheetOpen] = useState(false)
   const [activeButtonId, setActiveButtonId] = useState<string | null>(null)
+  const [dividerSheetOpen, setDividerSheetOpen] = useState(false)
+  const [activeDividerId, setActiveDividerId] = useState<string | null>(null)
   const [draggedBlock, setDraggedBlock] = useState<{rowId: string, blockId: string, block: Block} | null>(null)
   const [dragOverPosition, setDragOverPosition] = useState<{rowId: string, position: number} | null>(null)
+  
+  // Helper functions for responsive units
+  const pxToRem = (px: number): number => px / 16 // Assuming 16px = 1rem
+  const remToPx = (rem: number): number => rem * 16
+  const formatPaddingValue = (value: number): string => `${pxToRem(value)}rem`
+  
+  // Helper function to convert hex color and opacity to rgba
+  const hexToRgba = (hex: string, opacity: number = 1): string => {
+    // Remove # if present
+    hex = hex.replace('#', '')
+    
+    // Convert 3-digit hex to 6-digit
+    if (hex.length === 3) {
+      hex = hex.split('').map(char => char + char).join('')
+    }
+    
+    // Parse RGB values
+    const r = parseInt(hex.substring(0, 2), 16)
+    const g = parseInt(hex.substring(2, 4), 16)
+    const b = parseInt(hex.substring(4, 6), 16)
+    
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`
+  }
   
   // Store base colors for opacity calculations
   const [baseColors, setBaseColors] = useState<{
@@ -517,7 +548,13 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         case 'paragraph':
           return `<div class="leading-relaxed font-medium text-lg md:text-xl" style="color:${textColor}">${interpolator.interpolate(item.content || '', { variables, availableVariables: [] }).content}</div>`
         case 'divider':
-          return `<hr class="border-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent backdrop-blur-sm"/>`
+          const dividerItem = item as any
+          const dividerColor = hexToRgba(dividerItem.color || '#e5e7eb', dividerItem.opacity ?? 1)
+          const dividerThickness = dividerItem.thickness ?? 1
+          const dividerStyle = dividerItem.style || 'solid'
+          const dividerPaddingTop = formatPaddingValue(dividerItem.paddingTop ?? 12)
+          const dividerPaddingBottom = formatPaddingValue(dividerItem.paddingBottom ?? 12)
+          return `<div style="padding-top:${dividerPaddingTop};padding-bottom:${dividerPaddingBottom}"><hr style="border:none;border-top:${dividerThickness}px ${dividerStyle} ${dividerColor};margin:0"/></div>`
         case 'button':
           const buttonHref = interpolator.interpolate((item as any).href || '#', { variables, availableVariables: [] }).content
           const buttonText = interpolator.interpolate(item.content || 'Button', { variables, availableVariables: [] }).content
@@ -545,8 +582,14 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       const hasCustomBorder = b.borderColor
       const hasGlassEffect = b.glassEffect && (hasCustomBackground || hasCustomBorder)
       
+      // Handle individual padding values with fallback to uniform padding
+      const paddingTop = b.paddingTop ?? b.padding ?? 24
+      const paddingBottom = b.paddingBottom ?? b.padding ?? 24
+      const paddingLeft = b.paddingLeft ?? b.padding ?? 24
+      const paddingRight = b.paddingRight ?? b.padding ?? 24
+      
       const styles: string[] = [
-        `padding:${b.padding ?? 24}px`,
+        `padding:${formatPaddingValue(paddingTop)} ${formatPaddingValue(paddingRight)} ${formatPaddingValue(paddingBottom)} ${formatPaddingValue(paddingLeft)}`,
         `grid-column-start:${b.startPosition}`,
         `grid-column-end:span ${b.width}`,
         'min-width:0', // Allow flex items to shrink below their content size
@@ -644,10 +687,10 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         'margin:0 auto',
         'position:relative',
         'z-index:10',
-        'padding-left:24px',
-        'padding-right:24px',
-        `padding-top:${r.paddingTop ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)}px`,
-        `padding-bottom:${r.paddingBottom ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)}px`
+        `padding-left:${formatPaddingValue(r.paddingLeft ?? 24)}`,
+        `padding-right:${formatPaddingValue(r.paddingRight ?? 24)}`,
+        `padding-top:${formatPaddingValue(r.paddingTop ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2))}`,
+        `padding-bottom:${formatPaddingValue(r.paddingBottom ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2))}`
       ].join(';')
       
       return `<div style="${rowStyles.join(';')}">${overlay}${topLine}<div style="${contentStyle}"><div style="${gridStyle}">${r.blocks.map(renderBlock).join('')}</div></div>${bottomLine}</div>`
@@ -1196,7 +1239,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   // Build Mode (scaffold): show simple dotted chooser when empty
   if (rows.length === 0 || rows.every(r => r.blocks.length === 0)) {
     return (
-      <div className={cn('p-4', className)}>
+      <div className={cn(className)} style={{ padding: '1rem' }}>
         <div className="rounded-lg border-2 border-dashed border-input/60 bg-muted/10 flex items-center justify-center min-h-[120px]">
           <div className="text-center space-y-2">
             <div className="text-xs text-muted-foreground">Empty layout</div>
@@ -1214,10 +1257,11 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
   return (
     <>
     <div 
-      className={cn('p-4', className)}
+      className={cn(className)}
       style={{
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        padding: '1rem'
       }}
     >
       {/* Header row controls */}
@@ -1431,14 +1475,16 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         const remaining = 3 - row.blocks.reduce((s,b)=> s + b.width, 0)
         return (
           <React.Fragment key={row.id}>
-            {/* Inter-row drop zone */}
-            {rowIndex > 0 && (
+            {/* Inter-row drop zone - only show when row spacing > 0 or when dragging */}
+            {rowIndex > 0 && ((draftPageSettings.rowSpacing ?? 24) > 0 || draggedBlock) && (
               <div 
                 className={cn(
-                  "h-4 mx-4 rounded border-2 border-dashed transition-colors",
+                  "mx-4 rounded border-2 border-dashed transition-colors",
                   draggedBlock && dragOverPosition?.rowId === `inter-${rowIndex}` 
-                    ? "border-primary bg-primary/10" 
-                    : "border-transparent hover:border-input/40"
+                    ? "border-primary bg-primary/10 h-4" 
+                    : "border-transparent hover:border-input/40",
+                  // Only show height when there's actual spacing or when dragging
+                  (draftPageSettings.rowSpacing ?? 24) > 0 || draggedBlock ? "h-4" : "h-0"
                 )}
                 onDragOver={(e) => {
                   e.preventDefault()
@@ -1520,11 +1566,13 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
               
               {/* Row Background Container */}
               <div
-                className="px-4 rounded-lg transition-all duration-200"
+                className="rounded-lg transition-all duration-200"
                 style={{
                   backgroundColor: row.backgroundColor || 'transparent',
-                  paddingTop: `${row.paddingTop ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)}px`,
-                  paddingBottom: `${row.paddingBottom ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)}px`
+                  paddingLeft: formatPaddingValue(row.paddingLeft ?? 16),
+                  paddingRight: formatPaddingValue(row.paddingRight ?? 16),
+                  paddingTop: formatPaddingValue(row.paddingTop ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)),
+                  paddingBottom: formatPaddingValue(row.paddingBottom ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2))
                 }}
               >
                 {/* Dynamic grid for cards */}
@@ -1887,21 +1935,98 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                           <CardDescription>Adjust padding, content spacing, and corner rounding</CardDescription>
                                         </CardHeader>
                                         <CardContent className="space-y-6">
-                                          <div className="space-y-3">
-                                            <div className="flex items-center justify-between">
-                                              <Label htmlFor="padding-slider">Padding</Label>
-                                              <span className="text-sm text-muted-foreground">{block.padding ?? 24}px</span>
-                                </div>
-                                            <Slider
-                                              id="padding-slider"
-                                              min={0}
-                                              max={64}
-                                              step={4}
-                                              value={[block.padding ?? 24]}
-                                              onValueChange={(value) => updateBlockDebounced(row.id, block.id, { padding: value[0] })}
-                                              className="w-full"
-                                            />
-                                </div>
+                                          {/* Individual Padding Controls */}
+                                          <div className="space-y-4">
+                                            <Label className="text-sm font-medium">Padding</Label>
+                                            <div className="grid grid-cols-2 gap-4">
+                                              {/* Top Padding */}
+                                              <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                  <Label htmlFor="padding-top-slider" className="text-xs">Top</Label>
+                                                  <span className="text-xs text-muted-foreground">{pxToRem(block.paddingTop ?? block.padding ?? 24).toFixed(1)}rem</span>
+                                                </div>
+                                                <Slider
+                                                  id="padding-top-slider"
+                                                  min={0}
+                                                  max={64}
+                                                  step={4}
+                                                  value={[block.paddingTop ?? block.padding ?? 24]}
+                                                  onValueChange={(value) => updateBlockDebounced(row.id, block.id, { paddingTop: value[0] })}
+                                                  className="w-full"
+                                                />
+                                              </div>
+                                              
+                                              {/* Bottom Padding */}
+                                              <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                  <Label htmlFor="padding-bottom-slider" className="text-xs">Bottom</Label>
+                                                  <span className="text-xs text-muted-foreground">{pxToRem(block.paddingBottom ?? block.padding ?? 24).toFixed(1)}rem</span>
+                                                </div>
+                                                <Slider
+                                                  id="padding-bottom-slider"
+                                                  min={0}
+                                                  max={64}
+                                                  step={4}
+                                                  value={[block.paddingBottom ?? block.padding ?? 24]}
+                                                  onValueChange={(value) => updateBlockDebounced(row.id, block.id, { paddingBottom: value[0] })}
+                                                  className="w-full"
+                                                />
+                                              </div>
+                                              
+                                              {/* Left Padding */}
+                                              <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                  <Label htmlFor="padding-left-slider" className="text-xs">Left</Label>
+                                                  <span className="text-xs text-muted-foreground">{pxToRem(block.paddingLeft ?? block.padding ?? 24).toFixed(1)}rem</span>
+                                                </div>
+                                                <Slider
+                                                  id="padding-left-slider"
+                                                  min={0}
+                                                  max={64}
+                                                  step={4}
+                                                  value={[block.paddingLeft ?? block.padding ?? 24]}
+                                                  onValueChange={(value) => updateBlockDebounced(row.id, block.id, { paddingLeft: value[0] })}
+                                                  className="w-full"
+                                                />
+                                              </div>
+                                              
+                                              {/* Right Padding */}
+                                              <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                  <Label htmlFor="padding-right-slider" className="text-xs">Right</Label>
+                                                  <span className="text-xs text-muted-foreground">{pxToRem(block.paddingRight ?? block.padding ?? 24).toFixed(1)}rem</span>
+                                                </div>
+                                                <Slider
+                                                  id="padding-right-slider"
+                                                  min={0}
+                                                  max={64}
+                                                  step={4}
+                                                  value={[block.paddingRight ?? block.padding ?? 24]}
+                                                  onValueChange={(value) => updateBlockDebounced(row.id, block.id, { paddingRight: value[0] })}
+                                                  className="w-full"
+                                                />
+                                              </div>
+                                            </div>
+                                            
+                                            {/* Reset to Uniform Button */}
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => {
+                                                const uniformPadding = block.paddingTop ?? block.padding ?? 24
+                                                updateBlockDebounced(row.id, block.id, {
+                                                  paddingTop: uniformPadding,
+                                                  paddingBottom: uniformPadding,
+                                                  paddingLeft: uniformPadding,
+                                                  paddingRight: uniformPadding,
+                                                  padding: undefined // Clear legacy padding
+                                                })
+                                              }}
+                                              className="w-full text-xs"
+                                            >
+                                              Make All Equal
+                                            </Button>
+                                          </div>
                                           <div className="space-y-3">
                                             <div className="flex items-center justify-between">
                                               <Label htmlFor="spacing-slider">Content Spacing</Label>
@@ -2086,7 +2211,26 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                       )}
                                     </div>
                                   ) : item.type === 'divider' ? (
-                                    <hr className="border-input" />
+                                    <div 
+                                      className="cursor-pointer hover:bg-muted/20 rounded p-2 transition-colors"
+                                      onClick={() => {
+                                        setActiveDividerId(item.id)
+                                        setDividerSheetOpen(true)
+                                      }}
+                                      style={{
+                                        paddingTop: formatPaddingValue((item as any).paddingTop ?? 12),
+                                        paddingBottom: formatPaddingValue((item as any).paddingBottom ?? 12)
+                                      }}
+                                    >
+                                      <hr 
+                                        style={{
+                                          borderColor: hexToRgba((item as any).color || '#e5e7eb', (item as any).opacity ?? 1),
+                                          borderWidth: `${((item as any).thickness ?? 1)}px 0 0 0`,
+                                          borderStyle: (item as any).style || 'solid',
+                                          margin: 0
+                                        }}
+                                      />
+                                    </div>
                                   ) : (item.type === 'numbered-list' || item.type === 'bullet-list') ? (
                                     <div className="space-y-2">
                                       {((item as any).items || []).map((val: string, idx: number) => (
@@ -2571,6 +2715,201 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       </SheetContent>
     </Sheet>
 
+    {/* Divider Properties Sheet */}
+    <Sheet open={dividerSheetOpen} onOpenChange={setDividerSheetOpen}>
+      <SheetContent side="right" className="w-96 overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Divider Properties</SheetTitle>
+          <SheetDescription>
+            Customize the appearance of this divider line
+          </SheetDescription>
+        </SheetHeader>
+        <div className="mt-6 space-y-6">
+          {activeDividerId && (() => {
+            let activeDividerItem = null
+            for (const row of draftRows) {
+              for (const block of row.blocks) {
+                const found = block.content.find(item => item.id === activeDividerId && item.type === 'divider')
+                if (found) {
+                  activeDividerItem = found
+                  break
+                }
+              }
+              if (activeDividerItem) break
+            }
+            
+            if (!activeDividerItem) return null
+            
+            return (
+              <>
+                {/* Divider Style */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Divider Style</CardTitle>
+                    <CardDescription>Customize the line appearance</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Color */}
+                    <div className="space-y-2">
+                      <Label htmlFor={`divider-color-${activeDividerId}`}>Color</Label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="color"
+                          value={(activeDividerItem as any).color || '#e5e7eb'}
+                          onChange={(e) => updateContentItemDebounced(activeDividerId, { color: e.target.value })}
+                          className="w-10 h-10 rounded border border-input cursor-pointer"
+                        />
+                        <div className="flex-1">
+                          <Input
+                            value={(activeDividerItem as any).color || ''}
+                            onChange={(e) => updateContentItemDebounced(activeDividerId, { color: e.target.value || undefined })}
+                            placeholder="#e5e7eb"
+                            className="text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Opacity */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={`divider-opacity-${activeDividerId}`}>Opacity</Label>
+                        <span className="text-sm text-muted-foreground">{Math.round(((activeDividerItem as any).opacity ?? 1) * 100)}%</span>
+                      </div>
+                      <Slider
+                        id={`divider-opacity-${activeDividerId}`}
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={[(activeDividerItem as any).opacity ?? 1]}
+                        onValueChange={(value) => updateContentItemDebounced(activeDividerId, { opacity: value[0] })}
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Thickness */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={`divider-thickness-${activeDividerId}`}>Thickness</Label>
+                        <span className="text-sm text-muted-foreground">{(activeDividerItem as any).thickness ?? 1}px</span>
+                      </div>
+                      <Slider
+                        id={`divider-thickness-${activeDividerId}`}
+                        min={1}
+                        max={10}
+                        step={1}
+                        value={[(activeDividerItem as any).thickness ?? 1]}
+                        onValueChange={(value) => updateContentItemDebounced(activeDividerId, { thickness: value[0] })}
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Style */}
+                    <div className="space-y-2">
+                      <Label>Line Style</Label>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant={(activeDividerItem as any).style === 'solid' || !(activeDividerItem as any).style ? 'default' : 'outline'}
+                          onClick={() => updateContentItemDebounced(activeDividerId, { style: 'solid' })}
+                          className="flex-1"
+                        >
+                          Solid
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={(activeDividerItem as any).style === 'dotted' ? 'default' : 'outline'}
+                          onClick={() => updateContentItemDebounced(activeDividerId, { style: 'dotted' })}
+                          className="flex-1"
+                        >
+                          Dotted
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={(activeDividerItem as any).style === 'dashed' ? 'default' : 'outline'}
+                          onClick={() => updateContentItemDebounced(activeDividerId, { style: 'dashed' })}
+                          className="flex-1"
+                        >
+                          Dashed
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Spacing */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Spacing</CardTitle>
+                    <CardDescription>Control the space around the divider</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Top Padding */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={`divider-padding-top-${activeDividerId}`}>Top Padding</Label>
+                        <span className="text-sm text-muted-foreground">{pxToRem((activeDividerItem as any).paddingTop ?? 12).toFixed(1)}rem</span>
+                      </div>
+                      <Slider
+                        id={`divider-padding-top-${activeDividerId}`}
+                        min={0}
+                        max={64}
+                        step={4}
+                        value={[(activeDividerItem as any).paddingTop ?? 12]}
+                        onValueChange={(value) => updateContentItemDebounced(activeDividerId, { paddingTop: value[0] })}
+                        className="w-full"
+                      />
+                    </div>
+
+                    {/* Bottom Padding */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor={`divider-padding-bottom-${activeDividerId}`}>Bottom Padding</Label>
+                        <span className="text-sm text-muted-foreground">{pxToRem((activeDividerItem as any).paddingBottom ?? 12).toFixed(1)}rem</span>
+                      </div>
+                      <Slider
+                        id={`divider-padding-bottom-${activeDividerId}`}
+                        min={0}
+                        max={64}
+                        step={4}
+                        value={[(activeDividerItem as any).paddingBottom ?? 12]}
+                        onValueChange={(value) => updateContentItemDebounced(activeDividerId, { paddingBottom: value[0] })}
+                        className="w-full"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Preview */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Preview</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div 
+                      style={{
+                        paddingTop: formatPaddingValue((activeDividerItem as any).paddingTop ?? 12),
+                        paddingBottom: formatPaddingValue((activeDividerItem as any).paddingBottom ?? 12)
+                      }}
+                    >
+                      <hr 
+                        style={{
+                          borderColor: hexToRgba((activeDividerItem as any).color || '#e5e7eb', (activeDividerItem as any).opacity ?? 1),
+                          borderWidth: `${((activeDividerItem as any).thickness ?? 1)}px 0 0 0`,
+                          borderStyle: (activeDividerItem as any).style || 'solid',
+                          margin: 0
+                        }}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )
+          })()}
+        </div>
+      </SheetContent>
+    </Sheet>
+
     {/* Row Properties Sheet */}
     <Sheet open={!!rowPropsOpenFor} onOpenChange={(open) => !open && setRowPropsOpenFor(null)}>
       <SheetContent side="right" className="w-96 overflow-y-auto">
@@ -2733,28 +3072,118 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Internal Padding</CardTitle>
-                  <CardDescription>Control the vertical spacing inside the row</CardDescription>
+                  <CardDescription>Control the spacing inside the row on all sides</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="row-padding">Vertical Padding</Label>
-                    <div className="flex items-center space-x-3">
+                  {/* Individual Padding Controls */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Top Padding */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="row-padding-top" className="text-sm">Top</Label>
+                        <span className="text-sm text-muted-foreground">
+                          {pxToRem(row.paddingTop ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)).toFixed(1)}rem
+                        </span>
+                      </div>
                       <Slider
-                        id="row-padding"
+                        id="row-padding-top"
                         min={0}
                         max={128}
                         step={8}
                         value={[row.paddingTop ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)]}
-                        onValueChange={([value]) => updateRow(row.id, { 
-                          paddingTop: value, 
-                          paddingBottom: value
-                        })}
-                        className="flex-1"
+                        onValueChange={([value]) => updateRow(row.id, { paddingTop: value })}
+                        className="w-full"
                       />
-                      <span className="text-sm font-medium w-12 text-center">
-                        {row.paddingTop ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)}px
-                      </span>
                     </div>
+                    
+                    {/* Bottom Padding */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="row-padding-bottom" className="text-sm">Bottom</Label>
+                        <span className="text-sm text-muted-foreground">
+                          {pxToRem(row.paddingBottom ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)).toFixed(1)}rem
+                        </span>
+                      </div>
+                      <Slider
+                        id="row-padding-bottom"
+                        min={0}
+                        max={128}
+                        step={8}
+                        value={[row.paddingBottom ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)]}
+                        onValueChange={([value]) => updateRow(row.id, { paddingBottom: value })}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    {/* Left Padding */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="row-padding-left" className="text-sm">Left</Label>
+                        <span className="text-sm text-muted-foreground">
+                          {pxToRem(row.paddingLeft ?? 16).toFixed(1)}rem
+                        </span>
+                      </div>
+                      <Slider
+                        id="row-padding-left"
+                        min={0}
+                        max={128}
+                        step={8}
+                        value={[row.paddingLeft ?? 16]}
+                        onValueChange={([value]) => updateRow(row.id, { paddingLeft: value })}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    {/* Right Padding */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="row-padding-right" className="text-sm">Right</Label>
+                        <span className="text-sm text-muted-foreground">
+                          {pxToRem(row.paddingRight ?? 16).toFixed(1)}rem
+                        </span>
+                      </div>
+                      <Slider
+                        id="row-padding-right"
+                        min={0}
+                        max={128}
+                        step={8}
+                        value={[row.paddingRight ?? 16]}
+                        onValueChange={([value]) => updateRow(row.id, { paddingRight: value })}
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Reset to Uniform Button */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const verticalPadding = row.paddingTop ?? Math.max(0, (draftPageSettings.rowSpacing ?? 24) / 2)
+                        updateRow(row.id, {
+                          paddingTop: verticalPadding,
+                          paddingBottom: verticalPadding
+                        })
+                      }}
+                      className="flex-1 text-xs"
+                    >
+                      Match Vertical
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const horizontalPadding = row.paddingLeft ?? 16
+                        updateRow(row.id, {
+                          paddingLeft: horizontalPadding,
+                          paddingRight: horizontalPadding
+                        })
+                      }}
+                      className="flex-1 text-xs"
+                    >
+                      Match Horizontal
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

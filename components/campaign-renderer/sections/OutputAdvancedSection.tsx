@@ -28,6 +28,28 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
     return campaignTheme.buttonTextColor
   }
 
+  // Helper functions for responsive units
+  const pxToRem = (px: number): number => px / 16 // Assuming 16px = 1rem
+  const formatPaddingValue = (value: number): string => `${pxToRem(value)}rem`
+  
+  // Helper function to convert hex color and opacity to rgba
+  const hexToRgba = (hex: string, opacity: number = 1): string => {
+    // Remove # if present
+    hex = hex.replace('#', '')
+    
+    // Convert 3-digit hex to 6-digit
+    if (hex.length === 3) {
+      hex = hex.split('').map(char => char + char).join('')
+    }
+    
+    // Parse RGB values
+    const r = parseInt(hex.substring(0, 2), 16)
+    const g = parseInt(hex.substring(2, 4), 16)
+    const b = parseInt(hex.substring(4, 6), 16)
+    
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`
+  }
+
   // Helper function to generate button hover color (slightly darker)
   const getButtonHoverColor = (baseColor: string) => {
     // Simple color darkening - convert hex to RGB, darken by 20%, convert back
@@ -103,7 +125,24 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
           </div>
         )
       case 'divider':
-        return <hr className="border-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent backdrop-blur-sm" />
+        const dividerItem = item as any
+        const dividerColor = hexToRgba(dividerItem.color || '#e5e7eb', dividerItem.opacity ?? 1)
+        const dividerThickness = dividerItem.thickness ?? 1
+        const dividerStyle = dividerItem.style || 'solid'
+        const dividerPaddingTop = formatPaddingValue(dividerItem.paddingTop ?? 12)
+        const dividerPaddingBottom = formatPaddingValue(dividerItem.paddingBottom ?? 12)
+        return (
+          <div style={{
+            paddingTop: dividerPaddingTop,
+            paddingBottom: dividerPaddingBottom
+          }}>
+            <hr style={{
+              border: 'none',
+              borderTop: `${dividerThickness}px ${dividerStyle} ${dividerColor}`,
+              margin: 0
+            }} />
+          </div>
+        )
       case 'button':
         const buttonHref = interpolator.interpolate((item as any).href || '#', { variables: variableMap, availableVariables: [] }).content
         const buttonText = interpolator.interpolate(item.content || 'Button', { variables: variableMap, availableVariables: [] }).content
@@ -232,7 +271,7 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
   // Get page settings with defaults
   const maxColumns = pageSettings.maxColumns || 3
   const gridGap = pageSettings.gridGap || 16
-  const rowSpacing = pageSettings.rowSpacing || 24
+  const rowSpacing = pageSettings.rowSpacing ?? 24
   const backgroundColor = pageSettings.backgroundColor
 
   // Determine if we're on mobile - use multiple detection methods
@@ -263,15 +302,15 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
   // Mobile-responsive grid gap
   const responsiveGridGap = isMobile ? Math.max(12, gridGap * 0.75) : gridGap
   
-  // Mobile-responsive row spacing
-  const responsiveRowSpacing = isMobile ? Math.max(16, rowSpacing * 0.75) : rowSpacing
+  // Mobile-responsive row spacing - respect 0 values
+  const responsiveRowSpacing = isMobile ? (rowSpacing === 0 ? 0 : Math.max(16, rowSpacing * 0.75)) : rowSpacing
 
   return (
     <div 
       className="h-full flex flex-col pb-20"
       style={{ backgroundColor: backgroundColor || undefined }}
     >
-      <div className={cn("flex-1 space-y-8", isMobile ? "py-8" : "py-12")}>
+      <div className={cn("flex-1", isMobile ? "py-8" : "py-12")}>
         {rows.map((row: any, idx: number) => (
           <div key={row.id}>
             {/* Full-width row background that breaks out of container */}
@@ -317,8 +356,8 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
                   isMobile ? "px-4 max-w-full" : "px-6 max-w-4xl"
                 )}
                 style={{
-                  paddingTop: `${isMobile ? Math.max(12, (row.paddingTop || 16) * 0.75) : (row.paddingTop || 16)}px`,
-                  paddingBottom: `${isMobile ? Math.max(12, (row.paddingBottom || 16) * 0.75) : (row.paddingBottom || 16)}px`
+                  paddingTop: formatPaddingValue(isMobile ? Math.max(12, (row.paddingTop || 16) * 0.75) : (row.paddingTop || 16)),
+                  paddingBottom: formatPaddingValue(isMobile ? Math.max(12, (row.paddingBottom || 16) * 0.75) : (row.paddingBottom || 16))
                 }}
               >
                 <div 
