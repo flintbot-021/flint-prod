@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input'
   import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
   import { Slider } from '@/components/ui/slider'
   import { Switch } from '@/components/ui/switch'
-  import { Plus, Trash2, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical, Heading1, Heading2, Heading3, Text as TextIcon, MousePointerClick, Image as ImageIcon, ListOrdered, List, Minus, ChevronUp, ChevronDown, Settings } from 'lucide-react'
+  import { Plus, Trash2, AlignLeft, AlignCenter, AlignRight, SlidersHorizontal, GripVertical, Heading1, Heading2, Heading3, Text as TextIcon, MousePointerClick, Image as ImageIcon, ListOrdered, List, Minus, ChevronUp, ChevronDown, Settings, Copy } from 'lucide-react'
 import { ContentToolbar } from './ContentToolbar'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem as UICommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
 import { VariableSuggestionDropdown } from '@/components/ui/variable-suggestion-dropdown'
@@ -766,6 +766,36 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     setActiveRowId(next.length ? next[next.length - 1].id : null)
   }
 
+  const duplicateRow = async (rowId: string) => {
+    const rowToDuplicate = draftRows.find(r => r.id === rowId)
+    if (!rowToDuplicate) return
+
+    // Create a deep copy of the row with new IDs
+    const duplicatedRow: Row = {
+      ...rowToDuplicate,
+      id: uid('row'),
+      blocks: rowToDuplicate.blocks.map(block => ({
+        ...block,
+        id: uid('block'),
+        content: block.content.map(item => ({
+          ...item,
+          id: uid('content')
+        }))
+      }))
+    }
+
+    // Find the index of the original row and insert the duplicate right after it
+    const originalRowIndex = draftRows.findIndex(r => r.id === rowId)
+    const next = [
+      ...draftRows.slice(0, originalRowIndex + 1),
+      duplicatedRow,
+      ...draftRows.slice(originalRowIndex + 1)
+    ]
+    
+    setDraftRows(next)
+    await saveRows(next)
+  }
+
   const tryAddBlockToRow = (rowsState: Row[], rowId: string, width: 1 | 2 | 3): { next: Row[]; added: boolean } => {
     const next = rowsState.map(r => ({ ...r, blocks: [...r.blocks] }))
     const row = next.find(r => r.id === rowId)
@@ -1170,10 +1200,16 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     ]
     
     // Now reflow all blocks into rows using inline wrapping
-    const newRowsData: { id: string; blocks: Block[] }[] = []
+    const newRowsData: Row[] = []
     let currentRowBlocks: Block[] = []
     let currentRowWidth = 0
     let currentRowId = newRows[0]?.id || uid('row')
+    
+    // Create a map of existing rows to preserve their properties
+    const existingRowsMap = new Map<string, Row>()
+    for (const row of draftRows) {
+      existingRowsMap.set(row.id, row)
+    }
     
     for (const block of reorderedBlocks) {
       // Check if block fits in current row
@@ -1187,8 +1223,10 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       } else {
         // Doesn't fit, wrap to new row
         if (currentRowBlocks.length > 0) {
+          // Preserve existing row properties or create new row with defaults
+          const existingRow = existingRowsMap.get(currentRowId)
           newRowsData.push({
-            id: currentRowId,
+            ...(existingRow || { id: currentRowId }),
             blocks: currentRowBlocks
           })
         }
@@ -1205,8 +1243,10 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     
     // Add the last row if it has blocks
     if (currentRowBlocks.length > 0) {
+      // Preserve existing row properties or create new row with defaults
+      const existingRow = existingRowsMap.get(currentRowId)
       newRowsData.push({
-        id: currentRowId,
+        ...(existingRow || { id: currentRowId }),
         blocks: currentRowBlocks
       })
     }
@@ -1543,15 +1583,27 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                 marginBottom: '0'
               }}
             >
-              {/* Row Settings Icon */}
-              <Button
-                size="sm"
-                variant="outline"
-                className="absolute -right-2 -top-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 p-0"
-                onClick={() => setRowPropsOpenFor(rowPropsOpenFor === row.id ? null : row.id)}
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
+              {/* Row Action Icons */}
+              <div className="absolute -right-2 -top-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 p-0"
+                  onClick={() => duplicateRow(row.id)}
+                  title="Duplicate Row"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 w-8 p-0"
+                  onClick={() => setRowPropsOpenFor(rowPropsOpenFor === row.id ? null : row.id)}
+                  title="Row Settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+              </div>
               
               {/* Top Line */}
               {row.topLineColor && (
