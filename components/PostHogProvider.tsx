@@ -28,7 +28,7 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
         'password', 'pass', 'authorization', 'auth',
         'address', 'street', 'postcode', 'postal_code'
       ])
-      const requiredKeys = new Set(['token', 'distinct_id', '$device_id'])
+      const requiredKeys = new Set(['token', 'distinct_id', '$device_id', 'session_id', 'sessionId', 'campaign_id', 'campaignId', 'user_type'])
       const isEmailLike = (v: any) => typeof v === 'string' && /.+@.+\..+/.test(v)
       const isSensitiveKey = (k: string) => piiKeys.has(k.toLowerCase())
 

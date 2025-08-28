@@ -62,6 +62,7 @@ import {
 } from '@/lib/data-access/sessions'
 
 import { createPublicLeadSecure } from '@/lib/data-access/leads'
+import { usePostHog } from 'posthog-js/react'
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -133,6 +134,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   const networkState = useNetworkState()
   const errorHandler = useErrorHandler()
   const variableEngine = useVariableEngine()
+  const posthog = usePostHog()
   
   // Get campaign theme colors
   const theme = getCampaignTheme(campaign || undefined)
@@ -191,6 +193,55 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     
     return newSessionId
   })
+
+  // Identify anonymous user in PostHog with stable session ID
+  useEffect(() => {
+    if (posthog && sessionId && campaign) {
+      // Create a stable anonymous identifier for this session
+      // This allows PostHog to link events across page views while staying cookieless
+      const anonymousId = `anon_${sessionId}`
+      
+      console.log('🔍 [PostHog] Identifying anonymous user:', {
+        anonymousId,
+        sessionId,
+        campaignSlug: slug,
+        campaignId: campaign.id
+      })
+      
+      // Identify the user with session-based properties (no PII)
+      posthog.identify(anonymousId, {
+        // Session metadata (non-PII)
+        session_id: sessionId,
+        campaign_slug: slug,
+        campaign_id: campaign.id,
+        user_type: 'anonymous',
+        session_start: new Date().toISOString(),
+        // Device context (non-PII)
+        device_type: deviceInfo?.type || 'unknown',
+        screen_size: deviceInfo?.screenSize ? `${deviceInfo.screenSize.width}x${deviceInfo.screenSize.height}` : 'unknown',
+        // Campaign context
+        campaign_name: campaign.name,
+        total_sections: sections.length
+      })
+      
+      // Track initial campaign view
+      posthog.capture('campaign_viewed', {
+        campaign_id: campaign.id,
+        campaign_slug: slug,
+        campaign_name: campaign.name,
+        session_id: sessionId,
+        total_sections: sections.length,
+        user_type: 'anonymous',
+        referrer: typeof document !== 'undefined' ? document.referrer : null,
+        // UTM parameters if available
+        utm_source: new URLSearchParams(window.location.search).get('utm_source'),
+        utm_medium: new URLSearchParams(window.location.search).get('utm_medium'),
+        utm_campaign: new URLSearchParams(window.location.search).get('utm_campaign'),
+        utm_term: new URLSearchParams(window.location.search).get('utm_term'),
+        utm_content: new URLSearchParams(window.location.search).get('utm_content')
+      })
+    }
+  }, [posthog, sessionId, campaign, slug, sections.length, deviceInfo])
 
   // Use campaign renderer hook for clean response handling (like preview page)
   const campaignRenderer = useCampaignRenderer({
@@ -263,10 +314,45 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
         if (leadResult.success) {
           console.log('✅ Lead created successfully')
+          
+          // Track lead conversion in PostHog
+          if (posthog && campaign) {
+            posthog.capture('lead_converted', {
+              campaign_id: campaign.id,
+              campaign_slug: slug,
+              campaign_name: campaign.name,
+              session_id: sessionId,
+              conversion_section_id: captureSection?.id,
+              conversion_section_type: 'capture',
+              user_type: 'anonymous',
+              has_name: !!name,
+              has_phone: !!phone,
+              conversion_timestamp: new Date().toISOString()
+            })
+            
+            // Update user properties to mark as converted
+            posthog.setPersonProperties({
+              has_converted: true,
+              last_conversion_campaign: campaign.id,
+              last_conversion_date: new Date().toISOString()
+            })
+          }
+          
           // Generate a mock ID since we can't get the real one back for security
           return `lead_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
         } else {
           console.error('❌ Failed to create lead:', leadResult.error)
+          
+          // Track failed conversion attempt
+          if (posthog && campaign) {
+            posthog.capture('lead_conversion_failed', {
+              campaign_id: campaign.id,
+              session_id: sessionId,
+              error: leadResult.error,
+              user_type: 'anonymous'
+            })
+          }
+          
           return undefined
         }
       } catch (error) {
@@ -558,6 +644,30 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     const timeoutId = setTimeout(saveResponses, 1000)
     return () => clearTimeout(timeoutId)
   }, [campaignRenderer.userInputs, campaignRenderer.currentSection, campaignRenderer.completedSections, campaignRenderer.isComplete, campaign, isSessionRecovered])
+
+  // Track campaign completion
+  useEffect(() => {
+    if (posthog && campaign && campaignRenderer.isComplete && sections.length > 0) {
+      posthog.capture('campaign_completed', {
+        campaign_id: campaign.id,
+        campaign_slug: slug,
+        campaign_name: campaign.name,
+        session_id: sessionId,
+        total_sections: sections.length,
+        completion_timestamp: new Date().toISOString(),
+        user_type: 'anonymous',
+        has_lead: !!campaignRenderer.leadId
+      })
+      
+      // Update user properties
+      posthog.setPersonProperties({
+        has_completed_campaign: true,
+        last_completed_campaign: campaign.id,
+        last_completion_date: new Date().toISOString(),
+        campaigns_completed: 1 // This would need to be incremented if tracking multiple campaigns
+      })
+    }
+  }, [posthog, campaign, campaignRenderer.isComplete, sections.length, sessionId, slug, campaignRenderer.leadId])
 
   // Save individual response to session
   const saveResponseToSession = async (sectionId: string, fieldId: string, value: any, metadata?: any) => {
@@ -1020,24 +1130,92 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
 
   const handleSectionComplete = (sectionIndex: number, data: any) => {
     if (sections.length > 0) {
+      // Track section completion
+      if (posthog && campaign && sections[sectionIndex]) {
+        const section = sections[sectionIndex]
+        posthog.capture('section_completed', {
+          campaign_id: campaign.id,
+          campaign_slug: slug,
+          session_id: sessionId,
+          section_index: sectionIndex,
+          section_id: section.id,
+          section_type: section.type,
+          section_title: section.title,
+          user_type: 'anonymous',
+          completion_timestamp: new Date().toISOString(),
+          // Track progress
+          progress_percentage: Math.round(((sectionIndex + 1) / sections.length) * 100),
+          sections_completed: sectionIndex + 1,
+          total_sections: sections.length
+        })
+      }
+      
       campaignRenderer.handleSectionComplete(sectionIndex, data)
     }
   }
 
   const handleNext = () => {
     if (sections.length > 0) {
+      const currentIndex = campaignRenderer.currentSection
+      const nextIndex = currentIndex + 1
+      
+      // Track section navigation
+      if (posthog && campaign) {
+        posthog.capture('section_navigation', {
+          campaign_id: campaign.id,
+          session_id: sessionId,
+          from_section: currentIndex,
+          to_section: nextIndex,
+          direction: 'next',
+          section_type: sections[currentIndex]?.type,
+          user_type: 'anonymous'
+        })
+      }
+      
       campaignRenderer.goNext()
     }
   }
 
   const handlePrevious = () => {
     if (sections.length > 0) {
+      const currentIndex = campaignRenderer.currentSection
+      const previousIndex = currentIndex - 1
+      
+      // Track section navigation
+      if (posthog && campaign) {
+        posthog.capture('section_navigation', {
+          campaign_id: campaign.id,
+          session_id: sessionId,
+          from_section: currentIndex,
+          to_section: previousIndex,
+          direction: 'previous',
+          section_type: sections[currentIndex]?.type,
+          user_type: 'anonymous'
+        })
+      }
+      
       campaignRenderer.goPrevious()
     }
   }
 
   const handleNavigateToSection = (index: number) => {
     if (sections.length > 0) {
+      const currentIndex = campaignRenderer.currentSection
+      
+      // Track section navigation
+      if (posthog && campaign && index !== currentIndex) {
+        posthog.capture('section_navigation', {
+          campaign_id: campaign.id,
+          session_id: sessionId,
+          from_section: currentIndex,
+          to_section: index,
+          direction: index > currentIndex ? 'forward_jump' : 'backward_jump',
+          section_type: sections[currentIndex]?.type,
+          target_section_type: sections[index]?.type,
+          user_type: 'anonymous'
+        })
+      }
+      
       campaignRenderer.goToSection(index)
     }
   }
