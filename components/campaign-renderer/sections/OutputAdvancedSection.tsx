@@ -182,14 +182,40 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
         )
       case 'image':
         const imageSrc = interpolator.interpolate(item.src || '', { variables: variableMap, availableVariables: [] }).content
-        const maxHeightStyle = (item as any).maxHeight ? { maxHeight: `${(item as any).maxHeight}px`, height: 'auto' } : {}
+        const isCoverMode = (item as any).coverMode
+        const imageStyle = isCoverMode 
+          ? { 
+              width: '100%', 
+              height: '100%', 
+              objectFit: 'cover' as const, 
+              position: 'absolute' as const,
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0
+            }
+          : (item as any).maxHeight 
+            ? { maxHeight: `${(item as any).maxHeight}px`, height: 'auto', objectFit: 'cover' as const }
+            : { objectFit: 'cover' as const }
+        
         return imageSrc ? (
-          <img 
-            src={imageSrc} 
-            alt={item.alt || ''} 
-            className="rounded-2xl w-full object-cover shadow-2xl" 
-            style={maxHeightStyle}
-          />
+          isCoverMode ? (
+            <div className="relative w-full h-full" style={{ minHeight: '300px' }}>
+              <img 
+                src={imageSrc} 
+                alt={item.alt || ''} 
+                className="rounded-2xl shadow-2xl" 
+                style={imageStyle}
+              />
+            </div>
+          ) : (
+            <img 
+              src={imageSrc} 
+              alt={item.alt || ''} 
+              className="rounded-2xl w-full shadow-2xl" 
+              style={imageStyle}
+            />
+          )
         ) : null
       case 'numbered-list':
         return (
@@ -218,12 +244,36 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
     const hasCustomBorder = block.borderColor
     const hasGlassEffect = block.glassEffect && (hasCustomBackground || hasCustomBorder)
     
+    // Check if block contains any cover mode images
+    const hasCoverModeImage = (block.content || []).some((item: any) => item.type === 'image' && item.coverMode)
+    
+    // Handle individual padding values with fallback to uniform padding
+    const paddingTop = block.paddingTop ?? block.padding ?? 24
+    const paddingBottom = block.paddingBottom ?? block.padding ?? 24
+    const paddingLeft = block.paddingLeft ?? block.padding ?? 24
+    const paddingRight = block.paddingRight ?? block.padding ?? 24
+    
+    // For cover mode images, we need to handle padding differently
+    const blockPadding = hasCoverModeImage 
+      ? 0 // No padding for cover mode images
+      : isMobile 
+        ? Math.max(16, Math.min(paddingTop, paddingBottom, paddingLeft, paddingRight) * 0.75) 
+        : undefined
+    
+    const blockPaddingStyle = hasCoverModeImage ? {} : {
+      paddingTop: formatPaddingValue(isMobile ? Math.max(12, paddingTop * 0.75) : paddingTop),
+      paddingBottom: formatPaddingValue(isMobile ? Math.max(12, paddingBottom * 0.75) : paddingBottom),
+      paddingLeft: formatPaddingValue(isMobile ? Math.max(12, paddingLeft * 0.75) : paddingLeft),
+      paddingRight: formatPaddingValue(isMobile ? Math.max(12, paddingRight * 0.75) : paddingRight)
+    }
+    
     return (
       <div
         key={block.id}
         className={cn(
           'transition-all duration-300 ease-out',
-          hasGlassEffect ? 'rounded-2xl backdrop-blur-md border hover:shadow-xl hover:scale-[1.02] shadow-2xl' : 'rounded-lg'
+          hasGlassEffect ? 'rounded-2xl backdrop-blur-md border hover:shadow-xl hover:scale-[1.02] shadow-2xl' : 'rounded-lg',
+          hasCoverModeImage ? 'overflow-hidden' : '' // Ensure cover images don't overflow rounded corners
         )}
         style={{
           background: hasCustomBackground 
@@ -236,7 +286,7 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
             ? '1px solid rgba(255, 255, 255, 0.2)' 
             : undefined,
           borderRadius: block.borderRadius ? `${block.borderRadius}px` : undefined,
-          padding: isMobile ? Math.max(16, (block.padding ?? 24) * 0.75) : (block.padding ?? 24),
+          padding: blockPadding,
           // Remove grid positioning for mobile stacking
           ...(isMobile ? {} : {
             gridColumnStart: String(block.startPosition),
@@ -246,14 +296,28 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
             ? hasCustomBorder && block.borderColor
               ? `0 0 20px ${block.borderColor}80, 0 0 40px ${block.borderColor}40, 0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)`
               : '0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-            : undefined
+            : undefined,
+          minHeight: hasCoverModeImage ? '300px' : undefined, // Ensure minimum height for cover images
+          ...blockPaddingStyle
         }}
       >
         <div className={cn(
-          align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center'
-        )} style={{ rowGap: (block.spacing ?? 12), display: 'grid' }}>
+          align === 'left' ? 'text-left' : align === 'right' ? 'text-right' : 'text-center',
+          hasCoverModeImage ? 'h-full relative' : ''
+        )} style={{ 
+          rowGap: hasCoverModeImage ? 0 : (block.spacing ?? 12), 
+          display: hasCoverModeImage ? 'block' : 'grid',
+          height: hasCoverModeImage ? '100%' : 'auto',
+          position: hasCoverModeImage ? 'relative' : 'static'
+        }}>
           {(block.content || []).map((item: any) => (
-            <div key={item.id}>{renderItem(item, block.textColor, align)}</div>
+            <div 
+              key={item.id} 
+              className={item.type === 'image' && item.coverMode ? 'absolute inset-0' : ''}
+              style={item.type === 'image' && item.coverMode ? { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 } : {}}
+            >
+              {renderItem(item, block.textColor, align)}
+            </div>
           ))}
         </div>
       </div>

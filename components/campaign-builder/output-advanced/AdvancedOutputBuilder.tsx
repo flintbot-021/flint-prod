@@ -26,7 +26,7 @@ import { getCampaignTheme } from '@/components/campaign-renderer/utils'
 type ContentItem =
   | { id: string; type: 'headline' | 'subheading' | 'h3' | 'paragraph'; content: string }
   | { id: string; type: 'button'; content: string; href?: string; color?: string; textColor?: string }
-  | { id: string; type: 'image'; src?: string; alt?: string; maxHeight?: number }
+  | { id: string; type: 'image'; src?: string; alt?: string; maxHeight?: number; coverMode?: boolean }
   | { id: string; type: 'numbered-list' | 'bullet-list'; items: string[] }
   | { id: string; type: 'divider'; color?: string; opacity?: number; thickness?: number; style?: 'solid' | 'dotted' | 'dashed'; paddingTop?: number; paddingBottom?: number }
 
@@ -564,9 +564,14 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
           const buttonAlignment = align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center'
           return `<div class="flex ${buttonAlignment}"><a href="${buttonHref}" class="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-center backdrop-blur-md border transition-all duration-300 ease-out hover:shadow-xl hover:scale-105 active:scale-95 shadow-2xl" style="background-color:${buttonColor};color:${buttonTextColor};border:1px solid rgba(255, 255, 255, 0.2);box-shadow:0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)" onmouseover="this.style.backgroundColor='${buttonHoverColor}'" onmouseout="this.style.backgroundColor='${buttonColor}'">${buttonText}</a></div>`
         case 'image':
-          const maxHeightStyle = (item as any).maxHeight ? `max-height:${(item as any).maxHeight}px;height:auto;` : ''
           const imageSrc = interpolator.interpolate(item.src || '', { variables, availableVariables: [] }).content
-          return imageSrc ? `<img class="rounded-lg w-full object-cover" style="${maxHeightStyle}" src="${imageSrc}" alt="${item.alt || ''}"/>` : ''
+          const isCoverMode = (item as any).coverMode
+          if (isCoverMode) {
+            return imageSrc ? `<div style="position:relative;width:100%;height:100%;min-height:300px;"><img class="rounded-lg" style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;object-fit:cover;" src="${imageSrc}" alt="${item.alt || ''}"/></div>` : ''
+          } else {
+            const maxHeightStyle = (item as any).maxHeight ? `max-height:${(item as any).maxHeight}px;height:auto;` : ''
+            return imageSrc ? `<img class="rounded-lg w-full object-cover" style="${maxHeightStyle}" src="${imageSrc}" alt="${item.alt || ''}"/>` : ''
+          }
         case 'numbered-list':
           return `<ol class="list-decimal pl-5 space-y-1">${(item.items||[]).map(li=>`<li>${interpolator.interpolate(li, { variables, availableVariables: [] }).content}</li>`).join('')}</ol>`
         case 'bullet-list':
@@ -582,6 +587,9 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       const hasCustomBorder = b.borderColor
       const hasGlassEffect = b.glassEffect && (hasCustomBackground || hasCustomBorder)
       
+      // Check if block contains any cover mode images
+      const hasCoverModeImage = (b.content || []).some((item: any) => item.type === 'image' && item.coverMode)
+      
       // Handle individual padding values with fallback to uniform padding
       const paddingTop = b.paddingTop ?? b.padding ?? 24
       const paddingBottom = b.paddingBottom ?? b.padding ?? 24
@@ -589,15 +597,27 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
       const paddingRight = b.paddingRight ?? b.padding ?? 24
       
       const styles: string[] = [
-        `padding:${formatPaddingValue(paddingTop)} ${formatPaddingValue(paddingRight)} ${formatPaddingValue(paddingBottom)} ${formatPaddingValue(paddingLeft)}`,
         `grid-column-start:${b.startPosition}`,
         `grid-column-end:span ${b.width}`,
         'min-width:0', // Allow flex items to shrink below their content size
-        'overflow:hidden', // Prevent content from overflowing
         'word-wrap:break-word', // Break long words
         'overflow-wrap:break-word', // Modern alternative to word-wrap
         'hyphens:auto' // Add hyphens for better text breaking
       ]
+      
+      // Handle padding differently for cover mode images
+      if (!hasCoverModeImage) {
+        styles.push(`padding:${formatPaddingValue(paddingTop)} ${formatPaddingValue(paddingRight)} ${formatPaddingValue(paddingBottom)} ${formatPaddingValue(paddingLeft)}`)
+      }
+      
+      // Add overflow hidden for cover mode images to respect border radius
+      if (hasCoverModeImage) {
+        styles.push('overflow:hidden')
+        styles.push('position:relative')
+        styles.push('min-height:300px')
+      } else {
+        styles.push('overflow:hidden') // Prevent content from overflowing
+      }
       
       if (hasCustomBackground) {
         styles.push(`background:${b.backgroundColor}`)
@@ -632,8 +652,18 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         ? 'rounded-2xl transition-all duration-300 ease-out hover:shadow-xl hover:scale-[1.02] shadow-2xl'
         : 'rounded-lg transition-all duration-300 ease-out'
       
-      const innerStyle = `display:grid;row-gap:${b.spacing ?? 12}px;text-align:${align}`
-      return `<div class="${classNames}" style="${styles.join(';')}"><div style="${innerStyle}">${b.content.map(item => renderItem(item, b.textColor, align)).join('')}</div></div>`
+      const innerStyle = hasCoverModeImage 
+        ? `position:relative;height:100%;text-align:${align}`
+        : `display:grid;row-gap:${b.spacing ?? 12}px;text-align:${align}`
+        
+      const contentHtml = b.content.map((item, index) => {
+        if (item.type === 'image' && (item as any).coverMode) {
+          return `<div style="position:absolute;top:0;left:0;right:0;bottom:0;">${renderItem(item, b.textColor, align)}</div>`
+        }
+        return renderItem(item, b.textColor, align)
+      }).join('')
+      
+      return `<div class="${classNames}" style="${styles.join(';')}"><div style="${innerStyle}">${contentHtml}</div></div>`
     }
 
     const containerStyle = [
@@ -2238,8 +2268,9 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                             alt={(item as any).alt || 'Image'} 
                                             className="w-full object-cover rounded-lg border border-input group-hover:border-primary transition-colors"
                                             style={{
-                                              height: (item as any).maxHeight ? `${(item as any).maxHeight}px` : '192px',
-                                              maxHeight: (item as any).maxHeight ? `${(item as any).maxHeight}px` : '192px'
+                                              height: (item as any).coverMode ? '100%' : ((item as any).maxHeight ? `${(item as any).maxHeight}px` : '192px'),
+                                              maxHeight: (item as any).coverMode ? 'none' : ((item as any).maxHeight ? `${(item as any).maxHeight}px` : '192px'),
+                                              minHeight: (item as any).coverMode ? '200px' : undefined
                                             }}
                                           />
                                           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -2252,7 +2283,8 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                         <div 
                                           className="w-full border-2 border-dashed border-input group-hover:border-primary rounded-lg flex items-center justify-center bg-muted/10 group-hover:bg-muted/20 transition-colors"
                                           style={{
-                                            height: (item as any).maxHeight ? `${(item as any).maxHeight}px` : '192px'
+                                            height: (item as any).coverMode ? '100%' : ((item as any).maxHeight ? `${(item as any).maxHeight}px` : '192px'),
+                                            minHeight: (item as any).coverMode ? '200px' : undefined
                                           }}
                                         >
                                           <div className="text-center text-muted-foreground">
@@ -2546,25 +2578,41 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                       </p>
                                     </div>
                                     
-                                    <div className="space-y-3">
-                                      <div className="flex items-center justify-between">
-                                        <Label htmlFor={`max-height-${activeImageId}`}>Max Height</Label>
-                                        <span className="text-sm text-muted-foreground">{(activeImageItem as any).maxHeight ?? 192}px</span>
+                                    <div className="flex items-center justify-between">
+                                      <div className="space-y-1">
+                                        <Label htmlFor="cover-mode-toggle">Cover Mode</Label>
+                                        <p className="text-xs text-muted-foreground">Make image fill the entire available space with cover behavior</p>
                                       </div>
-                                      <Slider
-                                        id={`max-height-${activeImageId}`}
-                                        min={100}
-                                        max={800}
-                                        step={10}
-                                        value={[(activeImageItem as any).maxHeight ?? 192]}
-                                        onValueChange={(value) => updateContentItemDebounced(activeImageId, { maxHeight: value[0] })}
-                                        onValueCommit={() => {}} // No need for onValueCommit save with debounced updates
-                                        className="w-full"
+                                      <Switch
+                                        id="cover-mode-toggle"
+                                        checked={(activeImageItem as any).coverMode || false}
+                                        onCheckedChange={(checked) => {
+                                          updateContentItemDebounced(activeImageId, { coverMode: checked })
+                                        }}
                                       />
-                                      <p className="text-xs text-muted-foreground">
-                                        Control the maximum height of the image display
-                                      </p>
                                     </div>
+                                    
+                                    {!(activeImageItem as any).coverMode && (
+                                      <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                          <Label htmlFor={`max-height-${activeImageId}`}>Max Height</Label>
+                                          <span className="text-sm text-muted-foreground">{(activeImageItem as any).maxHeight ?? 192}px</span>
+                                        </div>
+                                        <Slider
+                                          id={`max-height-${activeImageId}`}
+                                          min={100}
+                                          max={800}
+                                          step={10}
+                                          value={[(activeImageItem as any).maxHeight ?? 192]}
+                                          onValueChange={(value) => updateContentItemDebounced(activeImageId, { maxHeight: value[0] })}
+                                          onValueCommit={() => {}} // No need for onValueCommit save with debounced updates
+                                          className="w-full"
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                          Control the maximum height of the image display
+                                        </p>
+                                      </div>
+                                    )}
                                   </CardContent>
                                 </Card>
               </>
