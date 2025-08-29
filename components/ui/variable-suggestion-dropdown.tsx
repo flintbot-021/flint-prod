@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
 import { Hash } from 'lucide-react'
 import { Badge } from './badge'
@@ -178,19 +179,23 @@ export function VariableSuggestionDropdown({
     
     const rect = input.getBoundingClientRect()
     
-    // For better UX, center the dropdown under the input
-    // This feels more natural than bottom-left positioning
+    // For portal rendering, we need absolute positioning relative to viewport
     const dropdownWidth = 256 // min-w-64 = 256px
     const inputWidth = rect.width
     const leftOffset = Math.max(0, (inputWidth - dropdownWidth) / 2)
     
-
+    // Check if there's enough space below, otherwise position above
+    const spaceBelow = window.innerHeight - rect.bottom
+    const spaceAbove = rect.top
+    const dropdownHeight = 192 // max-h-48 = 192px
+    
+    const shouldPositionAbove = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight
     
     return {
-      top: rect.height + 5,
-      left: leftOffset
+      top: shouldPositionAbove ? rect.top - dropdownHeight - 5 : rect.bottom + 5,
+      left: rect.left + leftOffset
     }
-  }, [value])
+  }, [])
   
   // Handle input change
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -212,12 +217,13 @@ export function VariableSuggestionDropdown({
       const query = atMatch[1] || ''
       const atIndex = cursorPos - query.length - 1
       
-
+      // Recalculate position each time to account for input movement
+      const position = getCursorPosition()
       
       setDropdown({
         show: true,
         query,
-        position: getCursorPosition(),
+        position,
         atIndex
       })
       setSelectedIndex(0)
@@ -337,17 +343,43 @@ export function VariableSuggestionDropdown({
     }, 150)
   }, [onBlur, onSave, autoSave, value])
   
-  // Handle clicking outside
+  // Handle clicking outside and scroll repositioning
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdown(prev => ({ ...prev, show: false }))
+      const target = event.target as Node
+      
+      // Don't close if clicking on the input or dropdown
+      if (inputRef.current && inputRef.current.contains(target)) {
+        return
+      }
+      
+      if (dropdownRef.current && dropdownRef.current.contains(target)) {
+        return
+      }
+      
+      setDropdown(prev => ({ ...prev, show: false }))
+    }
+    
+    const handleScroll = () => {
+      if (dropdown.show) {
+        // Recalculate position on scroll
+        const newPosition = getCursorPosition()
+        setDropdown(prev => ({ ...prev, position: newPosition }))
       }
     }
     
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    if (dropdown.show) {
+      document.addEventListener('mousedown', handleClickOutside)
+      window.addEventListener('scroll', handleScroll, true) // Use capture to catch all scroll events
+      window.addEventListener('resize', handleScroll)
+      
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+        window.removeEventListener('scroll', handleScroll, true)
+        window.removeEventListener('resize', handleScroll)
+      }
+    }
+  }, [dropdown.show, getCursorPosition])
   
   const InputComponent = multiline ? 'textarea' : 'input'
 
@@ -394,72 +426,74 @@ export function VariableSuggestionDropdown({
         {...(multiline ? { rows: 1 } : {})}
       />
       
-      {dropdown.show && filteredVariables.length > 0 && (
-        <div
-          ref={dropdownRef}
-          className="absolute z-[9999] bg-white border border-gray-300 rounded-md shadow-xl max-h-48 overflow-y-auto min-w-64"
-          style={{
-            top: dropdown.position.top,
-            left: dropdown.position.left
-          }}
-          onMouseDown={(e) => e.preventDefault()} // Prevent input blur
-        >
-          <div className="p-2 border-b border-gray-200 bg-gray-50">
-            <div className="flex items-center space-x-2">
-              <Hash className="h-3 w-3 text-gray-500" />
-              <span className="text-xs font-medium text-gray-600">Variables</span>
-            </div>
-          </div>
-          
-          {filteredVariables.map((variable, index) => (
-            <button
-              key={variable.name}
-              type="button"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                insertVariable(variable)
-              }}
-              className={cn(
-                'w-full text-left px-3 py-2 flex items-center justify-between hover:bg-gray-50 border-none bg-transparent focus:bg-blue-50 focus:outline-none',
-                index === selectedIndex && 'bg-blue-50'
-              )}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2 mb-1">
-              <Badge 
-                    variant={variable.type === 'input' ? 'secondary' : 'default'}
-                    className={cn(
-                      'text-xs',
-                      variable.type === 'input' ? 'bg-blue-100 text-blue-800' : 
-                      variable.type === 'capture' ? 'bg-purple-100 text-purple-800' : 
-                      'bg-green-100 text-green-800'
-                    )}
-              >
-                {variable.type}
-              </Badge>
-                  <code className="text-sm font-mono text-orange-600">@{variable.name}</code>
-                </div>
-                <div className="text-xs text-gray-400">
-                  <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-600">
-                    {(() => {
-                      const sampleValue = getSampleValue(variable)
-                      return sampleValue.length > 40 
-                        ? `${sampleValue.substring(0, 40)}...` 
-                        : sampleValue
-                    })()}
-                  </code>
-                </div>
+      {dropdown.show && filteredVariables.length > 0 && typeof window !== 'undefined' && 
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed z-[9999] bg-white border border-gray-300 rounded-md shadow-xl max-h-48 overflow-y-auto min-w-64"
+            style={{
+              top: dropdown.position.top,
+              left: dropdown.position.left
+            }}
+            onMouseDown={(e) => e.preventDefault()} // Prevent input blur
+          >
+            <div className="p-2 border-b border-gray-200 bg-gray-50">
+              <div className="flex items-center space-x-2">
+                <Hash className="h-3 w-3 text-gray-500" />
+                <span className="text-xs font-medium text-gray-600">Variables</span>
               </div>
-            </button>
-          ))}
-          
-          {filteredVariables.length === 0 && dropdown.query && (
-            <div className="px-3 py-2 text-sm text-gray-500 text-center">
-              No variables found for "{dropdown.query}"
             </div>
-          )}
-      </div>
+            
+            {filteredVariables.map((variable, index) => (
+              <button
+                key={variable.name}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  insertVariable(variable)
+                }}
+                className={cn(
+                  'w-full text-left px-3 py-2 flex items-center justify-between hover:bg-gray-50 border-none bg-transparent focus:bg-blue-50 focus:outline-none',
+                  index === selectedIndex && 'bg-blue-50'
+                )}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-2 mb-1">
+                <Badge 
+                      variant={variable.type === 'input' ? 'secondary' : 'default'}
+                      className={cn(
+                        'text-xs',
+                        variable.type === 'input' ? 'bg-blue-100 text-blue-800' : 
+                        variable.type === 'capture' ? 'bg-purple-100 text-purple-800' : 
+                        'bg-green-100 text-green-800'
+                      )}
+                >
+                  {variable.type}
+                </Badge>
+                    <code className="text-sm font-mono text-orange-600">@{variable.name}</code>
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-600">
+                      {(() => {
+                        const sampleValue = getSampleValue(variable)
+                        return sampleValue.length > 40 
+                          ? `${sampleValue.substring(0, 40)}...` 
+                          : sampleValue
+                      })()}
+                    </code>
+                  </div>
+                </div>
+              </button>
+            ))}
+            
+            {filteredVariables.length === 0 && dropdown.query && (
+              <div className="px-3 py-2 text-sm text-gray-500 text-center">
+                No variables found for "{dropdown.query}"
+              </div>
+            )}
+        </div>,
+        document.body
       )}
     </div>
   )
