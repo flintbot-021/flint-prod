@@ -30,8 +30,6 @@ interface BillingSummary {
   max_campaigns: number
   currently_published: number
   subscription_status: 'active' | 'inactive' | 'cancelled' | 'past_due'
-  scheduled_tier_change?: string | null
-  scheduled_change_date?: string | null
   published_campaigns: Array<{
     id: string
     name: string
@@ -560,61 +558,6 @@ export default function AccountPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Scheduled Downgrade Notification */}
-        {billingSummary.scheduled_tier_change && billingSummary.scheduled_change_date && (
-          <div className="mb-8">
-            <Card className="border-2 border-amber-200 bg-amber-50">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold text-amber-800 flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5" />
-                  Scheduled Plan Change
-                </CardTitle>
-                <CardDescription className="text-amber-700">
-                  Your subscription will change on {new Date(billingSummary.scheduled_change_date).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-amber-800 mb-1">
-                      <strong>Current Plan:</strong> {billingSummary.tier_name} (${billingSummary.monthly_price}/month)
-                    </p>
-                    <p className="text-sm text-amber-800">
-                      <strong>Changing to:</strong> {billingSummary.scheduled_tier_change === 'free' ? 'Free Plan' : 
-                        billingSummary.scheduled_tier_change.charAt(0).toUpperCase() + billingSummary.scheduled_tier_change.slice(1) + ' Plan'} 
-                      {billingSummary.scheduled_tier_change === 'free' ? ' ($0/month)' : ''}
-                    </p>
-                  </div>
-                  <Button 
-                    className="bg-amber-600 text-white hover:bg-amber-700"
-                    onClick={handleManageBilling}
-                    disabled={isProcessing === 'portal'}
-                  >
-                    {isProcessing === 'portal' ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Opening...
-                      </>
-                    ) : (
-                      'Cancel Change'
-                    )}
-                  </Button>
-                </div>
-                <div className="mt-4 p-3 bg-amber-100 rounded-lg">
-                  <p className="text-xs text-amber-700">
-                    💡 <strong>Want to keep your current plan?</strong> Click "Cancel Change" to manage your subscription and prevent this change from happening.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
         {/* Published Campaigns List */}
         {billingSummary.published_campaigns.length > 0 && (

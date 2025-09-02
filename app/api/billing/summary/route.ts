@@ -44,9 +44,7 @@ export async function GET(request: NextRequest) {
         subscription_tier,
         max_published_campaigns,
         subscription_status,
-        stripe_customer_id,
-        scheduled_tier_change,
-        scheduled_change_date
+        stripe_customer_id
       `)
       .eq('id', user.id)
       .single()
@@ -89,8 +87,6 @@ export async function GET(request: NextRequest) {
       max_campaigns: maxCampaigns,
       currently_published: currentlyPublished,
       subscription_status: profile.subscription_status || 'inactive',
-      scheduled_tier_change: profile.scheduled_tier_change,
-      scheduled_change_date: profile.scheduled_change_date,
       published_campaigns: (publishedCampaigns || []).map(campaign => ({
         id: campaign.id,
         name: campaign.name,
