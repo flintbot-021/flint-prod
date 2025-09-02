@@ -8,8 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { useAuth } from '@/lib/auth-context'
 import { toast } from '@/components/ui/use-toast'
 import { PrimaryNavigation } from '@/components/primary-navigation'
-import { useConfirmationDialog } from '@/components/ui/confirmation-dialog'
-import { PlanChangeConfirmationModal } from '@/components/ui/plan-change-confirmation-modal'
 import { 
   ArrowLeft,
   Crown,
@@ -18,12 +16,11 @@ import {
   Check,
   Eye,
   BarChart3,
-  Calendar,
-  CreditCard,
   ExternalLink,
   Loader2,
   Star,
-  AlertCircle
+  AlertCircle,
+  Settings
 } from 'lucide-react'
 
 interface BillingSummary {
@@ -31,31 +28,16 @@ interface BillingSummary {
   tier_name: string
   monthly_price: number
   max_campaigns: number
-  tier_features: string[]
   currently_published: number
   subscription_status: 'active' | 'inactive' | 'cancelled' | 'past_due'
-  current_period_start?: string
-  current_period_end?: string
-  cancellation_scheduled: boolean
-  scheduled_tier_change?: string
-  scheduled_change_date?: string
-  can_downgrade: boolean
+  scheduled_tier_change?: string | null
+  scheduled_change_date?: string | null
   published_campaigns: Array<{
-  id: string
-  name: string
+    id: string
+    name: string
     slug: string
-  published_at: string
+    published_at: string
   }>
-  available_tiers: {
-    standard: boolean
-    premium: boolean
-  }
-  payment_method?: {
-    brand: string
-    last4: string
-    exp_month: number
-    exp_year: number
-  } | null
 }
 
 // Tier configuration
@@ -119,16 +101,7 @@ export default function AccountPage() {
   const { user } = useAuth()
   const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isUpgrading, setIsUpgrading] = useState<string | null>(null)
-  const [isReactivating, setIsReactivating] = useState(false)
-  const { showConfirmation, ConfirmationDialog } = useConfirmationDialog()
-  
-  // Proration modal state
-  const [showProrationModal, setShowProrationModal] = useState(false)
-  const [prorationCalculation, setProrationCalculation] = useState<any>(null)
-  const [pendingTier, setPendingTier] = useState<string | null>(null)
-  const [campaignImpact, setCampaignImpact] = useState<any>(null)
-  const [scheduledCampaignImpact, setScheduledCampaignImpact] = useState<any>(null)
+  const [isProcessing, setIsProcessing] = useState<string | null>(null)
 
   useEffect(() => {
     loadBillingSummary()
@@ -137,36 +110,22 @@ export default function AccountPage() {
     const urlParams = new URLSearchParams(window.location.search)
     const success = urlParams.get('success')
     const canceled = urlParams.get('canceled')
-    const sessionId = urlParams.get('session_id')
-    const upgrade = urlParams.get('upgrade')
-    const tier = urlParams.get('tier')
     
-    if (success && sessionId) {
+    if (success) {
       toast({
-        title: 'Subscription Successful!',
-        description: 'Your plan has been upgraded successfully. Welcome to your new tier!',
+        title: 'Subscription Updated!',
+        description: 'Your plan has been updated successfully.',
         duration: 5000,
       })
-      
       // Clean up URL parameters
       window.history.replaceState({}, document.title, '/dashboard/account')
-    } else if (upgrade === 'success' && tier) {
-      toast({
-        title: 'Upgrade Successful!',
-        description: `Your plan has been upgraded to ${tier}. The new features are now available!`,
-        duration: 5000,
-      })
-      
-      // Clean up URL parameters
-      window.history.replaceState({}, document.title, '/dashboard/account')
-    } else if (canceled || upgrade === 'cancelled') {
+    } else if (canceled) {
       toast({
         title: 'Checkout Cancelled',
-        description: 'Your subscription upgrade was cancelled. No charges were made.',
+        description: 'Your subscription update was cancelled. No changes were made.',
         variant: 'destructive',
         duration: 5000,
       })
-      
       // Clean up URL parameters  
       window.history.replaceState({}, document.title, '/dashboard/account')
     }
@@ -180,14 +139,6 @@ export default function AccountPage() {
       
       if (result.data) {
         setBillingSummary(result.data)
-        
-        // Check if there's a scheduled downgrade that will affect campaigns
-        if (result.data.scheduled_tier_change) {
-          await checkScheduledCampaignImpact(result.data.scheduled_tier_change)
-        } else {
-          // Clear scheduled campaign impact if no scheduled downgrade
-          setScheduledCampaignImpact(null)
-        }
       }
     } catch (error) {
       console.error('Failed to load billing summary:', error)
@@ -201,320 +152,71 @@ export default function AccountPage() {
     }
   }
 
-  const checkScheduledCampaignImpact = async (scheduledTier: string) => {
-    try {
-      console.log('Checking scheduled campaign impact for tier:', scheduledTier)
-      const response = await fetch('/api/billing/handle-campaign-limits', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ targetTier: scheduledTier, preview: true }),
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setScheduledCampaignImpact(result)
-        console.log('Scheduled campaign impact:', result)
-      } else {
-        console.error('Failed to check scheduled campaign impact')
-        setScheduledCampaignImpact(null)
-      }
-    } catch (error) {
-      console.error('Error checking scheduled campaign impact:', error)
-      setScheduledCampaignImpact(null)
-    }
-  }
-
   const handleUpgrade = async (tier: 'standard' | 'premium') => {
     try {
-      setIsUpgrading(tier)
+      setIsProcessing(tier)
       
-      // Check if user has an active subscription (not free tier)
-      const hasActiveSubscription = billingSummary?.current_tier !== 'free' && 
-                                   billingSummary?.subscription_status === 'active'
-
-      if (hasActiveSubscription) {
-        // Calculate proration and show confirmation modal
-        console.log('Calculating proration for:', tier)
-        const prorationResponse = await fetch('/api/billing/calculate-proration', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ targetTier: tier }),
-        })
-
-        const prorationResult = await prorationResponse.json()
-
-        if (!prorationResponse.ok) {
-          throw new Error(prorationResult.error || 'Failed to calculate proration')
-        }
-
-        // For downgrades, also check campaign impact
-        let campaignImpactResult = null
-        if (prorationResult.calculation.isDowngrade) {
-          console.log('Checking campaign impact for downgrade to:', tier)
-          const campaignResponse = await fetch('/api/billing/handle-campaign-limits', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ targetTier: tier, preview: true }),
-          })
-
-          if (campaignResponse.ok) {
-            campaignImpactResult = await campaignResponse.json()
-          } else {
-            console.error('Failed to check campaign impact')
-            // Continue without campaign impact info
-          }
-        }
-
-        // Store the calculation and show confirmation modal
-        setProrationCalculation(prorationResult.calculation)
-        setCampaignImpact(campaignImpactResult)
-        setPendingTier(tier)
-        setShowProrationModal(true)
-        setIsUpgrading(null) // Reset loading state since we're showing modal
-      } else {
-        // Create new checkout session (requires payment details)
-        console.log('Creating new checkout session for:', tier)
-        const response = await fetch('/api/billing/create-checkout-session', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ tier }),
-        })
-
-        const result = await response.json()
-
-        if (!response.ok) {
-          // Show more detailed error information
-          const errorMsg = result.details ? `${result.error}: ${result.details}` : result.error
-          throw new Error(errorMsg || 'Failed to create checkout session')
-        }
-
-        if (result.checkout_url) {
-          window.location.href = result.checkout_url
-        } else {
-          throw new Error(result.error || 'Failed to create checkout session')
-        }
-      }
-    } catch (error) {
-      console.error('Error upgrading subscription:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to upgrade subscription',
-        variant: 'destructive',
-      })
-      setIsUpgrading(null)
-    }
-  }
-
-  const handleCancelSubscription = async () => {
-    try {
-      // Calculate proration for Free tier (should show no charge)
-      console.log('Calculating proration for Free tier')
-      const prorationResponse = await fetch('/api/billing/calculate-proration', {
+      const response = await fetch('/api/billing/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ targetTier: 'free' }),
+        body: JSON.stringify({ tier }),
       })
 
-      const prorationResult = await prorationResponse.json()
+      const result = await response.json()
 
-      if (!prorationResponse.ok) {
-        throw new Error(prorationResult.error || 'Failed to calculate proration')
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create checkout session')
       }
 
-      // Check campaign impact for Free tier
-      console.log('Checking campaign impact for downgrade to Free')
-      const campaignResponse = await fetch('/api/billing/handle-campaign-limits', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ targetTier: 'free', preview: true }),
-      })
-
-      let campaignImpactResult = null
-      if (campaignResponse.ok) {
-        campaignImpactResult = await campaignResponse.json()
+      if (result.checkout_url) {
+        window.location.href = result.checkout_url
       } else {
-        console.error('Failed to check campaign impact')
-        // Continue without campaign impact info
+        throw new Error('No checkout URL returned')
       }
-
-      // Store data and show confirmation modal
-      setProrationCalculation(prorationResult.calculation)
-      setCampaignImpact(campaignImpactResult)
-      setPendingTier('free')
-      setShowProrationModal(true)
     } catch (error) {
-      console.error('Error preparing Free downgrade:', error)
+      console.error('Error creating checkout:', error)
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to prepare downgrade',
+        description: error instanceof Error ? error.message : 'Failed to start checkout',
         variant: 'destructive',
       })
+      setIsProcessing(null)
     }
   }
 
-  const handleCancelDowngrade = async () => {
+  const handleManageBilling = async () => {
     try {
-      const response = await fetch('/api/billing/cancel-downgrade', {
+      setIsProcessing('portal')
+      
+      const response = await fetch('/api/billing/create-portal-session', {
         method: 'POST',
       })
 
       const result = await response.json()
 
-      if (response.ok) {
-        toast({
-          title: 'Downgrade Cancelled',
-          description: 'Your scheduled downgrade has been cancelled. You will continue on your current plan.',
-        })
-        await loadBillingSummary()
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to create portal session')
+      }
+
+      if (result.url) {
+        window.location.href = result.url
       } else {
-        throw new Error(result.error || 'Failed to cancel downgrade')
+        throw new Error('No portal URL returned')
       }
     } catch (error) {
-      console.error('Error cancelling downgrade:', error)
+      console.error('Error opening billing portal:', error)
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to cancel downgrade',
+        description: error instanceof Error ? error.message : 'Failed to open billing portal',
         variant: 'destructive',
       })
+      setIsProcessing(null)
     }
   }
 
-  const handleConfirmPlanChange = async (method: 'existing' | 'different' | 'new') => {
-    if (!pendingTier) return
 
-    try {
-      if (method === 'existing') {
-        // For free tier downgrades, use cancel subscription endpoint
-        if (pendingTier === 'free') {
-          console.log('Cancelling subscription (downgrade to free)')
-          const response = await fetch('/api/billing/cancel-subscription', {
-            method: 'POST',
-          })
-
-          const result = await response.json()
-
-          if (response.ok) {
-            toast({
-              title: 'Downgrade Scheduled!',
-              description: result.message || 'Successfully scheduled downgrade to Free plan.',
-              duration: 5000,
-            })
-            await loadBillingSummary()
-          } else {
-            throw new Error(result.error || 'Failed to schedule downgrade')
-          }
-        } else {
-          // Update existing subscription (uses existing payment method)
-          console.log('Updating existing subscription to:', pendingTier)
-          const response = await fetch('/api/billing/update-subscription', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ tier: pendingTier }),
-          })
-
-          const result = await response.json()
-
-          if (response.ok) {
-            toast({
-              title: 'Subscription Updated!',
-              description: result.message || `Successfully updated to ${pendingTier} plan.`,
-              duration: 5000,
-            })
-            await loadBillingSummary()
-          } else {
-            throw new Error(result.error || 'Failed to update subscription')
-          }
-        }
-              } else {
-          // For free tier downgrades, different/new card methods don't make sense
-          if (pendingTier === 'free') {
-            throw new Error('Free tier downgrades should use existing payment method flow')
-          }
-          
-          // Create checkout session for different/new card
-          console.log('Creating checkout session for different card:', pendingTier)
-        const response = await fetch('/api/billing/create-upgrade-checkout', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            tier: pendingTier,
-            prorationAmount: prorationCalculation?.immediateCharge || 0
-          }),
-        })
-
-        const result = await response.json()
-
-        if (response.ok) {
-          // Redirect to Stripe checkout
-          window.location.href = result.checkoutUrl
-          return // Don't reset modal state yet - user will return from checkout
-        } else {
-          throw new Error(result.error || 'Failed to create checkout session')
-        }
-      }
-    } catch (error) {
-      console.error('Error updating subscription:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to update subscription',
-        variant: 'destructive',
-      })
-    } finally {
-      // Only reset modal state for existing payment method flow
-      if (method === 'existing') {
-        setShowProrationModal(false)
-        setProrationCalculation(null)
-        setPendingTier(null)
-        setCampaignImpact(null)
-      }
-    }
-  }
-
-  const handleReactivateSubscription = async () => {
-    setIsReactivating(true)
-    try {
-      const response = await fetch('/api/billing/reactivate-subscription', {
-        method: 'POST',
-      })
-
-      const result = await response.json()
-
-      if (response.ok) {
-        toast({
-          title: 'Subscription Reactivated',
-          description: 'Your subscription has been reactivated successfully. Your plan will continue as normal.',
-        })
-        await loadBillingSummary()
-      } else {
-        throw new Error(result.error || 'Failed to reactivate subscription')
-      }
-    } catch (error) {
-      console.error('Error reactivating subscription:', error)
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to reactivate subscription',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsReactivating(false)
-    }
-  }
 
   if (isLoading) {
     return (
@@ -614,11 +316,7 @@ export default function AccountPage() {
                   {billingSummary.subscription_status}
                 </Badge>
               </div>
-              {billingSummary.current_period_end && (
-                <p className="text-xs text-gray-600 mt-1">
-                  Renews {new Date(billingSummary.current_period_end).toLocaleDateString()}
-                </p>
-              )}
+
             </CardContent>
           </Card>
         </div>
@@ -691,130 +389,131 @@ export default function AccountPage() {
                             Current Plan
                           </Button>
 
-                          {billingSummary.scheduled_tier_change && (
-                            <div className="text-center space-y-2">
-                              <Badge variant="secondary" className="text-blue-700">
-                                Downgrade to {billingSummary.scheduled_tier_change.charAt(0).toUpperCase() + billingSummary.scheduled_tier_change.slice(1)} Scheduled
-                              </Badge>
-                              <p className="text-xs text-gray-600">
-                                Will change to {billingSummary.scheduled_tier_change} on {
-                                  billingSummary.scheduled_change_date 
-                                    ? new Date(billingSummary.scheduled_change_date).toLocaleDateString()
-                                    : 'next billing date'
-                                }
-                              </p>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="w-full text-blue-600 hover:text-blue-700"
-                                onClick={() => handleCancelDowngrade()}
-                              >
-                                Cancel Downgrade
-                              </Button>
-                            </div>
-                          )}
+
                         </div>
                       ) : (
                         <div className="space-y-2">
-                        {/* Determine button text and action based on current tier and target tier */}
-                        {(() => {
-                          const currentTier = billingSummary?.current_tier
-                          const targetTier = key
-                          
-                          // Free card logic
-                          if (targetTier === 'free') {
-                            if (currentTier !== 'free' && !billingSummary?.cancellation_scheduled && !billingSummary?.scheduled_tier_change) {
-                              return (
-                    <Button 
-                                  className="w-full text-red-600 hover:text-red-700"
-                                  onClick={handleCancelSubscription}
-                                  variant="outline"
-                    >
-                                  Downgrade to Free
-                    </Button>
-                              )
+                          {(() => {
+                            const currentTier = billingSummary?.current_tier
+                            const targetTier = key as 'free' | 'standard' | 'premium'
+                            
+                            // Current tier logic
+                            if (currentTier === targetTier) {
+                              if (targetTier === 'free') {
+                                return (
+                                  <Button 
+                                    disabled
+                                    className="w-full bg-gray-100 text-gray-500 cursor-not-allowed"
+                                    variant="outline"
+                                  >
+                                    Current Plan
+                                  </Button>
+                                )
+                              } else {
+                                return (
+                                  <Button 
+                                    className="w-full bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                    onClick={handleManageBilling}
+                                    disabled={isProcessing === 'portal'}
+                                    variant="outline"
+                                  >
+                                    {isProcessing === 'portal' ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        Opening...
+                                      </>
+                                    ) : (
+                                      'Manage Plan'
+                                    )}
+                                  </Button>
+                                )
+                              }
                             }
-                            return null // Free users can't "upgrade" to free
-                          }
-                          
-                          // Standard card logic
-                          if (targetTier === 'standard') {
-                            if (currentTier === 'premium' && !billingSummary?.cancellation_scheduled && !billingSummary?.scheduled_tier_change) {
+                            
+                            // Free user looking at paid tiers
+                            if (currentTier === 'free' && (targetTier === 'standard' || targetTier === 'premium')) {
                               return (
-                  <Button 
-                                  className="w-full"
-                                  onClick={() => handleUpgrade('standard')}
-                                  disabled={isUpgrading === 'standard'}
-                    variant="outline"
+                                <Button 
+                                  className="w-full bg-black text-white hover:bg-gray-800"
+                                  onClick={() => handleUpgrade(targetTier)}
+                                  disabled={isProcessing === targetTier}
                                 >
-                                  {isUpgrading === 'standard' ? (
+                                  {isProcessing === targetTier ? (
                                     <>
                                       <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                       Processing...
+                                    </>
+                                  ) : (
+                                    'Upgrade'
+                                  )}
+                                </Button>
+                              )
+                            }
+                            
+                            // Paid user looking at free tier (downgrade)
+                            if (currentTier !== 'free' && targetTier === 'free') {
+                              return (
+                                <Button 
+                                  className="w-full bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                  onClick={handleManageBilling}
+                                  disabled={isProcessing === 'portal'}
+                                  variant="outline"
+                                >
+                                  {isProcessing === 'portal' ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                      Opening...
+                                    </>
+                                  ) : (
+                                    'Downgrade to Free'
+                                  )}
+                                </Button>
+                              )
+                            }
+                            
+                            // Standard user looking at Premium (upgrade via Customer Portal)
+                            if (currentTier === 'standard' && targetTier === 'premium') {
+                              return (
+                                <Button 
+                                  className="w-full bg-black text-white hover:bg-gray-800"
+                                  onClick={handleManageBilling}
+                                  disabled={isProcessing === 'portal'}
+                                >
+                                  {isProcessing === 'portal' ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                      Opening...
+                                    </>
+                                  ) : (
+                                    'Upgrade'
+                                  )}
+                                </Button>
+                              )
+                            }
+                            
+                            // Premium user looking at Standard (downgrade)
+                            if (currentTier === 'premium' && targetTier === 'standard') {
+                              return (
+                                <Button 
+                                  className="w-full bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                  onClick={handleManageBilling}
+                                  disabled={isProcessing === 'portal'}
+                                  variant="outline"
+                                >
+                                  {isProcessing === 'portal' ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                      Opening...
                                     </>
                                   ) : (
                                     'Downgrade to Standard'
                                   )}
-                  </Button>
-                              )
-                            } else if (currentTier === 'free') {
-                              return (
-                    <Button 
-                                  className="w-full"
-                                  onClick={() => handleUpgrade('standard')}
-                                  disabled={isUpgrading === 'standard'}
-                                  variant={tier.popular ? 'default' : 'outline'}
-                                >
-                                  {isUpgrading === 'standard' ? (
-                                    <>
-                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                      Processing...
-                                    </>
-                                  ) : (
-                                    <>
-                                      Upgrade to Standard
-                                      <ExternalLink className="h-4 w-4 ml-2" />
-                                    </>
-                                  )}
-                    </Button>
+                                </Button>
                               )
                             }
+                            
                             return null
-                          }
-                          
-                          // Premium card logic
-                          if (targetTier === 'premium') {
-                            if (currentTier !== 'premium') {
-                              return (
-                    <Button 
-                                  className="w-full"
-                                  onClick={() => handleUpgrade('premium')}
-                                  disabled={isUpgrading === 'premium'}
-                                  variant={tier.popular ? 'default' : 'outline'}
-                                >
-                                  {isUpgrading === 'premium' ? (
-                                    <>
-                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                      Processing...
-                                    </>
-                                  ) : (
-                                    <>
-                                      Upgrade to Premium
-                                      {currentTier !== 'free' && billingSummary?.subscription_status === 'active' ? (
-                                        <CreditCard className="h-4 w-4 ml-2" />
-                                      ) : (
-                                        <ExternalLink className="h-4 w-4 ml-2" />
-                                      )}
-                                    </>
-                                  )}
-                    </Button>
-                              )
-                            }
-                            return null
-                          }
-                          
-                          return null
-                        })()}
+                          })()}
                         </div>
                       )}
                     </div>
@@ -824,6 +523,98 @@ export default function AccountPage() {
               })}
             </div>
           </div>
+
+        {/* Billing Management Card */}
+        <div className="mb-8">
+          <Card className="border-2 border-dashed border-gray-200 bg-gray-50/50">
+            <CardHeader className="text-center">
+              <CardTitle className="text-lg font-semibold text-gray-900 flex items-center justify-center gap-2">
+                <Settings className="h-5 w-5" />
+                Billing Management
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                View invoices, update payment methods, and manage your billing details
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <Button 
+                className="w-full max-w-md mx-auto bg-blue-600 text-white hover:bg-blue-700"
+                onClick={handleManageBilling}
+                disabled={isProcessing === 'portal'}
+              >
+                {isProcessing === 'portal' ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Opening Billing Portal...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Open Billing Portal
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-gray-500 mt-3">
+                Securely manage your subscription, payment methods, and download invoices through Stripe's billing portal
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Scheduled Downgrade Notification */}
+        {billingSummary.scheduled_tier_change && billingSummary.scheduled_change_date && (
+          <div className="mb-8">
+            <Card className="border-2 border-amber-200 bg-amber-50">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-amber-800 flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5" />
+                  Scheduled Plan Change
+                </CardTitle>
+                <CardDescription className="text-amber-700">
+                  Your subscription will change on {new Date(billingSummary.scheduled_change_date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-amber-800 mb-1">
+                      <strong>Current Plan:</strong> {billingSummary.tier_name} (${billingSummary.monthly_price}/month)
+                    </p>
+                    <p className="text-sm text-amber-800">
+                      <strong>Changing to:</strong> {billingSummary.scheduled_tier_change === 'free' ? 'Free Plan' : 
+                        billingSummary.scheduled_tier_change.charAt(0).toUpperCase() + billingSummary.scheduled_tier_change.slice(1) + ' Plan'} 
+                      {billingSummary.scheduled_tier_change === 'free' ? ' ($0/month)' : ''}
+                    </p>
+                  </div>
+                  <Button 
+                    className="bg-amber-600 text-white hover:bg-amber-700"
+                    onClick={handleManageBilling}
+                    disabled={isProcessing === 'portal'}
+                  >
+                    {isProcessing === 'portal' ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Opening...
+                      </>
+                    ) : (
+                      'Cancel Change'
+                    )}
+                  </Button>
+                </div>
+                <div className="mt-4 p-3 bg-amber-100 rounded-lg">
+                  <p className="text-xs text-amber-700">
+                    💡 <strong>Want to keep your current plan?</strong> Click "Cancel Change" to manage your subscription and prevent this change from happening.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Published Campaigns List */}
         {billingSummary.published_campaigns.length > 0 && (
@@ -839,70 +630,33 @@ export default function AccountPage() {
               </CardHeader>
               <CardContent>
               <div className="space-y-3">
-                {billingSummary.published_campaigns.map((campaign) => {
-                  // Check if this campaign is scheduled for unpublishing
-                  const isScheduledForUnpublish = scheduledCampaignImpact?.campaignsToUnpublish?.some(
-                    (c: any) => c.id === campaign.id
-                  )
-                  
-                  return (
-                    <div key={campaign.id} className={`flex items-center justify-between p-3 rounded-lg ${
-                      isScheduledForUnpublish ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'
-                    }`}>
+                {billingSummary.published_campaigns.map((campaign) => (
+                  <div key={campaign.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
                     <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium">{campaign.name}</h4>
-                          {isScheduledForUnpublish && (
-                            <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-100">
-                              Scheduled for Unpublishing
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600">
-                          Published {new Date(campaign.published_at).toLocaleDateString()}
-                          </p>
-                        {isScheduledForUnpublish && billingSummary.scheduled_change_date && billingSummary.scheduled_tier_change && (
-                          <p className="text-sm text-amber-700 mt-1">
-                            ⚠️ Will be unpublished on {new Date(billingSummary.scheduled_change_date).toLocaleDateString()} due to downgrade to {billingSummary.scheduled_tier_change === 'free' ? 'Free' : billingSummary.scheduled_tier_change.charAt(0).toUpperCase() + billingSummary.scheduled_tier_change.slice(1)} plan
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary">Live</Badge>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => router.push(`/dashboard/campaigns/${campaign.id}`)}
-                        >
-                          Manage
-                        </Button>
-                      </div>
-                      </div>
-                  )
-                })}
-                </div>
+                      <h4 className="font-medium">{campaign.name}</h4>
+                      <p className="text-sm text-gray-600">
+                        Published {new Date(campaign.published_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">Live</Badge>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/dashboard/campaigns/${campaign.id}`)}
+                      >
+                        Manage
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
               </CardContent>
             </Card>
             )}
       </div>
 
-      {/* Confirmation Dialog */}
-      {ConfirmationDialog}
-      
-      {/* Plan Change Confirmation Modal */}
-      <PlanChangeConfirmationModal
-        isOpen={showProrationModal}
-        onClose={() => {
-          setShowProrationModal(false)
-          setProrationCalculation(null)
-          setPendingTier(null)
-          setCampaignImpact(null)
-        }}
-        onConfirm={handleConfirmPlanChange}
-        calculation={prorationCalculation}
-        campaignImpact={campaignImpact}
-        paymentMethod={billingSummary?.payment_method}
-      />
+
         </div>
   )
 } 

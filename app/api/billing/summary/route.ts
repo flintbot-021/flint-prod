@@ -43,24 +43,13 @@ export async function GET(request: NextRequest) {
       .select(`
         subscription_tier,
         max_published_campaigns,
-        stripe_subscription_id,
-        stripe_price_id,
         subscription_status,
-        current_period_start,
-        current_period_end,
-        cancellation_scheduled_at,
+        stripe_customer_id,
         scheduled_tier_change,
-        scheduled_change_date,
-        stripe_customer_id
+        scheduled_change_date
       `)
       .eq('id', user.id)
       .single()
-
-    console.log('Profile data from database:', {
-      subscription_tier: profile?.subscription_tier,
-      scheduled_tier_change: profile?.scheduled_tier_change,
-      scheduled_change_date: profile?.scheduled_change_date
-    })
 
     if (profileError) {
       return NextResponse.json(
@@ -92,71 +81,22 @@ export async function GET(request: NextRequest) {
     const currentlyPublished = publishedCount || 0
     const availableSlots = maxCampaigns === -1 ? 'unlimited' : Math.max(0, maxCampaigns - currentlyPublished)
 
-    // Get payment method info if user has active subscription
-    let paymentMethod = null
-    if (profile.stripe_subscription_id && profile.subscription_status === 'active') {
-      try {
-        const subscription = await stripe.subscriptions.retrieve(profile.stripe_subscription_id)
-        
-        // Only get payment method if subscription still exists and is active
-        if (subscription && subscription.status === 'active' && subscription.default_payment_method) {
-          const pm = await stripe.paymentMethods.retrieve(subscription.default_payment_method as string)
-          if (pm.card) {
-            paymentMethod = {
-              brand: pm.card.brand,
-              last4: pm.card.last4,
-              exp_month: pm.card.exp_month,
-              exp_year: pm.card.exp_year
-            }
-          }
-        }
-      } catch (error) {
-        // Handle case where subscription no longer exists (scheduled downgrades, cancellations, etc.)
-        if (error instanceof Error && error.message.includes('No such subscription')) {
-          console.log('Subscription no longer exists in Stripe (likely due to scheduled downgrade) - this is normal')
-        } else {
-          console.error('Error fetching payment method:', error)
-        }
-        // Continue without payment method info - this is expected for scheduled downgrades
-      }
-    }
-
-    // Create billing summary
+    // Create simplified billing summary
     const billingSummary = {
-      // Current subscription info
       current_tier: currentTier,
       tier_name: tierConfig.name,
       monthly_price: tierConfig.price,
       max_campaigns: maxCampaigns,
-      tier_features: tierConfig.features,
-      
-      // Usage info
       currently_published: currentlyPublished,
-      available_slots: availableSlots,
-      published_campaigns: publishedCampaigns || [],
-      
-      // Billing info
       subscription_status: profile.subscription_status || 'inactive',
-      current_period_start: profile.current_period_start,
-      current_period_end: profile.current_period_end,
-      cancellation_scheduled: !!profile.cancellation_scheduled_at,
       scheduled_tier_change: profile.scheduled_tier_change,
       scheduled_change_date: profile.scheduled_change_date,
-      
-      // Stripe info
-      stripe_subscription_id: profile.stripe_subscription_id,
-      has_stripe_customer: !!profile.stripe_customer_id,
-      payment_method: paymentMethod,
-      
-      // Available upgrade options
-      available_tiers: {
-        standard: currentTier !== 'standard' ? TIER_CONFIG.standard : null,
-        premium: currentTier !== 'premium' ? TIER_CONFIG.premium : null,
-      },
-      
-      // Downgrade info (can only downgrade from premium to standard)
-      can_downgrade: currentTier === 'premium',
-      downgrade_option: currentTier === 'premium' ? TIER_CONFIG.standard : null,
+      published_campaigns: (publishedCampaigns || []).map(campaign => ({
+        id: campaign.id,
+        name: campaign.name,
+        slug: campaign.published_url?.split('/').pop() || '',
+        published_at: campaign.published_at
+      }))
     }
 
     return NextResponse.json({
