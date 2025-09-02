@@ -30,6 +30,8 @@ interface BillingSummary {
   max_campaigns: number
   currently_published: number
   subscription_status: 'active' | 'inactive' | 'cancelled' | 'past_due'
+  scheduled_tier_change?: string | null
+  scheduled_change_date?: string | null
   published_campaigns: Array<{
     id: string
     name: string
@@ -318,6 +320,67 @@ export default function AccountPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Scheduled Change Notification */}
+        {billingSummary.scheduled_tier_change && billingSummary.scheduled_change_date && (
+          <div className="mb-8">
+            <Card className="border-amber-200 bg-amber-50">
+              <CardHeader>
+                <CardTitle className="text-amber-800 flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5" />
+                  Scheduled Plan Change
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <p className="text-amber-700">
+                    Your subscription is scheduled to {billingSummary.scheduled_tier_change === 'free' ? 'be cancelled' : `downgrade to ${billingSummary.scheduled_tier_change}`} on{' '}
+                    <strong>
+                      {new Date(billingSummary.scheduled_change_date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </strong>
+                  </p>
+                  
+                  {billingSummary.scheduled_tier_change === 'free' && billingSummary.currently_published > 0 && (
+                    <div className="bg-amber-100 border border-amber-200 rounded-lg p-3">
+                      <p className="text-sm text-amber-800">
+                        <strong>⚠️ Important:</strong> When your subscription is cancelled, your {billingSummary.currently_published} published campaign{billingSummary.currently_published > 1 ? 's' : ''} will be automatically unpublished since the Free plan doesn't allow published campaigns.
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={handleManageBilling}
+                      disabled={isProcessing === 'portal'}
+                      className="bg-amber-600 text-white hover:bg-amber-700"
+                    >
+                      {isProcessing === 'portal' ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Opening...
+                        </>
+                      ) : (
+                        'Manage Subscription'
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open('https://support.stripe.com/', '_blank')}
+                      className="text-amber-700 border-amber-300 hover:bg-amber-100"
+                    >
+                      Need Help?
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Subscription Plans */}
         <div className="mb-8">
