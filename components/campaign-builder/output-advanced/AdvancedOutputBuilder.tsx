@@ -605,10 +605,10 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
           const isCoverMode = (item as any).coverMode
           const shadowClass = (item as any).showShadow !== false ? ' shadow-2xl' : ''
           if (isCoverMode) {
-            return imageSrc ? `<div style="position:relative;width:100%;height:100%;min-height:300px;"><img class="rounded-lg${shadowClass}" style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;object-fit:cover;" src="${imageSrc}" alt="${item.alt || ''}"/></div>` : ''
+            return imageSrc ? `<div style="position:relative;width:100%;height:100%;min-height:300px;"><img class="rounded-2xl${shadowClass}" style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;object-fit:cover;" src="${imageSrc}" alt="${item.alt || ''}"/></div>` : ''
           } else {
             const maxHeightStyle = (item as any).maxHeight ? `max-height:${(item as any).maxHeight}px;height:auto;` : ''
-            return imageSrc ? `<img class="rounded-lg w-full object-cover${shadowClass}" style="${maxHeightStyle}" src="${imageSrc}" alt="${item.alt || ''}"/>` : ''
+            return imageSrc ? `<img class="rounded-2xl w-full object-cover${shadowClass}" style="${maxHeightStyle}" src="${imageSrc}" alt="${item.alt || ''}"/>` : ''
           }
         case 'numbered-list':
           return `<ol class="list-decimal pl-5 space-y-1">${(item.items||[]).map(li=>`<li>${interpolator.interpolate(li, { variables, availableVariables: [] }).content}</li>`).join('')}</ol>`
@@ -2311,7 +2311,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                             src={(item as any).src} 
                                             alt={(item as any).alt || 'Image'} 
                                             className={cn(
-                                              "w-full object-cover rounded-lg border border-input group-hover:border-primary transition-colors",
+                                              "w-full object-cover rounded-2xl border border-input group-hover:border-primary transition-colors",
                                               (item as any).showShadow !== false ? "shadow-2xl" : ""
                                             )}
                                             style={{
