@@ -9,6 +9,16 @@ import { VariableInterpolator } from '@/lib/utils/variable-interpolator'
 import { getCampaignTheme } from '../utils'
 
 export function OutputAdvancedSection({ section, config, userInputs = {}, sections = [], deviceInfo, campaign }: SectionRendererProps) {
+  // Debug logging for props
+  console.log('🔧 OutputAdvancedSection props debug:', {
+    sectionId: section.id,
+    sectionType: section.type,
+    userInputsKeys: Object.keys(userInputs),
+    sectionsCount: sections.length,
+    campaignId: campaign?.id,
+    hasConfig: !!config
+  })
+
   // Get campaign theme colors
   const campaignTheme = getCampaignTheme(campaign)
 
@@ -73,15 +83,49 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
   const variableMap = useMemo(() => {
     const map: Record<string, any> = {}
     const inputVars = buildVariablesFromInputs(sections, userInputs)
+    const aiVars = campaign?.id ? getAITestResults(campaign.id) : {}
+    
+    console.log('🔧 Variable map construction debug:', {
+      inputVars,
+      aiVars,
+      campaignId: campaign?.id,
+      sectionsCount: sections.length,
+      userInputsCount: Object.keys(userInputs).length
+    })
+    
     Object.assign(map, inputVars)
     // Use campaign-scoped AI test results
-    Object.assign(map, campaign?.id ? getAITestResults(campaign.id) : {})
+    Object.assign(map, aiVars)
+    
+    console.log('🔧 Final variable map:', map)
+    console.log('🔧 Variable map keys:', Object.keys(map))
+    console.log('🔧 Variable map entries:', Object.entries(map))
+    
+    // Test variable interpolation with a simple example
+    if (Object.keys(map).length > 0) {
+      const testString = `@${Object.keys(map)[0]}`
+      console.log('🧪 Testing variable interpolation with:', testString)
+      
+      // Test simple regex replacement
+      const simpleTest = testString.replace(/@([a-zA-Z_][a-zA-Z0-9_]*)/g, (match, varName) => {
+        console.log(`🧪 Simple regex found variable: ${varName}, value: ${map[varName]}`)
+        return map[varName] || match
+      })
+      console.log('🧪 Simple test result:', simpleTest)
+      
+      // Test with VariableInterpolator
+      const interpolator = new VariableInterpolator()
+      const interpolatorTest = interpolator.interpolate(testString, { variables: map, availableVariables: [] })
+      console.log('🧪 Interpolator test result:', interpolatorTest)
+    }
+    
     return map
   }, [sections, userInputs, campaign?.id])
 
   const rows = (config as any)?.rows || []
   const pageSettings = (config as any)?.pageSettings || {}
-  const interpolator = useMemo(() => new VariableInterpolator(), [])
+  // Create a new interpolator instance for each render to avoid regex state issues
+  const interpolator = new VariableInterpolator()
 
   const renderItem = (item: any, blockTextColor?: string, align: 'left' | 'center' | 'right' = 'center') => {
     // Use block text color if available, otherwise fall back to campaign theme
@@ -181,7 +225,48 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
           </div>
         )
       case 'image':
-        const imageSrc = interpolator.interpolate(item.src || '', { variables: variableMap, availableVariables: [] }).content
+        // Debug logging for image variable interpolation
+        console.log('🖼️ Image interpolation debug:', {
+          originalSrc: item.src,
+          variableMap: variableMap,
+          availableKeys: Object.keys(variableMap),
+          variableValues: variableMap
+        })
+        
+        // Test simple string replacement as fallback
+        let imageSrc = item.src || ''
+        if (imageSrc.includes('@')) {
+          console.log('🔍 Testing simple variable replacement for:', imageSrc)
+          Object.entries(variableMap).forEach(([key, value]) => {
+            const regex = new RegExp(`@${key}\\b`, 'g')
+            const oldSrc = imageSrc
+            imageSrc = imageSrc.replace(regex, String(value))
+            if (oldSrc !== imageSrc) {
+              console.log(`✅ Simple replacement: @${key} -> ${value}`)
+            }
+          })
+        }
+        
+        // Also try the interpolator
+        const interpolationResult = interpolator.interpolate(item.src || '', { variables: variableMap, availableVariables: [] })
+        const interpolatorSrc = interpolationResult.content
+        
+        console.log('🖼️ Image interpolation comparison:', {
+          success: interpolationResult.success,
+          originalSrc: item.src,
+          simpleReplacementSrc: imageSrc,
+          interpolatorSrc: interpolatorSrc,
+          processedVariables: interpolationResult.processedVariables,
+          missingVariables: interpolationResult.missingVariables,
+          errors: interpolationResult.errors,
+          finalChoice: imageSrc !== (item.src || '') ? 'simple' : 'interpolator'
+        })
+        
+        // Use simple replacement if it worked, otherwise use interpolator
+        if (imageSrc === (item.src || '')) {
+          imageSrc = interpolatorSrc
+        }
+        
         const isCoverMode = (item as any).coverMode
         const imageStyle = isCoverMode 
           ? { 
@@ -204,7 +289,10 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
               <img 
                 src={imageSrc} 
                 alt={item.alt || ''} 
-                className="rounded-2xl shadow-2xl" 
+                className={cn(
+                  "rounded-2xl",
+                  (item as any).showShadow !== false ? "shadow-2xl" : ""
+                )} 
                 style={imageStyle}
               />
             </div>
@@ -212,7 +300,10 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
             <img 
               src={imageSrc} 
               alt={item.alt || ''} 
-              className="rounded-2xl w-full shadow-2xl" 
+              className={cn(
+                "rounded-2xl w-full",
+                (item as any).showShadow !== false ? "shadow-2xl" : ""
+              )} 
               style={imageStyle}
             />
           )
