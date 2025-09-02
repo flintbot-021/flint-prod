@@ -3,33 +3,26 @@ import { createClient } from '@/lib/supabase/server'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20' as any, // Use a stable API version
+  apiVersion: '2025-06-30.basil',
 })
 
-// Stripe Price IDs (you'll need to create these in your Stripe dashboard)
+// Stripe Price IDs
 const PRICE_IDS = {
-  standard: process.env.STRIPE_STANDARD_PRICE_ID || 'price_1234567890', // Replace with actual price ID
-  premium: process.env.STRIPE_PREMIUM_PRICE_ID || 'price_0987654321', // Replace with actual price ID
+  standard: process.env.STRIPE_STANDARD_PRICE_ID,
+  premium: process.env.STRIPE_PREMIUM_PRICE_ID,
 }
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('Creating checkout session...')
-    
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError || !user) {
-      console.error('Auth error:', authError)
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    console.log('User authenticated:', user.id)
-
     const body = await request.json()
     const { tier } = body
-
-    console.log('Requested tier:', tier)
 
     // Validate tier
     if (!['standard', 'premium'].includes(tier)) {
@@ -38,12 +31,9 @@ export async function POST(request: NextRequest) {
 
     // Check if we have the price ID for this tier
     const priceId = PRICE_IDS[tier as keyof typeof PRICE_IDS]
-    console.log('Price ID for tier:', priceId)
-
-    if (!priceId || priceId.startsWith('price_123') || priceId.startsWith('price_098')) {
-      console.error('Invalid price ID for tier:', tier, priceId)
+    if (!priceId) {
       return NextResponse.json({ 
-        error: `Price ID not configured for ${tier} tier. Please check your environment variables.` 
+        error: `Price ID not configured for ${tier} tier` 
       }, { status: 500 })
     }
 

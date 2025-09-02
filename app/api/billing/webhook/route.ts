@@ -47,6 +47,15 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`Processing webhook event: ${event.type}`)
+    
+    // Add extra logging for subscription schedule events
+    if (event.type.includes('subscription_schedule')) {
+      console.log('🔥 SUBSCRIPTION SCHEDULE EVENT DETECTED:', {
+        type: event.type,
+        schedule_id: event.data.object.id,
+        subscription_id: (event.data.object as any).subscription
+      })
+    }
 
     // Process the webhook event
     switch (event.type) {
@@ -63,12 +72,9 @@ export async function POST(request: NextRequest) {
         await handleSubscriptionDeleted(event.data.object as Stripe.Subscription)
         break
         
-      case 'invoice.payment_succeeded':
-        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice)
-        break
-        
-      case 'invoice.payment_failed':
-        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice)
+      case 'subscription_schedule.created':
+      case 'subscription_schedule.updated':
+        await handleSubscriptionScheduleUpdated(event.data.object as Stripe.SubscriptionSchedule)
         break
         
       default:
@@ -88,108 +94,92 @@ export async function POST(request: NextRequest) {
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   console.log('Processing checkout completion:', session.id)
-  console.log('Session metadata:', session.metadata)
-  console.log('Session mode:', session.mode)
-  console.log('Session customer:', session.customer)
   
   const customerId = session.customer as string
   const userId = session.metadata?.user_id
-  const tier = session.metadata?.tier || session.metadata?.target_tier as 'standard' | 'premium'
-  const upgradeType = session.metadata?.upgrade_type
+  const tier = session.metadata?.tier as 'standard' | 'premium'
   
-  if (!userId || !tier) {
-    console.error('Missing required metadata in checkout session:', { userId, tier, upgradeType, metadata: session.metadata })
-    return
-  }
-
-  if (!customerId) {
-    console.error('Missing customer ID in checkout session')
+  if (!customerId || !tier || !['standard', 'premium'].includes(tier)) {
+    console.error('Invalid checkout session data:', { customerId, tier })
     return
   }
 
   const supabase = createServiceRoleClient()
   
   try {
-    if (upgradeType === 'proration') {
-      // Handle upgrade checkout - need to update existing subscription
-      console.log('Processing upgrade checkout for user:', userId, 'to tier:', tier)
-      
-      // Get current profile to find existing subscription
-      const { data: profile, error: profileError } = await supabase
+    // Find user profile
+    let profile = null
+    if (userId) {
+      const { data } = await supabase
         .from('profiles')
-        .select('stripe_subscription_id')
+        .select('id')
         .eq('id', userId)
         .single()
-        
-      if (profileError || !profile?.stripe_subscription_id) {
-        console.error('Could not find existing subscription for upgrade:', profileError)
-        return
-      }
-      
-      // Update the Stripe subscription to new tier
-      const priceId = tier === 'standard' ? process.env.STRIPE_STANDARD_PRICE_ID : process.env.STRIPE_PREMIUM_PRICE_ID
-      const subscription = await stripe.subscriptions.update(profile.stripe_subscription_id, {
-        items: [{
-          id: (await stripe.subscriptions.retrieve(profile.stripe_subscription_id)).items.data[0].id,
-          price: priceId,
-        }],
-        proration_behavior: 'none', // We already charged for proration
-      })
-      
-      console.log('Updated subscription for upgrade:', subscription.id)
+      profile = data
     }
     
-    // Get subscription details if this is a subscription checkout
-    let subscriptionId = null
-    if (session.mode === 'subscription' && session.subscription) {
-      subscriptionId = session.subscription as string
-      console.log('Subscription ID from session:', subscriptionId)
-    } else if (upgradeType === 'proration') {
-      // For upgrade checkouts, keep the existing subscription ID
-      const { data: profile } = await supabase
-        .from('profiles')  
-        .select('stripe_subscription_id')
-        .eq('id', userId)
+    if (!profile) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('stripe_customer_id', customerId)
         .single()
-      subscriptionId = profile?.stripe_subscription_id
+      profile = data
     }
 
-    // Update user's subscription tier
-    const tierConfig = TIER_CONFIG[tier as keyof typeof TIER_CONFIG]
-    
-    const updateData = {
-      subscription_tier: tier,
-      max_published_campaigns: tierConfig.max_campaigns,
-      subscription_status: 'active',
-      stripe_customer_id: customerId,
-      cancellation_scheduled_at: null, // Clear any previous cancellation when upgrading
-      updated_at: new Date().toISOString(),
-      ...(subscriptionId && { stripe_subscription_id: subscriptionId })
+    if (!profile) {
+      console.error('Profile not found for customer:', customerId)
+      return
     }
 
-    console.log('Updating user with data:', updateData)
+    // Get subscription from Stripe
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'active',
+      limit: 1,
+    })
+
+    if (subscriptions.data.length === 0) {
+      console.error('No active subscription found')
+      return
+    }
+
+    const subscription = subscriptions.data[0]
+    const tierConfig = TIER_CONFIG[tier]
     
-    const { error, data } = await supabase
+    // Update profile with new subscription info
+    await supabase
       .from('profiles')
-      .update(updateData)
-      .eq('id', userId)
-      .select()
+      .update({
+        subscription_tier: tier,
+        max_published_campaigns: tierConfig.max_campaigns,
+        stripe_subscription_id: subscription.id,
+        subscription_status: 'active',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', profile.id)
 
-    if (error) {
-      console.error('Error updating user subscription:', error)
-      throw error
-    }
-
-    console.log(`Successfully updated user ${userId} to ${tier} tier:`, data)
+    console.log(`Successfully processed checkout for user ${profile.id}, tier: ${tier}`)
     
   } catch (error) {
     console.error('Error in handleCheckoutCompleted:', error)
-    throw error // Re-throw to ensure webhook fails if there's an issue
+    throw error
   }
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   console.log('Processing subscription update:', subscription.id)
+  console.log('Subscription details:', {
+    id: subscription.id,
+    status: subscription.status,
+    cancel_at: subscription.cancel_at,
+    cancel_at_period_end: subscription.cancel_at_period_end,
+    current_period_end: (subscription as any).current_period_end,
+    items: subscription.items.data.map(item => ({
+      price_id: item.price.id,
+      quantity: item.quantity
+    }))
+  })
   
   const customerId = subscription.customer as string
   const supabase = createServiceRoleClient()
@@ -218,22 +208,88 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
 
     const tierConfig = TIER_CONFIG[tier]
     
+    // Check for scheduled changes
+    let scheduledTierChange = null
+    let scheduledChangeDate = null
+    
+    console.log('Checking for scheduled changes:', {
+      cancel_at: subscription.cancel_at,
+      cancel_at_period_end: subscription.cancel_at_period_end,
+      current_period_end: (subscription as any).current_period_end,
+      schedule: (subscription as any).schedule
+    })
+    
+    // If subscription is scheduled for cancellation
+    if (subscription.cancel_at) {
+      scheduledTierChange = 'free'
+      scheduledChangeDate = new Date(subscription.cancel_at * 1000).toISOString()
+      console.log('✅ Detected scheduled cancellation:', scheduledChangeDate)
+    }
+    // If subscription has a scheduled plan change (cancel_at_period_end or pending updates)
+    else if (subscription.cancel_at_period_end) {
+      scheduledTierChange = 'free'
+      scheduledChangeDate = new Date((subscription as any).current_period_end * 1000).toISOString()
+      console.log('✅ Detected scheduled cancellation at period end:', scheduledChangeDate)
+    }
+    // Check for subscription schedule (used by Customer Portal for plan changes)
+    else if ((subscription as any).schedule) {
+      console.log('🔍 Subscription has a schedule, fetching schedule details...')
+      try {
+        const schedule = await stripe.subscriptionSchedules.retrieve((subscription as any).schedule)
+        console.log('Schedule details:', {
+          id: schedule.id,
+          status: schedule.status,
+          phases: schedule.phases.map(phase => ({
+            start_date: phase.start_date,
+            end_date: phase.end_date,
+            items: phase.items?.map(item => ({ price: item.price }))
+          }))
+        })
+        
+        // Look for future phases that indicate a change
+        const currentTime = Math.floor(Date.now() / 1000)
+        const futurePhases = schedule.phases.filter(phase => phase.start_date > currentTime)
+        
+        if (futurePhases.length > 0) {
+          const nextPhase = futurePhases[0]
+          scheduledChangeDate = new Date(nextPhase.start_date * 1000).toISOString()
+          
+          // Check if the next phase is a cancellation (no items) or a tier change
+          if (!nextPhase.items || nextPhase.items.length === 0) {
+            scheduledTierChange = 'free'
+            console.log('✅ Detected scheduled cancellation via schedule:', scheduledChangeDate)
+          } else {
+            // Check if it's a different tier
+            const nextPriceId = nextPhase.items[0]?.price
+            const nextTier = typeof nextPriceId === 'string' ? TIER_FROM_PRICE_ID[nextPriceId] : null
+            if (nextTier && nextTier !== tier) {
+              scheduledTierChange = nextTier
+              console.log('✅ Detected scheduled tier change via schedule:', { from: tier, to: nextTier, date: scheduledChangeDate })
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching subscription schedule:', error)
+      }
+    }
+    else {
+      console.log('❌ No scheduled changes detected')
+    }
+    
     // Update subscription info
+    const updateData: any = {
+      subscription_tier: tier,
+      max_published_campaigns: tierConfig.max_campaigns,
+      stripe_subscription_id: subscription.id,
+      subscription_status: subscription.status === 'active' ? 'active' : subscription.status,
+      scheduled_tier_change: scheduledTierChange,
+      scheduled_change_date: scheduledChangeDate,
+      updated_at: new Date().toISOString(),
+    }
+
     const { error } = await supabase
       .from('profiles')
-      .update({
-        subscription_tier: tier,
-        max_published_campaigns: tierConfig.max_campaigns,
-        stripe_subscription_id: subscription.id,
-        stripe_price_id: priceId,
-        subscription_status: subscription.status === 'active' ? 'active' : subscription.status,
-        current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
-        current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
-        cancellation_scheduled_at: subscription.cancel_at 
-          ? new Date(subscription.cancel_at * 1000).toISOString() 
-          : null,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', profile.id)
 
     if (error) {
@@ -241,7 +297,12 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       return
     }
 
-    console.log(`Successfully updated subscription for user ${profile.id}`)
+    console.log(`Successfully updated subscription for user ${profile.id}`, {
+      tier,
+      scheduledTierChange,
+      scheduledChangeDate,
+      updateData
+    })
     
   } catch (error) {
     console.error('Error in handleSubscriptionUpdated:', error)
@@ -267,86 +328,72 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       return
     }
 
-    // Downgrade to free tier
+    // Reset to free tier
     const { error } = await supabase
       .from('profiles')
       .update({
         subscription_tier: 'free',
         max_published_campaigns: 0,
-        subscription_status: 'cancelled',
         stripe_subscription_id: null,
-        stripe_price_id: null,
-        current_period_start: null,
-        current_period_end: null,
-        cancellation_scheduled_at: null,
+        subscription_status: 'inactive',
         updated_at: new Date().toISOString(),
       })
       .eq('id', profile.id)
 
     if (error) {
-      console.error('Error downgrading to free tier:', error)
+      console.error('Error resetting to free tier:', error)
       return
     }
 
-    // Unpublish excess campaigns (free tier allows 0 published campaigns)
-    const { error: unpublishError } = await supabase
+    // Unpublish excess campaigns
+    const { data: campaigns } = await supabase
       .from('campaigns')
-      .update({ status: 'draft' })
+      .select('id')
       .eq('user_id', profile.id)
       .eq('status', 'published')
+      .order('published_at', { ascending: false })
 
-    if (unpublishError) {
-      console.error('Error unpublishing campaigns:', unpublishError)
+    if (campaigns && campaigns.length > 0) {
+      // Unpublish all campaigns since free tier allows 0 published campaigns
+      await supabase
+        .from('campaigns')
+        .update({ status: 'draft' })
+        .eq('user_id', profile.id)
+        .eq('status', 'published')
     }
 
-    console.log(`Successfully downgraded user ${profile.id} to free tier`)
+    console.log(`Successfully processed subscription deletion for user ${profile.id}`)
     
   } catch (error) {
     console.error('Error in handleSubscriptionDeleted:', error)
   }
 }
 
-async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
-  console.log('Processing successful payment:', invoice.id)
+async function handleSubscriptionScheduleUpdated(schedule: Stripe.SubscriptionSchedule) {
+  console.log('🚀 ENTERING handleSubscriptionScheduleUpdated:', schedule.id)
+  console.log('Schedule details:', {
+    id: schedule.id,
+    status: schedule.status,
+    subscription: schedule.subscription,
+    phases: schedule.phases.map(phase => ({
+      start_date: phase.start_date,
+      end_date: phase.end_date,
+      items: phase.items?.map(item => ({ price: item.price }))
+    }))
+  })
   
-  // This is mainly for logging/analytics purposes
-  // The subscription update webhook handles the actual subscription changes
-  
-  const customerId = invoice.customer as string
+  const subscriptionId = schedule.subscription as string
   const supabase = createServiceRoleClient()
   
   try {
-    // Get user by Stripe customer ID
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('stripe_customer_id', customerId)
-      .single()
-
-    if (profileError || !profile) {
-      console.error('Profile not found for customer:', customerId)
-      return
-    }
-
-    // Could add billing history logging here
-    console.log(`Payment succeeded for user ${profile.id}, amount: ${invoice.amount_paid}`)
+    // Get the subscription to find the customer
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+    const customerId = subscription.customer as string
     
-  } catch (error) {
-    console.error('Error in handleInvoicePaymentSucceeded:', error)
-  }
-}
-
-async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  console.log('Processing failed payment:', invoice.id)
-  
-  const customerId = invoice.customer as string
-  const supabase = createServiceRoleClient()
-  
-  try {
     // Get user by Stripe customer ID
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, subscription_tier')
       .eq('stripe_customer_id', customerId)
       .single()
 
@@ -355,22 +402,68 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
       return
     }
 
-    // Update subscription status to indicate payment issues
+    // Determine current tier from current subscription
+    const currentPriceId = subscription.items.data[0]?.price.id
+    const currentTier = currentPriceId ? TIER_FROM_PRICE_ID[currentPriceId] : null
+    
+    if (!currentTier) {
+      console.error('Could not determine current tier from price ID:', currentPriceId)
+      return
+    }
+
+    // Look for future phases that indicate a change
+    const currentTime = Math.floor(Date.now() / 1000)
+    const futurePhases = schedule.phases.filter(phase => phase.start_date > currentTime)
+    
+    let scheduledTierChange = null
+    let scheduledChangeDate = null
+    
+    if (futurePhases.length > 0) {
+      const nextPhase = futurePhases[0]
+      scheduledChangeDate = new Date(nextPhase.start_date * 1000).toISOString()
+      
+      // Check if the next phase is a cancellation (no items) or a tier change
+      if (!nextPhase.items || nextPhase.items.length === 0) {
+        scheduledTierChange = 'free'
+        console.log('✅ Detected scheduled cancellation via schedule:', scheduledChangeDate)
+      } else {
+        // Check if it's a different tier
+        const nextPriceId = nextPhase.items[0]?.price
+        const nextTier = typeof nextPriceId === 'string' ? TIER_FROM_PRICE_ID[nextPriceId] : null
+        if (nextTier && nextTier !== currentTier) {
+          scheduledTierChange = nextTier
+          console.log('✅ Detected scheduled tier change via schedule:', { 
+            from: currentTier, 
+            to: nextTier, 
+            date: scheduledChangeDate 
+          })
+        }
+      }
+    } else {
+      // No future phases - clear any scheduled changes
+      console.log('❌ No future phases - clearing scheduled changes')
+    }
+    
+    // Update the scheduled change info (but keep current tier unchanged)
+    const updateData = {
+      scheduled_tier_change: scheduledTierChange,
+      scheduled_change_date: scheduledChangeDate,
+      updated_at: new Date().toISOString(),
+    }
+
     const { error } = await supabase
       .from('profiles')
-      .update({
-        subscription_status: 'past_due',
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', profile.id)
 
     if (error) {
-      console.error('Error updating subscription status:', error)
+      console.error('Error updating scheduled changes:', error)
+      return
     }
 
-    console.log(`Payment failed for user ${profile.id}`)
+    console.log(`Successfully updated scheduled changes for user ${profile.id}`, updateData)
     
   } catch (error) {
-    console.error('Error in handleInvoicePaymentFailed:', error)
+    console.error('Error in handleSubscriptionScheduleUpdated:', error)
   }
-} 
+}
