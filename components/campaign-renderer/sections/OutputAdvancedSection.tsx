@@ -73,15 +73,27 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
   const variableMap = useMemo(() => {
     const map: Record<string, any> = {}
     const inputVars = buildVariablesFromInputs(sections, userInputs)
+    const aiVars = campaign?.id ? getAITestResults(campaign.id) : {}
+    
+    console.log('🔧 Variable map construction debug:', {
+      inputVars,
+      aiVars,
+      campaignId: campaign?.id
+    })
+    
     Object.assign(map, inputVars)
     // Use campaign-scoped AI test results
-    Object.assign(map, campaign?.id ? getAITestResults(campaign.id) : {})
+    Object.assign(map, aiVars)
+    
+    console.log('🔧 Final variable map:', map)
+    
     return map
   }, [sections, userInputs, campaign?.id])
 
   const rows = (config as any)?.rows || []
   const pageSettings = (config as any)?.pageSettings || {}
-  const interpolator = useMemo(() => new VariableInterpolator(), [])
+  // Create a new interpolator instance for each render to avoid regex state issues
+  const interpolator = new VariableInterpolator()
 
   const renderItem = (item: any, blockTextColor?: string, align: 'left' | 'center' | 'right' = 'center') => {
     // Use block text color if available, otherwise fall back to campaign theme
@@ -181,7 +193,25 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
           </div>
         )
       case 'image':
-        const imageSrc = interpolator.interpolate(item.src || '', { variables: variableMap, availableVariables: [] }).content
+        // Debug logging for image variable interpolation
+        console.log('🖼️ Image interpolation debug:', {
+          originalSrc: item.src,
+          variableMap: variableMap,
+          availableKeys: Object.keys(variableMap)
+        })
+        
+        const interpolationResult = interpolator.interpolate(item.src || '', { variables: variableMap, availableVariables: [] })
+        const imageSrc = interpolationResult.content
+        
+        console.log('🖼️ Image interpolation result:', {
+          success: interpolationResult.success,
+          originalSrc: item.src,
+          interpolatedSrc: imageSrc,
+          processedVariables: interpolationResult.processedVariables,
+          missingVariables: interpolationResult.missingVariables,
+          errors: interpolationResult.errors
+        })
+        
         const isCoverMode = (item as any).coverMode
         const imageStyle = isCoverMode 
           ? { 
@@ -204,7 +234,10 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
               <img 
                 src={imageSrc} 
                 alt={item.alt || ''} 
-                className="rounded-2xl shadow-2xl" 
+                className={cn(
+                  "rounded-2xl",
+                  (item as any).showShadow !== false ? "shadow-2xl" : ""
+                )} 
                 style={imageStyle}
               />
             </div>
@@ -212,7 +245,10 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
             <img 
               src={imageSrc} 
               alt={item.alt || ''} 
-              className="rounded-2xl w-full shadow-2xl" 
+              className={cn(
+                "rounded-2xl w-full",
+                (item as any).showShadow !== false ? "shadow-2xl" : ""
+              )} 
               style={imageStyle}
             />
           )

@@ -153,6 +153,7 @@ export class VariableInterpolator {
     context: VariableInterpolationContext, 
     result: InterpolationResult
   ): string {
+    // Create fresh regex instance to avoid global state issues
     const conditionalRegex = new RegExp(VARIABLE_REFERENCE_PATTERNS.conditional.source, VARIABLE_REFERENCE_PATTERNS.conditional.flags)
     
     return content.replace(conditionalRegex, (match, variableName, condition, conditionalContent) => {
@@ -181,13 +182,17 @@ export class VariableInterpolator {
     context: VariableInterpolationContext, 
     result: InterpolationResult
   ): string {
+    // Create fresh regex instances to avoid global state issues
+    const formattedRegex = new RegExp(VARIABLE_REFERENCE_PATTERNS.formatted.source, VARIABLE_REFERENCE_PATTERNS.formatted.flags)
+    const basicRegex = new RegExp(VARIABLE_REFERENCE_PATTERNS.basic.source, VARIABLE_REFERENCE_PATTERNS.basic.flags)
+    
     // Process formatted variables first
-    content = content.replace(VARIABLE_REFERENCE_PATTERNS.formatted, (match, variableName, formatterSpec) => {
+    content = content.replace(formattedRegex, (match, variableName, formatterSpec) => {
       return this.processVariableReplacement(variableName, context, result, formatterSpec)
     })
 
     // Process remaining basic variables
-    content = content.replace(VARIABLE_REFERENCE_PATTERNS.basic, (match, variableName) => {
+    content = content.replace(basicRegex, (match, variableName) => {
       // Skip if already processed as formatted
       if (content.includes(`@${variableName} |`) || content.includes(`@${variableName}|`)) {
         return match

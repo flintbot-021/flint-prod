@@ -26,7 +26,7 @@ import { getCampaignTheme } from '@/components/campaign-renderer/utils'
 type ContentItem =
   | { id: string; type: 'headline' | 'subheading' | 'h3' | 'paragraph'; content: string }
   | { id: string; type: 'button'; content: string; href?: string; color?: string; textColor?: string }
-  | { id: string; type: 'image'; src?: string; alt?: string; maxHeight?: number; coverMode?: boolean }
+  | { id: string; type: 'image'; src?: string; alt?: string; maxHeight?: number; coverMode?: boolean; showShadow?: boolean }
   | { id: string; type: 'numbered-list' | 'bullet-list'; items: string[] }
   | { id: string; type: 'divider'; color?: string; opacity?: number; thickness?: number; style?: 'solid' | 'dotted' | 'dashed'; paddingTop?: number; paddingBottom?: number }
 
@@ -511,26 +511,45 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     return true
   }
 
-  // Build preview variable context similar to output-section
+  // Build preview variable context using the same approach as the main renderer
   const previewVariables = useMemo(() => {
     const vars: Record<string, string> = {}
+    
+    // Use the same variable building approach as OutputAdvancedSection
     if (allSections && allSections.length) {
+      // For preview, we'll use the getSimpleVariablesForBuilder approach but with AI variables
       const available = getSimpleVariablesForBuilder(allSections, section.order || 0, campaignId)
-      available.forEach(v => { vars[v.name] = v.sampleValue })
+      available.forEach(v => { 
+        // For AI variables, don't use the variable name as sample value, use actual AI data if available
+        vars[v.name] = v.sampleValue 
+      })
     }
+    
     // Merge AI test results last so they take precedence (campaign-scoped)
     const ai = campaignId ? getAITestResults(campaignId) : {}
+    
+    console.log('🔧 Preview variables construction debug:', {
+      inputVars: vars,
+      aiVars: ai,
+      campaignId: campaignId
+    })
+    
     Object.assign(vars, ai)
+    
     // Ensure capture defaults
     if (!vars.name) vars.name = 'Joe Bloggs'
     if (!vars.email) vars.email = 'joe@email.com'
     if (!vars.phone) vars.phone = '+12 345 6789'
+    
+    console.log('🔧 Final preview variables:', vars)
+    
     return vars
   }, [allSections, section.order, campaignId])
 
   // Preview uses variable interpolator to show a basic rendering
   const previewHtml = useMemo(() => {
     if (!isPreview) return null
+    // Create fresh interpolator instance to avoid regex state issues
     const interpolator = new VariableInterpolator()
     const variables: Record<string, any> = previewVariables
 
@@ -564,13 +583,32 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
           const buttonAlignment = align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center'
           return `<div class="flex ${buttonAlignment}"><a href="${buttonHref}" class="inline-flex items-center justify-center px-8 py-4 rounded-2xl font-semibold text-center backdrop-blur-md border transition-all duration-300 ease-out hover:shadow-xl hover:scale-105 active:scale-95 shadow-2xl" style="background-color:${buttonColor};color:${buttonTextColor};border:1px solid rgba(255, 255, 255, 0.2);box-shadow:0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)" onmouseover="this.style.backgroundColor='${buttonHoverColor}'" onmouseout="this.style.backgroundColor='${buttonColor}'">${buttonText}</a></div>`
         case 'image':
-          const imageSrc = interpolator.interpolate(item.src || '', { variables, availableVariables: [] }).content
+          // Debug logging for preview image variable interpolation
+          console.log('🖼️ Preview image interpolation debug:', {
+            originalSrc: item.src,
+            variables: variables,
+            availableKeys: Object.keys(variables)
+          })
+          
+          const imageInterpolationResult = interpolator.interpolate(item.src || '', { variables, availableVariables: [] })
+          const imageSrc = imageInterpolationResult.content
+          
+          console.log('🖼️ Preview image interpolation result:', {
+            success: imageInterpolationResult.success,
+            originalSrc: item.src,
+            interpolatedSrc: imageSrc,
+            processedVariables: imageInterpolationResult.processedVariables,
+            missingVariables: imageInterpolationResult.missingVariables,
+            errors: imageInterpolationResult.errors
+          })
+          
           const isCoverMode = (item as any).coverMode
+          const shadowClass = (item as any).showShadow !== false ? ' shadow-2xl' : ''
           if (isCoverMode) {
-            return imageSrc ? `<div style="position:relative;width:100%;height:100%;min-height:300px;"><img class="rounded-lg" style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;object-fit:cover;" src="${imageSrc}" alt="${item.alt || ''}"/></div>` : ''
+            return imageSrc ? `<div style="position:relative;width:100%;height:100%;min-height:300px;"><img class="rounded-lg${shadowClass}" style="position:absolute;top:0;left:0;right:0;bottom:0;width:100%;height:100%;object-fit:cover;" src="${imageSrc}" alt="${item.alt || ''}"/></div>` : ''
           } else {
             const maxHeightStyle = (item as any).maxHeight ? `max-height:${(item as any).maxHeight}px;height:auto;` : ''
-            return imageSrc ? `<img class="rounded-lg w-full object-cover" style="${maxHeightStyle}" src="${imageSrc}" alt="${item.alt || ''}"/>` : ''
+            return imageSrc ? `<img class="rounded-lg w-full object-cover${shadowClass}" style="${maxHeightStyle}" src="${imageSrc}" alt="${item.alt || ''}"/>` : ''
           }
         case 'numbered-list':
           return `<ol class="list-decimal pl-5 space-y-1">${(item.items||[]).map(li=>`<li>${interpolator.interpolate(li, { variables, availableVariables: [] }).content}</li>`).join('')}</ol>`
@@ -754,7 +792,12 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
         const aiSettings: any = section.settings || {}
         if (aiSettings?.outputVariables && Array.isArray(aiSettings.outputVariables)) {
           aiSettings.outputVariables.forEach((variable: any) => {
-            if (variable.name) variables.push({ name: variable.name, type: 'output', description: variable.description || 'AI generated output', sampleValue: variable.name })
+            if (variable.name) {
+              // Get actual AI result if available, otherwise use variable name as fallback
+              const aiResults = campaignId ? getAITestResults(campaignId) : {}
+              const actualValue = aiResults[variable.name] || variable.name
+              variables.push({ name: variable.name, type: 'output', description: variable.description || 'AI generated output', sampleValue: actualValue })
+            }
           })
         }
       }
@@ -1014,6 +1057,7 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
     const newItem: any = { id, type }
     if (type === 'headline' || type === 'subheading' || type === 'h3' || type === 'paragraph') newItem.content = ''
     if (type === 'button') { newItem.content = 'Button'; newItem.href = '' }
+    if (type === 'image') { newItem.showShadow = true } // Default to showing shadow
     if (type === 'numbered-list' || type === 'bullet-list') newItem.items = ['']
     block.content = [...(block.content || []), newItem]
     setDraftRows(next)
@@ -2266,7 +2310,10 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                           <img 
                                             src={(item as any).src} 
                                             alt={(item as any).alt || 'Image'} 
-                                            className="w-full object-cover rounded-lg border border-input group-hover:border-primary transition-colors"
+                                            className={cn(
+                                              "w-full object-cover rounded-lg border border-input group-hover:border-primary transition-colors",
+                                              (item as any).showShadow !== false ? "shadow-2xl" : ""
+                                            )}
                                             style={{
                                               height: (item as any).coverMode ? '100%' : ((item as any).maxHeight ? `${(item as any).maxHeight}px` : '192px'),
                                               maxHeight: (item as any).coverMode ? 'none' : ((item as any).maxHeight ? `${(item as any).maxHeight}px` : '192px'),
@@ -2588,6 +2635,20 @@ export function AdvancedOutputBuilder({ section, isPreview = false, onUpdate, cl
                                         checked={(activeImageItem as any).coverMode || false}
                                         onCheckedChange={(checked) => {
                                           updateContentItemDebounced(activeImageId, { coverMode: checked })
+                                        }}
+                                      />
+                                    </div>
+                                    
+                                    <div className="flex items-center justify-between">
+                                      <div className="space-y-1">
+                                        <Label htmlFor="show-shadow-toggle">Show Shadow</Label>
+                                        <p className="text-xs text-muted-foreground">Add a shadow effect to the image</p>
+                                      </div>
+                                      <Switch
+                                        id="show-shadow-toggle"
+                                        checked={(activeImageItem as any).showShadow !== false} // Default to true
+                                        onCheckedChange={(checked) => {
+                                          updateContentItemDebounced(activeImageId, { showShadow: checked })
                                         }}
                                       />
                                     </div>
