@@ -47,7 +47,7 @@ export class AIProcessingEngine {
   private openai: any // We'll import OpenAI client
   
   // Sensible defaults - no user configuration needed
-  private readonly DEFAULT_MODEL = 'gpt-4o' // Supports JSON mode, vision, and is latest
+  private readonly DEFAULT_MODEL = 'gpt-4.1' // Supports JSON mode, vision, browsing, and enhanced capabilities
   private readonly DEFAULT_TEMPERATURE = 0.7
   private readonly DEFAULT_MAX_TOKENS = 10000
   private readonly DEFAULT_TIMEOUT = 30000
