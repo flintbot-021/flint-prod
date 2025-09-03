@@ -1,14 +1,28 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
+import { Share2, RotateCcw } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
 import { buildVariablesFromInputs } from '@/lib/utils/section-variables'
 import { VariableInterpolator } from '@/lib/utils/variable-interpolator'
-import { getCampaignTheme } from '../utils'
+import { getCampaignTheme, getCampaignButtonStyles, getMobileClasses } from '../utils'
+import { useToast } from '@/components/ui/use-toast'
 
-export function OutputAdvancedSection({ section, config, userInputs = {}, sections = [], deviceInfo, campaign }: SectionRendererProps) {
+export function OutputAdvancedSection({ 
+  section, 
+  config, 
+  userInputs = {}, 
+  sections = [], 
+  deviceInfo, 
+  campaign, 
+  onNavigateToSection,
+  index = 0
+}: SectionRendererProps) {
+  const [isSharing, setIsSharing] = useState(false)
+  const { toast } = useToast()
+
   // Debug logging for props
   console.log('🔧 OutputAdvancedSection props debug:', {
     sectionId: section.id,
@@ -121,6 +135,63 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
     
     return map
   }, [sections, userInputs, campaign?.id])
+
+  // Handle share functionality
+  const handleShare = async () => {
+    setIsSharing(true)
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: campaign?.name || 'Campaign Results',
+          text: 'Check out my personalized results!',
+          url: window.location.href
+        })
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(window.location.href)
+        toast({
+          title: "Link copied!",
+          description: "The link has been copied to your clipboard.",
+        })
+      }
+    } catch (error) {
+      console.error('Error sharing:', error)
+      // Fallback: copy to clipboard
+      try {
+        await navigator.clipboard.writeText(window.location.href)
+        toast({
+          title: "Link copied!",
+          description: "The link has been copied to your clipboard.",
+        })
+      } catch (clipboardError) {
+        toast({
+          title: "Share failed",
+          description: "Unable to share or copy link.",
+          variant: "destructive"
+        })
+      }
+    } finally {
+      setIsSharing(false)
+    }
+  }
+
+  // Handle try again functionality
+  const handleTryAgain = () => {
+    // Clear any cached data/AI results
+    if (typeof window !== 'undefined') {
+      // Clear AI test results for this campaign
+      if (campaign?.id) {
+        localStorage.removeItem(`ai_test_results_${campaign.id}`)
+      }
+      // Clear legacy AI test results
+      localStorage.removeItem('ai_test_results')
+    }
+    
+    // Navigate back to the start (section 0)
+    if (onNavigateToSection) {
+      onNavigateToSection(0)
+    }
+  }
 
   const rows = (config as any)?.rows || []
   const pageSettings = (config as any)?.pageSettings || {}
@@ -565,6 +636,60 @@ export function OutputAdvancedSection({ section, config, userInputs = {}, sectio
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Bottom Action Bar */}
+      <div 
+        className="fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t shadow-2xl z-50"
+        style={{
+          backgroundColor: 'rgba(255, 255, 255, 0.1)',
+          borderColor: 'rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+        }}
+      >
+        <div className="max-w-4xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-center">
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-3">
+              {/* Share Button */}
+              <button
+                onClick={handleShare}
+                disabled={isSharing}
+                className={cn(
+                  "px-6 py-3 rounded-xl font-semibold backdrop-blur-md border transition-all duration-300 ease-out",
+                  "flex items-center space-x-2 hover:shadow-xl hover:scale-105 active:scale-95",
+                  getMobileClasses("min-h-[48px]", deviceInfo?.type)
+                )}
+                style={{
+                  ...getCampaignButtonStyles(campaign, 'secondary'),
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                }}
+              >
+                <Share2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Share</span>
+              </button>
+
+              {/* Try Again Button */}
+              <button
+                onClick={handleTryAgain}
+                className={cn(
+                  "px-6 py-3 rounded-xl font-semibold backdrop-blur-md border transition-all duration-300 ease-out",
+                  "flex items-center space-x-2 hover:shadow-xl hover:scale-105 active:scale-95",
+                  getMobileClasses("min-h-[48px]", deviceInfo?.type)
+                )}
+                style={{
+                  ...getCampaignButtonStyles(campaign, 'primary'),
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                }}
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span>Try Again</span>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
