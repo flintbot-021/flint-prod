@@ -80,7 +80,7 @@ You are an expert fitness coach. Based on @name who wants to achieve @fitness_go
 
 ### Default Settings (Hidden from Users)
 ```typescript
-const DEFAULT_MODEL = 'gpt-4o'      // Latest OpenAI model with JSON mode
+const DEFAULT_MODEL = 'gpt-4.1'      // Latest OpenAI model with JSON mode and browsing
 const DEFAULT_TEMPERATURE = 0.7     // Balanced creativity/consistency
 const DEFAULT_MAX_TOKENS = 1000     // Sufficient for most responses
 const DEFAULT_TIMEOUT = 30000       // 30 second timeout

@@ -70,7 +70,7 @@ The system now uses a **combined prompt approach** where:
 
 ### Current AI Processing Engine Settings
 ```typescript
-const DEFAULT_MODEL = 'gpt-4o' // Latest OpenAI model with JSON mode
+const DEFAULT_MODEL = 'gpt-4.1' // Latest OpenAI model with JSON mode and browsing
 const DEFAULT_TEMPERATURE = 0.7
 const DEFAULT_MAX_TOKENS = 1000
 const DEFAULT_TIMEOUT = 30000
@@ -174,7 +174,7 @@ const response = await fetch('/api/generate-prompt', {
 
 The system uses environment variables for OpenAI integration:
 - `OPENAI_API_KEY`: Required for auto-generation and live testing
-- Model: `gpt-4o` (latest model with JSON mode support)
+- Model: `gpt-4.1` (latest model with JSON mode and browsing support)
 - Max tokens: 1000
 - Temperature: 0.7 (balanced creativity and consistency)
 
