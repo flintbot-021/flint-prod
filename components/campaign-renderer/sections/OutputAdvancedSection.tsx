@@ -533,7 +533,7 @@ export function OutputAdvancedSection({
 
   return (
     <div 
-      className="h-full flex flex-col pb-20"
+      className="h-full flex flex-col"
       style={{ backgroundColor: backgroundColor || undefined }}
     >
       <div className={cn("flex-1", isMobile ? "py-8" : "py-12")}>
@@ -638,9 +638,9 @@ export function OutputAdvancedSection({
         ))}
       </div>
 
-      {/* Bottom Action Bar */}
+      {/* Bottom Action Bar - Natural positioning at bottom of content */}
       <div 
-        className="fixed bottom-0 left-0 right-0 backdrop-blur-xl border-t shadow-2xl z-50"
+        className="w-full backdrop-blur-xl border-t shadow-2xl mt-8"
         style={{
           backgroundColor: 'rgba(255, 255, 255, 0.1)',
           borderColor: 'rgba(255, 255, 255, 0.2)',
