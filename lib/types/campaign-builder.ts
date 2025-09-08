@@ -46,7 +46,8 @@ export const SECTION_TYPES: SectionType[] = [
       maxLength: 500,
       required: true,
       inputType: 'text',
-      buttonText: 'Next'
+      buttonText: 'Next',
+      textArea: true
     }
   },
   {

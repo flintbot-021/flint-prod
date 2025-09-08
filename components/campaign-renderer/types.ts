@@ -100,6 +100,8 @@ export interface SectionConfiguration {
   // Text input specific configuration
   inputType?: 'text' | 'textarea' | 'email' | 'tel' | 'number'
   maxLength?: number
+  textArea?: boolean
+  isUrlInput?: boolean
 }
 
 // Base props that all section components will receive

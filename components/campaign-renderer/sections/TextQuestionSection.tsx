@@ -38,6 +38,7 @@ export function TextQuestionSection({
   const subheading = description || ''
   const fieldLabel = configData.label || configData.fieldLabel || ''
   const isUrlInput = configData.isUrlInput || false
+  const textArea = configData.textArea ?? true // Default to true for backward compatibility
   const placeholder = configData.placeholder || (isUrlInput ? 'https://example.com' : 'Type your answer here...')
   const isRequired = configData.required ?? false
   const minLength = configData.minLength || 1
@@ -201,7 +202,7 @@ export function TextQuestionSection({
                       : '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
                   }}
                 />
-              ) : (
+              ) : textArea ? (
                 <textarea
                   value={inputValue}
                   onChange={handleInputChange}
@@ -230,10 +231,39 @@ export function TextQuestionSection({
                       : '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
                   }}
                 />
+              ) : (
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                  placeholder={placeholder}
+                  maxLength={maxLength}
+                  className={cn(
+                    "w-full p-6 rounded-2xl backdrop-blur-md border-0",
+                    "focus:ring-2 focus:ring-opacity-50 focus:outline-none",
+                    "transition-all duration-300 ease-out",
+                    "shadow-lg hover:shadow-xl",
+                    "placeholder:text-opacity-60",
+                    error 
+                      ? "ring-2 ring-red-500 ring-opacity-50" 
+                      : "hover:shadow-2xl focus:shadow-2xl",
+                    getMobileClasses("text-lg", deviceInfo?.type)
+                  )}
+                  style={{
+                    backgroundColor: `rgba(255, 255, 255, 0.15)`,
+                    backdropFilter: 'blur(20px)',
+                    border: `1px solid rgba(255, 255, 255, 0.2)`,
+                    color: theme.textColor,
+                    boxShadow: error 
+                      ? '0 8px 32px rgba(239, 68, 68, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)' 
+                      : '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                  }}
+                />
               )}
             </div>
 
-            {/* Character Counter */}
+            {/* Character Counter - Only show for textarea mode */}
             <div className="flex justify-between items-center">
               <div>
                 {error && (
@@ -242,16 +272,18 @@ export function TextQuestionSection({
                   </div>
                 )}
               </div>
-              <div className="px-3 py-1 rounded-full backdrop-blur-sm border border-white/10" 
-                   style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)' }}>
-                <span className={cn(
-                  "text-sm font-medium",
-                  inputValue.length > maxLength * 0.9 && "text-amber-500",
-                  inputValue.length >= maxLength && "text-red-500"
-                )} style={inputValue.length > maxLength * 0.9 ? undefined : mutedTextStyle}>
-                  {inputValue.length}/{maxLength}
-                </span>
-              </div>
+              {textArea && (
+                <div className="px-3 py-1 rounded-full backdrop-blur-sm border border-white/10" 
+                     style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)' }}>
+                  <span className={cn(
+                    "text-sm font-medium",
+                    inputValue.length > maxLength * 0.9 && "text-amber-500",
+                    inputValue.length >= maxLength && "text-red-500"
+                  )} style={inputValue.length > maxLength * 0.9 ? undefined : mutedTextStyle}>
+                    {inputValue.length}/{maxLength}
+                  </span>
+                </div>
+              )}
           </div>
 
 

@@ -78,9 +78,10 @@ export function SectionBottomBar({
   const captureSettings = isCaptureSection ? section.settings as any : null
   const captureButtonText = captureSettings?.submitButtonText || 'Get my results'
   
-  // Get Text Question URL settings
+  // Get Text Question settings
   const textQuestionSettings = isTextQuestion ? section.settings as any : null
   const isUrlInput = textQuestionSettings?.isUrlInput || false
+  const textArea = textQuestionSettings?.textArea ?? true // Default to true for backward compatibility
   
   // Local state for optimistic button text updates
   const [localCaptureButtonText, setLocalCaptureButtonText] = useState(captureButtonText)
@@ -210,7 +211,6 @@ export function SectionBottomBar({
               id={`required-${section.id}`}
               checked={isRequired}
               onCheckedChange={onRequiredChange}
-              className="data-[state=checked]:bg-red-500"
             />
             <Label 
               htmlFor={`required-${section.id}`}
@@ -228,7 +228,6 @@ export function SectionBottomBar({
               id={`url-input-${section.id}`}
               checked={isUrlInput}
               onCheckedChange={(checked) => updateTextQuestionSettings({ isUrlInput: checked })}
-              className="data-[state=checked]:bg-blue-500"
             />
             <Label 
               htmlFor={`url-input-${section.id}`}
@@ -239,8 +238,22 @@ export function SectionBottomBar({
           </div>
         )}
 
-
-
+        {/* Text Area Toggle for Text Questions - Only show if not URL input */}
+        {isTextQuestion && !isUrlInput && (
+          <div className="flex items-center space-x-2">
+            <Switch
+              id={`text-area-${section.id}`}
+              checked={textArea}
+              onCheckedChange={(checked) => updateTextQuestionSettings({ textArea: checked })}
+            />
+            <Label 
+              htmlFor={`text-area-${section.id}`}
+              className="text-sm font-medium cursor-pointer text-gray-700"
+            >
+              Text Area
+            </Label>
+          </div>
+        )}
 
       </div>
 
