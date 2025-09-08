@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Activity } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses, getCampaignTheme, getCampaignButtonStyles, getCampaignTextColor, getNextSectionButtonText } from '../utils'
@@ -32,6 +32,7 @@ export function SliderSection({
   const minLabel = configData.minLabel || 'Low'
   const maxLabel = configData.maxLabel || 'High'
   const isRequired = configData.required ?? false
+  const allowPlus = configData.allowPlus || false
   
   // Use dynamic button text for better UX flow - prioritize smart flow over stored config
   const dynamicButtonText = getNextSectionButtonText(index, sections, 'Continue')
@@ -40,27 +41,52 @@ export function SliderSection({
   // If our dynamic text is different from default, use it (this means next section is special)
   const buttonLabel = dynamicButtonText !== 'Continue' ? dynamicButtonText : storedButtonText
 
-  // Initialize with existing response if available, otherwise use default
+  // Initialize with existing response if available, otherwise use middle value
   const existingResponse = userInputs?.[section.id] 
-  const defaultValue = existingResponse !== undefined ? existingResponse : Math.floor((minValue + maxValue) / 2)
+  const calculateMiddleValue = () => {
+    // Always calculate the exact middle point between min and max
+    return Math.round((minValue + maxValue) / 2)
+  }
+  const defaultValue = existingResponse !== undefined ? existingResponse : calculateMiddleValue()
   const [sliderValue, setSliderValue] = useState<number>(defaultValue)
+
+  // Update slider value if min/max changes and no user input exists
+  useEffect(() => {
+    if (existingResponse === undefined) {
+      const newMiddleValue = Math.round((minValue + maxValue) / 2)
+      if (sliderValue !== newMiddleValue) {
+        setSliderValue(newMiddleValue)
+      }
+    }
+  }, [minValue, maxValue, existingResponse, sliderValue])
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value)
     setSliderValue(value)
     
+    // Determine if this is a "plus" value
+    const isMaxWithPlus = allowPlus && value === maxValue
+    const displayValue = isMaxWithPlus ? `${value}+` : value
+    
     // Report to parent component
     onResponseUpdate(section.id, 'slider_value', value, {
       inputType: 'slider',
       isRequired: isRequired,
-      range: { min: minValue, max: maxValue, step }
+      range: { min: minValue, max: maxValue, step },
+      displayValue: displayValue,
+      isMaxWithPlus: isMaxWithPlus
     })
   }
 
   const handleContinue = () => {
+    const isMaxWithPlus = allowPlus && sliderValue === maxValue
+    const displayValue = isMaxWithPlus ? `${sliderValue}+` : sliderValue
+    
     onSectionComplete(index, {
       [section.id]: sliderValue,
-      slider_response: sliderValue
+      slider_response: sliderValue,
+      [`${section.id}_display`]: displayValue,
+      [`${section.id}_is_max_plus`]: isMaxWithPlus
     })
   }
 
@@ -109,7 +135,7 @@ export function SliderSection({
                   boxShadow: `0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)`
                 }}
               >
-                {sliderValue}
+                {sliderValue}{allowPlus && sliderValue === maxValue ? '+' : ''}
               </div>
             </div>
             

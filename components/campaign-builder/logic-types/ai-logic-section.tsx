@@ -989,7 +989,8 @@ export function AILogicSection({
                                 defaultValue: settings.defaultValue || 5,
                                 step: settings.step || 1,
                                 minLabel: settings.minLabel || 'Low',
-                                maxLabel: settings.maxLabel || 'High'
+                                maxLabel: settings.maxLabel || 'High',
+                                allowPlus: settings.allowPlus || false
                               }
                             }
                             
@@ -1081,7 +1082,7 @@ export function AILogicSection({
                                       ) : (
                                         <>
                                           <span className="text-xs font-bold text-orange-600 font-mono">
-                                            {numericValue}
+                                            {numericValue}{sliderConfig?.allowPlus && numericValue === maxVal ? '+' : ''}
                                           </span>
                                           <span className="text-xs text-gray-500">
                                             / {maxVal}

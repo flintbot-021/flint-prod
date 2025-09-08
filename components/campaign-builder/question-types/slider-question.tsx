@@ -24,6 +24,7 @@ interface SliderQuestionProps {
     buttonText: string
     minLabel?: string
     maxLabel?: string
+    allowPlus?: boolean
   }
   isPreview?: boolean
   isEditing?: boolean
@@ -104,7 +105,7 @@ export function SliderQuestion({
                   color: theme.backgroundColor
                 }}
               >
-                {sliderValue[0]}
+                {sliderValue[0]}{settings.allowPlus && sliderValue[0] === settings.maxValue ? '+' : ''}
               </div>
             </div>
           )}
@@ -227,6 +228,7 @@ export function SliderQuestion({
           </div>
         </div>
       </div>
+
     </div>
   )
 } 

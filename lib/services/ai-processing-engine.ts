@@ -28,6 +28,11 @@ export interface AITestRequest {
     enabled: boolean
     urlVariables?: Array<{ name: string; url: string }>
   }
+  sliderContext?: Record<string, {
+    isMaxWithPlus?: boolean
+    displayValue?: string
+    maxValue?: number
+  }>
 }
 
 export interface AITestResponse {
@@ -82,7 +87,7 @@ export class AIProcessingEngine {
       }
 
       // Fallback for text-only processing
-      const finalPrompt = this.replaceVariables(request.prompt, request.variables)
+      const finalPrompt = this.replaceVariables(request.prompt, request.variables, request.sliderContext)
 
       const aiRequest = this.prepareAIRequest(finalPrompt, request.outputVariables, request.knowledgeBaseContext)
       const response = await this.callOpenAI(aiRequest)
@@ -243,7 +248,7 @@ export class AIProcessingEngine {
         })
       }
 
-      const finalPrompt = this.replaceVariables(request.prompt, textVariables)
+      const finalPrompt = this.replaceVariables(request.prompt, textVariables, request.sliderContext)
 
       // Build URL browsing instructions if enabled
       let urlBrowsingInstructions = ''
@@ -310,17 +315,18 @@ export class AIProcessingEngine {
   /**
    * Replace variables in prompt text with actual values
    */
-  private replaceVariables(prompt: string, variables: Record<string, any>): string {
+  private replaceVariables(prompt: string, variables: Record<string, any>, sliderContext?: Record<string, any>): string {
     let processedPrompt = prompt
 
     console.log('🔄 Starting variable replacement...')
     console.log('🔄 Original prompt:', prompt)
     console.log('🔄 Available variables:', variables)
+    console.log('🔄 Slider context:', sliderContext)
 
     // Replace @variable mentions with actual values
     Object.entries(variables).forEach(([name, value]) => {
       const regex = new RegExp(`@${name}\\b`, 'g')
-      const stringValue = this.formatVariableValue(value)
+      const stringValue = this.formatVariableValue(value, name, sliderContext)
       const beforeReplace = processedPrompt
       processedPrompt = processedPrompt.replace(regex, stringValue)
       
@@ -336,9 +342,18 @@ export class AIProcessingEngine {
   /**
    * Format variable value for prompt insertion
    */
-  private formatVariableValue(value: any): string {
+  private formatVariableValue(value: any, variableName?: string, sliderContext?: Record<string, any>): string {
     if (value === null || value === undefined) {
       return '[not provided]'
+    }
+
+    // Check if this is a slider variable with "plus" context
+    if (variableName && sliderContext && sliderContext[variableName]) {
+      const context = sliderContext[variableName]
+      if (context.isMaxWithPlus && context.displayValue) {
+        // For slider values that represent "or more", provide context to the AI
+        return `${value} (${context.displayValue}, meaning ${value} or more)`
+      }
     }
 
     if (typeof value === 'object') {

@@ -42,6 +42,9 @@ export function SectionBottomBar({
   // Check if this is a text question (for URL toggle)
   const isTextQuestion = section.type === 'question-text'
   
+  // Check if this is a slider question (for Plus toggle)
+  const isSliderQuestion = section.type === 'question-slider'
+  
   // Check if this is a capture section
   const isCaptureSection = section.type === 'capture-details'
   
@@ -82,6 +85,10 @@ export function SectionBottomBar({
   const textQuestionSettings = isTextQuestion ? section.settings as any : null
   const isUrlInput = textQuestionSettings?.isUrlInput || false
   const textArea = textQuestionSettings?.textArea ?? true // Default to true for backward compatibility
+  
+  // Get Slider Question settings
+  const sliderQuestionSettings = isSliderQuestion ? section.settings as any : null
+  const allowPlus = sliderQuestionSettings?.allowPlus || false
   
   // Local state for optimistic button text updates
   const [localCaptureButtonText, setLocalCaptureButtonText] = useState(captureButtonText)
@@ -130,6 +137,18 @@ export function SectionBottomBar({
 
   // Handle Text Question settings updates
   const updateTextQuestionSettings = async (newSettings: Record<string, unknown>) => {
+    if (onSectionUpdate) {
+      await onSectionUpdate({
+        settings: {
+          ...section.settings,
+          ...newSettings
+        }
+      })
+    }
+  }
+
+  // Handle Slider Question settings updates
+  const updateSliderQuestionSettings = async (newSettings: Record<string, unknown>) => {
     if (onSectionUpdate) {
       await onSectionUpdate({
         settings: {
@@ -251,6 +270,23 @@ export function SectionBottomBar({
               className="text-sm font-medium cursor-pointer text-gray-700"
             >
               Text Area
+            </Label>
+          </div>
+        )}
+
+        {/* Allow Plus Toggle for Slider Questions */}
+        {isSliderQuestion && (
+          <div className="flex items-center space-x-2">
+            <Switch
+              id={`allow-plus-${section.id}`}
+              checked={allowPlus}
+              onCheckedChange={(checked) => updateSliderQuestionSettings({ allowPlus: checked })}
+            />
+            <Label 
+              htmlFor={`allow-plus-${section.id}`}
+              className="text-sm font-medium cursor-pointer text-gray-700"
+            >
+              Allow Plus
             </Label>
           </div>
         )}
