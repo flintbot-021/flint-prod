@@ -271,7 +271,7 @@ export function CaptureSection({
     return isValid
   }
   
-  // Auto-focus the first enabled field when component mounts
+  // Auto-focus the first enabled field when component mounts (only once)
   useEffect(() => {
     // Focus on the first enabled field in order: name, email, phone
     let inputToFocus: HTMLInputElement | null = null
@@ -291,7 +291,7 @@ export function CaptureSection({
       }, 100)
       return () => clearTimeout(timer)
     }
-  }, [settings.enabledFields])
+  }, []) // Empty dependency array - only run once on mount
 
   // Generate validation text for bottom bar
   const getValidationText = () => {

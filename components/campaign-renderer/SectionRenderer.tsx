@@ -4,6 +4,7 @@ import React, { useMemo, useEffect, useCallback } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { BaseSectionProps, SectionConfiguration, SectionRendererProps, SectionWithOptions, DeviceInfo } from './types'
 import { Campaign } from '@/lib/types/database'
+import { isValidEmail } from './utils'
 
 // Import section components
 import {
@@ -93,26 +94,9 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
         return true
       
       case 'capture':
-        const settings = mergedConfig
-        let isValid = true
-        
-        // Check required fields
-        if (settings.enabledFields?.name && settings.requiredFields?.name) {
-          const name = userInputs?.[`${section.id}_name`] || userInputs?.name
-          if (!name?.trim()) isValid = false
-        }
-        
-        if (settings.enabledFields?.email && settings.requiredFields?.email) {
-          const email = userInputs?.[`${section.id}_email`] || userInputs?.email
-          if (!email?.trim() || !email.includes('@')) isValid = false
-        }
-        
-        if (settings.enabledFields?.phone && settings.requiredFields?.phone) {
-          const phone = userInputs?.[`${section.id}_phone`] || userInputs?.phone
-          if (!phone?.trim()) isValid = false
-        }
-        
-        return isValid
+        // Disable keyboard navigation for capture sections due to complex validation
+        // Users must click the Continue button to ensure proper form validation
+        return false
       
       case 'date_time_question':
         const isDateRequired = mergedConfig.required ?? false
@@ -140,6 +124,20 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     }
   }, [section, userInputs])
 
+  // Helper function to trigger section completion (simulates clicking Continue button)
+  const triggerSectionCompletion = useCallback(() => {
+    // Find and trigger the Continue button click to ensure proper data handling
+    const continueButton = document.querySelector('[data-continue-button="true"]') as HTMLButtonElement
+    if (continueButton && !continueButton.disabled) {
+      continueButton.click()
+      return true
+    }
+    
+    // Fallback to onNext if no continue button found
+    props.onNext()
+    return false
+  }, [props.onNext])
+
   // Global keyboard event handler
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     // Don't interfere if user is typing in an input field
@@ -155,12 +153,12 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
         // Enter key: proceed if can proceed and not in input field
         if (!isInputField && canProceed()) {
           event.preventDefault()
-          props.onNext()
+          triggerSectionCompletion()
         }
         // For text inputs, allow Ctrl+Enter or Cmd+Enter to proceed even when focused
         else if (isInputField && (event.ctrlKey || event.metaKey) && canProceed()) {
           event.preventDefault()
-          props.onNext()
+          triggerSectionCompletion()
         }
         break
       
@@ -168,7 +166,7 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
         // Right arrow: proceed if can proceed and not in input field
         if (!isInputField && canProceed()) {
           event.preventDefault()
-          props.onNext()
+          triggerSectionCompletion()
         }
         break
       
@@ -186,7 +184,7 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
         props.onPrevious()
         break
     }
-  }, [canProceed, props.onNext, props.onPrevious])
+  }, [canProceed, triggerSectionCompletion, props.onPrevious])
 
   // Add keyboard event listener
   useEffect(() => {

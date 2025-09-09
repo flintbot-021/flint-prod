@@ -22,9 +22,13 @@ export function MultipleChoiceSection({
   campaign,
   sections
 }: SectionRendererProps) {
-  // Initialize with existing response if available
-  const existingResponse = userInputs?.[section.id] || ''
-  const [selectedValue, setSelectedValue] = useState<string>(existingResponse)
+  // Initialize with existing response if available, but only if it's a valid non-empty response
+  const existingResponse = userInputs?.[section.id]
+  const [selectedValue, setSelectedValue] = useState<string>(
+    existingResponse && typeof existingResponse === 'string' && existingResponse.trim() !== '' 
+      ? existingResponse 
+      : ''
+  )
   
   const choices = config.options || getDefaultChoices()
   const isRequired = config.required ?? false
@@ -134,6 +138,7 @@ export function MultipleChoiceSection({
                     "flex items-center space-x-4 backdrop-blur-md border",
                     "hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]",
                     "group relative overflow-hidden",
+                    "focus:outline-none focus:ring-0", // Remove default focus styles
                     getMobileClasses("", deviceInfo?.type)
                   )}
                   style={{
