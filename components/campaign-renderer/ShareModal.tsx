@@ -80,7 +80,7 @@ export function ShareModal({
               <div className="flex-1">
                 <h3 className="font-medium text-sm">Share Results Page</h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Share a link with all your personalized results and content. 
+                  Creates a short, shareable link with all your personalized results and content. 
                   Perfect for sharing with team members or stakeholders.
                 </p>
               </div>
@@ -144,7 +144,7 @@ export function ShareModal({
         </div>
 
         <div className="text-xs text-muted-foreground text-center mt-4">
-          <p>Both options copy links to your clipboard. Results links preserve all your personalized content.</p>
+          <p>Both options copy short links to your clipboard. Results links preserve all your personalized content.</p>
         </div>
       </DialogContent>
     </Dialog>

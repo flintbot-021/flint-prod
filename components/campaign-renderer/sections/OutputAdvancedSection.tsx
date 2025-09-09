@@ -147,8 +147,8 @@ export function OutputAdvancedSection({
   const handleShareResults = async () => {
     setIsSharing(true)
     try {
-      // Create shareable URL with encoded data
-      const shareableUrl = await createShareableUrl()
+      // Create short shareable URL using database storage
+      const shareableUrl = await createShortShareableUrl()
       
       // Always copy to clipboard (no native share dialog)
       await navigator.clipboard.writeText(shareableUrl)
@@ -222,14 +222,13 @@ export function OutputAdvancedSection({
     }
   }
 
-  // Create a shareable URL with encoded user data and AI results
-  const createShareableUrl = async (): Promise<string> => {
+  // Create a short shareable URL using database storage
+  const createShortShareableUrl = async (): Promise<string> => {
     try {
       // Collect all the data needed to recreate the results
       const inputVars = buildVariablesFromInputs(sections, userInputs)
       const aiVars = campaign?.id ? getAITestResults(campaign.id) : {}
       
-      // Combine all data
       const shareData = {
         userInputs: userInputs,
         variables: inputVars,
@@ -238,27 +237,76 @@ export function OutputAdvancedSection({
         campaignId: campaign?.id
       }
       
-      console.log('📤 Creating shareable data:', shareData)
+      console.log('📤 Creating shared result in database:', shareData)
       
-      // Compress and encode the data (handle Unicode characters)
+      // Store in database and get short ID
+      const response = await fetch('/api/shared-results', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          campaign_id: campaign?.id,
+          shared_data: shareData,
+          metadata: {
+            userAgent: navigator.userAgent,
+            timestamp: Date.now(),
+            url: window.location.href
+          }
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create shared result')
+      }
+
+      const result = await response.json()
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create shared result')
+      }
+
+      // Create short URL
+      const currentUrl = new URL(window.location.href)
+      const shortUrl = `${currentUrl.origin}/s/${result.shortId}`
+      
+      console.log('📤 Short shareable URL created:', shortUrl)
+      
+      return shortUrl
+      
+    } catch (error) {
+      console.error('Error creating short shareable URL:', error)
+      // Fallback to old method if database storage fails
+      return await createShareableUrlFallback()
+    }
+  }
+
+  // Fallback to old URL encoding method if database storage fails
+  const createShareableUrlFallback = async (): Promise<string> => {
+    try {
+      const inputVars = buildVariablesFromInputs(sections, userInputs)
+      const aiVars = campaign?.id ? getAITestResults(campaign.id) : {}
+      
+      const shareData = {
+        userInputs: userInputs,
+        variables: inputVars,
+        aiResults: aiVars,
+        timestamp: Date.now(),
+        campaignId: campaign?.id
+      }
+      
       const jsonString = JSON.stringify(shareData)
       const encodedData = btoa(unescape(encodeURIComponent(jsonString)))
       
-      // Create URL with encoded data
       const currentUrl = new URL(window.location.href)
       const shareUrl = new URL(currentUrl.origin + currentUrl.pathname)
       
-      // Add shared data parameter
       shareUrl.searchParams.set('shared', encodedData)
-      shareUrl.searchParams.set('view', 'results') // Jump directly to results
-      
-      console.log('📤 Shareable URL created:', shareUrl.toString())
+      shareUrl.searchParams.set('view', 'results')
       
       return shareUrl.toString()
-      
     } catch (error) {
-      console.error('Error creating shareable URL:', error)
-      // Fallback to current URL
+      console.error('Error in fallback shareable URL:', error)
       return window.location.href
     }
   }
