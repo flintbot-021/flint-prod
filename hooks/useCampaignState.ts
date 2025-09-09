@@ -27,6 +27,7 @@ interface CampaignStateHookReturn {
   updateResponse: (sectionId: string, fieldId: string, value: any, metadata?: any) => void
   completeSection: (sectionIndex: number, data: any) => void
   resetCampaign: () => void
+  restoreUserInputs: (inputs: Record<string, any>) => void
   
   // Progress
   progress: number
@@ -179,6 +180,60 @@ export function useCampaignState(
     setLeadId(undefined)
   }, [])
 
+  const restoreUserInputs = useCallback((inputs: Record<string, any>) => {
+    console.log('🔄 Restoring user inputs:', inputs)
+    setUserInputs(inputs)
+    
+    // Mark sections as completed based on restored inputs
+    const completedSectionIndices: number[] = []
+    
+    // Check for any non-metadata keys that indicate section completion
+    const inputKeys = Object.keys(inputs).filter(key => !key.endsWith('_metadata'))
+    console.log('🔍 Input keys found:', inputKeys)
+    
+    sections.forEach((section, index) => {
+      // Check if this section has any input data
+      const hasInputForSection = inputKeys.some(key => {
+        // Check for direct section ID match or section-based keys
+        return key === section.id || 
+               key.startsWith(section.id + '_') ||
+               key.startsWith(section.id + '.') ||
+               // For global inputs, mark all sections as potentially completed
+               (key === 'global' && Object.keys(inputs[key] || {}).length > 0)
+      })
+      
+      if (hasInputForSection) {
+        completedSectionIndices.push(index)
+      }
+    })
+    
+    // If we have any inputs at all, mark at least the first few sections as completed
+    if (inputKeys.length > 0) {
+      // For shared data, we need to be more aggressive about marking sections complete
+      // Look at the data structure to determine completion
+      const hasGlobalData = inputs.global && Object.keys(inputs.global).length > 0
+      const hasNestedData = inputKeys.some(key => 
+        inputs[key] && typeof inputs[key] === 'object' && Object.keys(inputs[key]).length > 0
+      )
+      
+      if (hasGlobalData || hasNestedData) {
+        // This looks like shared results data - mark most sections as completed
+        const assumedCompletedSections = Math.max(1, sections.length - 1)
+        for (let i = 0; i < assumedCompletedSections; i++) {
+          if (!completedSectionIndices.includes(i)) {
+            completedSectionIndices.push(i)
+          }
+        }
+      } else if (completedSectionIndices.length === 0) {
+        // Fallback: mark at least one section as completed
+        completedSectionIndices.push(0)
+      }
+    }
+    
+    setCompletedSectionsArray(completedSectionIndices)
+    console.log('✅ Restored completed sections:', completedSectionIndices)
+  }, [sections])
+
   // Memoize progress calculations to prevent unnecessary re-renders
   const progressState = useMemo(() => ({
     progress: Math.round((completedSections.size / sections.length) * 100),
@@ -229,6 +284,7 @@ export function useCampaignState(
     updateResponse,
     completeSection,
     resetCampaign,
+    restoreUserInputs,
     
     // Progress
     progress: progressState.progress,
@@ -248,6 +304,7 @@ export function useCampaignState(
     updateResponse,
     completeSection,
     resetCampaign,
+    restoreUserInputs,
     progressState.progress,
     progressState.totalSections,
     progressState.isComplete

@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from 'react'
 import { Share2, RotateCcw } from 'lucide-react'
+import { ShareModal } from '../ShareModal'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
@@ -21,6 +22,7 @@ export function OutputAdvancedSection({
   index = 0
 }: SectionRendererProps) {
   const [isSharing, setIsSharing] = useState(false)
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const { toast } = useToast()
 
   // Debug logging for props
@@ -136,42 +138,128 @@ export function OutputAdvancedSection({
     return map
   }, [sections, userInputs, campaign?.id])
 
-  // Handle share functionality
-  const handleShare = async () => {
+  // Handle share button click - opens modal
+  const handleShare = () => {
+    setIsShareModalOpen(true)
+  }
+
+  // Handle sharing results with preserved data - always copy to clipboard
+  const handleShareResults = async () => {
     setIsSharing(true)
     try {
+      // Create shareable URL with encoded data
+      const shareableUrl = await createShareableUrl()
+      
+      // Always copy to clipboard (no native share dialog)
+      await navigator.clipboard.writeText(shareableUrl)
+      toast({
+        title: "Results link copied!",
+        description: "Anyone with this link can view your personalized results.",
+      })
+      
+    } catch (error) {
+      console.error('Error copying results link:', error)
+      toast({
+        title: "Copy failed",
+        description: "Unable to copy results link. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSharing(false)
+    }
+  }
+
+  // Handle sharing clean form URL
+  const handleShareForm = async () => {
+    setIsSharing(true)
+    try {
+      // Create clean form URL (without any parameters)
+      const currentUrl = new URL(window.location.href)
+      const cleanFormUrl = `${currentUrl.origin}${currentUrl.pathname}`
+      
       if (navigator.share) {
         await navigator.share({
-          title: campaign?.name || 'Campaign Results',
-          text: 'Check out my personalized results!',
-          url: window.location.href
+          title: campaign?.name || 'Take This Assessment',
+          text: 'Take this assessment and get your personalized results!',
+          url: cleanFormUrl
         })
       } else {
         // Fallback: copy to clipboard
-        await navigator.clipboard.writeText(window.location.href)
+        await navigator.clipboard.writeText(cleanFormUrl)
         toast({
-          title: "Link copied!",
-          description: "The link has been copied to your clipboard.",
+          title: "Form link copied!",
+          description: "Clean assessment form link copied to clipboard.",
         })
       }
     } catch (error) {
-      console.error('Error sharing:', error)
-      // Fallback: copy to clipboard
+      // Check if it's just a user cancellation (not a real error)
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Share cancelled by user')
+        return // Don't show error for user cancellation
+      }
+      
+      // Only log real errors
+      console.error('Error sharing form:', error)
+      
+      // For real errors, fallback to copying URL
       try {
-        await navigator.clipboard.writeText(window.location.href)
+        const cleanFormUrl = `${window.location.origin}${window.location.pathname}`
+        await navigator.clipboard.writeText(cleanFormUrl)
         toast({
-          title: "Link copied!",
-          description: "The link has been copied to your clipboard.",
+          title: "Form link copied!",
+          description: "Clean assessment form link copied to clipboard.",
         })
       } catch (clipboardError) {
+        console.error('Clipboard error:', clipboardError)
         toast({
-          title: "Share failed",
-          description: "Unable to share or copy link.",
+          title: "Copy failed",
+          description: "Unable to copy form link. Please try again.",
           variant: "destructive"
         })
       }
     } finally {
       setIsSharing(false)
+    }
+  }
+
+  // Create a shareable URL with encoded user data and AI results
+  const createShareableUrl = async (): Promise<string> => {
+    try {
+      // Collect all the data needed to recreate the results
+      const inputVars = buildVariablesFromInputs(sections, userInputs)
+      const aiVars = campaign?.id ? getAITestResults(campaign.id) : {}
+      
+      // Combine all data
+      const shareData = {
+        userInputs: userInputs,
+        variables: inputVars,
+        aiResults: aiVars,
+        timestamp: Date.now(),
+        campaignId: campaign?.id
+      }
+      
+      console.log('📤 Creating shareable data:', shareData)
+      
+      // Compress and encode the data (handle Unicode characters)
+      const jsonString = JSON.stringify(shareData)
+      const encodedData = btoa(unescape(encodeURIComponent(jsonString)))
+      
+      // Create URL with encoded data
+      const currentUrl = new URL(window.location.href)
+      const shareUrl = new URL(currentUrl.origin + currentUrl.pathname)
+      
+      // Add shared data parameter
+      shareUrl.searchParams.set('shared', encodedData)
+      shareUrl.searchParams.set('view', 'results') // Jump directly to results
+      
+      console.log('📤 Shareable URL created:', shareUrl.toString())
+      
+      return shareUrl.toString()
+      
+    } catch (error) {
+      console.error('Error creating shareable URL:', error)
+      // Fallback to current URL
+      return window.location.href
     }
   }
 
@@ -691,6 +779,15 @@ export function OutputAdvancedSection({
           </div>
         </div>
       </div>
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        campaign={campaign}
+        onShareResults={handleShareResults}
+        onShareForm={handleShareForm}
+      />
     </div>
   )
 }
