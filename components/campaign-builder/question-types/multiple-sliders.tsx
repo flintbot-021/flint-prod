@@ -75,6 +75,14 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
       showValue: true
     }
     
+    // Calculate proper default value based on min/max and step
+    const calculateDefaultValue = (min: number, max: number, step: number) => {
+      const range = max - min
+      const middlePoint = min + (range / 2)
+      const stepsFromMin = Math.round((middlePoint - min) / step)
+      return min + (stepsFromMin * step)
+    }
+    
     const newSlider: SliderConfig = {
       id: `slider_${Date.now()}`,
       variableName: `slider_${settings.sliders.length + 1}`,
@@ -82,7 +90,7 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
       // Inherit configuration from template
       minValue: template.minValue,
       maxValue: template.maxValue,
-      defaultValue: template.defaultValue,
+      defaultValue: calculateDefaultValue(template.minValue, template.maxValue, template.step),
       step: template.step,
       minLabel: template.minLabel,
       maxLabel: template.maxLabel,
@@ -97,7 +105,26 @@ export function MultipleSliders({ section, isPreview = false, onUpdate, classNam
 
   const updateSlider = async (index: number, updates: Partial<SliderConfig>) => {
     const updatedSliders = [...settings.sliders]
-    updatedSliders[index] = { ...updatedSliders[index], ...updates }
+    const currentSlider = updatedSliders[index]
+    const updatedSlider = { ...currentSlider, ...updates }
+    
+    // If min, max, or step values changed, recalculate default value
+    if (updates.minValue !== undefined || updates.maxValue !== undefined || updates.step !== undefined) {
+      const calculateDefaultValue = (min: number, max: number, step: number) => {
+        const range = max - min
+        const middlePoint = min + (range / 2)
+        const stepsFromMin = Math.round((middlePoint - min) / step)
+        return min + (stepsFromMin * step)
+      }
+      
+      updatedSlider.defaultValue = calculateDefaultValue(
+        updatedSlider.minValue, 
+        updatedSlider.maxValue, 
+        updatedSlider.step
+      )
+    }
+    
+    updatedSliders[index] = updatedSlider
     await updateSettings({ sliders: updatedSliders })
   }
 

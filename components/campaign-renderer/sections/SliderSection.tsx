@@ -26,9 +26,9 @@ export function SliderSection({
   const configData = config as any
   const question = title || 'Rate your response'
   const subheading = description || ''
-  const minValue = configData.minValue || 1
-  const maxValue = configData.maxValue || 10
-  const step = configData.step || 1
+  const minValue = configData.minValue !== undefined ? configData.minValue : 1
+  const maxValue = configData.maxValue !== undefined ? configData.maxValue : 10
+  const step = configData.step !== undefined ? configData.step : 1
   const minLabel = configData.minLabel || 'Low'
   const maxLabel = configData.maxLabel || 'High'
   const isRequired = configData.required ?? false
@@ -44,8 +44,13 @@ export function SliderSection({
   // Initialize with existing response if available, otherwise use middle value
   const existingResponse = userInputs?.[section.id] 
   const calculateMiddleValue = () => {
-    // Always calculate the exact middle point between min and max
-    return Math.round((minValue + maxValue) / 2)
+    // Calculate the middle point and align it to the step increment
+    const range = maxValue - minValue
+    const middlePoint = minValue + (range / 2)
+    
+    // Round to the nearest step increment from minValue
+    const stepsFromMin = Math.round((middlePoint - minValue) / step)
+    return minValue + (stepsFromMin * step)
   }
   const defaultValue = existingResponse !== undefined ? existingResponse : calculateMiddleValue()
   const [sliderValue, setSliderValue] = useState<number>(defaultValue)
@@ -53,12 +58,12 @@ export function SliderSection({
   // Update slider value if min/max changes and no user input exists
   useEffect(() => {
     if (existingResponse === undefined) {
-      const newMiddleValue = Math.round((minValue + maxValue) / 2)
+      const newMiddleValue = calculateMiddleValue()
       if (sliderValue !== newMiddleValue) {
         setSliderValue(newMiddleValue)
       }
     }
-  }, [minValue, maxValue, existingResponse, sliderValue])
+  }, [minValue, maxValue, step, existingResponse, sliderValue])
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value)
