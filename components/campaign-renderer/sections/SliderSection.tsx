@@ -225,6 +225,9 @@ export function SliderSection({
         onPrevious={onPrevious}
         icon={<Activity className="h-5 w-5 text-primary" />}
         label={`Rating ${index + 1}`}
+        navigationHints={{
+          text: "Drag slider or use arrow keys • Enter to continue • ← → to navigate • Esc to go back"
+        }}
         actionButton={{
           label: buttonLabel,
           onClick: handleContinue

@@ -420,6 +420,9 @@ export function MultipleSlidersSection({
             ? 'Please complete all required sliders' 
             : undefined
         }
+        navigationHints={{
+          text: "Click to expand/collapse sliders • Drag to adjust values • Enter to continue • ← → to navigate • Esc to go back"
+        }}
         actionButton={{
           label: buttonLabel,
           onClick: handleContinue,

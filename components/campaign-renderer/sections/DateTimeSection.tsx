@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Calendar, Clock } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
@@ -36,6 +36,8 @@ export function DateTimeSection({
   const [selectedDate, setSelectedDate] = useState(existingData?.date || (typeof existingResponse === 'string' && existingResponse.includes('-') ? existingResponse.split(' ')[0] : ''))
   const [selectedTime, setSelectedTime] = useState(existingData?.time || (typeof existingResponse === 'string' && existingResponse.includes(':') ? existingResponse.split(' ')[1] : ''))
   const [error, setError] = useState<string | null>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
+  const timeInputRef = useRef<HTMLInputElement>(null)
   
   // Get configuration
   const configData = config as any
@@ -133,6 +135,19 @@ export function DateTimeSection({
 
   const canContinue = !isRequired || !validateInput()
 
+  // Auto-focus the appropriate input when component mounts
+  useEffect(() => {
+    // Focus on date input if it's enabled, otherwise time input
+    const inputToFocus = includeDate ? dateInputRef.current : timeInputRef.current
+    if (inputToFocus) {
+      // Small delay to ensure the component is fully rendered
+      const timer = setTimeout(() => {
+        inputToFocus.focus()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [includeDate, includeTime])
+
   // Generate validation text for bottom bar
   const validationText = isRequired ? (
     includeDate && includeTime ? 
@@ -182,6 +197,7 @@ export function DateTimeSection({
               <div className="space-y-6">
                 <div className="relative max-w-sm mx-auto">
                   <Input
+                    ref={dateInputRef}
                     id={`date-${section.id}`}
                     type="date"
                     value={selectedDate}
@@ -216,6 +232,7 @@ export function DateTimeSection({
               <div className="space-y-6">
                 <div className="relative max-w-sm mx-auto">
                   <Input
+                    ref={timeInputRef}
                     id={`time-${section.id}`}
                     type="time"
                     value={selectedTime}
@@ -271,6 +288,9 @@ export function DateTimeSection({
         icon={<Calendar className="h-5 w-5" style={primaryTextStyle} />}
         label={`Question ${index + 1}`}
         validationText={validationText}
+        navigationHints={{
+          text: "Use date/time inputs • Enter to continue • ← → to navigate • Esc to go back"
+        }}
         actionButton={{
           label: buttonLabel,
           onClick: handleContinue,

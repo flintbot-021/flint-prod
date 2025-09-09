@@ -73,6 +73,7 @@ export function MultipleChoiceSection({
   // Generate validation text for bottom bar
   const validationText = isRequired && !selectedValue ? 'Please select an option to continue' : undefined
 
+
   // Helper function to convert hex color to rgba with opacity
   const hexToRgba = (hex: string, opacity: number) => {
     // Remove # if present
@@ -196,6 +197,9 @@ export function MultipleChoiceSection({
         icon={<CheckCircle2 className="h-5 w-5 text-primary" />}
         label={`Choice ${index + 1}`}
         validationText={validationText}
+        navigationHints={{
+          text: "Click to select an option • Enter to continue • ← → to navigate • Esc to go back"
+        }}
         actionButton={{
           label: buttonLabel,
           onClick: handleContinue,

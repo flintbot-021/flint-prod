@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { CheckCircle, Target, Zap, Clock, User, Mail, Phone, AlertCircle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses, isValidEmail, getCampaignTheme, getCampaignTextColor } from '../utils'
@@ -154,6 +154,11 @@ export function CaptureSection({
     phone?: string
   }>({})
 
+  // Refs for auto-focus
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  const emailInputRef = useRef<HTMLInputElement>(null)
+  const phoneInputRef = useRef<HTMLInputElement>(null)
+
   // Handle form field changes
   const handleFieldChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -266,6 +271,28 @@ export function CaptureSection({
     return isValid
   }
   
+  // Auto-focus the first enabled field when component mounts
+  useEffect(() => {
+    // Focus on the first enabled field in order: name, email, phone
+    let inputToFocus: HTMLInputElement | null = null
+    
+    if (settings.enabledFields?.name && nameInputRef.current) {
+      inputToFocus = nameInputRef.current
+    } else if (settings.enabledFields?.email && emailInputRef.current) {
+      inputToFocus = emailInputRef.current
+    } else if (settings.enabledFields?.phone && phoneInputRef.current) {
+      inputToFocus = phoneInputRef.current
+    }
+    
+    if (inputToFocus) {
+      // Small delay to ensure the component is fully rendered
+      const timer = setTimeout(() => {
+        inputToFocus?.focus()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [settings.enabledFields])
+
   // Generate validation text for bottom bar
   const getValidationText = () => {
     if (!isFormValid()) {
@@ -313,6 +340,7 @@ export function CaptureSection({
                 </Label>
                 <div className="relative">
                   <Input
+                    ref={nameInputRef}
                     id="name"
                     type="text"
                     value={formData.name || ''}
@@ -357,6 +385,7 @@ export function CaptureSection({
                 </Label>
                 <div className="relative">
                   <Input
+                    ref={emailInputRef}
                     id="email"
                     type="email"
                     value={formData.email || ''}
@@ -401,6 +430,7 @@ export function CaptureSection({
                 </Label>
                 <div className="relative">
                   <Input
+                    ref={phoneInputRef}
                     id="phone"
                     type="tel"
                     value={formData.phone || ''}
@@ -473,6 +503,9 @@ export function CaptureSection({
         icon={<User className="h-5 w-5 text-primary" />}
         label="Contact"
         validationText={getValidationText()}
+        navigationHints={{
+          text: "Fill in required fields • Tab to navigate • Enter to continue • ← → to navigate • Esc to go back"
+        }}
         actionButton={{
           label: settings.submitButtonText || 'Unlock Results',
           onClick: handleContinue,

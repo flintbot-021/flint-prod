@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { MessageSquare } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
@@ -31,6 +31,7 @@ export function TextQuestionSection({
   const existingResponse = userInputs?.[section.id] || ''
   const [inputValue, setInputValue] = useState(existingResponse)
   const [error, setError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
   
   // Get configuration
   const configData = config as any
@@ -123,12 +124,33 @@ export function TextQuestionSection({
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      handleContinue()
+    // Handle Enter key in text inputs
+    if (e.key === 'Enter') {
+      // For single-line inputs (not textArea), Enter should proceed if valid
+      if (!textArea && canContinue) {
+        e.preventDefault()
+        handleContinue()
+      }
+      // For textareas, Ctrl+Enter or Cmd+Enter should proceed
+      else if (textArea && (e.ctrlKey || e.metaKey) && canContinue) {
+        e.preventDefault()
+        handleContinue()
+      }
     }
   }
 
   const canContinue = !isRequired || (inputValue.trim().length > 0 && inputValue.trim().length >= minLength && inputValue.length <= maxLength)
+
+  // Auto-focus the input when component mounts
+  useEffect(() => {
+    if (inputRef.current) {
+      // Small delay to ensure the component is fully rendered
+      const timer = setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [])
 
   // Generate validation text for bottom bar
   const validationText = isRequired ? 'This field is required' : undefined
@@ -174,6 +196,7 @@ export function TextQuestionSection({
             <div className="relative">
               {isUrlInput ? (
                 <input
+                  ref={inputRef as React.RefObject<HTMLInputElement>}
                   type="url"
                   value={inputValue}
                   onChange={handleInputChange}
@@ -204,6 +227,7 @@ export function TextQuestionSection({
                 />
               ) : textArea ? (
                 <textarea
+                  ref={inputRef as React.RefObject<HTMLTextAreaElement>}
                   value={inputValue}
                   onChange={handleInputChange}
                   onKeyPress={handleKeyPress}
@@ -233,6 +257,7 @@ export function TextQuestionSection({
                 />
               ) : (
                 <input
+                  ref={inputRef as React.RefObject<HTMLInputElement>}
                   type="text"
                   value={inputValue}
                   onChange={handleInputChange}
@@ -300,6 +325,11 @@ export function TextQuestionSection({
         icon={<MessageSquare className="h-5 w-5 text-primary" />}
         label={`Question ${index + 1}`}
         validationText={validationText}
+        navigationHints={{
+          text: textArea 
+            ? "Press Ctrl+Enter to continue • ← → to navigate • Esc to go back"
+            : "Press Enter to continue • ← → to navigate • Esc to go back"
+        }}
         actionButton={{
           label: buttonLabel,
           onClick: handleContinue,
