@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { MessageSquare } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
@@ -31,6 +31,7 @@ export function TextQuestionSection({
   const existingResponse = userInputs?.[section.id] || ''
   const [inputValue, setInputValue] = useState(existingResponse)
   const [error, setError] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
   
   // Get configuration
   const configData = config as any
@@ -38,6 +39,7 @@ export function TextQuestionSection({
   const subheading = description || ''
   const fieldLabel = configData.label || configData.fieldLabel || ''
   const isUrlInput = configData.isUrlInput || false
+  const textArea = configData.textArea ?? true // Default to true for backward compatibility
   const placeholder = configData.placeholder || (isUrlInput ? 'https://example.com' : 'Type your answer here...')
   const isRequired = configData.required ?? false
   const minLength = configData.minLength || 1
@@ -122,12 +124,33 @@ export function TextQuestionSection({
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      handleContinue()
+    // Handle Enter key in text inputs
+    if (e.key === 'Enter') {
+      // For single-line inputs (not textArea), Enter should proceed if valid
+      if (!textArea && canContinue) {
+        e.preventDefault()
+        handleContinue()
+      }
+      // For textareas, Ctrl+Enter or Cmd+Enter should proceed
+      else if (textArea && (e.ctrlKey || e.metaKey) && canContinue) {
+        e.preventDefault()
+        handleContinue()
+      }
     }
   }
 
   const canContinue = !isRequired || (inputValue.trim().length > 0 && inputValue.trim().length >= minLength && inputValue.length <= maxLength)
+
+  // Auto-focus the input when component mounts
+  useEffect(() => {
+    if (inputRef.current) {
+      // Small delay to ensure the component is fully rendered
+      const timer = setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [])
 
   // Generate validation text for bottom bar
   const validationText = isRequired ? 'This field is required' : undefined
@@ -173,6 +196,7 @@ export function TextQuestionSection({
             <div className="relative">
               {isUrlInput ? (
                 <input
+                  ref={inputRef as React.RefObject<HTMLInputElement>}
                   type="url"
                   value={inputValue}
                   onChange={handleInputChange}
@@ -201,8 +225,9 @@ export function TextQuestionSection({
                       : '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
                   }}
                 />
-              ) : (
+              ) : textArea ? (
                 <textarea
+                  ref={inputRef as React.RefObject<HTMLTextAreaElement>}
                   value={inputValue}
                   onChange={handleInputChange}
                   onKeyPress={handleKeyPress}
@@ -230,10 +255,40 @@ export function TextQuestionSection({
                       : '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
                   }}
                 />
+              ) : (
+                <input
+                  ref={inputRef as React.RefObject<HTMLInputElement>}
+                  type="text"
+                  value={inputValue}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                  placeholder={placeholder}
+                  maxLength={maxLength}
+                  className={cn(
+                    "w-full p-6 rounded-2xl backdrop-blur-md border-0",
+                    "focus:ring-2 focus:ring-opacity-50 focus:outline-none",
+                    "transition-all duration-300 ease-out",
+                    "shadow-lg hover:shadow-xl",
+                    "placeholder:text-opacity-60",
+                    error 
+                      ? "ring-2 ring-red-500 ring-opacity-50" 
+                      : "hover:shadow-2xl focus:shadow-2xl",
+                    getMobileClasses("text-lg", deviceInfo?.type)
+                  )}
+                  style={{
+                    backgroundColor: `rgba(255, 255, 255, 0.15)`,
+                    backdropFilter: 'blur(20px)',
+                    border: `1px solid rgba(255, 255, 255, 0.2)`,
+                    color: theme.textColor,
+                    boxShadow: error 
+                      ? '0 8px 32px rgba(239, 68, 68, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)' 
+                      : '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                  }}
+                />
               )}
             </div>
 
-            {/* Character Counter */}
+            {/* Character Counter - Only show for textarea mode */}
             <div className="flex justify-between items-center">
               <div>
                 {error && (
@@ -242,16 +297,18 @@ export function TextQuestionSection({
                   </div>
                 )}
               </div>
-              <div className="px-3 py-1 rounded-full backdrop-blur-sm border border-white/10" 
-                   style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)' }}>
-                <span className={cn(
-                  "text-sm font-medium",
-                  inputValue.length > maxLength * 0.9 && "text-amber-500",
-                  inputValue.length >= maxLength && "text-red-500"
-                )} style={inputValue.length > maxLength * 0.9 ? undefined : mutedTextStyle}>
-                  {inputValue.length}/{maxLength}
-                </span>
-              </div>
+              {textArea && (
+                <div className="px-3 py-1 rounded-full backdrop-blur-sm border border-white/10" 
+                     style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)' }}>
+                  <span className={cn(
+                    "text-sm font-medium",
+                    inputValue.length > maxLength * 0.9 && "text-amber-500",
+                    inputValue.length >= maxLength && "text-red-500"
+                  )} style={inputValue.length > maxLength * 0.9 ? undefined : mutedTextStyle}>
+                    {inputValue.length}/{maxLength}
+                  </span>
+                </div>
+              )}
           </div>
 
 
@@ -268,6 +325,11 @@ export function TextQuestionSection({
         icon={<MessageSquare className="h-5 w-5 text-primary" />}
         label={`Question ${index + 1}`}
         validationText={validationText}
+        navigationHints={{
+          text: textArea 
+            ? "Press Ctrl+Enter to continue • ← → to navigate • Esc to go back"
+            : "Press Enter to continue • ← → to navigate • Esc to go back"
+        }}
         actionButton={{
           label: buttonLabel,
           onClick: handleContinue,

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { CheckCircle2, Circle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses, getDefaultChoices, getCampaignTheme, getCampaignTextColor, getCampaignButtonStyles, getNextSectionButtonText } from '../utils'
@@ -22,9 +22,16 @@ export function MultipleChoiceSection({
   campaign,
   sections
 }: SectionRendererProps) {
-  // Initialize with existing response if available
-  const existingResponse = userInputs?.[section.id] || ''
-  const [selectedValue, setSelectedValue] = useState<string>(existingResponse)
+  // Initialize with existing response if available, but only if it's a valid non-empty response
+  const existingResponse = userInputs?.[section.id]
+  const [selectedValue, setSelectedValue] = useState<string>(
+    existingResponse && typeof existingResponse === 'string' && existingResponse.trim() !== '' 
+      ? existingResponse 
+      : ''
+  )
+  
+  // Container ref for keyboard events
+  const containerRef = useRef<HTMLDivElement>(null)
   
   const choices = config.options || getDefaultChoices()
   const isRequired = config.required ?? false
@@ -73,6 +80,74 @@ export function MultipleChoiceSection({
   // Generate validation text for bottom bar
   const validationText = isRequired && !selectedValue ? 'Please select an option to continue' : undefined
 
+  // Keyboard navigation effect
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      switch (event.key) {
+        case 'ArrowDown':
+          event.preventDefault()
+          // Find current selection index
+          const currentIndex = choices.findIndex((choice: any) => {
+            const choiceValue = typeof choice === 'string' ? choice : choice.value || choice.text
+            return selectedValue === choiceValue
+          })
+          
+          // Move to next option (or first if no selection)
+          const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % choices.length
+          const nextChoice = choices[nextIndex]
+          const nextChoiceValue = typeof nextChoice === 'string' ? nextChoice : (nextChoice as any).value || (nextChoice as any).text
+          
+          handleChoiceSelect(nextChoiceValue)
+          break
+          
+        case 'ArrowUp':
+          event.preventDefault()
+          // Find current selection index
+          const currentUpIndex = choices.findIndex((choice: any) => {
+            const choiceValue = typeof choice === 'string' ? choice : choice.value || choice.text
+            return selectedValue === choiceValue
+          })
+          
+          // Move to previous option (or last if no selection)
+          const prevIndex = currentUpIndex === -1 ? choices.length - 1 : (currentUpIndex - 1 + choices.length) % choices.length
+          const prevChoice = choices[prevIndex]
+          const prevChoiceValue = typeof prevChoice === 'string' ? prevChoice : (prevChoice as any).value || (prevChoice as any).text
+          
+          handleChoiceSelect(prevChoiceValue)
+          break
+          
+        case 'Enter':
+        case ' ': // Spacebar
+          event.preventDefault()
+          // Enter and Space both advance to next section if we can continue
+          if (canContinue) {
+            handleContinue()
+          }
+          break
+          
+        case 'Escape':
+          event.preventDefault()
+          // Clear selection
+          setSelectedValue('')
+          break
+      }
+    }
+
+    // Add event listener when component is mounted
+    document.addEventListener('keydown', handleKeyDown)
+    
+    // Focus the container to ensure it can receive keyboard events
+    if (containerRef.current) {
+      containerRef.current.focus()
+    }
+
+    // Cleanup event listener on unmount
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [selectedValue, choices, canContinue])
+
+
   // Helper function to convert hex color to rgba with opacity
   const hexToRgba = (hex: string, opacity: number) => {
     // Remove # if present
@@ -87,10 +162,15 @@ export function MultipleChoiceSection({
   }
 
   return (
-    <div className={cn(
-      "h-full flex flex-col",
-      deviceInfo?.type === 'mobile' ? "pb-40" : "pb-32"
-    )} style={{ backgroundColor: theme.backgroundColor }}>
+    <div 
+      ref={containerRef}
+      tabIndex={-1}
+      className={cn(
+        "h-full flex flex-col focus:outline-none",
+        deviceInfo?.type === 'mobile' ? "pb-40" : "pb-32"
+      )} 
+      style={{ backgroundColor: theme.backgroundColor }}
+    >
       <div className="flex-1 flex items-center justify-center px-6 py-12 pt-20">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           <div className="text-center space-y-6">
@@ -133,6 +213,7 @@ export function MultipleChoiceSection({
                     "flex items-center space-x-4 backdrop-blur-md border",
                     "hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]",
                     "group relative overflow-hidden",
+                    "focus:outline-none focus:ring-0", // Remove default focus styles
                     getMobileClasses("", deviceInfo?.type)
                   )}
                   style={{
@@ -196,6 +277,9 @@ export function MultipleChoiceSection({
         icon={<CheckCircle2 className="h-5 w-5 text-primary" />}
         label={`Choice ${index + 1}`}
         validationText={validationText}
+        navigationHints={{
+          text: "↓ ↑ to select options • Enter/Space to continue • Esc to clear selection"
+        }}
         actionButton={{
           label: buttonLabel,
           onClick: handleContinue,

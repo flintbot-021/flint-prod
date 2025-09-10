@@ -1,9 +1,10 @@
 'use client'
 
-import React, { useMemo } from 'react'
+import React, { useMemo, useEffect, useCallback } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { BaseSectionProps, SectionConfiguration, SectionRendererProps, SectionWithOptions, DeviceInfo } from './types'
 import { Campaign } from '@/lib/types/database'
+import { isValidEmail } from './utils'
 
 // Import section components
 import {
@@ -63,6 +64,138 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
   // Check if section is hidden (check both direct property and configuration)
   const isHidden = ('isVisible' in section && section.isVisible === false) || 
                    (section.configuration && (section.configuration as any).isVisible === false)
+
+  // =============================================================================
+  // KEYBOARD NAVIGATION SYSTEM
+  // =============================================================================
+
+  // Check if the current section can proceed (has valid input)
+  const canProceed = useCallback(() => {
+    const sectionType = section.type as any
+    const configData = (section.configuration || {}) as any
+    const builderSettings = ('settings' in section && section.settings) ? section.settings : {}
+    const mergedConfig = { ...configData, ...builderSettings }
+    
+    switch (sectionType) {
+      case 'text_question':
+        const isRequired = mergedConfig.required ?? false
+        const existingResponse = userInputs?.[section.id] || ''
+        const minLength = mergedConfig.minLength || 1
+        const maxLength = mergedConfig.maxLength || 500
+        return !isRequired || (existingResponse.trim().length >= minLength && existingResponse.length <= maxLength)
+      
+      case 'multiple_choice':
+        const isChoiceRequired = mergedConfig.required ?? false
+        const selectedChoice = userInputs?.[section.id]
+        return !isChoiceRequired || selectedChoice !== undefined
+      
+      case 'slider':
+        // Sliders always have a value (default to middle), so always can proceed
+        return true
+      
+      case 'capture':
+        // Disable keyboard navigation for capture sections due to complex validation
+        // Users must click the Continue button to ensure proper form validation
+        return false
+      
+      case 'date_time_question':
+        const isDateRequired = mergedConfig.required ?? false
+        const dateResponse = userInputs?.[section.id]
+        return !isDateRequired || dateResponse !== undefined
+      
+      case 'upload_question':
+        const isUploadRequired = mergedConfig.required ?? false
+        const uploadResponse = userInputs?.[section.id]
+        return !isUploadRequired || (uploadResponse && uploadResponse.length > 0)
+      
+      // Content sections can always proceed
+      case 'info':
+      case 'content-basic':
+      case 'content-hero':
+      case 'logic':
+      case 'output':
+      case 'output-advanced':
+      case 'dynamic_redirect':
+      case 'html_embed':
+        return true
+      
+      default:
+        return true
+    }
+  }, [section, userInputs])
+
+  // Helper function to trigger section completion (simulates clicking Continue button)
+  const triggerSectionCompletion = useCallback(() => {
+    // Find and trigger the Continue button click to ensure proper data handling
+    const continueButton = document.querySelector('[data-continue-button="true"]') as HTMLButtonElement
+    if (continueButton && !continueButton.disabled) {
+      continueButton.click()
+      return true
+    }
+    
+    // Fallback to onNext if no continue button found
+    props.onNext()
+    return false
+  }, [props.onNext])
+
+  // Global keyboard event handler
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    // Don't interfere if user is typing in an input field
+    const target = event.target as HTMLElement
+    const isInputField = target.tagName === 'INPUT' || 
+                        target.tagName === 'TEXTAREA' || 
+                        target.contentEditable === 'true' ||
+                        target.closest('input, textarea, [contenteditable="true"]')
+    
+    // Handle different key combinations
+    switch (event.key) {
+      case 'Enter':
+        // Enter key: proceed if can proceed and not in input field
+        if (!isInputField && canProceed()) {
+          event.preventDefault()
+          triggerSectionCompletion()
+        }
+        // For text inputs, allow Ctrl+Enter or Cmd+Enter to proceed even when focused
+        else if (isInputField && (event.ctrlKey || event.metaKey) && canProceed()) {
+          event.preventDefault()
+          triggerSectionCompletion()
+        }
+        break
+      
+      case 'ArrowRight':
+        // Right arrow: proceed if can proceed and not in input field
+        if (!isInputField && canProceed()) {
+          event.preventDefault()
+          triggerSectionCompletion()
+        }
+        break
+      
+      case 'ArrowLeft':
+        // Left arrow: go back if not in input field
+        if (!isInputField) {
+          event.preventDefault()
+          props.onPrevious()
+        }
+        break
+      
+      case 'Escape':
+        // Escape: go back (always works)
+        event.preventDefault()
+        props.onPrevious()
+        break
+    }
+  }, [canProceed, triggerSectionCompletion, props.onPrevious])
+
+  // Add keyboard event listener
+  useEffect(() => {
+    // Only add keyboard navigation if this is the active section
+    if (props.isActive) {
+      document.addEventListener('keydown', handleKeyDown)
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown)
+      }
+    }
+  }, [props.isActive, handleKeyDown])
   
   // In public campaign view, completely skip hidden sections
   if (isHidden && !props.isPreview) {

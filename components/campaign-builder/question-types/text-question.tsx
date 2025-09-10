@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { InlineEditableText } from '@/components/ui/inline-editable-text'
+import { Switch } from '@/components/ui/switch'
 import { CampaignSection } from '@/lib/types/campaign-builder'
 import { cn } from '@/lib/utils'
 
@@ -20,6 +21,7 @@ interface TextQuestionSettings {
   required?: boolean
   buttonLabel?: string
   isUrlInput?: boolean
+  textArea?: boolean
 }
 
 export function TextQuestion({ 
@@ -39,7 +41,8 @@ export function TextQuestion({
     placeholder = 'Answer will go here',
     required = false,
     buttonLabel = 'Next',
-    isUrlInput = false
+    isUrlInput = false,
+    textArea = true
   } = settings
 
   // Dynamic placeholder based on URL mode
@@ -118,15 +121,24 @@ export function TextQuestion({
 
         {/* Input Field - Always show with placeholder */}
         <div className="pt-4">
-          <input
-            type={isUrlInput ? "url" : "text"}
-            placeholder={hasContent(placeholder) ? placeholder : dynamicPlaceholder}
-            className={cn(
-              "w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-              isUrlInput && "font-mono text-base" // Monospace font for URLs
-            )}
-            disabled={false}
-          />
+          {textArea && !isUrlInput ? (
+            <textarea
+              placeholder={hasContent(placeholder) ? placeholder : dynamicPlaceholder}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              rows={4}
+              disabled={false}
+            />
+          ) : (
+            <input
+              type={isUrlInput ? "url" : "text"}
+              placeholder={hasContent(placeholder) ? placeholder : dynamicPlaceholder}
+              className={cn(
+                "w-full px-4 py-3 border border-gray-300 rounded-lg text-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                isUrlInput && "font-mono text-base" // Monospace font for URLs
+              )}
+              disabled={false}
+            />
+          )}
         </div>
       </div>
     )

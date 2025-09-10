@@ -758,8 +758,9 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     const currentUrl = new URL(window.location.href)
     const sectionParam = campaignRenderer.currentSection + 1
     
-    // Update URL without triggering navigation
-    const newUrl = `${currentUrl.pathname}?section=${sectionParam}${currentUrl.hash}`
+    // Normal URL update for navigation
+    let newUrl: string = `${currentUrl.pathname}?section=${sectionParam}${currentUrl.hash}`
+    
     window.history.replaceState(
       { 
         sectionIndex: campaignRenderer.currentSection,
@@ -780,23 +781,26 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [campaign, campaignRenderer.currentSection])
 
-  // Parse URL section parameter on load (only if no session recovery happened)
+
+  // Handle URL section navigation (runs after sections are loaded)
   useEffect(() => {
-    if (sections.length === 0 || isSessionRecovered) return
+    if (sections.length === 0) return
     
-    console.log('🔗 [URL] Checking URL section parameter')
+    console.log('🔗 [URL] Checking URL section parameters')
     
     const urlParams = new URLSearchParams(window.location.search)
-    const sectionParam = urlParams.get('section')
-    
-    if (sectionParam) {
-      const sectionIndex = parseInt(sectionParam) - 1
-      if (sectionIndex >= 0 && sectionIndex < sections.length) {
-        console.log(`🔗 [URL] Setting section from URL: ${sectionIndex}`)
-        campaignRenderer.goToSection(sectionIndex)
+    // Handle normal section parameter
+    if (isSessionRecovered) {
+      const sectionParam = urlParams.get('section')
+      if (sectionParam) {
+        const sectionIndex = parseInt(sectionParam) - 1
+        if (sectionIndex >= 0 && sectionIndex < sections.length) {
+          console.log(`🔗 [URL] Setting section from URL: ${sectionIndex}`)
+          campaignRenderer.goToSection(sectionIndex)
+        }
+      } else {
+        console.log('🔗 [URL] No section parameter found, staying at section 0')
       }
-    } else {
-      console.log('🔗 [URL] No section parameter found, staying at section 0')
     }
   }, [sections.length, isSessionRecovered])
 

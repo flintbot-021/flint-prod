@@ -270,6 +270,7 @@ export function SectionNavigationBar({
             <button
               onClick={onNext}
               disabled={!canGoNext}
+              data-continue-button="true"
               className={cn(
                 "flex items-center hover:opacity-80 transition-opacity",
                 !canGoNext && "opacity-50 cursor-not-allowed",
@@ -298,6 +299,7 @@ export function SectionNavigationBar({
                     key={index}
                     onClick={action.onClick}
                     disabled={action.disabled}
+                    data-continue-button="true"
                     className={cn(
                       "px-6 py-3 rounded-xl font-semibold transition-all duration-300 ease-out",
                       "flex items-center space-x-2 backdrop-blur-md border",

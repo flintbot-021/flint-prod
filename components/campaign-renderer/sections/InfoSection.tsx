@@ -105,6 +105,9 @@ export function InfoSection({
         onPrevious={onPrevious}
         icon={<Info className="h-5 w-5 text-primary" />}
         label={`Info ${index + 1}`}
+        navigationHints={{
+          text: "Press Enter to continue • ← → to navigate • Esc to go back"
+        }}
         actionButton={{
           label: 'Continue',
           onClick: handleContinue

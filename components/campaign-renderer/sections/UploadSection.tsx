@@ -561,6 +561,9 @@ export function UploadSection({
         icon={<Upload className="h-5 w-5" />}
         label={`Upload`}
         validationText={validationText}
+        navigationHints={{
+          text: "Drag & drop files or click to browse • Enter to continue • ← → to navigate • Esc to go back"
+        }}
         actionButton={{
           label: buttonLabel,
           onClick: handleContinue,

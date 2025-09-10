@@ -42,6 +42,9 @@ export function SectionBottomBar({
   // Check if this is a text question (for URL toggle)
   const isTextQuestion = section.type === 'question-text'
   
+  // Check if this is a slider question (for Plus toggle)
+  const isSliderQuestion = section.type === 'question-slider'
+  
   // Check if this is a capture section
   const isCaptureSection = section.type === 'capture-details'
   
@@ -78,9 +81,14 @@ export function SectionBottomBar({
   const captureSettings = isCaptureSection ? section.settings as any : null
   const captureButtonText = captureSettings?.submitButtonText || 'Get my results'
   
-  // Get Text Question URL settings
+  // Get Text Question settings
   const textQuestionSettings = isTextQuestion ? section.settings as any : null
   const isUrlInput = textQuestionSettings?.isUrlInput || false
+  const textArea = textQuestionSettings?.textArea ?? true // Default to true for backward compatibility
+  
+  // Get Slider Question settings
+  const sliderQuestionSettings = isSliderQuestion ? section.settings as any : null
+  const allowPlus = sliderQuestionSettings?.allowPlus || false
   
   // Local state for optimistic button text updates
   const [localCaptureButtonText, setLocalCaptureButtonText] = useState(captureButtonText)
@@ -129,6 +137,18 @@ export function SectionBottomBar({
 
   // Handle Text Question settings updates
   const updateTextQuestionSettings = async (newSettings: Record<string, unknown>) => {
+    if (onSectionUpdate) {
+      await onSectionUpdate({
+        settings: {
+          ...section.settings,
+          ...newSettings
+        }
+      })
+    }
+  }
+
+  // Handle Slider Question settings updates
+  const updateSliderQuestionSettings = async (newSettings: Record<string, unknown>) => {
     if (onSectionUpdate) {
       await onSectionUpdate({
         settings: {
@@ -210,7 +230,6 @@ export function SectionBottomBar({
               id={`required-${section.id}`}
               checked={isRequired}
               onCheckedChange={onRequiredChange}
-              className="data-[state=checked]:bg-red-500"
             />
             <Label 
               htmlFor={`required-${section.id}`}
@@ -228,7 +247,6 @@ export function SectionBottomBar({
               id={`url-input-${section.id}`}
               checked={isUrlInput}
               onCheckedChange={(checked) => updateTextQuestionSettings({ isUrlInput: checked })}
-              className="data-[state=checked]:bg-blue-500"
             />
             <Label 
               htmlFor={`url-input-${section.id}`}
@@ -239,8 +257,39 @@ export function SectionBottomBar({
           </div>
         )}
 
+        {/* Text Area Toggle for Text Questions - Only show if not URL input */}
+        {isTextQuestion && !isUrlInput && (
+          <div className="flex items-center space-x-2">
+            <Switch
+              id={`text-area-${section.id}`}
+              checked={textArea}
+              onCheckedChange={(checked) => updateTextQuestionSettings({ textArea: checked })}
+            />
+            <Label 
+              htmlFor={`text-area-${section.id}`}
+              className="text-sm font-medium cursor-pointer text-gray-700"
+            >
+              Text Area
+            </Label>
+          </div>
+        )}
 
-
+        {/* Allow Plus Toggle for Slider Questions */}
+        {isSliderQuestion && (
+          <div className="flex items-center space-x-2">
+            <Switch
+              id={`allow-plus-${section.id}`}
+              checked={allowPlus}
+              onCheckedChange={(checked) => updateSliderQuestionSettings({ allowPlus: checked })}
+            />
+            <Label 
+              htmlFor={`allow-plus-${section.id}`}
+              className="text-sm font-medium cursor-pointer text-gray-700"
+            >
+              Allow Plus
+            </Label>
+          </div>
+        )}
 
       </div>
 

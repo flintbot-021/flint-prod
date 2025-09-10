@@ -1,14 +1,13 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
-import { Share2, RotateCcw } from 'lucide-react'
+import React, { useMemo } from 'react'
+import { RotateCcw } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
 import { buildVariablesFromInputs } from '@/lib/utils/section-variables'
 import { VariableInterpolator } from '@/lib/utils/variable-interpolator'
 import { getCampaignTheme, getCampaignButtonStyles, getMobileClasses } from '../utils'
-import { useToast } from '@/components/ui/use-toast'
 
 export function OutputAdvancedSection({ 
   section, 
@@ -20,8 +19,6 @@ export function OutputAdvancedSection({
   onNavigateToSection,
   index = 0
 }: SectionRendererProps) {
-  const [isSharing, setIsSharing] = useState(false)
-  const { toast } = useToast()
 
   // Debug logging for props
   console.log('🔧 OutputAdvancedSection props debug:', {
@@ -107,9 +104,29 @@ export function OutputAdvancedSection({
       userInputsCount: Object.keys(userInputs).length
     })
     
-    Object.assign(map, inputVars)
-    // Use campaign-scoped AI test results
-    Object.assign(map, aiVars)
+    // Convert all values to strings to prevent React object rendering errors
+    Object.entries(inputVars).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        // If it's an object, convert to string representation
+        if (typeof value === 'object') {
+          // For objects like {display: "5", is_max_plus: true}, use the display value if available
+          map[key] = (value as any).display || JSON.stringify(value)
+        } else {
+          map[key] = String(value)
+        }
+      }
+    })
+    
+    // Use campaign-scoped AI test results and convert to strings
+    Object.entries(aiVars).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        if (typeof value === 'object') {
+          map[key] = (value as any).display || JSON.stringify(value)
+        } else {
+          map[key] = String(value)
+        }
+      }
+    })
     
     console.log('🔧 Final variable map:', map)
     console.log('🔧 Variable map keys:', Object.keys(map))
@@ -136,44 +153,7 @@ export function OutputAdvancedSection({
     return map
   }, [sections, userInputs, campaign?.id])
 
-  // Handle share functionality
-  const handleShare = async () => {
-    setIsSharing(true)
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: campaign?.name || 'Campaign Results',
-          text: 'Check out my personalized results!',
-          url: window.location.href
-        })
-      } else {
-        // Fallback: copy to clipboard
-        await navigator.clipboard.writeText(window.location.href)
-        toast({
-          title: "Link copied!",
-          description: "The link has been copied to your clipboard.",
-        })
-      }
-    } catch (error) {
-      console.error('Error sharing:', error)
-      // Fallback: copy to clipboard
-      try {
-        await navigator.clipboard.writeText(window.location.href)
-        toast({
-          title: "Link copied!",
-          description: "The link has been copied to your clipboard.",
-        })
-      } catch (clipboardError) {
-        toast({
-          title: "Share failed",
-          description: "Unable to share or copy link.",
-          variant: "destructive"
-        })
-      }
-    } finally {
-      setIsSharing(false)
-    }
-  }
+
 
   // Handle try again functionality
   const handleTryAgain = () => {
@@ -651,25 +631,6 @@ export function OutputAdvancedSection({
           <div className="flex items-center justify-center">
             {/* Action Buttons */}
             <div className="flex items-center space-x-3">
-              {/* Share Button */}
-              <button
-                onClick={handleShare}
-                disabled={isSharing}
-                className={cn(
-                  "px-6 py-3 rounded-xl font-semibold backdrop-blur-md border transition-all duration-300 ease-out",
-                  "flex items-center space-x-2 hover:shadow-xl hover:scale-105 active:scale-95",
-                  getMobileClasses("min-h-[48px]", deviceInfo?.type)
-                )}
-                style={{
-                  ...getCampaignButtonStyles(campaign, 'secondary'),
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-                }}
-              >
-                <Share2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Share</span>
-              </button>
-
               {/* Try Again Button */}
               <button
                 onClick={handleTryAgain}
@@ -691,6 +652,7 @@ export function OutputAdvancedSection({
           </div>
         </div>
       </div>
+
     </div>
   )
 }

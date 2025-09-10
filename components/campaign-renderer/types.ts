@@ -76,6 +76,7 @@ export interface SectionConfiguration {
   min_label?: string
   max_label?: string
   default_value?: number
+  allowPlus?: boolean
   prompt?: string
   outputVariables?: Array<{
     id: string
@@ -100,6 +101,8 @@ export interface SectionConfiguration {
   // Text input specific configuration
   inputType?: 'text' | 'textarea' | 'email' | 'tel' | 'number'
   maxLength?: number
+  textArea?: boolean
+  isUrlInput?: boolean
 }
 
 // Base props that all section components will receive

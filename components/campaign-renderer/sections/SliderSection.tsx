@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Activity } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses, getCampaignTheme, getCampaignButtonStyles, getCampaignTextColor, getNextSectionButtonText } from '../utils'
@@ -26,12 +26,13 @@ export function SliderSection({
   const configData = config as any
   const question = title || 'Rate your response'
   const subheading = description || ''
-  const minValue = configData.minValue || 1
-  const maxValue = configData.maxValue || 10
-  const step = configData.step || 1
+  const minValue = configData.minValue !== undefined ? configData.minValue : 1
+  const maxValue = configData.maxValue !== undefined ? configData.maxValue : 10
+  const step = configData.step !== undefined ? configData.step : 1
   const minLabel = configData.minLabel || 'Low'
   const maxLabel = configData.maxLabel || 'High'
   const isRequired = configData.required ?? false
+  const allowPlus = configData.allowPlus || false
   
   // Use dynamic button text for better UX flow - prioritize smart flow over stored config
   const dynamicButtonText = getNextSectionButtonText(index, sections, 'Continue')
@@ -40,27 +41,57 @@ export function SliderSection({
   // If our dynamic text is different from default, use it (this means next section is special)
   const buttonLabel = dynamicButtonText !== 'Continue' ? dynamicButtonText : storedButtonText
 
-  // Initialize with existing response if available, otherwise use default
+  // Initialize with existing response if available, otherwise use middle value
   const existingResponse = userInputs?.[section.id] 
-  const defaultValue = existingResponse !== undefined ? existingResponse : Math.floor((minValue + maxValue) / 2)
+  const calculateMiddleValue = () => {
+    // Calculate the middle point and align it to the step increment
+    const range = maxValue - minValue
+    const middlePoint = minValue + (range / 2)
+    
+    // Round to the nearest step increment from minValue
+    const stepsFromMin = Math.round((middlePoint - minValue) / step)
+    return minValue + (stepsFromMin * step)
+  }
+  const defaultValue = existingResponse !== undefined ? existingResponse : calculateMiddleValue()
   const [sliderValue, setSliderValue] = useState<number>(defaultValue)
+
+  // Update slider value if min/max changes and no user input exists
+  useEffect(() => {
+    if (existingResponse === undefined) {
+      const newMiddleValue = calculateMiddleValue()
+      if (sliderValue !== newMiddleValue) {
+        setSliderValue(newMiddleValue)
+      }
+    }
+  }, [minValue, maxValue, step, existingResponse, sliderValue])
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value)
     setSliderValue(value)
     
+    // Determine if this is a "plus" value
+    const isMaxWithPlus = allowPlus && value === maxValue
+    const displayValue = isMaxWithPlus ? `${value}+` : value
+    
     // Report to parent component
     onResponseUpdate(section.id, 'slider_value', value, {
       inputType: 'slider',
       isRequired: isRequired,
-      range: { min: minValue, max: maxValue, step }
+      range: { min: minValue, max: maxValue, step },
+      displayValue: displayValue,
+      isMaxWithPlus: isMaxWithPlus
     })
   }
 
   const handleContinue = () => {
+    const isMaxWithPlus = allowPlus && sliderValue === maxValue
+    const displayValue = isMaxWithPlus ? `${sliderValue}+` : sliderValue
+    
     onSectionComplete(index, {
       [section.id]: sliderValue,
-      slider_response: sliderValue
+      slider_response: sliderValue,
+      [`${section.id}_display`]: displayValue,
+      [`${section.id}_is_max_plus`]: isMaxWithPlus
     })
   }
 
@@ -109,7 +140,7 @@ export function SliderSection({
                   boxShadow: `0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)`
                 }}
               >
-                {sliderValue}
+                {sliderValue}{allowPlus && sliderValue === maxValue ? '+' : ''}
               </div>
             </div>
             
@@ -199,6 +230,9 @@ export function SliderSection({
         onPrevious={onPrevious}
         icon={<Activity className="h-5 w-5 text-primary" />}
         label={`Rating ${index + 1}`}
+        navigationHints={{
+          text: "Drag slider or use arrow keys • Enter to continue • ← → to navigate • Esc to go back"
+        }}
         actionButton={{
           label: buttonLabel,
           onClick: handleContinue
