@@ -5,6 +5,7 @@
 // Main components
 export { SectionRenderer } from './SectionRenderer'
 export { CampaignHeader, type PreviewDevice } from './CampaignHeader'
+export { ShareResultsModal } from './ShareResultsModal'
 
 // Individual section components
 export {
