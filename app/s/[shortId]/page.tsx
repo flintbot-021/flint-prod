@@ -220,23 +220,25 @@ export default function SharedResultsPage() {
 
   return (
     <div className="min-h-screen bg-muted flex flex-col">
-      {/* Header with campaign info and "Try This Tool" button */}
+      {/* Simple Top Bar */}
       <div className="bg-white border-b border-border shadow-sm">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-lg font-semibold text-foreground">
-                Shared Results: {campaign.name}
+                {campaign.name}
               </h1>
               <p className="text-sm text-muted-foreground">
-                Viewed {sharedResult.view_count} times • 
-                Created {new Date(sharedResult.created_at).toLocaleDateString()}
+                Shared results
               </p>
             </div>
             
             <Button
               onClick={handleTryThisTool}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              style={{
+                backgroundColor: theme.buttonColor,
+                color: theme.buttonTextColor,
+              }}
             >
               <ExternalLink className="h-4 w-4 mr-2" />
               Try This Tool
@@ -252,28 +254,6 @@ export default function SharedResultsPage() {
           sharedData={shared_data}
           config={mockConfig}
         />
-      </div>
-
-      {/* Footer with branding */}
-      <div className="bg-white border-t border-border">
-        <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <div>
-              This is a shared result from <strong>{campaign.name}</strong>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span>Powered by Flint</span>
-              <Button
-                onClick={handleTryThisTool}
-                variant="outline"
-                size="sm"
-              >
-                <ExternalLink className="h-3 w-3 mr-1" />
-                Try it yourself
-              </Button>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   )

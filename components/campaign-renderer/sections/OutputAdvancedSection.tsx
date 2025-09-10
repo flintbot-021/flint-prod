@@ -682,13 +682,14 @@ export function OutputAdvancedSection({
           isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
           campaignSlug={campaign.published_url || ''}
-          userKey={campaign.user_id || ''}
+          userKey={campaign.user_key || ''}
           campaignName={campaign.name || ''}
           userInputs={userInputs}
           aiResults={variableMap}
           variables={variableMap}
           campaignId={campaign.id}
           sectionConfig={config}
+          campaign={campaign}
         />
       )}
 

@@ -1,9 +1,17 @@
 'use client'
 
 import React, { useState } from 'react'
-import { X, Share2, Copy, Check, AlertTriangle, ExternalLink, Twitter, Linkedin } from 'lucide-react'
+import { X, Share2, Copy, Check, AlertTriangle, ExternalLink, Twitter, Linkedin, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { getCampaignTheme, getCampaignButtonStyles } from './utils'
+import type { Campaign } from '@/lib/types/campaign'
 
 interface ShareResultsModalProps {
   isOpen: boolean
@@ -16,6 +24,7 @@ interface ShareResultsModalProps {
   variables: Record<string, any>
   campaignId: string
   sectionConfig?: Record<string, any>
+  campaign?: Campaign
 }
 
 interface ShareState {
@@ -35,13 +44,17 @@ export function ShareResultsModal({
   aiResults,
   variables,
   campaignId,
-  sectionConfig
+  sectionConfig,
+  campaign
 }: ShareResultsModalProps) {
   const [shareState, setShareState] = useState<ShareState>({
     step: 'options',
     copied: false
   })
   const [consentGiven, setConsentGiven] = useState(false)
+
+  // Get campaign theme for consistent styling
+  const campaignTheme = getCampaignTheme(campaign)
 
   // Reset state when modal opens/closes
   React.useEffect(() => {
@@ -139,84 +152,101 @@ export function ShareResultsModal({
     window.open(shareUrl, '_blank', 'width=600,height=400')
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <Share2 className="h-5 w-5 text-blue-600" />
+            <div 
+              className="w-10 h-10 rounded-full flex items-center justify-center"
+              style={{ 
+                backgroundColor: `${campaignTheme.buttonColor}20`,
+                color: campaignTheme.buttonColor 
+              }}
+            >
+              <Share2 className="h-5 w-5" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Share Your Results</h2>
+            <DialogTitle className="text-xl" style={{ color: campaignTheme.textColor }}>
+              Share Your Results
+            </DialogTitle>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="h-5 w-5 text-gray-500" />
-          </button>
-        </div>
+        </DialogHeader>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="space-y-6">
           {shareState.step === 'options' && (
             <div className="space-y-6">
               {/* Share Results Link Section */}
               <div className="space-y-4">
                 <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <ExternalLink className="h-4 w-4 text-green-600" />
+                  <div 
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
+                    style={{ 
+                      backgroundColor: `${campaignTheme.buttonColor}15`,
+                      color: campaignTheme.buttonColor 
+                    }}
+                  >
+                    <ExternalLink className="h-4 w-4" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Share Results Link</h3>
-                    <p className="text-sm text-gray-600 mb-3">
+                    <h3 className="font-semibold mb-2" style={{ color: campaignTheme.textColor }}>
+                      Share Results Link
+                    </h3>
+                    <CardDescription>
                       Create a public link with your personalized results
-                    </p>
+                    </CardDescription>
                   </div>
                 </div>
 
                 {/* Privacy Notice */}
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                  <div className="flex items-start space-x-2">
-                    <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-amber-800 mb-2">Privacy Notice</h4>
-                      <ul className="text-sm text-amber-700 space-y-1">
-                        <li>• Anyone with this link can view your results</li>
-                        <li>• Only the final results are shared - no personal information or form inputs</li>
-                        <li>• Link expires automatically in 30 days</li>
-                        <li>• You can delete the shared link at any time</li>
-                      </ul>
+                <Card className="border-amber-200 bg-amber-50">
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <CardTitle className="text-sm font-medium text-amber-800 mb-2">
+                          Privacy Notice
+                        </CardTitle>
+                        <ul className="text-sm text-amber-700 space-y-1">
+                          <li>• Anyone with this link can view your results</li>
+                          <li>• Only the final results are shared - no personal information or form inputs</li>
+                          <li>• Link expires automatically in 30 days</li>
+                          <li>• You can delete the shared link at any time</li>
+                        </ul>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
 
                 {/* Consent Checkbox */}
-                <label className="flex items-start space-x-3 cursor-pointer">
-                  <input
-                    type="checkbox"
+                <div 
+                  className="flex items-start space-x-3"
+                  style={{
+                    '--primary': campaignTheme.buttonColor,
+                    '--primary-foreground': '#ffffff',
+                  } as React.CSSProperties}
+                >
+                  <Checkbox
+                    id="consent-checkbox"
                     checked={consentGiven}
-                    onChange={(e) => setConsentGiven(e.target.checked)}
-                    className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    onCheckedChange={(checked) => setConsentGiven(checked === true)}
+                    className="mt-1"
                   />
-                  <span className="text-sm text-gray-700">
+                  <Label 
+                    htmlFor="consent-checkbox" 
+                    className="text-sm cursor-pointer leading-5"
+                    style={{ color: campaignTheme.textColor }}
+                  >
                     I understand and want to create a shareable version of my results
-                  </span>
-                </label>
+                  </Label>
+                </div>
 
                 {/* Create Button */}
                 <Button
                   onClick={handleCreateShareableLink}
                   disabled={!consentGiven}
-                  className={cn(
-                    "w-full",
-                    consentGiven 
-                      ? "bg-blue-600 hover:bg-blue-700 text-white" 
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  )}
+                  className="w-full"
+                  style={consentGiven ? getCampaignButtonStyles(campaign, 'primary') : undefined}
                 >
                   Create Shareable Link
                 </Button>
@@ -225,24 +255,32 @@ export function ShareResultsModal({
               {/* Divider */}
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
+                  <div className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">OR</span>
+                  <span className="px-2 bg-background text-muted-foreground">OR</span>
                 </div>
               </div>
 
               {/* Share Empty Form Section */}
               <div className="space-y-4">
                 <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                    <Copy className="h-4 w-4 text-purple-600" />
+                  <div 
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
+                    style={{ 
+                      backgroundColor: `${campaignTheme.buttonColor}15`,
+                      color: campaignTheme.buttonColor 
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Share Empty Form</h3>
-                    <p className="text-sm text-gray-600 mb-3">
+                    <h3 className="font-semibold mb-2" style={{ color: campaignTheme.textColor }}>
+                      Share Empty Form
+                    </h3>
+                    <CardDescription>
                       Share the original tool for others to try from the beginning
-                    </p>
+                    </CardDescription>
                   </div>
                 </div>
 
@@ -250,6 +288,7 @@ export function ShareResultsModal({
                   onClick={() => handleCopy(originalCampaignUrl)}
                   variant="outline"
                   className="w-full"
+                  style={getCampaignButtonStyles(campaign, 'secondary')}
                 >
                   {shareState.copied ? (
                     <>
@@ -269,50 +308,70 @@ export function ShareResultsModal({
 
           {shareState.step === 'creating' && (
             <div className="text-center py-8">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div 
+                className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                style={{ backgroundColor: `${campaignTheme.buttonColor}20` }}
+              >
+                <Loader2 
+                  className="h-8 w-8 animate-spin"
+                  style={{ color: campaignTheme.buttonColor }}
+                />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Creating Shareable Link</h3>
-              <p className="text-gray-600">Please wait while we prepare your results for sharing...</p>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: campaignTheme.textColor }}>
+                Creating Shareable Link
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Please wait while we prepare your results for sharing...
+              </p>
             </div>
           )}
 
           {shareState.step === 'success' && shareState.shareUrl && (
             <div className="space-y-6">
               <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Check className="h-8 w-8 text-green-600" />
+                <div 
+                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                  style={{ 
+                    backgroundColor: `${campaignTheme.buttonColor}20`,
+                    color: campaignTheme.buttonColor 
+                  }}
+                >
+                  <Check className="h-8 w-8" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Link Created Successfully!</h3>
-                <p className="text-gray-600">Your results are now shareable with this link:</p>
+                <h3 className="text-lg font-semibold mb-2" style={{ color: campaignTheme.textColor }}>
+                  Link Created Successfully!
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Your results are now shareable with this link:
+                </p>
               </div>
 
               {/* Share URL */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="text"
-                    value={shareState.shareUrl}
-                    readOnly
-                    className="flex-1 bg-transparent text-sm text-gray-700 outline-none"
-                  />
-                  <Button
-                    onClick={() => handleCopy(shareState.shareUrl!)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    {shareState.copied ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
+              <div className="flex items-center space-x-2">
+                <Input
+                  type="text"
+                  value={shareState.shareUrl}
+                  readOnly
+                  className="flex-1 text-sm"
+                />
+                <Button
+                  onClick={() => handleCopy(shareState.shareUrl!)}
+                  size="sm"
+                  variant="outline"
+                >
+                  {shareState.copied ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
               </div>
 
               {/* Social Sharing */}
               <div className="space-y-3">
-                <p className="text-sm font-medium text-gray-700">Share on social media:</p>
+                <p className="text-sm font-medium" style={{ color: campaignTheme.textColor }}>
+                  Share on social media:
+                </p>
                 <div className="flex space-x-3">
                   <Button
                     onClick={() => handleSocialShare('twitter')}
@@ -336,11 +395,9 @@ export function ShareResultsModal({
               </div>
 
               {/* Expiration Notice */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-700">
-                  💡 <strong>Tip:</strong> This link expires on {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}
-                </p>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                💡 <strong>Tip:</strong> This link expires on {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+              </p>
             </div>
           )}
 
@@ -349,11 +406,14 @@ export function ShareResultsModal({
               <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <X className="h-8 w-8 text-red-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Something went wrong</h3>
-              <p className="text-gray-600 mb-4">{shareState.error}</p>
+              <h3 className="text-lg font-semibold mb-2" style={{ color: campaignTheme.textColor }}>
+                Something went wrong
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">{shareState.error}</p>
               <Button
                 onClick={() => setShareState({ step: 'options', copied: false })}
                 variant="outline"
+                style={getCampaignButtonStyles(campaign, 'secondary')}
               >
                 Try Again
               </Button>
@@ -363,18 +423,19 @@ export function ShareResultsModal({
 
         {/* Footer */}
         {shareState.step === 'success' && (
-          <div className="px-6 py-4 bg-gray-50 rounded-b-2xl">
+          <div className="pt-4 border-t">
             <Button
               onClick={onClose}
               variant="outline"
               className="w-full"
+              style={getCampaignButtonStyles(campaign, 'secondary')}
             >
               Done
             </Button>
           </div>
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
