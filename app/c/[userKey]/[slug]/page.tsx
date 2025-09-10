@@ -758,19 +758,8 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     const currentUrl = new URL(window.location.href)
     const sectionParam = campaignRenderer.currentSection + 1
     
-    // Preserve shared data parameters when updating URL
-    const urlParams = new URLSearchParams(currentUrl.search)
-    const hasSharedData = urlParams.get('shared')
-    const viewParam = urlParams.get('view')
-    
-    let newUrl: string
-    if (hasSharedData) {
-      // Keep shared parameters intact for shareable URLs
-      newUrl = currentUrl.href
-    } else {
-      // Normal URL update for regular navigation
-      newUrl = `${currentUrl.pathname}?section=${sectionParam}${currentUrl.hash}`
-    }
+    // Normal URL update for navigation
+    let newUrl: string = `${currentUrl.pathname}?section=${sectionParam}${currentUrl.hash}`
     
     window.history.replaceState(
       { 
@@ -792,49 +781,6 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     return () => window.removeEventListener('popstate', handlePopState)
   }, [campaign, campaignRenderer.currentSection])
 
-  // Handle shared data restoration (runs immediately, independent of session recovery)
-  useEffect(() => {
-    console.log('🔗 [SHARE] Checking for shared data')
-    console.log('🔗 [SHARE] Current URL:', window.location.href)
-    
-    const urlParams = new URLSearchParams(window.location.search)
-    const sharedData = urlParams.get('shared')
-    const viewParam = urlParams.get('view')
-    
-    console.log('🔗 [SHARE] URL parameters:', {
-      shared: sharedData ? 'Found (length: ' + sharedData.length + ')' : 'Not found',
-      view: viewParam || 'Not found'
-    })
-    
-    if (sharedData) {
-      console.log('📥 [SHARE] Detected shared data, restoring...')
-      try {
-        const decodedData = JSON.parse(decodeURIComponent(escape(atob(sharedData))))
-        console.log('📥 [SHARE] Decoded shared data:', decodedData)
-        
-        // Restore user inputs
-        if (decodedData.userInputs) {
-          campaignRenderer.restoreUserInputs(decodedData.userInputs)
-        }
-        
-        // Restore AI results to localStorage if campaign ID matches
-        if (decodedData.aiResults && campaign?.id && decodedData.campaignId === campaign.id) {
-          const key = `aiTestResults_${campaign.id}`
-          localStorage.setItem(key, JSON.stringify(decodedData.aiResults))
-          console.log('📥 [SHARE] AI results restored to localStorage')
-        }
-        
-        // Set a flag to indicate we have shared data (for navigation logic)
-        sessionStorage.setItem('hasSharedData', 'true')
-        
-      } catch (error) {
-        console.error('📥 [SHARE] Error restoring shared data:', error)
-      }
-    } else {
-      // Clear the flag if no shared data
-      sessionStorage.removeItem('hasSharedData')
-    }
-  }, [campaign?.id]) // Removed isSessionRecovered dependency
 
   // Handle URL section navigation (runs after sections are loaded)
   useEffect(() => {
@@ -843,26 +789,7 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     console.log('🔗 [URL] Checking URL section parameters')
     
     const urlParams = new URLSearchParams(window.location.search)
-    const hasSharedData = sessionStorage.getItem('hasSharedData') === 'true'
-    
-    // Priority 1: Handle view=results parameter (from shared URLs)
-    const viewParam = urlParams.get('view')
-    if (viewParam === 'results') {
-      const lastSectionIndex = sections.length - 1
-      console.log(`📥 [SHARE] Jumping to results section: ${lastSectionIndex} (view=results)`)
-      campaignRenderer.goToSection(lastSectionIndex)
-      return
-    }
-    
-    // Priority 2: If we have shared data but no view=results, still go to results
-    if (hasSharedData) {
-      const lastSectionIndex = sections.length - 1
-      console.log(`📥 [SHARE] Jumping to results section: ${lastSectionIndex} (shared data detected)`)
-      campaignRenderer.goToSection(lastSectionIndex)
-      return
-    }
-    
-    // Priority 3: Handle normal section parameter (only if no shared data and session recovered)
+    // Handle normal section parameter
     if (isSessionRecovered) {
       const sectionParam = urlParams.get('section')
       if (sectionParam) {

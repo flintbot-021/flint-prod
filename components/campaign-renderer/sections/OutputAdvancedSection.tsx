@@ -1,15 +1,13 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
-import { Share2, RotateCcw } from 'lucide-react'
-import { ShareModal } from '../ShareModal'
+import React, { useMemo } from 'react'
+import { RotateCcw } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
 import { buildVariablesFromInputs } from '@/lib/utils/section-variables'
 import { VariableInterpolator } from '@/lib/utils/variable-interpolator'
 import { getCampaignTheme, getCampaignButtonStyles, getMobileClasses } from '../utils'
-import { useToast } from '@/components/ui/use-toast'
 
 export function OutputAdvancedSection({ 
   section, 
@@ -21,9 +19,6 @@ export function OutputAdvancedSection({
   onNavigateToSection,
   index = 0
 }: SectionRendererProps) {
-  const [isSharing, setIsSharing] = useState(false)
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
-  const { toast } = useToast()
 
   // Debug logging for props
   console.log('🔧 OutputAdvancedSection props debug:', {
@@ -138,178 +133,7 @@ export function OutputAdvancedSection({
     return map
   }, [sections, userInputs, campaign?.id])
 
-  // Handle share button click - opens modal
-  const handleShare = () => {
-    setIsShareModalOpen(true)
-  }
 
-  // Handle sharing results with preserved data - always copy to clipboard
-  const handleShareResults = async () => {
-    setIsSharing(true)
-    try {
-      // Create short shareable URL using database storage
-      const shareableUrl = await createShortShareableUrl()
-      
-      // Always copy to clipboard (no native share dialog)
-      await navigator.clipboard.writeText(shareableUrl)
-      toast({
-        title: "Results link copied!",
-        description: "Anyone with this link can view your personalized results.",
-      })
-      
-    } catch (error) {
-      console.error('Error copying results link:', error)
-      toast({
-        title: "Copy failed",
-        description: "Unable to copy results link. Please try again.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsSharing(false)
-    }
-  }
-
-  // Handle sharing clean form URL
-  const handleShareForm = async () => {
-    setIsSharing(true)
-    try {
-      // Create clean form URL (without any parameters)
-      const currentUrl = new URL(window.location.href)
-      const cleanFormUrl = `${currentUrl.origin}${currentUrl.pathname}`
-      
-      if (navigator.share) {
-        await navigator.share({
-          title: campaign?.name || 'Take This Assessment',
-          text: 'Take this assessment and get your personalized results!',
-          url: cleanFormUrl
-        })
-      } else {
-        // Fallback: copy to clipboard
-        await navigator.clipboard.writeText(cleanFormUrl)
-        toast({
-          title: "Form link copied!",
-          description: "Clean assessment form link copied to clipboard.",
-        })
-      }
-    } catch (error) {
-      // Check if it's just a user cancellation (not a real error)
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Share cancelled by user')
-        return // Don't show error for user cancellation
-      }
-      
-      // Only log real errors
-      console.error('Error sharing form:', error)
-      
-      // For real errors, fallback to copying URL
-      try {
-        const cleanFormUrl = `${window.location.origin}${window.location.pathname}`
-        await navigator.clipboard.writeText(cleanFormUrl)
-        toast({
-          title: "Form link copied!",
-          description: "Clean assessment form link copied to clipboard.",
-        })
-      } catch (clipboardError) {
-        console.error('Clipboard error:', clipboardError)
-        toast({
-          title: "Copy failed",
-          description: "Unable to copy form link. Please try again.",
-          variant: "destructive"
-        })
-      }
-    } finally {
-      setIsSharing(false)
-    }
-  }
-
-  // Create a short shareable URL using database storage
-  const createShortShareableUrl = async (): Promise<string> => {
-    try {
-      // Collect all the data needed to recreate the results
-      const inputVars = buildVariablesFromInputs(sections, userInputs)
-      const aiVars = campaign?.id ? getAITestResults(campaign.id) : {}
-      
-      const shareData = {
-        userInputs: userInputs,
-        variables: inputVars,
-        aiResults: aiVars,
-        timestamp: Date.now(),
-        campaignId: campaign?.id
-      }
-      
-      console.log('📤 Creating shared result in database:', shareData)
-      
-      // Store in database and get short ID
-      const response = await fetch('/api/shared-results', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          campaign_id: campaign?.id,
-          shared_data: shareData,
-          metadata: {
-            userAgent: navigator.userAgent,
-            timestamp: Date.now(),
-            url: window.location.href
-          }
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to create shared result')
-      }
-
-      const result = await response.json()
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create shared result')
-      }
-
-      // Create short URL
-      const currentUrl = new URL(window.location.href)
-      const shortUrl = `${currentUrl.origin}/s/${result.shortId}`
-      
-      console.log('📤 Short shareable URL created:', shortUrl)
-      
-      return shortUrl
-      
-    } catch (error) {
-      console.error('Error creating short shareable URL:', error)
-      // Fallback to old method if database storage fails
-      return await createShareableUrlFallback()
-    }
-  }
-
-  // Fallback to old URL encoding method if database storage fails
-  const createShareableUrlFallback = async (): Promise<string> => {
-    try {
-      const inputVars = buildVariablesFromInputs(sections, userInputs)
-      const aiVars = campaign?.id ? getAITestResults(campaign.id) : {}
-      
-      const shareData = {
-        userInputs: userInputs,
-        variables: inputVars,
-        aiResults: aiVars,
-        timestamp: Date.now(),
-        campaignId: campaign?.id
-      }
-      
-      const jsonString = JSON.stringify(shareData)
-      const encodedData = btoa(unescape(encodeURIComponent(jsonString)))
-      
-      const currentUrl = new URL(window.location.href)
-      const shareUrl = new URL(currentUrl.origin + currentUrl.pathname)
-      
-      shareUrl.searchParams.set('shared', encodedData)
-      shareUrl.searchParams.set('view', 'results')
-      
-      return shareUrl.toString()
-    } catch (error) {
-      console.error('Error in fallback shareable URL:', error)
-      return window.location.href
-    }
-  }
 
   // Handle try again functionality
   const handleTryAgain = () => {
@@ -787,25 +611,6 @@ export function OutputAdvancedSection({
           <div className="flex items-center justify-center">
             {/* Action Buttons */}
             <div className="flex items-center space-x-3">
-              {/* Share Button */}
-              <button
-                onClick={handleShare}
-                disabled={isSharing}
-                className={cn(
-                  "px-6 py-3 rounded-xl font-semibold backdrop-blur-md border transition-all duration-300 ease-out",
-                  "flex items-center space-x-2 hover:shadow-xl hover:scale-105 active:scale-95",
-                  getMobileClasses("min-h-[48px]", deviceInfo?.type)
-                )}
-                style={{
-                  ...getCampaignButtonStyles(campaign, 'secondary'),
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
-                }}
-              >
-                <Share2 className="h-4 w-4" />
-                <span className="hidden sm:inline">Share</span>
-              </button>
-
               {/* Try Again Button */}
               <button
                 onClick={handleTryAgain}
@@ -828,14 +633,6 @@ export function OutputAdvancedSection({
         </div>
       </div>
 
-      {/* Share Modal */}
-      <ShareModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        campaign={campaign}
-        onShareResults={handleShareResults}
-        onShareForm={handleShareForm}
-      />
     </div>
   )
 }
