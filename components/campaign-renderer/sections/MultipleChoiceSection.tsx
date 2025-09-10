@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { CheckCircle2, Circle } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { getMobileClasses, getDefaultChoices, getCampaignTheme, getCampaignTextColor, getCampaignButtonStyles, getNextSectionButtonText } from '../utils'
@@ -29,6 +29,10 @@ export function MultipleChoiceSection({
       ? existingResponse 
       : ''
   )
+  
+  // Keyboard navigation state
+  const [focusedIndex, setFocusedIndex] = useState<number>(-1)
+  const containerRef = useRef<HTMLDivElement>(null)
   
   const choices = config.options || getDefaultChoices()
   const isRequired = config.required ?? false
@@ -77,6 +81,76 @@ export function MultipleChoiceSection({
   // Generate validation text for bottom bar
   const validationText = isRequired && !selectedValue ? 'Please select an option to continue' : undefined
 
+  // Keyboard navigation effect
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      switch (event.key) {
+        case 'ArrowDown':
+          event.preventDefault()
+          setFocusedIndex(prev => {
+            // If no item is focused, focus the first item
+            if (prev === -1) return 0
+            // Move to next item, wrap to first if at end
+            return prev < choices.length - 1 ? prev + 1 : 0
+          })
+          break
+          
+        case 'ArrowUp':
+          event.preventDefault()
+          setFocusedIndex(prev => {
+            // If no item is focused, focus the last item
+            if (prev === -1) return choices.length - 1
+            // Move to previous item, wrap to last if at beginning
+            return prev > 0 ? prev - 1 : choices.length - 1
+          })
+          break
+          
+        case 'Enter':
+          event.preventDefault()
+          if (focusedIndex >= 0 && focusedIndex < choices.length) {
+            // Select the focused choice
+            const choice = choices[focusedIndex]
+            const choiceValue = typeof choice === 'string' ? choice : (choice as any).value || (choice as any).text
+            handleChoiceSelect(choiceValue)
+          } else if (canContinue) {
+            // If no choice is focused but we can continue, proceed
+            handleContinue()
+          }
+          break
+          
+        case 'Escape':
+          event.preventDefault()
+          // Clear focus
+          setFocusedIndex(-1)
+          break
+      }
+    }
+
+    // Add event listener when component is mounted
+    document.addEventListener('keydown', handleKeyDown)
+    
+    // Focus the container to ensure it can receive keyboard events
+    if (containerRef.current) {
+      containerRef.current.focus()
+    }
+
+    // Cleanup event listener on unmount
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [focusedIndex, choices.length, canContinue])
+
+  // Auto-focus first option when down arrow is pressed for the first time
+  useEffect(() => {
+    if (focusedIndex === 0 && choices.length > 0) {
+      // Scroll focused item into view if needed
+      const focusedElement = containerRef.current?.querySelector(`[data-choice-index="${focusedIndex}"]`)
+      if (focusedElement) {
+        focusedElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+    }
+  }, [focusedIndex])
+
 
   // Helper function to convert hex color to rgba with opacity
   const hexToRgba = (hex: string, opacity: number) => {
@@ -92,10 +166,15 @@ export function MultipleChoiceSection({
   }
 
   return (
-    <div className={cn(
-      "h-full flex flex-col",
-      deviceInfo?.type === 'mobile' ? "pb-40" : "pb-32"
-    )} style={{ backgroundColor: theme.backgroundColor }}>
+    <div 
+      ref={containerRef}
+      tabIndex={-1}
+      className={cn(
+        "h-full flex flex-col focus:outline-none",
+        deviceInfo?.type === 'mobile' ? "pb-40" : "pb-32"
+      )} 
+      style={{ backgroundColor: theme.backgroundColor }}
+    >
       <div className="flex-1 flex items-center justify-center px-6 py-12 pt-20">
         <div className="w-full max-w-2xl mx-auto space-y-8">
           <div className="text-center space-y-6">
@@ -128,10 +207,12 @@ export function MultipleChoiceSection({
               const choiceValue = typeof choice === 'string' ? choice : choice.value || choice.text
               const choiceLabel = typeof choice === 'string' ? choice : choice.label || choice.text || choice.value
               const isSelected = selectedValue === choiceValue
+              const isFocused = focusedIndex === idx
               
               return (
                 <button
                   key={idx}
+                  data-choice-index={idx}
                   onClick={() => handleChoiceSelect(choiceValue)}
                   className={cn(
                     "w-full p-6 rounded-2xl text-left transition-all duration-300 ease-out",
@@ -146,6 +227,11 @@ export function MultipleChoiceSection({
                       backgroundColor: hexToRgba(theme.buttonColor, 0.2),
                       border: `2px solid ${theme.buttonColor}`,
                       boxShadow: `0 12px 40px ${hexToRgba(theme.buttonColor, 0.25)}, inset 0 1px 0 rgba(255, 255, 255, 0.2)`
+                    } : isFocused ? {
+                      backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                      border: `2px solid ${hexToRgba(theme.buttonColor, 0.6)}`,
+                      boxShadow: `0 12px 40px ${hexToRgba(theme.buttonColor, 0.15)}, inset 0 1px 0 rgba(255, 255, 255, 0.15)`,
+                      transform: 'scale(1.01)'
                     } : {
                       backgroundColor: 'rgba(255, 255, 255, 0.08)',
                       border: '1px solid rgba(255, 255, 255, 0.15)',
@@ -203,7 +289,7 @@ export function MultipleChoiceSection({
         label={`Choice ${index + 1}`}
         validationText={validationText}
         navigationHints={{
-          text: "Click to select an option • Enter to continue • ← → to navigate • Esc to go back"
+          text: "↓ ↑ to navigate options • Enter to select • Esc to clear focus"
         }}
         actionButton={{
           label: buttonLabel,
