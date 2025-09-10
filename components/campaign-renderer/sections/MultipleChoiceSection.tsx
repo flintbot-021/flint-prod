@@ -30,8 +30,7 @@ export function MultipleChoiceSection({
       : ''
   )
   
-  // Keyboard navigation state
-  const [focusedIndex, setFocusedIndex] = useState<number>(-1)
+  // Container ref for keyboard events
   const containerRef = useRef<HTMLDivElement>(null)
   
   const choices = config.options || getDefaultChoices()
@@ -87,41 +86,49 @@ export function MultipleChoiceSection({
       switch (event.key) {
         case 'ArrowDown':
           event.preventDefault()
-          setFocusedIndex(prev => {
-            // If no item is focused, focus the first item
-            if (prev === -1) return 0
-            // Move to next item, wrap to first if at end
-            return prev < choices.length - 1 ? prev + 1 : 0
+          // Find current selection index
+          const currentIndex = choices.findIndex((choice: any) => {
+            const choiceValue = typeof choice === 'string' ? choice : choice.value || choice.text
+            return selectedValue === choiceValue
           })
+          
+          // Move to next option (or first if no selection)
+          const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % choices.length
+          const nextChoice = choices[nextIndex]
+          const nextChoiceValue = typeof nextChoice === 'string' ? nextChoice : (nextChoice as any).value || (nextChoice as any).text
+          
+          handleChoiceSelect(nextChoiceValue)
           break
           
         case 'ArrowUp':
           event.preventDefault()
-          setFocusedIndex(prev => {
-            // If no item is focused, focus the last item
-            if (prev === -1) return choices.length - 1
-            // Move to previous item, wrap to last if at beginning
-            return prev > 0 ? prev - 1 : choices.length - 1
+          // Find current selection index
+          const currentUpIndex = choices.findIndex((choice: any) => {
+            const choiceValue = typeof choice === 'string' ? choice : choice.value || choice.text
+            return selectedValue === choiceValue
           })
+          
+          // Move to previous option (or last if no selection)
+          const prevIndex = currentUpIndex === -1 ? choices.length - 1 : (currentUpIndex - 1 + choices.length) % choices.length
+          const prevChoice = choices[prevIndex]
+          const prevChoiceValue = typeof prevChoice === 'string' ? prevChoice : (prevChoice as any).value || (prevChoice as any).text
+          
+          handleChoiceSelect(prevChoiceValue)
           break
           
         case 'Enter':
+        case ' ': // Spacebar
           event.preventDefault()
-          if (focusedIndex >= 0 && focusedIndex < choices.length) {
-            // Select the focused choice
-            const choice = choices[focusedIndex]
-            const choiceValue = typeof choice === 'string' ? choice : (choice as any).value || (choice as any).text
-            handleChoiceSelect(choiceValue)
-          } else if (canContinue) {
-            // If no choice is focused but we can continue, proceed
+          // Enter and Space both advance to next section if we can continue
+          if (canContinue) {
             handleContinue()
           }
           break
           
         case 'Escape':
           event.preventDefault()
-          // Clear focus
-          setFocusedIndex(-1)
+          // Clear selection
+          setSelectedValue('')
           break
       }
     }
@@ -138,18 +145,7 @@ export function MultipleChoiceSection({
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [focusedIndex, choices.length, canContinue])
-
-  // Auto-focus first option when down arrow is pressed for the first time
-  useEffect(() => {
-    if (focusedIndex === 0 && choices.length > 0) {
-      // Scroll focused item into view if needed
-      const focusedElement = containerRef.current?.querySelector(`[data-choice-index="${focusedIndex}"]`)
-      if (focusedElement) {
-        focusedElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      }
-    }
-  }, [focusedIndex])
+  }, [selectedValue, choices, canContinue])
 
 
   // Helper function to convert hex color to rgba with opacity
@@ -207,12 +203,10 @@ export function MultipleChoiceSection({
               const choiceValue = typeof choice === 'string' ? choice : choice.value || choice.text
               const choiceLabel = typeof choice === 'string' ? choice : choice.label || choice.text || choice.value
               const isSelected = selectedValue === choiceValue
-              const isFocused = focusedIndex === idx
               
               return (
                 <button
                   key={idx}
-                  data-choice-index={idx}
                   onClick={() => handleChoiceSelect(choiceValue)}
                   className={cn(
                     "w-full p-6 rounded-2xl text-left transition-all duration-300 ease-out",
@@ -227,11 +221,6 @@ export function MultipleChoiceSection({
                       backgroundColor: hexToRgba(theme.buttonColor, 0.2),
                       border: `2px solid ${theme.buttonColor}`,
                       boxShadow: `0 12px 40px ${hexToRgba(theme.buttonColor, 0.25)}, inset 0 1px 0 rgba(255, 255, 255, 0.2)`
-                    } : isFocused ? {
-                      backgroundColor: 'rgba(255, 255, 255, 0.12)',
-                      border: `2px solid ${hexToRgba(theme.buttonColor, 0.6)}`,
-                      boxShadow: `0 12px 40px ${hexToRgba(theme.buttonColor, 0.15)}, inset 0 1px 0 rgba(255, 255, 255, 0.15)`,
-                      transform: 'scale(1.01)'
                     } : {
                       backgroundColor: 'rgba(255, 255, 255, 0.08)',
                       border: '1px solid rgba(255, 255, 255, 0.15)',
@@ -289,7 +278,7 @@ export function MultipleChoiceSection({
         label={`Choice ${index + 1}`}
         validationText={validationText}
         navigationHints={{
-          text: "↓ ↑ to navigate options • Enter to select • Esc to clear focus"
+          text: "↓ ↑ to select options • Enter/Space to continue • Esc to clear selection"
         }}
         actionButton={{
           label: buttonLabel,
