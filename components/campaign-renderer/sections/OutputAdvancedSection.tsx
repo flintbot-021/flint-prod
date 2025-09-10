@@ -1,13 +1,14 @@
 'use client'
 
-import React, { useMemo } from 'react'
-import { RotateCcw } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+import { RotateCcw, Share2 } from 'lucide-react'
 import { SectionRendererProps } from '../types'
 import { cn } from '@/lib/utils'
 import { getAITestResults } from '@/lib/utils/ai-test-storage'
 import { buildVariablesFromInputs } from '@/lib/utils/section-variables'
 import { VariableInterpolator } from '@/lib/utils/variable-interpolator'
 import { getCampaignTheme, getCampaignButtonStyles, getMobileClasses } from '../utils'
+import { ShareResultsModal } from '../ShareResultsModal'
 
 export function OutputAdvancedSection({ 
   section, 
@@ -19,6 +20,9 @@ export function OutputAdvancedSection({
   onNavigateToSection,
   index = 0
 }: SectionRendererProps) {
+
+  // Share modal state
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
 
   // Debug logging for props
   console.log('🔧 OutputAdvancedSection props debug:', {
@@ -631,6 +635,25 @@ export function OutputAdvancedSection({
           <div className="flex items-center justify-center">
             {/* Action Buttons */}
             <div className="flex items-center space-x-3">
+              {/* Share Button */}
+              <button
+                onClick={() => setIsShareModalOpen(true)}
+                className={cn(
+                  "px-6 py-3 rounded-xl font-semibold backdrop-blur-md border transition-all duration-300 ease-out",
+                  "flex items-center space-x-2 hover:shadow-xl hover:scale-105 active:scale-95",
+                  getMobileClasses("min-h-[48px]", deviceInfo?.type)
+                )}
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  color: campaignTheme.textColor,
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.2)'
+                }}
+              >
+                <Share2 className="h-4 w-4" />
+                <span>Share</span>
+              </button>
+
               {/* Try Again Button */}
               <button
                 onClick={handleTryAgain}
@@ -652,6 +675,23 @@ export function OutputAdvancedSection({
           </div>
         </div>
       </div>
+
+      {/* Share Results Modal */}
+      {campaign && (
+        <ShareResultsModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          campaignSlug={campaign.published_url || ''}
+          userKey={campaign.user_key || ''}
+          campaignName={campaign.name || ''}
+          userInputs={userInputs}
+          aiResults={variableMap}
+          variables={variableMap}
+          campaignId={campaign.id}
+          sectionConfig={config}
+          campaign={campaign}
+        />
+      )}
 
     </div>
   )
