@@ -104,9 +104,29 @@ export function OutputAdvancedSection({
       userInputsCount: Object.keys(userInputs).length
     })
     
-    Object.assign(map, inputVars)
-    // Use campaign-scoped AI test results
-    Object.assign(map, aiVars)
+    // Convert all values to strings to prevent React object rendering errors
+    Object.entries(inputVars).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        // If it's an object, convert to string representation
+        if (typeof value === 'object') {
+          // For objects like {display: "5", is_max_plus: true}, use the display value if available
+          map[key] = (value as any).display || JSON.stringify(value)
+        } else {
+          map[key] = String(value)
+        }
+      }
+    })
+    
+    // Use campaign-scoped AI test results and convert to strings
+    Object.entries(aiVars).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        if (typeof value === 'object') {
+          map[key] = (value as any).display || JSON.stringify(value)
+        } else {
+          map[key] = String(value)
+        }
+      }
+    })
     
     console.log('🔧 Final variable map:', map)
     console.log('🔧 Variable map keys:', Object.keys(map))
