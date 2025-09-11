@@ -6,6 +6,7 @@ import { Campaign } from '@/lib/types/database'
 import { cn } from '@/lib/utils'
 import { getCampaignTheme, getMobileClasses } from './utils'
 import { Button } from '@/components/ui/button'
+import { PoweredByFlint } from '@/components/ui/powered-by-flint'
 
 interface SharedOutputAdvancedSectionProps {
   campaign: Campaign
@@ -445,7 +446,9 @@ export function SharedOutputAdvancedSection({
         }}
       >
         <div className="max-w-4xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-between">
+            <PoweredByFlint variant="dark" size="sm" showIcon={false} />
+            
             <Button
               onClick={handleTryThisTool}
               className="px-6 py-3 rounded-xl font-semibold backdrop-blur-md border transition-all duration-300 ease-out flex items-center space-x-2 hover:shadow-xl hover:scale-105 active:scale-95"
@@ -459,6 +462,9 @@ export function SharedOutputAdvancedSection({
               <ExternalLink className="h-4 w-4" />
               <span>Try This Tool</span>
             </Button>
+            
+            {/* Spacer to balance the layout */}
+            <div className="w-[120px]" />
           </div>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { MessageSquare } from 'lucide-react'
 import { SectionRendererProps } from '../types'
-import { cn } from '@/lib/utils'
+import { cn, normalizeUrl } from '@/lib/utils'
 import { getMobileClasses, getCampaignTheme, getCampaignTextColor, getNextSectionButtonText } from '../utils'
 import { SectionNavigationBar } from '../SectionNavigationBar'
 import { ComplianceNotice } from '../ComplianceNotice'
@@ -28,7 +28,7 @@ export function TextQuestionSection({
   sections
 }: SectionRendererProps) {
   // Initialize with existing response if available
-  const existingResponse = userInputs?.[section.id] || ''
+  const existingResponse = String(userInputs?.[section.id] || '')
   const [inputValue, setInputValue] = useState(existingResponse)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
@@ -59,11 +59,36 @@ export function TextQuestionSection({
   // URL validation helper
   const isValidUrl = (url: string): boolean => {
     try {
-      new URL(url)
+      // First normalize the URL to add protocol if missing
+      const normalizedUrl = normalizeUrl(url)
+      new URL(normalizedUrl)
       return true
     } catch {
       return false
     }
+  }
+
+  // Domain validation helper - checks if input looks like a valid domain
+  const isValidDomain = (input: string): boolean => {
+    // Must have at least one dot
+    if (!input.includes('.')) return false
+    
+    const parts = input.split('.')
+    if (parts.length < 2) return false
+    
+    // Last part must be a valid TLD (2+ characters, letters only, and look like a real TLD)
+    const tld = parts[parts.length - 1].toLowerCase()
+    
+    // Common TLD validation - must be 2+ chars and letters only
+    if (!/^[a-z]{2,}$/.test(tld)) return false
+    
+    // Reject obvious non-TLDs (words that are too long or don't look like TLDs)
+    if (tld.length > 10) return false // Most TLDs are short
+    
+    // Basic domain pattern check
+    const domainPattern = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/
+    
+    return domainPattern.test(input)
   }
 
   const validateInput = (value: string): string | null => {
@@ -73,8 +98,17 @@ export function TextQuestionSection({
     
     // URL-specific validation
     if (isUrlInput && value.trim().length > 0) {
-      if (!isValidUrl(value.trim())) {
-        return 'Please enter a valid URL (e.g., https://example.com)'
+      const trimmedValue = value.trim()
+      
+      // Check if it's already a valid URL with protocol
+      if (trimmedValue.startsWith('http://') || trimmedValue.startsWith('https://')) {
+        if (!isValidUrl(trimmedValue)) {
+          return 'Please enter a valid URL (e.g., https://example.com)'
+        }
+      }
+      // Check if it's a valid domain that can be normalized
+      else if (!isValidDomain(trimmedValue)) {
+        return 'Please enter a valid domain (e.g., example.com, www.example.com) or full URL'
       }
     }
     
@@ -117,25 +151,23 @@ export function TextQuestionSection({
       return
     }
 
+    // Normalize URL if it's a URL input
+    const finalValue = isUrlInput ? normalizeUrl(inputValue.trim()) : inputValue.trim()
+
     onSectionComplete(index, {
-      [section.id]: inputValue.trim(),
-      text_response: inputValue.trim()
+      [section.id]: finalValue,
+      text_response: finalValue
     })
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    // Handle Enter key in text inputs
-    if (e.key === 'Enter') {
-      // For single-line inputs (not textArea), Enter should proceed if valid
-      if (!textArea && canContinue) {
-        e.preventDefault()
-        handleContinue()
-      }
-      // For textareas, Ctrl+Enter or Cmd+Enter should proceed
-      else if (textArea && (e.ctrlKey || e.metaKey) && canContinue) {
-        e.preventDefault()
-        handleContinue()
-      }
+    // Note: Most keyboard navigation is now handled by the global SectionRenderer
+    // This local handler is kept for any text-specific edge cases
+    
+    // For URL inputs and single-line inputs, we still handle Enter locally for immediate response
+    if (e.key === 'Enter' && (isUrlInput || !textArea) && canContinue) {
+      e.preventDefault()
+      handleContinue()
     }
   }
 
@@ -326,9 +358,7 @@ export function TextQuestionSection({
         label={`Question ${index + 1}`}
         validationText={validationText}
         navigationHints={{
-          text: textArea 
-            ? "Press Ctrl+Enter to continue • ← → to navigate • Esc to go back"
-            : "Press Enter to continue • ← → to navigate • Esc to go back"
+          text: "Press Enter to continue • ← → to navigate • Esc to go back"
         }}
         actionButton={{
           label: buttonLabel,

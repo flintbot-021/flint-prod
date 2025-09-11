@@ -8,6 +8,7 @@ import { Campaign } from '@/lib/types/database'
 import { getCampaignTheme } from '@/components/campaign-renderer/utils'
 import { SharedOutputAdvancedSection } from '@/components/campaign-renderer/SharedOutputAdvancedSection'
 import { Button } from '@/components/ui/button'
+import { PoweredByFlint } from '@/components/ui/powered-by-flint'
 
 interface SharedResultData {
   short_id: string
@@ -117,37 +118,48 @@ export default function SharedResultsPage() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-muted flex items-center justify-center p-4">
-        <div className="text-center max-w-md mx-auto">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertCircle className="h-8 w-8 text-red-600" />
-          </div>
-          
-          <h1 className="text-2xl font-bold text-foreground mb-4">
-            {error.type === 'not_found' ? 'Results Not Found' :
-             error.type === 'expired' ? 'Results Expired' :
-             'Something Went Wrong'}
-          </h1>
-          
-          <p className="text-muted-foreground mb-6">
-            {error.message}
-          </p>
-          
-          <div className="space-y-3">
-            {error.type === 'server_error' && (
-              <Button onClick={loadSharedResult} className="w-full">
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Try Again
-              </Button>
-            )}
+      <div className="min-h-screen bg-muted flex flex-col">
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center max-w-md mx-auto">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <AlertCircle className="h-8 w-8 text-red-600" />
+            </div>
             
-            <Button 
-              variant="outline" 
-              onClick={() => window.location.href = '/'}
-              className="w-full"
-            >
-              Go to Homepage
-            </Button>
+            <h1 className="text-2xl font-bold text-foreground mb-4">
+              {error.type === 'not_found' ? 'Results Not Found' :
+               error.type === 'expired' ? 'Results Expired' :
+               'Something Went Wrong'}
+            </h1>
+            
+            <p className="text-muted-foreground mb-6">
+              {error.message}
+            </p>
+            
+            <div className="space-y-3">
+              {error.type === 'server_error' && (
+                <Button onClick={loadSharedResult} className="w-full">
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+              )}
+              
+              <Button 
+                variant="outline" 
+                onClick={() => window.location.href = '/'}
+                className="w-full"
+              >
+                Go to Homepage
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Bottom branding for error state */}
+        <div className="border-t bg-white">
+          <div className="max-w-4xl mx-auto px-6 py-4">
+            <div className="flex justify-center">
+              <PoweredByFlint variant="light" size="sm" showIcon={false} />
+            </div>
           </div>
         </div>
       </div>
@@ -228,9 +240,13 @@ export default function SharedResultsPage() {
               <h1 className="text-lg font-semibold text-foreground">
                 {campaign.name}
               </h1>
-              <p className="text-sm text-muted-foreground">
-                Shared results
-              </p>
+              <div className="flex items-center space-x-2">
+                <p className="text-sm text-muted-foreground">
+                  Shared results
+                </p>
+                <span className="text-muted-foreground">•</span>
+                <PoweredByFlint variant="light" size="md" showIcon={false} />
+              </div>
             </div>
             
             <Button
