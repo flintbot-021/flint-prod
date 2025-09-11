@@ -190,7 +190,7 @@ export async function createPublicLeadSecure(
     }
 
     // Return success without data
-    return { data: null };
+    return { data: null, error: null };
   });
 }
 
