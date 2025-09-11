@@ -33,7 +33,6 @@ import {
   Filter,
   Users,
   Mail,
-  Phone,
   Calendar,
   Target,
   ArrowUpDown,
@@ -58,7 +57,7 @@ interface LeadWithCampaign extends Lead {
   campaign: Campaign | null
 }
 
-type SortField = 'created_at' | 'email' | 'phone' | 'campaign_name' | 'converted_at' | 'name'
+type SortField = 'created_at' | 'email' | 'campaign_name' | 'converted_at' | 'name'
 type SortDirection = 'asc' | 'desc'
 
 // Utility function to calculate and format conversion time
@@ -400,13 +399,6 @@ function LeadDetailModal({ lead, campaign, isOpen, onClose }: {
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-muted-foreground">Phone Number</label>
-                      <div className="mt-1 flex items-center space-x-2">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <p className="text-lg">{lead.phone || 'Not provided'}</p>
-                      </div>
-                    </div>
-                    <div>
                       <label className="text-sm font-medium text-muted-foreground">Tool</label>
                       <div className="mt-1">
                         <Badge variant="default" className="text-sm">
@@ -642,11 +634,18 @@ export default function LeadsPage() {
   const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null)
   const hasLoadedRef = useRef(false)
 
+  // Bulk selection state
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set())
+  const [isDeleting, setIsDeleting] = useState(false)
+  const selectAllCheckboxRef = useRef<HTMLButtonElement>(null)
+
   useEffect(() => {
     // Start loading data immediately if user exists
     if (user) {
       loadData()
     }
+    // Clear selection when filters change
+    setSelectedLeadIds(new Set())
   }, [user, currentPage, searchTerm, selectedCampaign, sortField, sortDirection])
 
   useEffect(() => {
@@ -676,10 +675,6 @@ export default function LeadsPage() {
         case 'email':
           aValue = a.email || ''
           bValue = b.email || ''
-          break
-        case 'phone':
-          aValue = a.phone || ''
-          bValue = b.phone || ''
           break
         case 'name':
           aValue = a.name || ''
@@ -850,42 +845,109 @@ export default function LeadsPage() {
     setSelectedLead(null)
   }
 
+  // Bulk selection handlers
+  const handleSelectLead = (leadId: string, checked: boolean) => {
+    setSelectedLeadIds(prev => {
+      const newSet = new Set(prev)
+      if (checked) {
+        newSet.add(leadId)
+      } else {
+        newSet.delete(leadId)
+      }
+      return newSet
+    })
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedLeadIds(new Set(sortedLeads.map(lead => lead.id)))
+    } else {
+      setSelectedLeadIds(new Set())
+    }
+  }
+
+  const isAllSelected = sortedLeads.length > 0 && selectedLeadIds.size === sortedLeads.length
+  const isIndeterminate = selectedLeadIds.size > 0 && selectedLeadIds.size < sortedLeads.length
+
+  // Handle indeterminate state for select all checkbox
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      const checkbox = selectAllCheckboxRef.current.querySelector('input[type="checkbox"]') as HTMLInputElement
+      if (checkbox) {
+        checkbox.indeterminate = isIndeterminate
+      }
+    }
+  }, [isIndeterminate])
+
   const handleDeleteLead = async (leadId: string) => {
-    console.log('🗑️ handleDeleteLead called with leadId:', leadId);
-    
     if (!confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
-      console.log('❌ User cancelled deletion');
       return
     }
 
     try {
-      console.log('🔄 Setting deleting state...');
       setDeletingLeadId(leadId)
-      
-      console.log('📡 Calling deleteLead API...');
       const result = await deleteLead(leadId)
       
-      console.log('📥 Delete result:', result);
-      
       if (result.success) {
-        console.log('✅ Delete successful, updating UI...');
         // Remove lead from local state immediately for better UX
         setLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId))
         setTotalLeads(prev => prev - 1)
         
         // Also remove from export data if present
         setExportData(prevData => prevData.filter(item => item.id !== leadId))
-        console.log('✅ UI updated successfully');
       } else {
-        console.log('❌ Delete failed:', result.error);
         setError(result.error || 'Failed to delete lead')
       }
     } catch (error) {
-      console.error('❌ Exception during delete:', error)
+      console.error('Error deleting lead:', error)
       setError('Failed to delete lead')
     } finally {
-      console.log('🔄 Clearing deleting state...');
       setDeletingLeadId(null)
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    const selectedCount = selectedLeadIds.size
+    if (selectedCount === 0) return
+
+    if (!confirm(`Are you sure you want to delete ${selectedCount} lead${selectedCount > 1 ? 's' : ''}? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      setIsDeleting(true)
+      const selectedIds = Array.from(selectedLeadIds)
+      
+      // Delete leads in parallel for better performance
+      const deletePromises = selectedIds.map(leadId => deleteLead(leadId))
+      const results = await Promise.all(deletePromises)
+      
+      // Check for failures
+      const failures = results.filter(result => !result.success)
+      if (failures.length > 0) {
+        setError(`Failed to delete ${failures.length} lead${failures.length > 1 ? 's' : ''}`)
+      }
+      
+      // Count successful deletions
+      const successCount = results.filter(result => result.success).length
+      
+      if (successCount > 0) {
+        // Remove successfully deleted leads from local state
+        setLeads(prevLeads => prevLeads.filter(lead => !selectedIds.includes(lead.id)))
+        setTotalLeads(prev => prev - successCount)
+        
+        // Also remove from export data
+        setExportData(prevData => prevData.filter(item => !selectedIds.includes(item.id)))
+        
+        // Clear selection
+        setSelectedLeadIds(new Set())
+      }
+      
+    } catch (error) {
+      console.error('Error during bulk delete:', error)
+      setError('Failed to delete leads')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -944,6 +1006,29 @@ export default function LeadsPage() {
               </div>
             </div>
             <div className="flex items-center space-x-3">
+              {selectedLeadIds.size > 0 && (
+                <div className="flex items-center space-x-3 mr-4">
+                  <span className="text-sm text-muted-foreground">
+                    {selectedLeadIds.size} selected
+                  </span>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleBulkDelete}
+                    disabled={isDeleting}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {isDeleting ? 'Deleting...' : `Delete ${selectedLeadIds.size}`}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedLeadIds(new Set())}
+                  >
+                    Clear Selection
+                  </Button>
+                </div>
+              )}
               <ExportButton
                 data={exportData.length > 0 ? exportData : new Array(totalLeads).fill({})}
                 source="leads"
@@ -1080,6 +1165,14 @@ export default function LeadsPage() {
                     <table className="w-full">
                       <thead className="border-b">
                         <tr>
+                          <th className="text-center py-3 px-4 w-12">
+                            <Checkbox
+                              checked={isAllSelected}
+                              ref={selectAllCheckboxRef}
+                              onCheckedChange={handleSelectAll}
+                              aria-label="Select all leads"
+                            />
+                          </th>
                           <th className="text-left py-3 px-4">
                             <Button
                               variant="ghost"
@@ -1099,17 +1192,6 @@ export default function LeadsPage() {
                               className="hover:bg-accent font-medium"
                             >
                               Email
-                              <ArrowUpDown className="ml-2 h-4 w-4" />
-                            </Button>
-                          </th>
-                          <th className="text-left py-3 px-4">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleSort('phone')}
-                              className="hover:bg-accent font-medium"
-                            >
-                              Phone
                               <ArrowUpDown className="ml-2 h-4 w-4" />
                             </Button>
                           </th>
@@ -1142,6 +1224,13 @@ export default function LeadsPage() {
                         {sortedLeads.map((lead) => {
                           return (
                             <tr key={lead.id} className="hover:bg-muted">
+                              <td className="py-4 px-4 text-center">
+                                <Checkbox
+                                  checked={selectedLeadIds.has(lead.id)}
+                                  onCheckedChange={(checked) => handleSelectLead(lead.id, !!checked)}
+                                  aria-label={`Select lead ${lead.email}`}
+                                />
+                              </td>
                               <td className="py-4 px-4">
                                 <div className="flex items-center space-x-2">
                                   <User className="h-4 w-4 text-gray-400" />
@@ -1155,16 +1244,6 @@ export default function LeadsPage() {
                                   <Mail className="h-4 w-4 text-gray-400" />
                                   <span className="text-sm">{lead.email}</span>
                                 </div>
-                              </td>
-                              <td className="py-4 px-4">
-                                {lead.phone ? (
-                                  <div className="flex items-center space-x-2">
-                                    <Phone className="h-4 w-4 text-gray-400" />
-                                    <span className="text-sm">{lead.phone}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-sm text-muted-foreground">Not provided</span>
-                                )}
                               </td>
                               <td className="py-4 px-4">
                                 {getCampaignBadge(lead.campaign)}
