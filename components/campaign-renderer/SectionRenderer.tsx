@@ -79,7 +79,7 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     switch (sectionType) {
       case 'text_question':
         const isRequired = mergedConfig.required ?? false
-        const existingResponse = userInputs?.[section.id] || ''
+        const existingResponse = String(userInputs?.[section.id] || '')
         const minLength = mergedConfig.minLength || 1
         const maxLength = mergedConfig.maxLength || 500
         return !isRequired || (existingResponse.trim().length >= minLength && existingResponse.length <= maxLength)
@@ -147,15 +147,24 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
                         target.contentEditable === 'true' ||
                         target.closest('input, textarea, [contenteditable="true"]')
     
+    // Special handling for text questions - allow keyboard navigation even in text areas
+    const isTextQuestion = section.type === 'text_question'
+    const isTextArea = target.tagName === 'TEXTAREA'
+    
     // Handle different key combinations
     switch (event.key) {
       case 'Enter':
-        // Enter key: proceed if can proceed and not in input field
-        if (!isInputField && canProceed()) {
+        // For text questions with text areas, Enter should proceed (not create new line)
+        if (isTextQuestion && isTextArea && canProceed()) {
           event.preventDefault()
           triggerSectionCompletion()
         }
-        // For text inputs, allow Ctrl+Enter or Cmd+Enter to proceed even when focused
+        // Enter key: proceed if can proceed and not in input field
+        else if (!isInputField && canProceed()) {
+          event.preventDefault()
+          triggerSectionCompletion()
+        }
+        // For other text inputs, allow Ctrl+Enter or Cmd+Enter to proceed even when focused
         else if (isInputField && (event.ctrlKey || event.metaKey) && canProceed()) {
           event.preventDefault()
           triggerSectionCompletion()
@@ -163,16 +172,26 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
         break
       
       case 'ArrowRight':
+        // For text questions, allow right arrow to proceed even when focused on text area
+        if (isTextQuestion && isTextArea && canProceed()) {
+          event.preventDefault()
+          triggerSectionCompletion()
+        }
         // Right arrow: proceed if can proceed and not in input field
-        if (!isInputField && canProceed()) {
+        else if (!isInputField && canProceed()) {
           event.preventDefault()
           triggerSectionCompletion()
         }
         break
       
       case 'ArrowLeft':
+        // For text questions, allow left arrow to go back even when focused on text area
+        if (isTextQuestion && isTextArea) {
+          event.preventDefault()
+          props.onPrevious()
+        }
         // Left arrow: go back if not in input field
-        if (!isInputField) {
+        else if (!isInputField) {
           event.preventDefault()
           props.onPrevious()
         }
@@ -184,7 +203,7 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
         props.onPrevious()
         break
     }
-  }, [canProceed, triggerSectionCompletion, props.onPrevious])
+  }, [canProceed, triggerSectionCompletion, props.onPrevious, section.type])
 
   // Add keyboard event listener
   useEffect(() => {

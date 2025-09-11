@@ -30,11 +30,11 @@ export function DateTimeSection({
   sections
 }: SectionRendererProps) {
   // Initialize with existing response if available
-  const existingResponse = userInputs?.[section.id] || ''
+  const existingResponse = String(userInputs?.[section.id] || '')
   // Parse existing response (could be combined date/time or separate values)
   const existingData = userInputs?.[section.id] as any
-  const [selectedDate, setSelectedDate] = useState(existingData?.date || (typeof existingResponse === 'string' && existingResponse.includes('-') ? existingResponse.split(' ')[0] : ''))
-  const [selectedTime, setSelectedTime] = useState(existingData?.time || (typeof existingResponse === 'string' && existingResponse.includes(':') ? existingResponse.split(' ')[1] : ''))
+  const [selectedDate, setSelectedDate] = useState(existingData?.date || (existingResponse.includes('-') ? existingResponse.split(' ')[0] : ''))
+  const [selectedTime, setSelectedTime] = useState(existingData?.time || (existingResponse.includes(':') ? existingResponse.split(' ')[1] : ''))
   const [error, setError] = useState<string | null>(null)
   const dateInputRef = useRef<HTMLInputElement>(null)
   const timeInputRef = useRef<HTMLInputElement>(null)
