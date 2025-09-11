@@ -190,7 +190,7 @@ export async function createPublicLeadSecure(
     }
 
     // Return success without data
-    return { data: null };
+    return { data: null, error: null };
   });
 }
 
@@ -410,23 +410,115 @@ export async function completeLead(leadId: string): Promise<DatabaseResult<Lead>
  * Delete lead
  */
 export async function deleteLead(leadId: string): Promise<DatabaseResult<boolean>> {
+  console.log('🗑️ deleteLead called with leadId:', leadId);
+  
   if (!isValidUUID(leadId)) {
+    console.log('❌ Invalid lead ID format:', leadId);
     return {
       success: false,
       error: 'Invalid lead ID format'
     };
   }
 
-  await requireAuth();
+  console.log('🔐 Checking authentication...');
+  const userId = await requireAuth();
+  console.log('✅ Authenticated user ID:', userId);
+  
   const supabase = await getSupabaseClient();
+  
+  // Force refresh the session to ensure we have the latest auth state
+  console.log('🔄 Refreshing auth session...');
+  const { error: refreshError } = await supabase.auth.refreshSession();
+  if (refreshError) {
+    console.log('⚠️  Session refresh failed:', refreshError);
+  } else {
+    console.log('✅ Session refreshed successfully');
+  }
+  
+  // Double-check auth state
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    console.log('❌ Auth verification failed:', authError);
+    return {
+      success: false,
+      error: 'Authentication verification failed'
+    };
+  }
+  console.log('✅ Auth verified, user:', user.email);
 
+  console.log('🔍 Attempting to delete lead from database...');
   return withErrorHandling(async () => {
+    // First, let's check if the lead exists and we can see it
+    console.log('🔍 Checking if lead exists and is accessible...');
+    const { data: existingLead, error: selectError } = await supabase
+      .from('leads')
+      .select('id, email, campaign_id')
+      .eq('id', leadId)
+      .single();
+
+    if (selectError) {
+      console.log('❌ Error checking lead existence:', selectError);
+      return { data: false, error: selectError };
+    }
+
+    if (!existingLead) {
+      console.log('❌ Lead not found or not accessible:', leadId);
+      return { data: false, error: new Error('Lead not found or not accessible') };
+    }
+
+    console.log('✅ Lead found:', existingLead);
+    
+    // Verify campaign ownership
+    console.log('🔍 Verifying campaign ownership...');
+    const { data: campaign, error: campaignError } = await supabase
+      .from('campaigns')
+      .select('id, user_id, name')
+      .eq('id', existingLead.campaign_id)
+      .single();
+    
+    if (campaignError || !campaign) {
+      console.log('❌ Campaign not found:', campaignError);
+      return { data: false, error: new Error('Campaign not found') };
+    }
+    
+    if (campaign.user_id !== user.id) {
+      console.log('❌ Campaign ownership mismatch. Campaign user_id:', campaign.user_id, 'Current user:', user.id);
+      return { data: false, error: new Error('Access denied: campaign not owned by user') };
+    }
+    
+    console.log('✅ Campaign ownership verified:', campaign.name);
+    console.log('🗑️ Proceeding with deletion...');
+
     const { error } = await supabase
       .from('leads')
       .delete()
       .eq('id', leadId);
 
-    return { data: !error, error };
+    if (error) {
+      console.log('❌ Delete operation failed:', error);
+      return { data: false, error };
+    }
+
+    console.log('✅ Delete operation completed, verifying...');
+    
+    // Verify the lead was actually deleted
+    const { data: verifyLead, error: verifyError } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('id', leadId)
+      .maybeSingle();
+    
+    if (verifyError) {
+      console.log('⚠️  Could not verify deletion:', verifyError);
+    } else if (verifyLead) {
+      console.log('❌ Lead still exists after deletion attempt!');
+      return { data: false, error: new Error('Lead deletion failed - record still exists') };
+    } else {
+      console.log('✅ Lead deletion verified - record no longer exists');
+    }
+
+    console.log('✅ Lead deleted successfully');
+    return { data: true, error: null };
   });
 }
 

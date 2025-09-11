@@ -851,28 +851,40 @@ export default function LeadsPage() {
   }
 
   const handleDeleteLead = async (leadId: string) => {
+    console.log('🗑️ handleDeleteLead called with leadId:', leadId);
+    
     if (!confirm('Are you sure you want to delete this lead? This action cannot be undone.')) {
+      console.log('❌ User cancelled deletion');
       return
     }
 
     try {
+      console.log('🔄 Setting deleting state...');
       setDeletingLeadId(leadId)
+      
+      console.log('📡 Calling deleteLead API...');
       const result = await deleteLead(leadId)
       
+      console.log('📥 Delete result:', result);
+      
       if (result.success) {
+        console.log('✅ Delete successful, updating UI...');
         // Remove lead from local state immediately for better UX
         setLeads(prevLeads => prevLeads.filter(lead => lead.id !== leadId))
         setTotalLeads(prev => prev - 1)
         
         // Also remove from export data if present
         setExportData(prevData => prevData.filter(item => item.id !== leadId))
+        console.log('✅ UI updated successfully');
       } else {
+        console.log('❌ Delete failed:', result.error);
         setError(result.error || 'Failed to delete lead')
       }
     } catch (error) {
-      console.error('Error deleting lead:', error)
+      console.error('❌ Exception during delete:', error)
       setError('Failed to delete lead')
     } finally {
+      console.log('🔄 Clearing deleting state...');
       setDeletingLeadId(null)
     }
   }
@@ -920,7 +932,9 @@ export default function LeadsPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 space-y-4 sm:space-y-0">
             <div className="flex items-center space-x-6">
               <div className="text-sm text-muted-foreground">
-                <span className="font-medium text-lg text-foreground">{sortedLeads.length}</span>
+                <span className="font-medium text-lg text-foreground">
+                  {searchTerm || selectedCampaign !== 'all' ? totalLeads : overallTotalLeads}
+                </span>
                 <span className="ml-1">
                   {searchTerm || selectedCampaign !== 'all' 
                     ? `of ${overallTotalLeads} leads` 
