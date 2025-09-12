@@ -704,6 +704,18 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // Touch gesture handling
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
+      // Don't start gesture tracking if touching a slider
+      const target = e.target as HTMLElement
+      const isSliderElement = (target as HTMLInputElement).type === 'range' || 
+                             target.closest('input[type="range"]') ||
+                             target.closest('[role="slider"]') ||
+                             target.classList.contains('slider') ||
+                             target.closest('.slider')
+      
+      if (isSliderElement) {
+        return // Don't track gestures on sliders
+      }
+      
       setTouchEnd(null)
       setTouchStart({
         x: e.targetTouches[0].clientX,
@@ -712,6 +724,9 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
     }
 
     const handleTouchMove = (e: TouchEvent) => {
+      // Don't track movement if we didn't start tracking (e.g., started on slider)
+      if (!touchStart) return
+      
       setTouchEnd({
         x: e.targetTouches[0].clientX,
         y: e.targetTouches[0].clientY
@@ -1601,40 +1616,25 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
             target="_blank" 
             rel="noopener noreferrer"
             className="flex items-center space-x-2 px-3 py-2 rounded-full backdrop-blur-md border transition-all duration-300 hover:scale-105 hover:shadow-lg"
-            style={isCurrentSectionHero ? {
-              // Hero section: white background with black text
+            style={{
               backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
-            } : {
-              // Other sections: use theme colors
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
+              border: '1px solid rgba(156, 163, 175, 0.4)',
               boxShadow: '0 4px 16px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
             }}
           >
             <span 
               className="text-xs font-medium"
-              style={isCurrentSectionHero ? {
-                // Hero section: black text
-                color: '#000000',
-                opacity: 0.8
-              } : {
-                // Other sections: use theme color
-                color: getCampaignTheme(campaign).textColor,
-                opacity: 0.8
+              style={{
+                color: '#6B7280',
+                opacity: 0.9
               }}
             >
               Powered by
             </span>
             <span 
               className="text-xs font-bold"
-              style={isCurrentSectionHero ? {
-                // Hero section: black text
-                color: '#000000'
-              } : {
-                // Other sections: use theme color
-                color: getCampaignTheme(campaign).textColor
+              style={{
+                color: '#374151'
               }}
             >
               Flint

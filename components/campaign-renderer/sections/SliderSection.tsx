@@ -52,7 +52,34 @@ export function SliderSection({
     const stepsFromMin = Math.round((middlePoint - minValue) / step)
     return minValue + (stepsFromMin * step)
   }
-  const defaultValue = existingResponse !== undefined ? existingResponse : calculateMiddleValue()
+  
+  // Extract numeric value from response (handle both direct numbers and objects with value property)
+  const getNumericValue = (response: any): number => {
+    if (response === undefined || response === null) {
+      return calculateMiddleValue()
+    }
+    
+    // If it's already a number, use it
+    if (typeof response === 'number') {
+      return response
+    }
+    
+    // If it's an object with a value property, extract the value
+    if (typeof response === 'object' && 'value' in response) {
+      return typeof response.value === 'number' ? response.value : calculateMiddleValue()
+    }
+    
+    // If it's a string that can be parsed as a number
+    if (typeof response === 'string') {
+      const parsed = parseFloat(response)
+      return !isNaN(parsed) ? parsed : calculateMiddleValue()
+    }
+    
+    // Fallback to middle value
+    return calculateMiddleValue()
+  }
+  
+  const defaultValue = getNumericValue(existingResponse)
   const [sliderValue, setSliderValue] = useState<number>(defaultValue)
 
   // Update slider value if min/max changes and no user input exists
@@ -73,8 +100,8 @@ export function SliderSection({
     const isMaxWithPlus = allowPlus && value === maxValue
     const displayValue = isMaxWithPlus ? `${value}+` : value
     
-    // Report to parent component
-    onResponseUpdate(section.id, 'slider_value', value, {
+    // Report to parent component - use section.id as field for consistency with variable system
+    onResponseUpdate(section.id, section.id, value, {
       inputType: 'slider',
       isRequired: isRequired,
       range: { min: minValue, max: maxValue, step },
@@ -132,7 +159,7 @@ export function SliderSection({
             {/* Current Value Display */}
             <div className="text-center">
               <div 
-                className="inline-flex items-center justify-center w-20 h-20 rounded-2xl text-3xl font-black backdrop-blur-md border shadow-2xl transition-all duration-300 hover:scale-105"
+                className="inline-flex items-center justify-center min-w-20 min-h-20 px-4 py-3 rounded-2xl text-3xl font-black backdrop-blur-md border shadow-2xl transition-all duration-300 hover:scale-105"
                 style={{
                   backgroundColor: theme.buttonColor,
                   color: theme.buttonTextColor,
@@ -152,7 +179,6 @@ export function SliderSection({
                      border: '1px solid rgba(255, 255, 255, 0.15)',
                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
                    }}>
-              <>
                 <style dangerouslySetInnerHTML={{
                   __html: `
                     .themed-slider-${section.id}::-webkit-slider-thumb {
@@ -187,7 +213,7 @@ export function SliderSection({
                   value={sliderValue}
                   onChange={handleSliderChange}
                   className={cn(
-                    "w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer",
+                    "w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider",
                     "focus:outline-none focus:ring-2 focus:ring-opacity-50",
                     `themed-slider-${section.id}`
                   )}
@@ -199,23 +225,20 @@ export function SliderSection({
                     }%, #e5e7eb 100%)`,
                   }}
                 />
-              </>
-              
-
               </div>
 
-                {/* Labels */}
-                <div className="flex justify-between items-center mt-4">
-                  <span className="text-sm font-medium px-3 py-1 rounded-full backdrop-blur-sm border border-white/10" 
-                        style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)', ...mutedTextStyle }}>
-                    {minLabel}
-                  </span>
-                  <span className="text-sm font-medium px-3 py-1 rounded-full backdrop-blur-sm border border-white/10" 
-                        style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)', ...mutedTextStyle }}>
-                    {maxLabel}
-                  </span>
-                </div>
+              {/* Labels */}
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium px-3 py-1 rounded-full backdrop-blur-sm border border-white/10" 
+                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)', ...mutedTextStyle }}>
+                  {minLabel}
+                </span>
+                <span className="text-sm font-medium px-3 py-1 rounded-full backdrop-blur-sm border border-white/10" 
+                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.08)', ...mutedTextStyle }}>
+                  {maxLabel}
+                </span>
               </div>
+            </div>
 
 
           </div>

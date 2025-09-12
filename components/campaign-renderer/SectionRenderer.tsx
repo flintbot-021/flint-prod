@@ -147,6 +147,14 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
                         target.contentEditable === 'true' ||
                         target.closest('input, textarea, [contenteditable="true"]')
     
+    // Special handling for sliders - don't interfere with slider interaction
+    const isSliderSection = section.type === 'slider' || section.type === 'question-slider-multiple'
+    const isSliderInput = (target as HTMLInputElement).type === 'range' || 
+                         target.closest('input[type="range"]') ||
+                         target.closest('[role="slider"]') ||
+                         target.classList.contains('slider') ||
+                         target.closest('.slider')
+    
     // Special handling for text questions - allow keyboard navigation even in text areas
     const isTextQuestion = section.type === 'text_question'
     const isTextArea = target.tagName === 'TEXTAREA'
@@ -172,8 +180,12 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
         break
       
       case 'ArrowRight':
+        // Don't interfere with slider navigation
+        if (isSliderSection && isSliderInput) {
+          return // Let the slider handle arrow keys
+        }
         // For text questions, allow right arrow to proceed even when focused on text area
-        if (isTextQuestion && isTextArea && canProceed()) {
+        else if (isTextQuestion && isTextArea && canProceed()) {
           event.preventDefault()
           triggerSectionCompletion()
         }
@@ -185,8 +197,12 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
         break
       
       case 'ArrowLeft':
+        // Don't interfere with slider navigation
+        if (isSliderSection && isSliderInput) {
+          return // Let the slider handle arrow keys
+        }
         // For text questions, allow left arrow to go back even when focused on text area
-        if (isTextQuestion && isTextArea) {
+        else if (isTextQuestion && isTextArea) {
           event.preventDefault()
           props.onPrevious()
         }
