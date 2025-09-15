@@ -254,7 +254,9 @@ export function SliderSection({
         icon={<Activity className="h-5 w-5 text-primary" />}
         label={`Rating ${index + 1}`}
         navigationHints={{
-          text: "Drag slider or use arrow keys • Enter to continue • ← → to navigate • Esc to go back"
+          text: deviceInfo?.type === 'mobile' 
+            ? "Drag slider to adjust value • Tap Continue to proceed" 
+            : "Drag slider or use arrow keys • Enter to continue • ← → to navigate • Esc to go back"
         }}
         actionButton={{
           label: buttonLabel,

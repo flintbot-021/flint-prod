@@ -87,7 +87,7 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
       case 'multiple_choice':
         const isChoiceRequired = mergedConfig.required ?? false
         const selectedChoice = userInputs?.[section.id]
-        return !isChoiceRequired || selectedChoice !== undefined
+        return !isChoiceRequired || (selectedChoice !== undefined && selectedChoice !== '')
       
       case 'slider':
         // Sliders always have a value (default to middle), so always can proceed
@@ -221,17 +221,6 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     }
   }, [canProceed, triggerSectionCompletion, props.onPrevious, section.type])
 
-  // Add keyboard event listener
-  useEffect(() => {
-    // Only add keyboard navigation if this is the active section
-    if (props.isActive) {
-      document.addEventListener('keydown', handleKeyDown)
-      return () => {
-        document.removeEventListener('keydown', handleKeyDown)
-      }
-    }
-  }, [props.isActive, handleKeyDown])
-  
   // In public campaign view, completely skip hidden sections
   if (isHidden && !props.isPreview) {
     return null
@@ -261,21 +250,7 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
     )
   }
 
-  // Extract configuration from section - memoized
-  // Merge both configuration and settings to ensure builder settings are available in renderer
-  const config: SectionConfiguration = useMemo(() => {
-    const baseConfig = (section.configuration || {}) as SectionConfiguration
-    const builderSettings = ('settings' in section && section.settings) ? section.settings : {}
-    
-    return {
-      ...baseConfig,
-      ...builderSettings
-    } as SectionConfiguration
-  }, [section.configuration, ('settings' in section) ? section.settings : {}])
-
-
-
-  // Use provided deviceInfo or auto-detect - memoized
+  // Use provided deviceInfo or auto-detect - memoized (defined early for use in effects)
   const deviceInfo = useMemo(() => {
     // If deviceInfo is provided (e.g., from preview page), use it
     if (props.deviceInfo) {
@@ -312,6 +287,30 @@ export function SectionRenderer(props: SectionRendererPropsExtended) {
       pixelRatio: window.devicePixelRatio || 1
     }
   }, [props.deviceInfo]) // Include props.deviceInfo in deps
+
+  // Extract configuration from section - memoized
+  // Merge both configuration and settings to ensure builder settings are available in renderer
+  const config: SectionConfiguration = useMemo(() => {
+    const baseConfig = (section.configuration || {}) as SectionConfiguration
+    const builderSettings = ('settings' in section && section.settings) ? section.settings : {}
+    
+    return {
+      ...baseConfig,
+      ...builderSettings
+    } as SectionConfiguration
+  }, [section.configuration, ('settings' in section) ? section.settings : {}])
+
+  // Add keyboard event listener (after deviceInfo is defined)
+  useEffect(() => {
+    // Only add keyboard navigation if this is the active section
+    // Skip keyboard navigation on mobile devices to prevent conflicts with touch interactions
+    if (props.isActive && deviceInfo?.type !== 'mobile') {
+      document.addEventListener('keydown', handleKeyDown)
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown)
+      }
+    }
+  }, [props.isActive, handleKeyDown, deviceInfo?.type])
 
   // Memoize title and description extraction
   const sectionTitle = useMemo(() => 

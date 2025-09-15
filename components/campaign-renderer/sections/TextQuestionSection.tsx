@@ -162,7 +162,12 @@ export function TextQuestionSection({
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     // Note: Most keyboard navigation is now handled by the global SectionRenderer
-    // This local handler is kept for any text-specific edge cases
+    // This local handler is kept for any text-specific edge cases on desktop only
+    
+    // Skip keyboard shortcuts on mobile devices to prevent conflicts
+    if (deviceInfo?.type === 'mobile') {
+      return
+    }
     
     // For URL inputs and single-line inputs, we still handle Enter locally for immediate response
     if (e.key === 'Enter' && (isUrlInput || !textArea) && canContinue) {
@@ -358,7 +363,9 @@ export function TextQuestionSection({
         label={`Question ${index + 1}`}
         validationText={validationText}
         navigationHints={{
-          text: "Press Enter to continue • ← → to navigate • Esc to go back"
+          text: deviceInfo?.type === 'mobile' 
+            ? "Type your answer • Tap Continue to proceed" 
+            : "Press Enter to continue • ← → to navigate • Esc to go back"
         }}
         actionButton={{
           label: buttonLabel,
