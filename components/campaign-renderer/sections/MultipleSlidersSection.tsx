@@ -226,6 +226,8 @@ export function MultipleSlidersSection({
                   
                   {/* Unified Slider Container */}
                   <div 
+                    data-slider-section="true"
+                    data-slider-container="true"
                     className={cn(
                       'rounded-2xl backdrop-blur-md border transition-all duration-300',
                       'hover:shadow-xl hover:scale-[1.02]',
@@ -421,7 +423,9 @@ export function MultipleSlidersSection({
             : undefined
         }
         navigationHints={{
-          text: "Click to expand/collapse sliders • Drag to adjust values • Enter to continue • ← → to navigate • Esc to go back"
+          text: deviceInfo?.type === 'mobile' 
+            ? "Tap to expand sliders • Drag to adjust values • Tap Continue to proceed" 
+            : "Click to expand/collapse sliders • Drag to adjust values • Enter to continue • ← → to navigate • Esc to go back"
         }}
         actionButton={{
           label: buttonLabel,

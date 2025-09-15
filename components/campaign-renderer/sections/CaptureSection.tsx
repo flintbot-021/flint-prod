@@ -504,7 +504,9 @@ export function CaptureSection({
         label="Contact"
         validationText={getValidationText()}
         navigationHints={{
-          text: "Fill in required fields • Tab to navigate • Enter to continue • ← → to navigate • Esc to go back"
+          text: deviceInfo?.type === 'mobile' 
+            ? "Fill in required fields • Tap Continue to proceed" 
+            : "Fill in required fields • Tab to navigate • Enter to continue • ← → to navigate • Esc to go back"
         }}
         actionButton={{
           label: settings.submitButtonText || 'Unlock Results',

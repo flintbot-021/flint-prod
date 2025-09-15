@@ -562,7 +562,9 @@ export function UploadSection({
         label={`Upload`}
         validationText={validationText}
         navigationHints={{
-          text: "Drag & drop files or click to browse • Enter to continue • ← → to navigate • Esc to go back"
+          text: deviceInfo?.type === 'mobile' 
+            ? "Tap to select files • Tap Continue to proceed" 
+            : "Drag & drop files or click to browse • Enter to continue • ← → to navigate • Esc to go back"
         }}
         actionButton={{
           label: buttonLabel,

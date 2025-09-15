@@ -172,8 +172,9 @@ export function SliderSection({
             </div>
             
             {/* Slider Container */}
-            <div className="space-y-6">
+            <div className="space-y-6" data-slider-section="true">
               <div className="relative p-6 rounded-2xl backdrop-blur-md border shadow-lg" 
+                   data-slider-container="true"
                    style={{
                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
                      border: '1px solid rgba(255, 255, 255, 0.15)',
@@ -254,7 +255,9 @@ export function SliderSection({
         icon={<Activity className="h-5 w-5 text-primary" />}
         label={`Rating ${index + 1}`}
         navigationHints={{
-          text: "Drag slider or use arrow keys • Enter to continue • ← → to navigate • Esc to go back"
+          text: deviceInfo?.type === 'mobile' 
+            ? "Drag slider to adjust value • Tap Continue to proceed" 
+            : "Drag slider or use arrow keys • Enter to continue • ← → to navigate • Esc to go back"
         }}
         actionButton={{
           label: buttonLabel,

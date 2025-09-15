@@ -704,16 +704,31 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
   // Touch gesture handling
   useEffect(() => {
     const handleTouchStart = (e: TouchEvent) => {
-      // Don't start gesture tracking if touching a slider
+      // Don't start gesture tracking if touching a slider or slider-related element
       const target = e.target as HTMLElement
-      const isSliderElement = (target as HTMLInputElement).type === 'range' || 
-                             target.closest('input[type="range"]') ||
-                             target.closest('[role="slider"]') ||
-                             target.classList.contains('slider') ||
-                             target.closest('.slider')
       
-      if (isSliderElement) {
-        return // Don't track gestures on sliders
+      // Check if the target itself is a slider
+      const isSliderInput = (target as HTMLInputElement).type === 'range'
+      
+      // Check if target is within a slider container
+      const isInSliderContainer = target.closest('input[type="range"]') ||
+                                 target.closest('[role="slider"]') ||
+                                 target.classList.contains('slider') ||
+                                 target.closest('.slider') ||
+                                 // Check for themed slider classes
+                                 target.className.includes('themed-slider-') ||
+                                 target.closest('[class*="themed-slider-"]') ||
+                                 // Check for data attributes (most reliable)
+                                 target.closest('[data-slider-section="true"]') ||
+                                 target.closest('[data-slider-container="true"]')
+      
+      // Check if we're touching within a slider section container (fallback)
+      const sliderSectionContainer = target.closest('.space-y-8')
+      const isInSliderSection = sliderSectionContainer && 
+                                sliderSectionContainer.querySelector('input[type="range"]')
+      
+      if (isSliderInput || isInSliderContainer || isInSliderSection) {
+        return // Don't track gestures on sliders or in slider sections
       }
       
       setTouchEnd(null)
@@ -727,14 +742,50 @@ export default function PublicCampaignPage({}: PublicCampaignPageProps) {
       // Don't track movement if we didn't start tracking (e.g., started on slider)
       if (!touchStart) return
       
+      // Additional safety check: if we're moving over a slider, stop tracking
+      const target = e.target as HTMLElement
+      const isOverSlider = (target as HTMLInputElement).type === 'range' ||
+                          target.closest('input[type="range"]') ||
+                          target.classList.contains('slider') ||
+                          target.closest('.slider') ||
+                          target.closest('[data-slider-section="true"]') ||
+                          target.closest('[data-slider-container="true"]')
+      
+      if (isOverSlider) {
+        // Cancel the gesture if we move over a slider
+        setTouchStart(null)
+        setTouchEnd(null)
+        return
+      }
+      
       setTouchEnd({
         x: e.targetTouches[0].clientX,
         y: e.targetTouches[0].clientY
       })
     }
 
-    const handleTouchEnd = () => {
-      if (!touchStart || !touchEnd) return
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!touchStart || !touchEnd) {
+        // Clean up state even if we don't have both points
+        setTouchStart(null)
+        setTouchEnd(null)
+        return
+      }
+      
+      // Final safety check: if touch ended on a slider, don't trigger navigation
+      const target = e.target as HTMLElement
+      const endedOnSlider = (target as HTMLInputElement).type === 'range' ||
+                           target.closest('input[type="range"]') ||
+                           target.classList.contains('slider') ||
+                           target.closest('.slider') ||
+                           target.closest('[data-slider-section="true"]') ||
+                           target.closest('[data-slider-container="true"]')
+      
+      if (endedOnSlider) {
+        setTouchStart(null)
+        setTouchEnd(null)
+        return
+      }
       
       const deltaX = touchStart.x - touchEnd.x
       const deltaY = touchStart.y - touchEnd.y

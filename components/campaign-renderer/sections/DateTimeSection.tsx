@@ -289,7 +289,9 @@ export function DateTimeSection({
         label={`Question ${index + 1}`}
         validationText={validationText}
         navigationHints={{
-          text: "Use date/time inputs • Enter to continue • ← → to navigate • Esc to go back"
+          text: deviceInfo?.type === 'mobile' 
+            ? "Select date and time • Tap Continue to proceed" 
+            : "Use date/time inputs • Enter to continue • ← → to navigate • Esc to go back"
         }}
         actionButton={{
           label: buttonLabel,

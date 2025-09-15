@@ -80,9 +80,17 @@ export function MultipleChoiceSection({
   // Generate validation text for bottom bar
   const validationText = isRequired && !selectedValue ? 'Please select an option to continue' : undefined
 
-  // Keyboard navigation effect
+  // Enhanced keyboard navigation for multiple choice - only handle choice-specific keys
+  // Let SectionRenderer handle Enter/Space/Arrow navigation to avoid conflicts
+  // Skip keyboard navigation on mobile devices to prevent conflicts with touch interactions
   useEffect(() => {
+    // Skip keyboard navigation on mobile devices
+    if (deviceInfo?.type === 'mobile') {
+      return
+    }
+
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle choice-specific navigation, not general navigation
       switch (event.key) {
         case 'ArrowDown':
           event.preventDefault()
@@ -116,27 +124,21 @@ export function MultipleChoiceSection({
           handleChoiceSelect(prevChoiceValue)
           break
           
-        case 'Enter':
-        case ' ': // Spacebar
-          event.preventDefault()
-          // Enter and Space both advance to next section if we can continue
-          if (canContinue) {
-            handleContinue()
-          }
-          break
-          
         case 'Escape':
           event.preventDefault()
           // Clear selection
           setSelectedValue('')
           break
+          
+        // Remove Enter and Space handling - let SectionRenderer handle these
+        // This prevents conflicts between the two keyboard navigation systems
       }
     }
 
     // Add event listener when component is mounted
     document.addEventListener('keydown', handleKeyDown)
     
-    // Focus the container to ensure it can receive keyboard events
+    // Focus the container to ensure it can receive keyboard events (desktop only)
     if (containerRef.current) {
       containerRef.current.focus()
     }
@@ -145,7 +147,7 @@ export function MultipleChoiceSection({
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [selectedValue, choices, canContinue])
+  }, [selectedValue, choices, deviceInfo?.type]) // Added deviceInfo?.type to deps
 
 
   // Helper function to convert hex color to rgba with opacity
@@ -278,7 +280,9 @@ export function MultipleChoiceSection({
         label={`Choice ${index + 1}`}
         validationText={validationText}
         navigationHints={{
-          text: "↓ ↑ to select options • Enter/Space to continue • Esc to clear selection"
+          text: deviceInfo?.type === 'mobile' 
+            ? "Tap to select • Tap Continue to proceed" 
+            : "↓ ↑ to select options • Enter to continue • Esc to clear selection"
         }}
         actionButton={{
           label: buttonLabel,
