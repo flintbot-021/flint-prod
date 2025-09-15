@@ -172,8 +172,9 @@ export function SliderSection({
             </div>
             
             {/* Slider Container */}
-            <div className="space-y-6">
+            <div className="space-y-6" data-slider-section="true">
               <div className="relative p-6 rounded-2xl backdrop-blur-md border shadow-lg" 
+                   data-slider-container="true"
                    style={{
                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
                      border: '1px solid rgba(255, 255, 255, 0.15)',

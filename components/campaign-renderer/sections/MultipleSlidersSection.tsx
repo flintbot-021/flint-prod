@@ -226,6 +226,8 @@ export function MultipleSlidersSection({
                   
                   {/* Unified Slider Container */}
                   <div 
+                    data-slider-section="true"
+                    data-slider-container="true"
                     className={cn(
                       'rounded-2xl backdrop-blur-md border transition-all duration-300',
                       'hover:shadow-xl hover:scale-[1.02]',
