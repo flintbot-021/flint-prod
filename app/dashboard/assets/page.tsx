@@ -201,10 +201,10 @@ export default function AssetsPage() {
     try {
       console.log('🎨 Starting mockup generation...')
       
-      // Create a temporary mockup preview element
+      // Create a temporary mockup preview element (matching preview aspect ratio)
       const mockupElement = document.createElement('div')
-      mockupElement.style.width = '1200px'
-      mockupElement.style.height = '900px'
+      mockupElement.style.width = '800px'
+      mockupElement.style.height = '600px'
       mockupElement.style.position = 'fixed'
       mockupElement.style.top = '-10000px'
       mockupElement.style.left = '-10000px'
@@ -212,8 +212,9 @@ export default function AssetsPage() {
       mockupElement.style.display = 'flex'
       mockupElement.style.alignItems = 'center'
       mockupElement.style.justifyContent = 'center'
-      mockupElement.style.padding = '80px'
+      mockupElement.style.padding = '40px'
       mockupElement.style.fontFamily = 'Arial, sans-serif'
+      mockupElement.style.borderRadius = '8px'
 
       // Create device mockup with proper styling
       let deviceContainer: HTMLElement
@@ -223,11 +224,17 @@ export default function AssetsPage() {
         deviceContainer = document.createElement('div')
         deviceContainer.style.position = 'relative'
         deviceContainer.style.boxShadow = '0 25px 50px rgba(0,0,0,0.3)'
-        deviceContainer.style.width = '375px'
-        deviceContainer.style.height = '750px'
-        deviceContainer.style.backgroundColor = '#000'
-        deviceContainer.style.borderRadius = '50px'
-        deviceContainer.style.padding = '25px'
+        deviceContainer.style.width = '120px'
+        deviceContainer.style.height = '240px'
+        
+        // Phone Frame
+        const phoneFrame = document.createElement('div')
+        phoneFrame.style.width = '100%'
+        phoneFrame.style.height = '100%'
+        phoneFrame.style.backgroundColor = '#000'
+        phoneFrame.style.borderRadius = '20px'
+        phoneFrame.style.padding = '8px'
+        deviceContainer.appendChild(phoneFrame)
         
         // Add notch
         const notch = document.createElement('div')
@@ -235,36 +242,37 @@ export default function AssetsPage() {
         notch.style.top = '0'
         notch.style.left = '50%'
         notch.style.transform = 'translateX(-50%)'
-        notch.style.width = '150px'
-        notch.style.height = '25px'
+        notch.style.width = '64px'
+        notch.style.height = '12px'
         notch.style.backgroundColor = '#000'
-        notch.style.borderRadius = '0 0 20px 20px'
+        notch.style.borderRadius = '0 0 8px 8px'
         notch.style.zIndex = '10'
-        deviceContainer.appendChild(notch)
+        phoneFrame.appendChild(notch)
         
         // Create screen container for phone
         screenContainer = document.createElement('div')
         screenContainer.style.width = '100%'
         screenContainer.style.height = '100%'
         screenContainer.style.backgroundColor = '#fff'
-        screenContainer.style.borderRadius = '25px'
+        screenContainer.style.borderRadius = '16px'
         screenContainer.style.overflow = 'hidden'
         screenContainer.style.position = 'relative'
+        phoneFrame.appendChild(screenContainer)
         
       } else if (selectedMockup === 'desktop-1') {
         deviceContainer = document.createElement('div')
         deviceContainer.style.position = 'relative'
         deviceContainer.style.boxShadow = '0 25px 50px rgba(0,0,0,0.3)'
-        deviceContainer.style.width = '800px'
-        deviceContainer.style.height = '500px'
+        deviceContainer.style.width = '200px'
+        deviceContainer.style.height = '140px'
         
         // Create laptop screen
         const screen = document.createElement('div')
         screen.style.width = '100%'
         screen.style.height = '85%'
         screen.style.backgroundColor = '#000'
-        screen.style.borderRadius = '15px 15px 0 0'
-        screen.style.padding = '15px'
+        screen.style.borderRadius = '8px 8px 0 0'
+        screen.style.padding = '4px'
         deviceContainer.appendChild(screen)
         
         // Create laptop base
@@ -272,7 +280,7 @@ export default function AssetsPage() {
         base.style.width = '100%'
         base.style.height = '15%'
         base.style.backgroundColor = '#c0c0c0'
-        base.style.borderRadius = '0 0 15px 15px'
+        base.style.borderRadius = '0 0 8px 8px'
         deviceContainer.appendChild(base)
         
         // Create screen container for desktop
@@ -280,7 +288,7 @@ export default function AssetsPage() {
         screenContainer.style.width = '100%'
         screenContainer.style.height = '100%'
         screenContainer.style.backgroundColor = '#fff'
-        screenContainer.style.borderRadius = '10px'
+        screenContainer.style.borderRadius = '4px'
         screenContainer.style.overflow = 'hidden'
         screenContainer.style.position = 'relative'
         screen.appendChild(screenContainer)
@@ -289,20 +297,28 @@ export default function AssetsPage() {
         deviceContainer = document.createElement('div')
         deviceContainer.style.position = 'relative'
         deviceContainer.style.boxShadow = '0 25px 50px rgba(0,0,0,0.3)'
-        deviceContainer.style.width = '500px'
-        deviceContainer.style.height = '650px'
-        deviceContainer.style.backgroundColor = '#000'
-        deviceContainer.style.borderRadius = '40px'
-        deviceContainer.style.padding = '30px'
+        deviceContainer.style.width = '140px'
+        deviceContainer.style.height = '180px'
+        
+        // Tablet Frame
+        const tabletFrame = document.createElement('div')
+        tabletFrame.style.width = '100%'
+        tabletFrame.style.height = '100%'
+        tabletFrame.style.backgroundColor = '#000'
+        tabletFrame.style.borderRadius = '16px'
+        tabletFrame.style.padding = '8px'
+        deviceContainer.appendChild(tabletFrame)
         
         // Create screen container for tablet
         screenContainer = document.createElement('div')
         screenContainer.style.width = '100%'
         screenContainer.style.height = '100%'
         screenContainer.style.backgroundColor = '#fff'
-        screenContainer.style.borderRadius = '25px'
+        screenContainer.style.borderRadius = '12px'
         screenContainer.style.overflow = 'hidden'
         screenContainer.style.position = 'relative'
+        tabletFrame.appendChild(screenContainer)
+        
       } else {
         // Fallback
         deviceContainer = document.createElement('div')
@@ -321,11 +337,6 @@ export default function AssetsPage() {
       assetImage.crossOrigin = 'anonymous'
 
       screenContainer.appendChild(assetImage)
-      
-      // Add screen container to device (if not already added)
-      if (selectedMockup !== 'desktop-1') {
-        deviceContainer.appendChild(screenContainer)
-      }
       
       mockupElement.appendChild(deviceContainer)
       document.body.appendChild(mockupElement)
@@ -364,11 +375,11 @@ export default function AssetsPage() {
 
       console.log('🖼️ Capturing mockup with html2canvas...')
       
-      // Capture the mockup
+      // Capture the mockup (matching preview dimensions)
       const canvas = await html2canvas(mockupElement, {
-        width: 1200,
-        height: 900,
-        scale: 2,
+        width: 800,
+        height: 600,
+        scale: 3,
         useCORS: true,
         allowTaint: true,
         backgroundColor: null,
