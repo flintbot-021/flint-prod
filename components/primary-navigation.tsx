@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth-context'
 import { Settings, LogOut, LifeBuoy, Mail, BookOpen, Eye } from 'lucide-react'
 
 interface PrimaryNavigationProps {
-  currentPage?: 'dashboard' | 'tools' | 'leads' | 'account' | 'builder'
+  currentPage?: 'dashboard' | 'tools' | 'leads' | 'account' | 'builder' | 'assets'
   onShowOnboarding?: () => void
 }
 
@@ -67,6 +67,20 @@ export function PrimaryNavigation({ currentPage, onShowOnboarding }: PrimaryNavi
               >
                 Leads
               </Button>
+              {user?.email?.endsWith('@useflint.co') && (
+                <Button
+                  variant="ghost"
+                  onMouseEnter={() => router.prefetch('/dashboard/assets')}
+                  onClick={() => router.push('/dashboard/assets')}
+                  className={`text-sm font-medium ${
+                    currentPage === 'assets' 
+                      ? 'text-primary' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Assets
+                </Button>
+              )}
             </nav>
           </div>
           

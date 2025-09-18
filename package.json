@@ -31,6 +31,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "html2canvas": "^1.4.1",
     "libphonenumber-js": "^1.12.10",
     "lucide-react": "^0.511.0",
     "next": "latest",
@@ -49,6 +50,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/html2canvas": "^0.5.35",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
