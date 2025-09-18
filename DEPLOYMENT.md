@@ -57,10 +57,10 @@ NODE_ENV=production
 
 3. **Set Up Authentication**
    - In Supabase Dashboard → Authentication → URL Configuration
-   - Add your Vercel domain to Site URL: `https://your-app.vercel.app`
+   - Add your Vercel domain to Site URL: `https://app.useflint.app`
    - Add redirect URLs:
-     - `https://your-app.vercel.app/auth/callback`
-     - `https://your-app.vercel.app/dashboard`
+     - `https://app.useflint.app/auth/callback`
+     - `https://app.useflint.app/dashboard`
 
 4. **Configure Storage (if using file uploads)**
    - In Supabase Dashboard → Storage
